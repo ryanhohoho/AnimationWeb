@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ryan Ho — Portfolio</title>
+  <style>
+    :root {
+      --ink: #2a2733;
+      --soft: #6f6a7e;
+      --bg: #f7f4fa;
+      --card: #ffffff;
+      --accent: #e58cb2;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    nav {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 22px 7vw; position: sticky; top: 0;
+      background: rgba(247, 244, 250, 0.85); backdrop-filter: blur(8px);
+      z-index: 5;
+    }
+    nav .logo { font-weight: 700; letter-spacing: 0.04em; }
+    nav a { color: var(--soft); text-decoration: none; margin-left: 28px; font-size: 0.95rem; }
+    nav a:hover { color: var(--ink); }
+    section { padding: 10vh 7vw; }
+    .hero { min-height: 78vh; display: flex; flex-direction: column; justify-content: center; }
+    .hero-card {
+      max-width: 560px; padding: 38px 42px; border-radius: 20px;
+      background: var(--card); box-shadow: 0 12px 40px rgba(42, 39, 51, 0.08);
+    }
+    h1 { font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.12; }
+    h1 em { font-style: normal; color: var(--accent); }
+    .hero p { margin-top: 14px; color: var(--soft); max-width: 46ch; }
+    h2 { font-size: 1.6rem; margin-bottom: 28px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px; }
+    .card {
+      background: var(--card); border-radius: 18px; padding: 30px;
+      box-shadow: 0 8px 28px rgba(42, 39, 51, 0.07);
+      min-height: 220px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .card .tag { font-size: 0.78rem; color: var(--accent); font-weight: 600; letter-spacing: 0.06em; }
+    .card h3 { font-size: 1.15rem; }
+    .card p { color: var(--soft); font-size: 0.94rem; }
+    .about-wrap { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; }
+    .about-card {
+      background: var(--card); border-radius: 18px; padding: 34px;
+      box-shadow: 0 8px 28px rgba(42, 39, 51, 0.07); max-width: 520px;
+    }
+    .about-card p { color: var(--soft); }
+    footer { padding: 60px 7vw; color: var(--soft); font-size: 0.9rem; }
+    .spacer-note { color: var(--soft); font-size: 0.85rem; opacity: 0.7; margin-top: 40px; }
+    /* the character canvas overlays everything but never blocks input */
+    #mew-canvas {
+      position: fixed; inset: 0; width: 100vw; height: 100vh;
+      pointer-events: none; z-index: 50;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">RYAN HO</div>
+    <div>
+      <a href="#work">Work</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-card" data-collider>
+      <h1>Creative developer<br />building <em>playful</em> things.</h1>
+      <p>Interactive experiences, procedural animation, and the occasional
+        floating creature. Scroll around — it can bump into stuff.</p>
+    </div>
+  </section>
+
+  <section id="work">
+    <h2>Selected work</h2>
+    <div class="grid">
+      <div class="card" data-collider>
+        <span class="tag">WEBGL</span>
+        <h3>Procedural Creature Engine</h3>
+        <p>A physics-driven character that lives on the page, reacts to the cursor,
+          and never plays the same animation twice.</p>
+      </div>
+      <div class="card" data-collider>
+        <span class="tag">TOOLING</span>
+        <h3>Headless Asset Pipeline</h3>
+        <p>Blender automation that builds, rigs, and skins low-poly characters
+          from a single reproducible script.</p>
+      </div>
+      <div class="card" data-collider>
+        <span class="tag">EXPERIMENT</span>
+        <h3>Springs All The Way Down</h3>
+        <p>A study in critically damped motion: every value on this site that
+          moves is driven by a spring or a noise field.</p>
+      </div>
+    </div>
+    <p class="spacer-note">More coming soon.</p>
+  </section>
+
+  <section id="about">
+    <h2>About</h2>
+    <div class="about-wrap">
+      <div class="about-card" data-collider>
+        <p>I like building things that feel alive. The little creature floating
+          around this page is procedurally animated — no keyframes, no baked
+          clips. Its tail, ears, and gaze are all simulated in real time.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact">
+    <h2>Contact</h2>
+    <div class="about-card" data-collider>
+      <p>ryanho333@gmail.com</p>
+    </div>
+  </section>
+
+  <footer>© 2026 Ryan Ho. The creature is watching your cursor.</footer>
+
+  <canvas id="mew-canvas"></canvas>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
