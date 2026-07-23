@@ -18,6 +18,7 @@ export function createTailChain({ config, world }) {
   let initialized = false;
   let rootRestInv = null; // inverse of the root bone's rest char quat
   let smoothed = null;    // persistent per-bone local quats for cross-frame smoothing
+  let lastScrollY = 0;    // for scroll compensation (see update)
 
   // scratch objects, allocated once (this runs 120 times a second)
   const _attach = new THREE.Vector3();
@@ -43,6 +44,7 @@ export function createTailChain({ config, world }) {
   const _prevDelta = new THREE.Vector3();
   const _tmp = new THREE.Vector3();
   const _accelW = new THREE.Vector3();
+  const _baseDir = new THREE.Vector3();
 
   function init(rig, scale) {
     const pts = rig.tailRest.points;
@@ -65,6 +67,9 @@ export function createTailChain({ config, world }) {
       particles[i].p.copy(_tmp);
       particles[i].pp.copy(_tmp);
     }
+    // resync the scroll baseline: particles now sit at the live anchor, which
+    // already includes the current scroll, so there is no pending shift to undo
+    lastScrollY = world.scroll.y;
   }
 
   function substep(ctx, scale, dt) {
@@ -186,6 +191,9 @@ export function createTailChain({ config, world }) {
     // and simply stayed folded.
     const lens = rig.tailRest.lens;
     const maxAngle = cfg.angleLimitDeg * D2R;
+    const rootMaxAngle = cfg.rootAngleLimitDeg * D2R;
+    // body-carried rigid direction the tail root should hold to
+    _baseDir.copy(rig.tailRest.dirs[0]).applyQuaternion(_rootQ).normalize();
     let minSep = 0;
     for (let i = 0; i < lens.length; i++) minSep += lens[i];
     minSep = (minSep / lens.length) * scale * cfg.selfSepMul;
@@ -204,6 +212,27 @@ export function createTailChain({ config, world }) {
         } else {
           a.p.addScaledVector(_seg, diff * 0.5);
           b.p.addScaledVector(_seg, -diff * 0.5);
+        }
+      }
+
+      // base cone: the FIRST segment is held inside a cone around the
+      // body-carried rest direction. the shape-memory spring alone gets OUTRUN
+      // by a fast turn (measured: the base swung ~177 deg, nearly backward, off
+      // the body), so the whole tail flopped onto its own length and folded in
+      // projection. this is a positional constraint the turn CANNOT outrun: it
+      // re-anchors the root to the body every substep, so a hard turn drags the
+      // tail behind instead of flinging it around. it sits idle during gentle
+      // motion (the base is well inside the cone), so the normal whip survives.
+      {
+        _seg.copy(particles[1].p).sub(particles[0].p);
+        const blen = _seg.length() || 1e-6;
+        const bang = Math.acos(clamp(_seg.dot(_baseDir) / blen, -1, 1));
+        if (bang > rootMaxAngle) {
+          const excess = (bang - rootMaxAngle) / bang;
+          _tmp.copy(_baseDir).multiplyScalar(blen);
+          _seg.lerp(_tmp, excess * cfg.rootAngleSoftness);
+          _seg.setLength(blen);
+          particles[1].p.copy(particles[0].p).add(_seg); // base is pinned
         }
       }
 
@@ -264,6 +293,26 @@ export function createTailChain({ config, world }) {
       // identity, so gravity and the rest curve stay honest. char frame ==
       // world orientation because the character group itself never rotates.
       rig.charQuatOf(rig.bones.root, _rootQ).multiply(rootRestInv);
+
+      // scroll compensation: the sim integrates particle positions in three's
+      // SCENE space, but main.js bakes -scrollY into the character's scene
+      // position (doc-anchored render), so scrolling translates the tail's
+      // anchor while the verlet particles -- which persist across frames -- lag
+      // behind, and the tail gets dragged by the page. the body physics live in
+      // document space and never feel this, so the tail shouldn't either. cancel
+      // it by rigidly shifting every particle (p AND pp, so no phantom velocity)
+      // by the same amount the anchor moved due to scroll: a scroll now slides
+      // the whole chain together. genuine swim motion still whips, because that
+      // comes from body.pos, which we leave untouched. headless (scroll.y stays
+      // 0) is a no-op. runs BEFORE the teleport guard so scrolling never trips it.
+      const scrollShiftY = (world.scroll.y - lastScrollY) * view.worldPerPx;
+      lastScrollY = world.scroll.y;
+      if (scrollShiftY !== 0) {
+        for (let i = 0; i < particles.length; i++) {
+          particles[i].p.y += scrollShiftY;
+          particles[i].pp.y += scrollShiftY;
+        }
+      }
 
       // teleport guard: if the base jumped a huge distance (resize, tab wake),
       // restart the sim at rest instead of whipping across the screen

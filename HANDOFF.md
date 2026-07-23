@@ -90,7 +90,14 @@ reports the model clean.
   rest s-curl, morphing to a straight trail at flight alignment
   (`shared.trailDir` overrides direction during the beam brace), traveling
   wave phase-locked to `shared.swimPhase`, distance + soft angle constraints,
-  bone mapping via swing quats with persistent smoothing.
+  bone mapping via swing quats with persistent smoothing. Two more constraints:
+  a BASE CONE (`rootAngleLimitDeg`/`rootAngleSoftness`) holds the first segment
+  inside a cone of the body-carried rest direction so a fast turn can't fling
+  the root ~180 deg onto its own length (shape memory alone gets outrun); and
+  SCROLL COMPENSATION -- the sim integrates in three's scene space, which bakes
+  in -scrollY (main.js is doc-anchored), so each frame it rigidly shifts every
+  particle by the anchor's scroll delta (keyed off `world.scroll.y`), or the
+  page drags the tail. body physics live in doc space and never feel scroll.
 - `engine/fx/beamGeometry.js` — pure beam math (headless-tested).
   `destruction.js` — canvas alpha-mask carving on DOM elements (permanent,
   accumulates, drops colliders > 50% destroyed). `beam.js` — layered additive
@@ -154,6 +161,23 @@ reports the model clean.
   bugs.
 - The doc-anchored fx group has scale.y = -worldPerPx (reflection). Materials
   there need DoubleSide.
+- SCROLL DRAGS THE TAIL (paid for once). The character is rendered doc-anchored:
+  main.js bakes `-scrollY` into `characterRoot.position` every frame. The tail
+  is the ONLY system that integrates persisted positions in scene space, so
+  scrolling translates its anchor while the verlet particles lag -> the tail
+  trails the page. Body physics live in doc space and are immune, which is the
+  tell. Fix lives in `tailChain` (rigidly shift all particles by the anchor's
+  scroll delta each frame); do NOT try to fix it by moving the camera or the
+  render mapping. `test/tail_scroll.js` is the regression gate.
+- THE TAIL FLOPPING/FOLDING WHEN TURNING FAST was the first segment swinging
+  free of the body: the angle limit only coupled segment-to-segment (loop starts
+  at i=2), so nothing tied the base to the body's tail-root direction. Shape
+  memory is a soft spring and a hard turn (~840 deg/s) outruns it -- the base
+  lagged to ~177 deg (nearly backward), which reads as a flop and folds in
+  projection. The existing probe missed it because it only measures neighbour
+  bend (stayed 39 deg). The base cone (see tailChain) caps it; `test/tail_turn.js`
+  reports the base-vs-body angle the probe lacks. When a tail issue is about
+  where the WHOLE tail points, measure base-vs-body, not segment-vs-segment.
 - COLOR SPACE (this one cost a "why is Mew dark purple" round trip): three only
   applies the output sRGB encode when it renders to the DEFAULT framebuffer,
   and it never injects the encode into a raw ShaderMaterial. Any pass that
@@ -255,7 +279,15 @@ reports the model clean.
 - `node test/tail_probe.js [--flat]` — runs the real rig through a deliberately
   violent scenario and reports max bend, fold count, closest non-adjacent
   approach, and torsion (planar vs helical). `--flat` restores the old planar
-  wave for an A/B.
+  wave for an A/B. NOTE: measures only neighbour-to-neighbour bend, so it does
+  NOT catch the tail pointing the wrong way as a whole — use tail_turn for that.
+- `node test/tail_scroll.js` — PASS/FAIL gate for the scroll-drag bug: moves the
+  anchor a long way via scroll and asserts the tail's shape stays invariant
+  (exit 1 on regression).
+- `node test/tail_turn.js` — diagnostic for fast turns: reports base-vs-body
+  angle (the "flops on its length" number), peak turn rate, bend, folds.
+  `node test/tail_turn_dump.js && python3 tools/plot_turn.py` draws a before/after
+  filmstrip (base cone off vs on).
 - Shader syntax can be checked headlessly by parsing the GLSL template
   literals with `@shaderfrog/glsl-parser` — it will not catch link errors, but
   it catches typos without a browser.

@@ -394,6 +394,14 @@ export const rigConfig = {
                               // as a multiple of the mean rest segment
     angleLimitDeg: 38,        // soft limit between consecutive segments
     angleSoftness: 0.55,      // fraction of the excess corrected per iteration
+    // BASE RIGIDITY. the first segment is held inside a cone around the
+    // body-carried rest direction so a fast turn can't fling the tail root
+    // ~180 deg onto its own length (the flops/folds-when-turning-fast bug). the
+    // shape-memory spring is only a suggestion and a hard turn outruns it; this
+    // cone is a limit the turn can't outrun, so the tail DRAGS behind a turn
+    // instead of flipping. lower = more rigid root, higher = looser.
+    rootAngleLimitDeg: 42,
+    rootAngleSoftness: 0.6,   // fraction of the excess corrected per iteration
     constraintIters: 5,       // lengths + angles + separation, all per pass
     quatDampRate: 34,         // final smoothing on bone quats, kills jitter
     // in streamlined flight the shape-memory target morphs from the resting

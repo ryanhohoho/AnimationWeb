@@ -14,6 +14,7 @@ dist/
 *.blend1
 /mew.glb
 /motion_dump.json
+/turn_dump.json
 
 # OS / editor cruft
 .DS_Store
