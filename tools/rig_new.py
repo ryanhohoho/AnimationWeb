@@ -468,9 +468,12 @@ def main():
     for k in J:
         J[k] = list((np.array(J[k]) + shift) * scale)
 
-    rawpart = classify(P2, rawpart, J, (neck_y + shift[1]) * scale)
     # hand-tuned joints, if any, override the fitted ones (post-normalisation,
-    # so the numbers match what you see in blender after importing the glb)
+    # so the numbers match what you see in blender after importing the glb).
+    # this MUST happen before classify(): the region each vertex belongs to is
+    # decided by which bone it is nearest, so loading overrides afterwards gave
+    # correct weights around the moved joint but stale regions around the old
+    # one -- move a hand across the body and its region stayed behind.
     jf = None
     if "--joints" in sys.argv:
         jf = sys.argv[sys.argv.index("--joints") + 1]
@@ -487,6 +490,7 @@ def main():
                 n += 1
         print(f"  joint overrides loaded from {os.path.relpath(jf, ROOT)}: {n}")
 
+    rawpart = classify(P2, rawpart, J, (neck_y + shift[1]) * scale)
     Jo, Wo, Wfull = skin(P2, rawpart, J)
     if "--dump-joints" in sys.argv:
         import json
