@@ -35,6 +35,8 @@ export function createTailChain({ config, world }) {
   const _trailRaw = new THREE.Vector3();
   const _zAxis = new THREE.Vector3(0, 0, 1);
   let cumLens = null; // cumulative rest lengths from the attach point
+  let restBend = null; // rest angle between consecutive segments, radians
+  let targets = null;  // shape-memory target point per particle, this substep
   const _rd = new THREE.Vector3();
   const _sd = new THREE.Vector3();
   const _swing = new THREE.Quaternion();
@@ -53,6 +55,21 @@ export function createTailChain({ config, world }) {
     smoothed = rig.bones.tail.map((b) => rig.rest.get(b).localQuat.clone());
     cumLens = [0];
     for (const l of rig.tailRest.lens) cumLens.push(cumLens[cumLens.length - 1] + l);
+    targets = pts.map(() => new THREE.Vector3());
+    // the REST bend at each joint. the angle limit below is measured against
+    // this, not against zero: a tail whose rest curve already bends 79 deg at
+    // the club is not "in violation" of a 38 deg limit -- it is just curved.
+    // measuring absolutely put the rest pose permanently outside the constraint,
+    // so the limit fought the shape-memory spring every substep and the tail
+    // never settled (it also left no headroom at all for actual motion).
+    restBend = [];
+    const d0 = new THREE.Vector3();
+    const d1 = new THREE.Vector3();
+    for (let i = 0; i + 1 < rig.tailRest.dirs.length; i++) {
+      d0.copy(rig.tailRest.dirs[i]);
+      d1.copy(rig.tailRest.dirs[i + 1]);
+      restBend.push(Math.acos(clamp(d0.dot(d1), -1, 1)));
+    }
     placeAtRest(rig, scale);
     initialized = true;
   }
@@ -129,6 +146,8 @@ export function createTailChain({ config, world }) {
         _tmp.copy(_attach).addScaledVector(_trail, cumLens[i] * scale);
         _target.lerp(_tmp, straighten);
       }
+      // keep it: the constraint pass needs to know where the muscle is pulling
+      targets[i].copy(_target);
       const stiff = (cfg.stiffBase + (cfg.stiffTip - cfg.stiffBase) * Math.pow(t, 1 / cfg.stiffCurve))
         * (1 - straighten * (1 - cfg.flightStiffnessMul));
       _f.copy(_target).sub(pt.p).multiplyScalar(stiff);
@@ -190,8 +209,8 @@ export function createTailChain({ config, world }) {
     // loop had finished, so a hard bend only ever got one softened pass at it
     // and simply stayed folded.
     const lens = rig.tailRest.lens;
-    const maxAngle = cfg.angleLimitDeg * D2R;
-    const rootMaxAngle = cfg.rootAngleLimitDeg * D2R;
+    const slack = cfg.angleSlackDeg * D2R;
+    targets[0].copy(_attach);
     // body-carried rigid direction the tail root should hold to
     _baseDir.copy(rig.tailRest.dirs[0]).applyQuaternion(_rootQ).normalize();
     let minSep = 0;
@@ -215,34 +234,60 @@ export function createTailChain({ config, world }) {
         }
       }
 
-      // base cone: the FIRST segment is held inside a cone around the
-      // body-carried rest direction. the shape-memory spring alone gets OUTRUN
-      // by a fast turn (measured: the base swung ~177 deg, nearly backward, off
-      // the body), so the whole tail flopped onto its own length and folded in
-      // projection. this is a positional constraint the turn CANNOT outrun: it
-      // re-anchors the root to the body every substep, so a hard turn drags the
-      // tail behind instead of flinging it around. it sits idle during gentle
-      // motion (the base is well inside the cone), so the normal whip survives.
-      {
-        _seg.copy(particles[1].p).sub(particles[0].p);
-        const blen = _seg.length() || 1e-6;
-        const bang = Math.acos(clamp(_seg.dot(_baseDir) / blen, -1, 1));
-        if (bang > rootMaxAngle) {
-          const excess = (bang - rootMaxAngle) / bang;
-          _tmp.copy(_baseDir).multiplyScalar(blen);
-          _seg.lerp(_tmp, excess * cfg.rootAngleSoftness);
-          _seg.setLength(blen);
-          particles[1].p.copy(particles[0].p).add(_seg); // base is pinned
+      // MUSCLE CONE. every segment is held inside a cone around the direction
+      // the shape-memory target actually wants it to point, with the cone
+      // widening toward the tip.
+      //
+      // this replaces the old base-only cone. that one measured segment 0
+      // against the body and fixed the base flopping -- but the neighbour limit
+      // below is measured against the PARENT SEGMENT, a moving reference, so
+      // every joint could lag its parent by the limit and the lags COMPOUNDED:
+      // 42 deg at the base plus 6 x 38 deg is ~270 deg of legal freedom. the
+      // measured per-segment deviation from the body ran 42, 113, 170, 179,
+      // 177, 159, 147 -- the middle of the tail pointing almost exactly
+      // backwards -- while maxBend read 38.8 and folds read 0, because
+      // neighbour-to-neighbour nothing looked wrong. that is why fixing the
+      // base alone never held: the flop just moved downstream.
+      //
+      // measuring each segment against a BODY-CARRIED reference instead bounds
+      // the total deviation directly, so lag cannot accumulate. the target
+      // already blends rest curl -> trail line in flight, so streaming still
+      // works.
+      for (let i = 0; i < n - 1; i++) {
+        _rd.copy(targets[i + 1]).sub(targets[i]);
+        if (_rd.lengthSq() < 1e-12) continue;
+        _rd.normalize();
+        _seg.copy(particles[i + 1].p).sub(particles[i].p);
+        const len = _seg.length() || 1e-6;
+        const t = n > 2 ? i / (n - 2) : 0;
+        const cone = (cfg.coneBaseDeg
+          + (cfg.coneTipDeg - cfg.coneBaseDeg) * Math.pow(t, cfg.coneCurve)) * D2R;
+        const ang = Math.acos(clamp(_seg.dot(_rd) / len, -1, 1));
+        if (ang > cone) {
+          const excess = (ang - cone) / ang;
+          _tmp.copy(_rd).multiplyScalar(len);
+          _seg.lerp(_tmp, excess * cfg.coneSoftness);
+          _seg.setLength(len);
+          // move the CHILD only, never the parent: shifting particle i as well
+          // displaces it by a fraction of a whole segment, which breaks the
+          // length constraint upstream and shreds the chain (it drove every
+          // segment to ~179 deg off the body and folded the tail 228 times).
+          particles[i + 1].p.copy(particles[i].p).add(_seg);
         }
       }
 
-      // soft angle limit: keep each joint inside a cone around its parent
+      // neighbour limit, measured as excess bend OVER THE REST BEND. absolute
+      // limits treat a curved rest pose as a permanent violation -- this tail
+      // rests with a 79 deg hook at the club, so an absolute 38 deg limit left
+      // it fighting the shape-memory spring forever and it never settled.
       for (let i = 2; i < n; i++) {
         _prevDelta.copy(particles[i - 1].p).sub(particles[i - 2].p).normalize();
         _seg.copy(particles[i].p).sub(particles[i - 1].p);
         const len = _seg.length() || 1e-6;
         _sd.copy(_seg).divideScalar(len);
         const ang = Math.acos(clamp(_prevDelta.dot(_sd), -1, 1));
+        const rb = restBend[i - 2] !== undefined ? restBend[i - 2] : 0;
+        const maxAngle = rb + slack;
         if (ang > maxAngle) {
           // blend the segment back toward the cone edge instead of snapping
           const excess = (ang - maxAngle) / ang;

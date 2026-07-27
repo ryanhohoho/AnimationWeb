@@ -207,13 +207,14 @@ export const rigConfig = {
     widthPx: 82,                // full beam width, about the head size
     recoil: 430,                // impulse opposite the beam
     cooldownS: 1.2,             // after firing before another pet registers
-    mouthOffset: [0, 0.161, 0.388], // model units from the head bone origin in
+    mouthOffset: [0, 0.111, 0.451], // model units from the head bone origin in
                                   // the head's REST char frame (mouth height,
                                   // face front); rotated by the head's live
                                   // rotation delta so the glow rides it exactly.
-                                  // measured from the v2 mesh: the head bone
-                                  // now sits at the NECK TOP (so the head
-                                  // swivels on the neck), hence the bigger y
+                                  // measured off the v4 mesh's snout tip -- the
+                                  // head bone sits at the NECK TOP (so the head
+                                  // swivels on the neck), and the muzzle now
+                                  // juts further forward, hence the bigger z
     gazeHoldAfterS: 0.5,        // stare down the beam this long after it ends
     chargeRockDeg: 9,           // head/body rock backwards during charge
     fireJerkRad: 3.6,           // head snap toward the beam at the shot (rad/s kick)
@@ -392,7 +393,12 @@ export const rigConfig = {
     unfoldSwirl: 34,          // lateral push per unit of excess bend
     selfSepMul: 0.82,         // non-adjacent particles stay this far apart,
                               // as a multiple of the mean rest segment
-    angleLimitDeg: 38,        // soft limit between consecutive segments
+    // neighbour bend allowed ON TOP OF THE REST BEND. this used to be an
+    // absolute limit (angleLimitDeg: 38), which meant any tail whose rest curve
+    // bends further than that -- this one hooks 79 deg at the club -- sat
+    // permanently in violation, so the constraint fought the shape-memory
+    // spring every substep and the tail never came to rest.
+    angleSlackDeg: 16,
     angleSoftness: 0.55,      // fraction of the excess corrected per iteration
     // BASE RIGIDITY. the first segment is held inside a cone around the
     // body-carried rest direction so a fast turn can't fling the tail root
@@ -400,8 +406,18 @@ export const rigConfig = {
     // shape-memory spring is only a suggestion and a hard turn outruns it; this
     // cone is a limit the turn can't outrun, so the tail DRAGS behind a turn
     // instead of flipping. lower = more rigid root, higher = looser.
-    rootAngleLimitDeg: 42,
-    rootAngleSoftness: 0.6,   // fraction of the excess corrected per iteration
+    // MUSCLE CONE (replaces the old base-only cone). every segment is held
+    // inside a cone around the direction the shape-memory target wants it to
+    // point, widening base -> tip. the old rootAngleLimitDeg only constrained
+    // segment 0; the neighbour limit below is relative to the PARENT segment,
+    // so lag compounded down the chain (42 + 6x38 = ~270 deg of legal freedom)
+    // and the middle of the tail could point backwards while every
+    // neighbour-to-neighbour reading looked perfectly healthy. measuring each
+    // segment against a body-carried reference bounds the total directly.
+    coneBaseDeg: 24,          // how far segment 0 may stray from the muscle line
+    coneTipDeg: 58,           // and the last segment -- loose enough to whip
+    coneCurve: 1.5,           // >1 keeps the base tight and opens up late
+    coneSoftness: 0.5,        // fraction of the excess corrected per iteration
     constraintIters: 5,       // lengths + angles + separation, all per pass
     quatDampRate: 34,         // final smoothing on bone quats, kills jitter
     // in streamlined flight the shape-memory target morphs from the resting

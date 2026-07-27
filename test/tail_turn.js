@@ -71,6 +71,12 @@ const DT = 1 / 120;
 const maxV = cfg.physics.maxSpeed;
 let baseAng = 0, rootRate = 0, maxBend = 0, folds = 0, selfMin = Infinity;
 let havePrev = false;
+// per-segment deviation from the body-carried REST direction. baseAng only
+// looks at segment 0, and maxBend only at neighbour pairs, so between them
+// they miss the actual failure: each joint lags a little, the lags COMPOUND
+// down the chain, and the far half of the tail ends up pointing somewhere the
+// body never asked for. that shows up here and nowhere else.
+const segDev = new Array(rig.bones.tail.length).fill(0);
 
 for (let step = 0; step < 120 * 40; step++) {
   const t = step * DT;
@@ -113,6 +119,13 @@ for (let step = 0; step < 120 * 40; step++) {
   const ba = Math.acos(Math.max(-1, Math.min(1, _rd.dot(_sd)))) * 180 / Math.PI;
   if (ba > baseAng) baseAng = ba;
 
+  for (let k = 0; k < segDev.length; k++) {
+    _rd.copy(rig.tailRest.dirs[k]).applyQuaternion(_rootQ).normalize();
+    _sd.copy(P[k + 1].p).sub(P[k].p).normalize();
+    const dv = Math.acos(Math.max(-1, Math.min(1, _rd.dot(_sd)))) * 180 / Math.PI;
+    if (dv > segDev[k]) segDev[k] = dv;
+  }
+
   let meanLen = 0;
   for (let i = 1; i < P.length; i++) meanLen += P[i].p.distanceTo(P[i - 1].p);
   meanLen /= P.length - 1;
@@ -133,4 +146,7 @@ console.log(`FAST-TURN
   rootRate ${rootRate.toFixed(0)} deg/s (peak body turn rate)
   maxBend  ${maxBend.toFixed(1)} deg   (>90 = folded)
   folds    ${folds} joint-frames past 90 deg
-  selfMin  ${selfMin.toFixed(2)} x segment  (<0.5 = lying on itself)`);
+  selfMin  ${selfMin.toFixed(2)} x segment  (<0.5 = lying on itself)
+  segDev   ${segDev.map((d) => d.toFixed(0).padStart(3)).join(" ")}  deg, base -> tip
+           (deviation from the body-carried rest direction. a ramp that keeps
+            climbing = lag compounding down the chain; that is the flop)`);
