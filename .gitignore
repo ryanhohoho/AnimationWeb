@@ -10,8 +10,8 @@ dist/
 /public/models/
 
 # Local source / scratch assets (kept in ../AnimationWeb-assets, not in git)
-*.blend
-*.blend1
+#*.blend
+#*.blend1
 /mew.glb
 /motion_dump.json
 /turn_dump.json
