@@ -8,7 +8,7 @@
 
 import * as THREE from "three";
 import { GLSL_LINEAR_TO_SRGB } from "./presentMath.js";
-import { INK_ALPHA } from "./spriteShade.js";
+import { FX_GATE, INK_GATE, SOFT_GATE } from "./alphaFlags.js";
 
 const VERT = /* glsl */ `
   varying vec2 vUv;
@@ -23,10 +23,13 @@ const FRAG = /* glsl */ `
   uniform vec2 texel;
   uniform float levels;
   uniform vec3 outlineColor;
+  uniform vec3 fxOutlineColor;
   uniform float outlineOn;
   uniform float lift;
   uniform float bandLuma;
   uniform float inkGate;
+  uniform float fxGate;
+  uniform float softGate;
   varying vec2 vUv;
 
   ${GLSL_LINEAR_TO_SRGB}
@@ -36,12 +39,25 @@ const FRAG = /* glsl */ `
     if (c.a < 0.5) {
       // transparent texel: become the outline if any 4-neighbor is solid
       if (outlineOn > 0.5) {
-        float a = texture2D(map, vUv + vec2(texel.x, 0.0)).a
-                + texture2D(map, vUv - vec2(texel.x, 0.0)).a
-                + texture2D(map, vUv + vec2(0.0, texel.y)).a
-                + texture2D(map, vUv - vec2(0.0, texel.y)).a;
-        if (a > 0.5) {
-          gl_FragColor = vec4(linearToSrgb(outlineColor), 1.0);
+        // the STRONGEST neighbour, not the sum. the alpha channel carries a
+        // flag saying what drew each texel (fx/alphaFlags.js) and summing four
+        // of them destroys it -- two beam pixels at 0.58 add up to look exactly
+        // like the character's 1.0. taking the max keeps the flag readable AND
+        // gets the priority right: where a beam runs off the edge of mew, the
+        // character's silhouette line is the one that should win.
+        float a = max(
+          max(texture2D(map, vUv + vec2(texel.x, 0.0)).a,
+              texture2D(map, vUv - vec2(texel.x, 0.0)).a),
+          max(texture2D(map, vUv + vec2(0.0, texel.y)).a,
+              texture2D(map, vUv - vec2(0.0, texel.y)).a));
+        // ...and soft glows are below the gate entirely, so a muzzle flash
+        // stays a wash of light instead of becoming an outlined bubble.
+        if (a > softGate) {
+          // a dark plum line reads as ink around a body and as SOOT around a
+          // hyper beam, which is the one place the silhouette colour was
+          // actively wrong. Additive fx get a hot rim instead.
+          vec3 oc = a < fxGate ? fxOutlineColor : outlineColor;
+          gl_FragColor = vec4(linearToSrgb(oc), 1.0);
           return;
         }
       }
@@ -102,12 +118,16 @@ export function createPixelate({ renderer, config }) {
     texel: { value: new THREE.Vector2(1, 1) },
     levels: { value: cfg.colorLevels },
     outlineColor: { value: new THREE.Color(cfg.outlineColor) },
+    fxOutlineColor: { value: new THREE.Color(cfg.fxOutlineColor ?? cfg.outlineColor) },
     outlineOn: { value: cfg.outline ? 1 : 0 },
     lift: { value: cfg.shadeLift ?? 0 },
     bandLuma: { value: (cfg.bandLuma ?? true) ? 1 : 0 },
-    // halfway between the ink flag and solid, so it cannot be confused with
-    // either. see fx/spriteShade.js -> INK_ALPHA.
-    inkGate: { value: (INK_ALPHA + 1) / 2 }
+    // the thresholds in the alpha protocol, each sitting halfway between the
+    // flags it separates so nothing ever lands on a boundary.
+    // see fx/alphaFlags.js.
+    inkGate: { value: INK_GATE },
+    fxGate: { value: FX_GATE },
+    softGate: { value: SOFT_GATE }
   };
   const blitScene = new THREE.Scene();
   const blitCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);

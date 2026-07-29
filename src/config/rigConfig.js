@@ -176,6 +176,14 @@ export const rigConfig = {
                               // picture, so it cannot lift the eyes with it
       outline: true,
       outlineColor: "#2a1f33",// dark plum silhouette line, like the references
+      fxOutlineColor: "#ffd7f2",
+                              // ...but the SAME line around a hyper beam reads
+                              // as soot. Additive fx flag themselves in the
+                              // alpha channel (see engine/fx/alphaFlags.js) and
+                              // get this instead: the hot pink-white rim the
+                              // anime beams are drawn with, which also makes the
+                              // outline pass work FOR the beam -- it is now what
+                              // gives it a crisp edge against the page
       snapToGrid: true        // quantize the RENDER position to the texel grid
                               // (physics untouched; classic sprite crawl)
     },
@@ -214,12 +222,20 @@ export const rigConfig = {
       // kind of ink, used only by the shiny recolour. measured on the shipped
       // atlas as (r-b)/luma in LINEAR -- normalised, NOT absolute, because a
       // half-strength blush texel is pale enough to slip an absolute test while
-      // still being proportionally as warm as the core. across every mip level
-      // of the atlas: blush 4.70, half-blush 0.6..1.2, eye whites 0.04, iris
-      // 0.00, plain skin -1.00 (already recoloured by then). this window leaves
-      // ZERO warm texels anywhere on the shiny.
-      warmLo: 0.22,
-      warmHi: 0.48,
+      // still being proportionally as warm as the core.
+      //
+      // WHERE THE WINDOW HAS TO SIT. the same pink paint that makes the cheeks
+      // also draws the lid line around each eye, and it is thinned there: 500
+      // texels of #f89fc5 sitting at warm 0.18, which the old 0.22 floor missed
+      // by four hundredths. Those were the last pink pixels on the shiny, and
+      // because they ring the eyes they were also what showed around the >.<
+      // overlay. Sweeping the floor down the ramp: 0.22 leaves 309 visibly pink
+      // texels (worst r-b 0.059 sRGB, at mip 3), 0.10 leaves none, and the eye
+      // whites -- the nearest thing that must NOT be re-tinted -- do not come
+      // off zero until the floor goes below 0.00. So: land in the middle of
+      // that gap, and it is clean on all nine mip levels.
+      warmLo: 0.08,
+      warmHi: 0.26,
       inkBoost: 1.70          // and push the marks back AWAY from the skin colour
                               // to undo minification. the face island is 880 px
                               // of atlas landing on ~20 px of a quarter-res
@@ -410,14 +426,25 @@ export const rigConfig = {
     widthPx: 82,                // full beam width, about the head size
     recoil: 430,                // impulse opposite the beam
     cooldownS: 1.2,             // after firing before another pet registers
-    mouthOffset: [0, 0.25, 0.47], // model units from the head bone origin in
+    mouthOffset: [0, 0.224, 0.50], // model units from the head bone origin in
                                   // the head's REST char frame (mouth height,
                                   // face front); rotated by the head's live
                                   // rotation delta so the glow rides it exactly.
-                                  // re-measured on the meshy head: the head bone
-                                  // sits at the NECK TOP (y 0.651) and the muzzle
-                                  // front is at z 0.468, y ~0.90 -- just under
-                                  // the painted eyes, above the chin
+                                  // MEASURED off the built glb, not guessed: the
+                                  // head bone sits at the neck top (y 0.651) and
+                                  // the muzzle's furthest-forward point is
+                                  // z 0.468 at y 0.875 (it falls back to 0.434 by
+                                  // y 0.92), so this is the tip itself plus a
+                                  // hair of standoff. Under the painted eyes
+                                  // (y 0.96 / 1.03), above the chin.
+    // HOW FAR IN FRONT OF THE MOUTH THE BEAM ACTUALLY STARTS, as a fraction of
+    // the character's on-screen height. The mouth anchor is a 3d point and the
+    // beam is a 2d document-space shape; they only line up when mew is side-on,
+    // and head-on the muzzle projects into the middle of the silhouette, which
+    // is what was firing the beam's round root from inside mew's face. The head
+    // is about 0.45 model units of radius on a 1.75-unit model = 0.26 of the
+    // height, so this clears it from every angle with a little to spare.
+    muzzleClearFactor: 0.32,
     gazeHoldAfterS: 0.5,        // stare down the beam this long after it ends
     chargeRockDeg: 9,           // head/body rock backwards during charge
     fireJerkRad: 3.6,           // head snap toward the beam at the shot (rad/s kick)
@@ -563,7 +590,17 @@ export const rigConfig = {
       patchDim: 0.94,         // the patch is the LIT skin band, and the face is
                               // rarely dead-on, so nudge it down between the
                               // top two bands to disappear into either
-      liftZ: 0.035,           // stand it off the face so it never z-fights
+      liftZ: 0.02,            // standoff ALONG THE EYE'S OWN NORMAL. small on
+                              // purpose: depth testing is off, so this buys
+                              // nothing except parallax, and parallax between
+                              // the quad and the face is exactly what used to
+                              // let the painted eye slide out from behind it
+      closeAt: 0.5,           // the blink underneath is fully shut by the time
+      closeAmount: 1.15,      // the glyph is this far on. Belt and braces: the
+                              // morph that closes these eyes onto a line already
+                              // exists, so the overlay uses it and there is no
+                              // open eye left to leak. 1.15 presses the lids
+                              // together, same as an ordinary blink
       durS: 1.5,              // the same length as the flail
       attack: 0.05,           // drawn on fast, tip first
       release: 0.14,          // ...and whipped off at the end: the eyes OPEN
@@ -572,7 +609,13 @@ export const rigConfig = {
       // it sitting on the back of the skull either. fade it by how squarely the
       // head faces the camera.
       facingLo: 0.05,
-      facingHi: 0.45
+      facingHi: 0.45,
+      // and per eye, by the facet it is painted on: mew's eyes sit on the SIDES
+      // of a ball-shaped head (about 31 degrees outward), so on a turned head
+      // one of them is round the side where the muzzle would hide it. These
+      // quads ignore depth and would sit on top of the muzzle instead.
+      quadFacingLo: -0.05,
+      quadFacingHi: 0.35
     }
   },
 

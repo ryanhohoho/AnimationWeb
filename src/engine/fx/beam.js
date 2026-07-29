@@ -7,6 +7,7 @@
 // beam stays nailed to the page while the user scrolls.
 
 import * as THREE from "three";
+import { markFxMaterial } from "./alphaFlags.js";
 
 function canvasTexture(w, h, draw) {
   const c = document.createElement("canvas");
@@ -77,13 +78,30 @@ export function createBeamFx({ docFxGroup, config, getMouthDoc }) {
   streakTex.wrapS = THREE.RepeatWrapping;
 
   // ---------------------------------------------------------------- meshes
+  // markFxMaterial keeps the additive colour blend and swaps the ALPHA blend for
+  // a max of a constant flag, so the pixelate pass can tell a beam pixel from a
+  // mew pixel and ring it in hot pink instead of soot. see fx/alphaFlags.js --
+  // without it four layers of additive alpha pile past 1.0 in the core while the
+  // fringe stays under the discard threshold, which is what drew a black
+  // outline down both sides of the beam.
   function additiveMat(map, opacity, color = 0xffffff) {
-    return new THREE.MeshBasicMaterial({
+    return markFxMaterial(new THREE.MeshBasicMaterial({
       map, color, transparent: true, opacity,
-      blending: THREE.AdditiveBlending,
       depthWrite: false, depthTest: false,
       side: THREE.DoubleSide
-    });
+    }));
+  }
+
+  // every sprite here is a round radial gradient -- the muzzle flash, the charge
+  // ball, the sparks. Those are washes of light, not shapes: outline one and it
+  // becomes a bubble, and a bubble centred on the mouth is a hard ring sitting
+  // across mew's face. So they go up SOFT: drawn, never outlined. Where one lies
+  // over the beam the beam's own flag wins and the rim carries on through.
+  function additiveSprite(map, color = 0xffffff) {
+    return markFxMaterial(new THREE.SpriteMaterial({
+      map, color, transparent: true,
+      depthWrite: false, depthTest: false
+    }), true);
   }
 
   const beamGroup = new THREE.Group();
@@ -108,19 +126,13 @@ export function createBeamFx({ docFxGroup, config, getMouthDoc }) {
     beamGroup.add(layers[key]);
   }
 
-  const flare = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: glowTex, transparent: true, blending: THREE.AdditiveBlending,
-    depthWrite: false, depthTest: false
-  }));
+  const flare = new THREE.Sprite(additiveSprite(glowTex));
   flare.renderOrder = 960;
   docFxGroup.add(flare);
   flare.visible = false;
 
   // charge glow + inward-spiraling sparks
-  const chargeGlow = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: glowTex, transparent: true, blending: THREE.AdditiveBlending,
-    depthWrite: false, depthTest: false
-  }));
+  const chargeGlow = new THREE.Sprite(additiveSprite(glowTex));
   chargeGlow.renderOrder = 960;
   chargeGlow.visible = false;
   docFxGroup.add(chargeGlow);
@@ -128,11 +140,8 @@ export function createBeamFx({ docFxGroup, config, getMouthDoc }) {
   const SPARKS = 12;
   const sparks = [];
   for (let i = 0; i < SPARKS; i++) {
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: glowTex, transparent: true, blending: THREE.AdditiveBlending,
-      depthWrite: false, depthTest: false,
-      color: i % 3 === 0 ? 0x9be8ff : 0xffb3e6
-    }));
+    const s = new THREE.Sprite(
+      additiveSprite(glowTex, i % 3 === 0 ? 0x9be8ff : 0xffb3e6));
     s.visible = false;
     s.renderOrder = 959;
     s.userData = { angle: (i / SPARKS) * Math.PI * 2, speed: 2.5 + (i % 4) * 0.8 };

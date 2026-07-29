@@ -40,11 +40,15 @@
 
 import * as THREE from "three";
 import { GLSL_SPRITE_SHADE } from "./presentMath.js";
+import { INK_ALPHA } from "./alphaFlags.js";
 
 // alpha written for painted marks. anything above 0.5 is "solid" as far as the
 // outline test is concerned, so this is invisible to everything except the one
-// branch in pixelate.js that looks for it.
-export const INK_ALPHA = 0.72;
+// branch in pixelate.js that looks for it. The full alpha-channel protocol --
+// what every value in it means, and who writes it -- lives in fx/alphaFlags.js;
+// this re-export is here so the modules that only ever needed this one flag do
+// not have to know about the rest.
+export { INK_ALPHA };
 
 const PARS = /* glsl */ `
   uniform vec3  spriteSkin;

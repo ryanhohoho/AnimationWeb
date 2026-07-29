@@ -10,11 +10,14 @@ owner's standards.
 
 Portfolio site (Vite + Three.js, vanilla ESM) with a procedurally animated
 low-poly Mew floating around the page. No keyframes anywhere: physics,
-springs, and noise drive everything. Currently at v4.3 (the meshy character,
+springs, and noise drive everything. Currently at v4.5 (the meshy character,
 every limb cut into its own shell, flat-pink skin with the face baked back on,
 a tail deleted and regrown out of the butt as a follow-the-leader strand, sprite
-shading that bands the light and leaves the painted eyes alone, and a 1-in-3
-SHINY roll with the games' entrance animation). All headless checks pass
+shading that bands the light and leaves the painted eyes alone, a 1-in-3 SHINY
+roll with the games' entrance animation, a `>.<` overlay + limb flail + annoyance
+stars on a hard bump, and an alpha-channel flag protocol that lets the pixelate
+pass tell mew, painted art, the hyper beam and a soft glow apart). All headless
+checks pass
 (`node test/sim.test.js`), and `python3 tools/check_mew.py` reports the model
 clean.
 
@@ -97,8 +100,9 @@ clean.
 - `engine/pose/faceMorphs.js` — drives the head's morph targets. Live again on
   v4: `tools/facemorph.py` builds `blink`, `squint` and `wince` (no `smile` —
   mew has no painted mouth to curve, and the layer skips a missing target).
-  The `>.<` face is NOT one of them — see `engine/fx/faceOverlay.js`.
-  Random
+  The `>.<` face is NOT one of them — see `engine/fx/faceOverlay.js`, which also
+  drives `blink` fully shut underneath itself while the glyph is up (and lets it
+  open again as the glyph is whipped off, which IS the eyes opening). Random
   blinks (fast close / slower open, occasional double), plus squint+smile from
   the brain's state, agitation and speed. Runs LAST in the poser (it touches
   morphTargetInfluences, not bones, so order is free). All knobs in
@@ -215,7 +219,21 @@ clean.
 - `engine/fx/beamGeometry.js` — pure beam math (headless-tested).
   `destruction.js` — canvas alpha-mask carving on DOM elements (permanent,
   accumulates, drops colliders > 50% destroyed). `beam.js` — layered additive
-  beam + charge glow (reads `getMouthDoc`).
+  beam + charge glow (reads `getMouthDoc`); every material goes through
+  `markFxMaterial` so the pixelate pass can tell it apart (alphaFlags.js).
+  * WHERE THE BEAM STARTS IS NOT WHERE THE MOUTH IS (v4.5). The mouth anchor is
+    a 3d point on the muzzle; the beam is a 2d shape in document space. They
+    only agree when mew is side-on — fire while facing the camera and the muzzle
+    projects to somewhere near the MIDDLE of the head's silhouette, so the beam
+    and the round flash centred on it erupt from inside mew's face. `main.js`'s
+    `beamOriginDoc(dir)` pushes the origin along the beam by
+    `sizing.characterHeightPx * attack.muzzleClearFactor` (0.32 -> 48 px; the
+    head is ~0.45 model units of radius on a 1.75-unit model = 0.26 of the
+    height, so this clears it from every angle). The CHARGE glow stays on the
+    mouth, where the energy should gather; only the shot moves.
+  * `attack.mouthOffset` is measured off the built glb, not guessed: the head
+    bone sits at the neck top (y 0.651) and the muzzle's furthest-forward point
+    is z 0.468 at y 0.875 (already back to 0.434 by y 0.92).
 - `engine/fx/presentation.js` (v3.6) — PRESENTATION PASS SELECTOR. Reads
   `rigConfig.presentation.mode` (`"pixelate"` | `"cutout"` | `"none"`) and
   returns one common interface so main.js never branches on the look:
@@ -252,13 +270,61 @@ clean.
     the same N·L, so cutting it into sections gives ONE section and the whole
     character reads as a flat silhouette. It is upper-left now, with ambient
     lowered to keep the overall level.
+- `engine/fx/faceOverlay.js` (v4.4) — THE `>.<` FACE, drawn ON the eyes rather
+  than sculpted into them. A `>.<` is a SYMBOL, the same vocabulary as the sweat
+  drop and the anger cross; a morph has to bend real geometry into the shape of
+  a glyph, and the first version did exactly that and still only ever read as
+  "eyes shut at an angle". Two quads in the head bone's frame, each painting the
+  eye out with lit skin and stamping an SDF chevron. Where the eyes are comes
+  out of the glb (`mesh.userData.eyes`), measured off the same ink mask the
+  blink is built from.
+  * v4.5: THE QUADS LIE ON THE FACE. Mew's eyes are not on the front of the head
+    — they are on the sides of a ball, on facets tilted ~31° outward, and the
+    surface under one eye falls away 0.22 units across the eye's own width. The
+    quad used to sit front-facing at the deepest z nearby, which put it 0.11
+    units — most of an eye half-width — PROUD of the surface it was covering,
+    and every degree of head turn slid the painted eye out from behind it. That
+    was "at certain angles you can see the original eyes". `tools/facemorph.py`
+    now fits a least-squares TANGENT PLANE per eye and ships `zc` + `n`; the
+    quad is laid on it, stretched by `1/ux.x` so a tilted quad still spans the
+    same x/y footprint, and stood off along the NORMAL by `liftZ` (0.02 — depth
+    testing is off, so standoff buys nothing except parallax).
+  * ...and the eye underneath is SHUT (`closeAt` / `closeAmount` drive `blink`),
+    so whatever is left to leak is a seam, not an eye.
+  * FACING, twice: the whole thing fades by how squarely the head faces the
+    camera, and each quad ALSO fades by its own normal (`quadFacingLo/Hi`), so
+    on a turned head the far eye goes round the side of the skull instead of
+    sitting on top of the muzzle. Depth testing is off, so nothing else would.
+- `engine/fx/alphaFlags.js` (v4.5, NEW) — THE ALPHA CHANNEL IS A SIDE CHANNEL,
+  and this is the whole protocol in one file: `0` nothing, `SOFT_ALPHA 0.51` a
+  soft radial glow (drawn, NEVER outlined), `FX_ALPHA 0.58` an additive beam
+  (outlined, in the HOT colour), `INK_ALPHA 0.72` painted art (no posterize),
+  `1` the character. Gates sit halfway between the flags they separate.
+  * `markFxMaterial(mat, soft)` keeps the additive COLOUR blend and changes two
+    things: the fragment writes a CONSTANT flag wherever it carries light
+    (`FX_EDGE`), and the ALPHA channel blends with `MaxEquation` instead of
+    adding. Additive alpha used to pile past 1.0 in the beam's core while the
+    fringe stayed under pixelate's 0.5 discard — that is what drew a hard BLACK
+    rim down both sides of the hyper beam. MAX makes the flag idempotent, and
+    where the beam crosses mew the character's own 1.0 wins.
+  * SOFT exists because pixelate discards under 0.5, so an fx pass cannot opt
+    out of being solid without opting out of being drawn. A muzzle flash IS a
+    fade; ringing it turns a wash of light into a bubble, and that bubble
+    sitting across mew's face is what read as "the beam's starting semicircle is
+    inside mew".
 - `engine/fx/pixelate.js` — the RETRO look: the whole scene renders into a
   low-res target (viewport / `pixelSize`), then one fullscreen shader upscales
   with NearestFilter, encodes linear->sRGB, lifts the shadows (`shadeLift`, now
   0 — spriteShade's `shadeFloor` does that job on the LIGHT instead), posterizes
-  into `colorLevels` sprite bands, and draws a dark silhouette outline from
+  into `colorLevels` sprite bands, and draws a silhouette outline from
   alpha edges (4-neighbor test). CHEAPER than direct rendering. Texels carrying
-  the ink alpha flag SKIP the lift and the posterize entirely. `snapToGrid`
+  the ink alpha flag SKIP the lift and the posterize entirely.
+  * v4.5: the outline test takes the MAX of the four neighbours, not the sum —
+    summing destroys the alpha flag (two beam texels at 0.58 add up to look
+    exactly like the character's 1.0). The max also gets the priority right, and
+    it picks the COLOUR: `fxOutlineColor` (`#ffd7f2`, hot pink-white) for the
+    beam, `outlineColor` (dark plum) for mew and the painted art, and no line at
+    all below `SOFT_GATE`. `snapToGrid`
   quantizes only the RENDER position to the texel grid (sprite crawl); physics
   and animation are untouched. `bandLuma: true` bands BRIGHTNESS and rescales
   the chroma, so the hue survives quantization — banding r/g/b separately rounds
@@ -283,6 +349,26 @@ clean.
   the shader is required to match.
 
 ## Hard-won pitfalls (do not rediscover these)
+
+- **A ZERO-HEIGHT VIEWPORT POISONS THE WHOLE SCENE GRAPH, PERMANENTLY.**
+  `view.worldPerPx` divides by `viewport.h`; `fitModel` multiplies the model's
+  scale by that; an Infinity in a scale matrix becomes NaN the first time it
+  meets a zero, and nothing recomputes it until the next resize — so the
+  character, the mouth anchor and the beam origin all silently go NaN and the
+  page renders an empty canvas with no console error. It is reachable from a
+  collapsed container and from some programmatic resizes. `updateViewport()`
+  clamps w/h to 1. If mew ever vanishes, check `holder.scale` first.
+- **A flat quad cannot cover art that lives on a curved surface.** The `>.<`
+  overlay floated 0.11 units in front of an eye painted on a facet tilted 31°,
+  and the parallax at any oblique angle was larger than the pad. Fitting a
+  tangent plane and laying the quad on it is the fix; padding it harder is not.
+- **A "pink pixel left on the shiny" is usually the same paint, thinned.** The
+  cheek blush also draws the lid line around each eye, at about half strength,
+  and the normalised warm metric lands it at 0.19 while the core is at 4.70.
+  Anything that isolates the blush by warmth has to reach that low —
+  `shiny.warmLo` is 0.08, and the eye whites (0.038) are the thing on the other
+  side of the gap. Sweep it against the whole atlas AND its mip chain, not
+  against a couple of sampled hexes: 0.22 left 397 visibly pink texels.
 
 - NEVER PUT A BACKTICK IN A GLSL COMMENT. The shaders live in template
   literals, so a backtick inside one -- even in a `// like this` comment --

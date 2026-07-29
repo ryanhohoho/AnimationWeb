@@ -128,10 +128,21 @@ def eye_meta(P, I, ft, eye_mask, info):
 
     the >.< face is a flat overlay (engine/fx/faceOverlay.js) rather than a morph
     target: it is a symbol, not a deformation, and a symbol only has to be put in
-    the right place. This is that place -- centre, half-extents and the face's
-    own depth there, so the overlay sits just proud of the surface -- and it is
-    measured off the same ink mask the blink is, so repainting the eyes moves
-    both together."""
+    the right place. This is that place, and it is measured off the same ink mask
+    the blink is, so repainting the eyes moves both together.
+
+    THE PLANE IS THE POINT. a centre and a depth are not enough, because mew's
+    eyes are not on the front of the face -- they are on the sides of a
+    ball-shaped head, on a facet tilted about 35 degrees outward. Shipping only
+    the deepest z nearby (which is what this used to do) put the overlay quad
+    0.16 units -- more than an eye half-width -- in front of the surface it was
+    supposed to be painted on, and every degree the head turned slid the real
+    eye further out from behind it. Hence a least-squares TANGENT PLANE through
+    the vertices the eye actually covers: a point on the surface at the eye's
+    centre, plus the outward normal there. The engine lays the quad on that
+    plane and the two stay welded together at any angle.
+
+    `z` is still exported for anything that only wants a depth."""
     onface = np.zeros(len(P), bool)
     onface[np.unique(I[ft])] = True
     out = []
@@ -139,7 +150,24 @@ def eye_meta(P, I, ft, eye_mask, info):
         near = (onface & (np.abs(P[:, 0] - cx) < hx * 1.5)
                 & (np.abs(P[:, 1] - cy) < hy * 1.5))
         z = float(P[near, 2].max()) if near.any() else 0.0
-        out.append({"cx": round(float(cx), 5), "cy": round(float(cy), 5),
-                    "hx": round(float(hx), 5), "hy": round(float(hy), 5),
-                    "z": round(z, 5)})
+        e = {"cx": round(float(cx), 5), "cy": round(float(cy), 5),
+             "hx": round(float(hx), 5), "hy": round(float(hy), 5),
+             "z": round(z, 5)}
+        # the eye's own footprint, front hemisphere only -- the box is a window
+        # in x/y and would otherwise sweep in the back of the skull
+        box = (onface & (np.abs(P[:, 0] - cx) <= hx) & (np.abs(P[:, 1] - cy) <= hy)
+               & (P[:, 2] > 0.0))
+        if box.sum() >= 6:
+            Q = P[box]
+            c = Q.mean(0)
+            n = np.linalg.svd(Q - c)[2][2]          # smallest singular vector
+            if n[2] < 0:
+                n = -n
+            if abs(n[2]) > 1e-3:
+                # the plane's own height at the eye's centre, not at the
+                # centroid of whatever vertices happened to fall in the box
+                zc = c[2] - (n[0] * (cx - c[0]) + n[1] * (cy - c[1])) / n[2]
+                e["zc"] = round(float(zc), 5)
+                e["n"] = [round(float(v), 5) for v in n]
+        out.append(e)
     return out

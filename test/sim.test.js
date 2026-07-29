@@ -508,6 +508,7 @@ section("modules: every shader-carrying module actually parses");
   // the only check that would have.
   const mods = [
     "../src/engine/fx/pixelate.js",
+    "../src/engine/fx/alphaFlags.js",
     "../src/engine/fx/cutout.js",
     // presentation.js is not here: it `?url`-imports a png, which node cannot
     // resolve. Its own shape is covered by the config-shape section below.
@@ -521,6 +522,47 @@ section("modules: every shader-carrying module actually parses");
   const loaded = await Promise.all(mods.map((m) =>
     import(m).then(() => null).catch((e) => `${m}: ${e.message}`)));
   loaded.forEach((err, i) => ok(!err, err || `${mods[i]} parses`));
+}
+
+// ---------------------------------------------------------------------------
+section("presentation: the alpha channel is a side channel");
+{
+  // pixelate reads back a flag written in the alpha channel to decide what it is
+  // looking at (fx/alphaFlags.js). The whole scheme is threshold compares, so it
+  // only works while the flags stay ORDERED and no gate lands on a flag. This is
+  // the entire contract, and it is one import away from being broken silently.
+  const F = await import("../src/engine/fx/alphaFlags.js");
+  ok(F.FX_EDGE < F.SOFT_ALPHA, "a fx fragment that carries light clears the discard");
+  ok(0.5 < F.SOFT_ALPHA && F.SOFT_ALPHA < F.SOFT_GATE
+    && F.SOFT_GATE < F.FX_ALPHA && F.FX_ALPHA < F.FX_GATE
+    && F.FX_GATE < F.INK_ALPHA && F.INK_ALPHA < F.INK_GATE && F.INK_GATE < 1,
+    "flags and gates alternate, all the way up");
+  // what each flag classifies as, phrased the way the shader phrases it
+  const drawn = (a) => a >= 0.5;
+  const outlined = (a) => a > F.SOFT_GATE;
+  const hot = (a) => a > F.SOFT_GATE && a < F.FX_GATE;
+  const posterized = (a) => a >= F.INK_GATE;
+  ok(!drawn(0), "empty is discarded");
+  ok(drawn(F.SOFT_ALPHA) && !outlined(F.SOFT_ALPHA),
+    "a soft glow is drawn and never outlined -- no ring around the muzzle flash");
+  ok(drawn(F.FX_ALPHA) && hot(F.FX_ALPHA),
+    "the beam is outlined, and in the HOT colour, not the character's soot line");
+  ok(!posterized(F.FX_ALPHA) && !posterized(F.INK_ALPHA),
+    "neither a beam nor painted art gets re-banded");
+  ok(outlined(F.INK_ALPHA) && !hot(F.INK_ALPHA) && outlined(1) && !hot(1),
+    "art and the character both take the dark silhouette line");
+  // MAX, not add: the flag has to survive layers of additive fx piling up, and
+  // the character has to win where a beam crosses it
+  const maxb = (...v) => Math.max(...v);
+  ok(maxb(F.FX_ALPHA, F.FX_ALPHA, F.FX_ALPHA) === F.FX_ALPHA,
+    "four beam layers over each other still read as one beam");
+  ok(hot(maxb(F.SOFT_ALPHA, F.FX_ALPHA)),
+    "...and a glow over the beam hands back the beam's own rim");
+  ok(!hot(maxb(F.FX_ALPHA, 1)),
+    "...while mew's silhouette wins wherever the beam crosses it");
+  ok(rigConfig.presentation.pixelate.fxOutlineColor
+    !== rigConfig.presentation.pixelate.outlineColor,
+    "and the two outline colours are actually different");
 }
 
 section("presentation: linear -> sRGB transfer");
@@ -776,6 +818,69 @@ section("bump reaction: a hard hit flails the limbs and screws the face up");
   headB.quaternion.identity();
   headRoot.updateMatrixWorld(true);
 
+  // ---- 2b. THE QUADS LIE ON THE FACE. this is the fix for "at certain angles
+  // you can see the original eyes behind the overlay": mew's eyes are painted on
+  // the SIDES of a ball-shaped head, and a front-facing quad parked at the
+  // deepest z nearby floated 0.11 units clear of the surface, so every degree
+  // of head turn slid the real eye out from behind it.
+  const planeEyes = [
+    { cx: -0.29742, cy: 0.95641, hx: 0.1344, hy: 0.11991, z: 0.38018,
+      zc: 0.26657, n: [-0.52295, -0.09014, 0.84758] },
+    { cx: 0.28632, cy: 1.02727, hx: 0.13681, hy: 0.13279, z: 0.38351,
+      zc: 0.27195, n: [0.48382, 0.02401, 0.87484] }
+  ];   // the real numbers, straight out of the built glb
+  const fakeMesh = {
+    morphTargetDictionary: { blink: 0, squint: 1 },
+    morphTargetInfluences: [0, 0]
+  };
+  const w2b = createWorld({ headless: true, seed: 9 });
+  const ovP = createFaceOverlay({
+    rig: rigF, eyes: planeEyes, config: rigConfig.face.overlay, world: w2b,
+    view: {}, mesh: fakeMesh
+  });
+  headRoot.updateMatrixWorld(true);
+  const ocfg = rigConfig.face.overlay;
+  planeEyes.forEach((e, i) => {
+    const q = ovP.meshes[i];
+    // it points where the face points...
+    const n = new THREE.Vector3(...e.n);
+    const got = q.getWorldDirection(new THREE.Vector3());
+    ok(got.angleTo(n) < 1e-3,
+      `eye ${i}: the quad lies on the face (${(got.angleTo(n) * 57.3).toFixed(2)} deg off)`);
+    // ...it sits ON the surface, a hair proud along the normal, and its centre
+    // has not slid sideways doing it
+    ok(Math.abs(q.position.x - e.cx) < 1e-6 && Math.abs(q.position.y - e.cy) < 1e-6,
+      `eye ${i}: centred on the painted eye, not offset by the standoff`);
+    const stand = (q.position.z - e.zc) * e.n[2];
+    ok(Math.abs(stand - ocfg.liftZ) < 1e-4,
+      `eye ${i}: ${stand.toFixed(4)} proud of the surface, measured along the normal`);
+    // ...and a tilted quad still covers the same painted eye
+    const spanX = q.scale.x * Math.sqrt(1 - e.n[0] * e.n[0]);
+    ok(Math.abs(spanX - 2 * e.hx * ocfg.padX) < 1e-4,
+      `eye ${i}: still spans the whole eye once tilted (${spanX.toFixed(3)})`);
+  });
+  // the OLD path still works, so an older glb (or a test with no plane) degrades
+  // to the flat quad rather than throwing
+  ok(Math.abs(ov.meshes[0].position.z - (eyes[0].z + ocfg.liftZ)) < 1e-6
+    && ov.meshes[0].quaternion.w === 1,
+    "without a tangent plane it falls back to the flat front-facing quad");
+
+  // and the eye UNDERNEATH is shut while the glyph is up: whatever is left to
+  // leak is then a seam, not an eye. It opens again as the glyph comes off.
+  w2b.emit("flail", { speed: 1200 });
+  let closed = 0;
+  const bl = [];
+  for (let i = 0; i < 120; i++) {
+    fakeMesh.morphTargetInfluences[0] = 0;   // faceMorphs runs first each frame
+    ovP.update(octx);
+    bl.push(fakeMesh.morphTargetInfluences[0]);
+    if (bl[i] > 1) closed++;
+  }
+  ok(Math.max(...bl) >= rigConfig.face.overlay.closeAmount - 1e-6,
+    `the blink is driven fully shut underneath (${Math.max(...bl).toFixed(2)})`);
+  ok(closed / 60 > 1.0, `and held shut for the flail (${(closed / 60).toFixed(2)}s)`);
+  ok(bl[bl.length - 1] === 0, "then released, so the eyes open with the glyph");
+
   // ---- 3. THE LIMBS. same event, same duration.
   const w3 = createWorld({ headless: true, seed: 5 });
   const body = createBody({ x: 0, y: 0, radius: 60, config: rigConfig.physics });
@@ -897,6 +1002,18 @@ section("shiny: the games' colours and an entrance that ends");
     `the blush clears the warm window (${warmOf(px(250, 106, 141)).toFixed(2)})`);
   ok(warmOf(px(218, 153, 189)) > S.warmLo,
     `...and so does a HALF-strength blush (${warmOf(px(218, 153, 189)).toFixed(2)})`);
+  // #f89ec4 is the same pink paint again, thinned to draw the LID LINE around
+  // each eye -- and it lands at 0.19, which the old 0.22 floor missed by three
+  // hundredths. It came out #d2a5c5, a mauve pixel sitting directly on the eye,
+  // which is both "a little pink left on the shiny" and what showed around the
+  // >.< overlay. Under the shipped window it converts to #a3b2da.
+  ok(warmOf(px(248, 158, 196)) > S.warmLo,
+    `...and the pink LID LINE around the eyes (${warmOf(px(248, 158, 196)).toFixed(2)})`);
+  // the margin that matters is on the other side: the eye whites are the nearest
+  // thing that must NOT be re-tinted, and they are only 0.15 below the lid line,
+  // so the floor lives in a narrow gap and is worth pinning down.
+  ok(S.warmLo - warmOf(px(250, 225, 235)) > 0.03,
+    `the window still clears the eye whites (${(S.warmLo - warmOf(px(250, 225, 235))).toFixed(3)} of room)`);
   ok(warmOf(skin) < S.warmLo, `plain skin does not (${warmOf(skin).toFixed(2)})`);
   ok(warmOf(px(250, 225, 235)) < S.warmLo,
     `nor the eye whites (${warmOf(px(250, 225, 235)).toFixed(2)})`);
@@ -986,6 +1103,17 @@ section("presentation: config shape");
   ok(sk.ringCount > 0 && sk.heroCount > 0, "the burst has a ring and a hero star");
   ok(sk.ringOuterPx > sk.ringInnerPx, "the ring travels outward");
   ok(sk.flashPeak > 0 && sk.flashPeak <= 1, "flashPeak in 0..1");
+  // the beam leaves from a point pushed along its own direction, because the
+  // mouth is a 3d point and the beam is a 2d document shape: head-on, the muzzle
+  // projects into the middle of the silhouette. The head is ~0.45 model units of
+  // radius on a 1.75-unit model, so anything under that fires from inside mew.
+  ok(rigConfig.attack.muzzleClearFactor > 0.45 / 1.75,
+    `the beam starts clear of the head (${rigConfig.attack.muzzleClearFactor})`);
+  const ov = rigConfig.face.overlay;
+  ok(ov.closeAt > 0 && ov.closeAt <= 1, "the >.< shuts the blink under itself");
+  ok(ov.quadFacingLo < ov.quadFacingHi, "per-eye facing window is ordered");
+  ok(ov.liftZ > 0 && ov.liftZ < 0.05,
+    `the overlay hugs the face (${ov.liftZ} along the normal)`);
   ok(p.cutout.edgeLo < p.cutout.edgeHi, "cutout edge window is ordered");
   ok(p.cutout.edgeSoftPx > 0, "cutout has a real feather radius");
   ok(rigConfig.lighting.keyOffset.length === 3, "key offset is a 3-vector");

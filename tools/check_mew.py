@@ -323,6 +323,27 @@ def main():
             check(near.sum() > 20, "the eye box lands on real geometry",
                   f"{int(near.sum())} verts")
             check(e["z"] > 0.1, "...on the FRONT of the head", f"z {e['z']:.2f}")
+            # THE TANGENT PLANE. the overlay quad is laid on this; without it the
+            # quad floats in front of a face that curves away under it and the
+            # painted eye slides out from behind it as the head turns.
+            check("n" in e and "zc" in e, "...and ships its tangent plane")
+            if "n" in e:
+                n = np.array(e["n"], float)
+                check(abs(np.linalg.norm(n) - 1) < 1e-3, "the eye normal is unit",
+                      f"|n| {np.linalg.norm(n):.4f}")
+                check(n[2] > 0.4, "...and points out of the FRONT of the face",
+                      f"n.z {n[2]:+.3f}")
+                # it must lean OUTWARD -- these eyes are on the sides of a ball,
+                # and a normal leaning the other way means the fit caught the
+                # wrong surface
+                check(n[0] * e["cx"] > 0.1, "...leaning outward, like the head",
+                      f"n.x {n[0]:+.3f} at cx {e['cx']:+.3f}")
+                # and the plane has to sit ON the surface, not in front of it
+                on = near & (P[:, 2] > 0)
+                if on.any():
+                    err = abs(e["zc"] - float(np.median(P[on, 2])))
+                    check(err < 0.06, "the plane sits on the surface it covers",
+                          f"{err:.3f} from the median z there")
 
     # --- engine contract --------------------------------------------------
     src = open(CFG).read()

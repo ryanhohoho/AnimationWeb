@@ -121,7 +121,15 @@ const isShiny = shinyParam === null
   : shinyParam !== "0";
 
 function updateViewport() {
-  const { w, h, dpr } = world.viewport;
+  const { dpr } = world.viewport;
+  // A ZERO-HEIGHT VIEWPORT IS REACHABLE and it poisons everything downstream:
+  // worldPerPx divides by it, fitModel multiplies the model's scale by that, and
+  // an Infinity in a scale matrix turns into NaN the first time it meets a zero.
+  // The whole scene graph then renders as nothing, permanently, because nothing
+  // recomputes it until the next resize. It happens on a collapsed container and
+  // on some programmatic resizes, and it costs one clamp to make impossible.
+  const w = Math.max(world.viewport.w, 1);
+  const h = Math.max(world.viewport.h, 1);
   // each pass decides what resolution it wants to be fed
   renderer.setPixelRatio(present.pixelRatio(dpr));
   renderer.setSize(w, h, false);
@@ -207,7 +215,8 @@ new GLTFLoader().load(mewUrl, (gltf) => {
   // the >.< face: a flat overlay over the painted eyes, driven by the same
   // 'flail' event the limbs are (engine/fx/faceOverlay.js)
   const faceOv = createFaceOverlay({
-    rig, eyes: skinned?.userData?.eyes, config: cfg.face.overlay, world, view
+    rig, eyes: skinned?.userData?.eyes, config: cfg.face.overlay, world, view,
+    mesh: skinned
   });
   if (faceOv) {
     // the patch has to disappear into the face, so it is the LIT skin: the
@@ -257,12 +266,29 @@ new GLTFLoader().load(mewUrl, (gltf) => {
       y: window.scrollY + world.viewport.h / 2 - _mw.y / view.worldPerPx
     };
   }
+  // WHERE THE BEAM STARTS is not where the mouth is, and it cannot be.
+  //
+  // the mouth anchor is a 3d point on the muzzle; the beam is a 2d shape in
+  // document space. Those only agree when mew happens to be side-on to the beam.
+  // Fire while facing the camera and the muzzle projects to somewhere near the
+  // MIDDLE of the head's silhouette, so the beam's root -- and the round muzzle
+  // flash centred on it -- erupts from inside mew's face.
+  //
+  // so the beam leaves from a point pushed along its own direction, far enough
+  // to clear the head from any angle (the head is ~0.45 model units of radius,
+  // which is 0.26 of the character's height). The charge glow stays on the
+  // mouth, where the energy should gather; only the shot moves.
+  function beamOriginDoc(dir) {
+    const m = mouthDoc();
+    const lead = cfg.sizing.characterHeightPx * cfg.attack.muzzleClearFactor;
+    return { x: m.x + dir.x * lead, y: m.y + dir.y * lead };
+  }
   beamFx = createBeamFx({ docFxGroup, config: cfg.attack, getMouthDoc: mouthDoc });
   const destruction = createDestruction({ world, config: cfg.attack });
 
   world.on("beamCharge", () => beamFx.startCharge());
   world.on("beamFire", ({ dir }) => {
-    const origin = mouthDoc();
+    const origin = beamOriginDoc(dir);
     const res = destruction.fire(origin, dir);
     beamFx.fire(origin, dir, res.len);
   });
@@ -281,7 +307,7 @@ new GLTFLoader().load(mewUrl, (gltf) => {
   // debug handle for devtools + automated checks
   window.__AW__ = {
     rig, world, body, brain, view, poser, face, faceOv, skinned, shade,
-    sparkle, isShiny, THREE
+    sparkle, isShiny, THREE, mouthDoc, beamOriginDoc
   };
   loop.start();
 }, undefined, (err) => console.error("[mew] failed to load model:", err));
