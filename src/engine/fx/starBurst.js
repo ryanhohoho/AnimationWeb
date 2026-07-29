@@ -1,5 +1,7 @@
-// shinySparkle.js
-// the shiny entrance, ported from the games.
+// starBurst.js
+// four-pointed stars, for the two moments that call for them: the SHINY
+// entrance (ported from the games) and the ANNOYANCE stars a hard collision
+// knocks out of mew.
 //
 // WHAT THE GAMES ACTUALLY DO (see HANDOFF for the sources)
 // -------------------------------------------------------
@@ -80,6 +82,7 @@ const FRAG = /* glsl */ `
 `;
 
 const TAU = Math.PI * 2;
+const D2R = Math.PI / 180;
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 // pop: 0 -> 1 -> 0, biased so the star reaches full size early and lingers
 const pop = (t) => Math.sin(Math.pow(Math.min(Math.max(t, 0), 1), 0.65) * Math.PI);
@@ -89,9 +92,13 @@ const pop = (t) => Math.sin(Math.pow(Math.min(Math.max(t, 0), 1), 0.65) * Math.P
  *                only, no rotation or scale, so px sizes stay px sizes)
  * @param view    the shared view mapping, for worldPerPx
  */
-export function createShinySparkle({ parent, config, view }) {
+export function createStarBurst({ parent, config, view }) {
   const cfg = config;
-  const total = cfg.ringCount + cfg.heroCount + cfg.moteCount;
+  const an = cfg.annoy;
+  // one buffer, big enough for whichever burst wants more instances
+  const total = Math.max(cfg.ringCount + cfg.heroCount + cfg.moteCount,
+    an.waves * an.perWave);
+  let active = 0;
 
   const geo = new THREE.InstancedBufferGeometry();
   const quad = new THREE.PlaneGeometry(1, 1);
@@ -125,12 +132,15 @@ export function createShinySparkle({ parent, config, view }) {
   // per-star state, filled by burst()
   const P = [];
   for (let i = 0; i < total; i++) {
-    P.push({ kind: 0, ang: 0, r0: 0, r1: 0, size: 0, delay: 0, life: 1, spin: 0, gold: 0 });
+    P.push({
+      kind: 0, ang: 0, r0: 0, r1: 0, size: 0, delay: 0, life: 1, spin: 0,
+      gold: 0, vx: 0, vy: 0, x0: 0, y0: 0
+    });
   }
   let t = 0;
   let running = false;
 
-  function burst(seed = 1) {
+  function shiny(seed = 1) {
     const rnd = mulberry32(seed >>> 0);
     let i = 0;
     // 1. THE RING. stars spread evenly around the character, jittered, thrown
@@ -176,6 +186,50 @@ export function createShinySparkle({ parent, config, view }) {
       s.spin = (rnd() - 0.5) * 3.0;
       s.gold = rnd() < 0.35 ? 1 : 0;
     }
+    active = cfg.ringCount + cfg.heroCount + cfg.moteCount;
+    geo.instanceCount = active;
+    t = 0;
+    running = true;
+    mesh.visible = true;
+  }
+
+  // -------------------------------------------------------------------------
+  // ANNOYANCE STARS. The manga vocabulary for "that hurt": stars knocked loose
+  // and seen circling the head. Mechanically they are the standard game-juice
+  // impact burst -- a handful of particles thrown out on an upward-biased cone
+  // with a randomised speed and lifetime, pulled back down by gravity so each
+  // one draws an ARC, shrinking away at the end.
+  //
+  // Emitted in WAVES rather than all at once, because the flail lasts a second
+  // and a half and a single burst at t=0 would be over before mew stopped
+  // waving. Each wave is offset around the head so they do not stack up.
+  // -------------------------------------------------------------------------
+  function annoy(seed = 1) {
+    const rnd = mulberry32(seed >>> 0);
+    let i = 0;
+    for (let w = 0; w < an.waves; w++) {
+      for (let k = 0; k < an.perWave; k++, i++) {
+        const s = P[i];
+        s.kind = 3;
+        // spawn on a ring around the head, upper half
+        const a = Math.PI * (0.15 + 0.7 * ((k + 0.5) / an.perWave))
+          + (rnd() - 0.5) * 0.5;
+        s.x0 = Math.cos(a) * an.originPx * (0.6 + rnd() * 0.8);
+        s.y0 = an.originYPx + Math.sin(a) * an.originPx * 0.55;
+        // thrown out and UP, then gravity does the rest
+        const th = (rnd() - 0.5) * an.coneDeg * D2R;
+        const sp = an.speedLoPx + rnd() * (an.speedHiPx - an.speedLoPx);
+        s.vx = Math.sin(th) * sp + Math.cos(a) * sp * 0.35;
+        s.vy = Math.cos(th) * sp;
+        s.size = an.sizePx * (0.72 + rnd() * 0.56);
+        s.delay = w * an.waveGapS + rnd() * an.waveGapS * 0.6;
+        s.life = an.lifeLoS + rnd() * (an.lifeHiS - an.lifeLoS);
+        s.spin = (rnd() - 0.5) * 2.6;
+        s.gold = 1;
+      }
+    }
+    active = i;
+    geo.instanceCount = active;
     t = 0;
     running = true;
     mesh.visible = true;
@@ -186,7 +240,7 @@ export function createShinySparkle({ parent, config, view }) {
     t += dt;
     const wpp = view.worldPerPx;
     let done = true;
-    for (let i = 0; i < total; i++) {
+    for (let i = 0; i < active; i++) {
       const s = P[i];
       const u = (t - s.delay) / s.life;
       const j = i * 3;
@@ -200,7 +254,13 @@ export function createShinySparkle({ parent, config, view }) {
       const e = easeOut(u);
       let x;
       let y;
-      if (s.kind === 2) {
+      if (s.kind === 3) {
+        // BALLISTIC: closed form, so nothing accumulates and a dropped frame
+        // cannot make a star drift off its arc
+        const ts = t - s.delay;
+        x = (s.x0 + s.vx * ts) * wpp;
+        y = (s.y0 + s.vy * ts - 0.5 * an.gravityPx * ts * ts) * wpp;
+      } else if (s.kind === 2) {
         x = s.r0 * wpp;
         y = (s.r1 * e + Math.sin(s.ang + u * 6.0) * cfg.moteWobblePx) * wpp;
       } else {
@@ -226,7 +286,9 @@ export function createShinySparkle({ parent, config, view }) {
       mesh.visible = false;
     }
     // the FLASH curve, handed back so the caller can drive the material: a
-    // near-instant blow-out and a slower fall, which is how the games read
+    // near-instant blow-out and a slower fall, which is how the games read.
+    // only the shiny entrance flashes -- an annoyance burst is not an entrance.
+    if (P[0].kind === 3) return 0;
     const f = t < cfg.flashUpS
       ? t / cfg.flashUpS
       : 1 - (t - cfg.flashUpS) / cfg.flashDownS;
@@ -234,7 +296,8 @@ export function createShinySparkle({ parent, config, view }) {
   }
 
   return {
-    burst,
+    shiny,
+    annoy,
     update,
     get running() { return running; },
     dispose() {

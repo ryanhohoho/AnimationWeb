@@ -78,6 +78,7 @@ export function createTailChain({ config, world }) {
   let smoothBuf = null;   // scratch for the target-smoothing pass
   let prevDir = null;     // last frame's target, for the lag
   let lagInit = false;
+  let aimAngle = 0;       // how far the rest curve is turned to trail the motion
   let acc = 0;
   let initialized = false;
   let rootRestInv = null;
@@ -107,6 +108,8 @@ export function createTailChain({ config, world }) {
   const _localQ = new THREE.Quaternion();
   const _tmp = new THREE.Vector3();
   const _sway = new THREE.Quaternion();
+  const _aimQ = new THREE.Quaternion();
+  const _chord = new THREE.Vector3();
 
   const gx = (a, i) => a[i * 3];
   const gy = (a, i) => a[i * 3 + 1];
@@ -229,6 +232,50 @@ export function createTailChain({ config, world }) {
       * (cfg.swayIdle + (1 - cfg.swayIdle) * speedN)
       * (1 + brain.agitation * cfg.swayPerAgitation);
 
+    // ---- 0. AIM THE WHOLE CURVE BEHIND THE MOTION ------------------------
+    // the tail has to trail mew in flight instead of sitting off to one side
+    // like an accessory. This does it with ONE RIGID ROTATION of the entire
+    // rest curve about the screen normal, so that the curve's on-screen chord
+    // points opposite the travel.
+    //
+    // RIGID IS THE WHOLE POINT. A rigid rotation of a smooth curve is still
+    // exactly the same smooth curve -- there is no mechanism by which it can
+    // develop a kink, because every segment turns by the identical angle and
+    // no two segments can be pulled apart. That is what separates it from
+    // v4.2's `flightStraighten`, which lerped each segment toward a single
+    // straight line INDEPENDENTLY: that flattens the shape, moves the stiff
+    // base further than the soft tip, and the difference between them is the
+    // kink that ran down the chain as a rattle.
+    //
+    // About the SCREEN NORMAL specifically, and by a signed angle rather than
+    // a shortest-arc quaternion, so the curve can never be twisted out of the
+    // plane the character is presented in.
+    let aimSpeed = clamp((speed - cfg.aimSpeedLo)
+      / Math.max(cfg.aimSpeedHi - cfg.aimSpeedLo, 1e-6), 0, 1);
+    aimSpeed = aimSpeed * aimSpeed * (3 - 2 * aimSpeed) * cfg.aimAmount;
+    let wantAim = 0;
+    if (aimSpeed > 1e-4) {
+      // the rest curve's chord, before any sway, in world space
+      _chord.set(0, 0, 0);
+      for (let i = 0; i < n - 1; i++) _chord.addScaledVector(dirs[i], restLen[i]);
+      _chord.applyQuaternion(_rootQ);
+      if (_chord.x * _chord.x + _chord.y * _chord.y > 1e-9
+        && _trail.x * _trail.x + _trail.y * _trail.y > 1e-9) {
+        const have = Math.atan2(_chord.y, _chord.x);
+        const want = Math.atan2(_trail.y, _trail.x);
+        let d = want - have;
+        d -= Math.round(d / (2 * Math.PI)) * 2 * Math.PI;    // shortest way round
+        wantAim = clamp(d, -cfg.aimMaxDeg * D2R, cfg.aimMaxDeg * D2R) * aimSpeed;
+      }
+    }
+    // smoothed, and the error is wrapped so it always takes the short way even
+    // when the two are on opposite sides of +-pi
+    let err = wantAim - aimAngle;
+    err -= Math.round(err / (2 * Math.PI)) * 2 * Math.PI;
+    aimAngle += err * (1 - Math.exp(-cfg.aimRate * Math.max(dt, 1e-6)));
+    const aiming = Math.abs(aimAngle) > 1e-4;
+    if (aiming) _aimQ.setFromAxisAngle(_zAxis, aimAngle);
+
     // ---- 1. the posed rest curve -----------------------------------------
     // SWAY AXES: rotating about a FIXED body axis is wrong -- it tilts a
     // segment by the full angle only where the segment is perpendicular to that
@@ -240,6 +287,7 @@ export function createTailChain({ config, world }) {
     // and supplies the depth that stops it reading as a metronome.
     for (let i = 0; i < n - 1; i++) {
       _d.copy(dirs[i]).applyQuaternion(_rootQ);
+      if (aiming) _d.applyQuaternion(_aimQ);
       if (amp > 1e-4) {
         const ph = swayPhase - i * cfg.swayLag;
         const a = amp * ramp[i];
@@ -518,6 +566,7 @@ export function createTailChain({ config, world }) {
       if (_tmp.distanceTo(_attach) > 3) {
         placeAtRest(rig, scale);
         lagInit = false;           // a teleport is not a turn
+        aimAngle = 0;
       }
 
       // smoothed trail direction: quick heading changes sweep the streaming

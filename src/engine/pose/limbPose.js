@@ -36,7 +36,20 @@ export function createLimbPose({ config, world }) {
   const startleS = new Spring(0, 9, 0.7);
   const flinchS = new Spring(0, 11, 0.55); // "ouch": quick tuck on a bump
 
+  // THE FLAIL. on a hard enough collision (colliders.js decides, once, so the
+  // face agrees -- see faceMorphs.js) all four limbs windmill for half a
+  // second. It is a fast oscillation ADDED on top of the pose, with a per-limb
+  // phase offset so they never move in lockstep, which is the difference
+  // between panic and a machine.
+  let flailT = -1;
+  let flailHit = 0;
+  let flailPhase = 0;
   if (world) {
+    world.on("flail", (e) => {
+      flailT = 0;
+      flailHit = Math.max(flailHit,
+        clamp(e.speed / cfg.flailFullSpeed, cfg.flailMin, 1));
+    });
     world.on("bump", (e) => {
       // VELOCITY kick, not a position jump: an impulse should launch the spring,
       // not teleport it. setting .x directly put the tuck at full extent on the
@@ -60,7 +73,11 @@ export function createLimbPose({ config, world }) {
   const _q = new THREE.Quaternion();
   const _qInv = new THREE.Quaternion();
 
+  let flailOut = 0;
+
   return {
+    /** the flail envelope, 0..1, for whatever else wants to ride it */
+    get flail() { return flailOut; },
     update(ctx) {
       const { rig, body, brain, dt, time } = ctx;
       const speed = Math.hypot(body.vel.x, body.vel.y);
@@ -69,6 +86,34 @@ export function createLimbPose({ config, world }) {
         : Math.max(smoothstep(cfg.blendLoPx, cfg.blendHiPx, speed), (ctx.shared.swimAlign || 0) * 0.85);
       const blend = blendS.step(blendGoal, dt);
       const startle = startleS.step(brain.state === "startle" ? 1 : 0, dt) + flinchS.step(0, dt);
+
+      // flail envelope: instant in, tapering out. same shape as the wince, and
+      // deliberately the same duration, so the face and the limbs finish
+      // together instead of one of them lingering.
+      let flail = 0;
+      if (flailT >= 0) {
+        flailT += dt;
+        const u = flailT / cfg.flailDurS;
+        const a = cfg.flailAttack;
+        flail = u < a ? u / a : Math.max(0, 1 - (u - a) / (1 - a)) ** 1.4;
+        if (flailT >= cfg.flailDurS) {
+          flailT = -1;
+          flailHit = 0;
+        }
+      }
+      flail *= flailHit;
+      flailOut = flail;
+      // THE RATE WINDS DOWN over the burst. A constant frequency reads as a
+      // machine; every hand-drawn flail starts frantic and slows, and that
+      // decay is most of what sells it as an animal rather than an effect.
+      // Integrated, not evaluated -- multiplying `time` by a changing frequency
+      // makes the phase jump backwards as the rate falls.
+      if (flailT >= 0) {
+        const u = Math.min(flailT / cfg.flailDurS, 1);
+        flailPhase += (cfg.flailHz + (cfg.flailHzEnd - cfg.flailHz) * u)
+          * 2 * Math.PI * dt;
+      }
+      const flailPh = flailPhase;
 
       // follow-through: limbs trail the body's acceleration slightly.
       // screen y is down, so accel.y > 0 (accelerating downward) tips limbs up.
@@ -90,6 +135,15 @@ export function createLimbPose({ config, world }) {
         if (!hover || !cruise) continue;
 
         const isFoot = role.startsWith("foot");
+        // the windmill. feet swing wider than arms (they are longer and looser),
+        // and the two axes are a quarter cycle apart so each limb describes a
+        // circle rather than a straight flap.
+        const fi = ROLES.indexOf(role);
+        const fAmp = flail * cfg.flailDeg * D2R
+          * (isFoot ? cfg.flailFootMul : cfg.flailArmMul);
+        const fPh = flailPh + fi * cfg.flailPhaseStep;
+        const flailX = Math.sin(fPh) * fAmp;
+        const flailZ = Math.cos(fPh * 0.85) * fAmp * cfg.flailZMul;
         // feet have the loosest joints: hardest follow-through, extra wobble
         const followMul = isFoot ? cfg.footFollowMul : cfg.armFollowMul;
         const n = noises[role];
@@ -118,9 +172,10 @@ export function createLimbPose({ config, world }) {
         }
 
         _e.set(
-          (hover[0] + (cruise[0] - hover[0]) * blend) * D2R + n[0](t) * na + fxS * followMul - tuck * 0.6 + flutter,
+          (hover[0] + (cruise[0] - hover[0]) * blend) * D2R + n[0](t) * na + fxS * followMul - tuck * 0.6 + flutter + flailX,
           (hover[1] + (cruise[1] - hover[1]) * blend) * D2R + n[1](t + 3.1) * na * 0.5,
           (hover[2] + (cruise[2] - hover[2]) * blend) * D2R + n[2](t + 6.2) * na + fzS * followMul + tuck * sideSign
+            + flailZ * sideSign
             + (isFoot ? 0 : Math.cos(swimPhase * cfg.armPaddleRatio + sideSign * 0.9)
               * cfg.armPaddleDeg * 0.5 * D2R * sideSign),
           "XYZ"

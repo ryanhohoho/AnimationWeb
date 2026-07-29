@@ -29,6 +29,7 @@ export function createFaceMorphs({ config, world, brain, body, mesh }) {
   let squint = 0;
   let smile = 0;
 
+
   function scheduleBlink(time, rnd) {
     const span = cfg.blinkMaxS - cfg.blinkMinS;
     nextBlinkAt = time + cfg.blinkMinS + rnd() * span;
@@ -73,7 +74,12 @@ export function createFaceMorphs({ config, world, brain, body, mesh }) {
       squint = expDamp(squint, wantSquint * (1 - agit), cfg.moodRate, dt);
       smile = expDamp(smile, wantSmile * (1 - agit * 0.6), cfg.moodRate, dt);
 
-      // a blink overrides the squint rather than stacking into a crease
+      // a blink overrides the squint rather than stacking into a crease.
+      // NOTE the >.< face is NOT here: it is a flat overlay drawn over the eyes
+      // (engine/fx/faceOverlay.js), because it is a SYMBOL, not a deformation.
+      // A morph that tries to draw one has to bend real geometry into the shape
+      // of a glyph, which is both harder and less legible than just drawing the
+      // glyph.
       if (iBlink >= 0) infl[iBlink] = clamp(blink * cfg.blinkAmount, 0, 1.4);
       if (iSquint >= 0) infl[iSquint] = clamp(squint * (1 - blink), 0, 1);
       if (iSmile >= 0) infl[iSmile] = clamp(smile, 0, 1);

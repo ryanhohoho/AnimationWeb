@@ -1,3 +1,10 @@
+> **v4 NOTE (model swap).** Everything below about the model, the rig and
+> `tools/build_mew.py` describes the retired v3.7 procedural character. The
+> shipped model is now the meshy Mew, built by `tools/rig_mew.py` and gated by
+> `tools/check_mew.py`; the hand joints are gone and there are no morph targets.
+> See the "Model / asset pipeline (v4)" section of HANDOFF.md, which is current.
+> The engine/behaviour sections of this plan are still accurate.
+
 # AnimationWeb Implementation Plan
 
 Portfolio site with a floating low-poly Mew-like character, procedurally animated in Three.js. Character moves on a 2D plane (viewport X/Y, no depth translation) but rotates freely in 3D. Physics-driven, bumps into page content, reacts to the cursor.

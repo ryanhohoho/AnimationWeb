@@ -45,7 +45,7 @@ export const rigConfig = {
     blushHex: "#7BACD5",
 
     // THE ENTRANCE, ported beat for beat from the games -- see
-    // engine/fx/shinySparkle.js for the sources and the shape maths.
+    // engine/fx/starBurst.js for the sources and the shape maths.
     sparkle: {
       // 1. the FLASH. bulbapedia's definition of the whole effect is "a flash
       // of stars or light"; this is the light half. near-instant up, slower
@@ -92,7 +92,28 @@ export const rigConfig = {
       coreColor: "#ffffff",
       edgeColor: "#dcffff",
       goldColor: "#ffe9a3",
-      zOffset: 0.0
+      zOffset: 0.0,
+
+      // ANNOYANCE STARS, knocked loose by a hard collision. Same four-pointed
+      // stars, thrown instead of swept: manga's vocabulary for "that hurt" is
+      // stars seen circling the head, and the mechanics are the standard
+      // game-juice impact burst -- a handful of particles on an upward-biased
+      // cone with randomised speed and lifetime, pulled back down by gravity so
+      // each one draws an ARC and shrinks away at the end.
+      annoy: {
+        waves: 3,             // emitted in waves, not one burst: the flail lasts
+        perWave: 5,           // 1.5 s and a single pop at t=0 would be over long
+        waveGapS: 0.36,       // before mew stopped waving
+        originPx: 34,         // spawn ring around the head...
+        originYPx: 52,        // ...and how far above the body's centre
+        speedLoPx: 170,
+        speedHiPx: 340,
+        coneDeg: 116,         // thrown UP and out, spread this wide
+        gravityPx: 660,       // what turns the throw into an arc
+        lifeLoS: 0.45,
+        lifeHiS: 0.85,
+        sizePx: 21
+      }
     }
   },
 
@@ -294,7 +315,14 @@ export const rigConfig = {
     tangentDamp: 0.9,
     edgeInset: 20,            // px in from viewport edges
     edgeRestitution: 0.4,
-    bumpEventMinSpeed: 60     // px/s of normal impact before a bump event fires
+    bumpEventMinSpeed: 60,    // px/s of normal impact before a bump event fires
+    // ...and a much harder one fires 'flail' as well: limbs windmill and the
+    // face screws up into >.< (pose/limbPose.js, pose/faceMorphs.js). The roll
+    // is made ONCE here rather than per pose layer, so the face and the limbs
+    // can never disagree about whether it happened.
+    flailMinSpeed: 620,       // px/s of NORMAL impact. maxSpeed is 1400, so
+                              // this needs a real whack, not a graze
+    flailChance: 0.55         // ..."occasionally", even then
   },
 
   behavior: {
@@ -514,7 +542,38 @@ export const rigConfig = {
     // these two are left here so re-adding one is a builder change only.
     smileBase: 0.16,
     smilePerSpeed: 0.34,
-    moodRate: 2.2             // 1/s, how fast mood catches up
+    moodRate: 2.2,            // 1/s, how fast mood catches up
+
+    // THE >.< FACE, on a hard collision (physics.flailMinSpeed / flailChance
+    // decide when). It is a flat OVERLAY drawn over the eyes, not a morph
+    // target -- see engine/fx/faceOverlay.js. A >.< is a symbol, the same
+    // vocabulary as the sweat drop and the anger cross, and a morph has to bend
+    // real geometry into the shape of a glyph. The first version did exactly
+    // that and still only ever read as "eyes shut at an angle".
+    // WHERE the eyes are comes out of the glb, measured off the same ink mask
+    // the blink is built from, so repainting them moves this too.
+    overlay: {
+      inkColor: "#123049",    // the eyes' own darkest ink, so the glyph belongs
+      thickness: 0.19,        // stroke half-width, in eye half-heights
+      padX: 1.46,             // how far the patch oversizes the eye it hides.
+      padY: 1.52,             // GENEROUS: the ink mask the eye box comes from
+                              // stops at the iris, and the painted lashes run
+                              // well past it -- too small a patch leaves a navy
+                              // fringe poking out around the glyph
+      patchDim: 0.94,         // the patch is the LIT skin band, and the face is
+                              // rarely dead-on, so nudge it down between the
+                              // top two bands to disappear into either
+      liftZ: 0.035,           // stand it off the face so it never z-fights
+      durS: 1.5,              // the same length as the flail
+      attack: 0.05,           // drawn on fast, tip first
+      release: 0.14,          // ...and whipped off at the end: the eyes OPEN
+      fullSpeed: 1100,        // impact px/s that draws it at full strength
+      // it ignores depth so it can sit on the face, which means nothing stops
+      // it sitting on the back of the skull either. fade it by how squarely the
+      // head faces the camera.
+      facingLo: 0.05,
+      facingHi: 0.45
+    }
   },
 
   ears: {
@@ -552,6 +611,33 @@ export const rigConfig = {
     armFollowMul: 1.0,
     footNoiseMul: 1.6,        // extra wobble on the feet
     armNoiseMul: 1.5,
+    // THE FLAIL, on a hard collision. colliders.js makes the call once and
+    // emits 'flail', so the limbs and the face (>.< , see face.wince*) can never
+    // disagree about whether it happened. Same duration as the wince so they
+    // finish together.
+    flailDeg: 42,             // peak extra swing per limb
+    flailArmMul: 0.85,
+    flailFootMul: 1.15,       // feet are longer and looser, so they swing wider
+    flailZMul: 0.7,           // the second axis, a quarter cycle off the first,
+                              // so a limb circles instead of flapping flat
+    flailHz: 7.2,             // windmill rate at the start. fast enough to read
+                              // as panic, slow enough to survive a 30 fps frame
+    flailHzEnd: 3.4,          // ...and by the end. A CONSTANT rate reads as a
+                              // machine; every hand-drawn flail starts frantic
+                              // and winds down, and that decay is most of what
+                              // sells it as an animal rather than an effect
+    flailPhaseStep: 1.9,      // rad between limbs -- never in lockstep
+    flailDurS: 1.5,           // a proper tantrum, not a twitch. the >.< overlay
+                              // and the annoyance stars are pinned to the same
+                              // number (face.overlay.durS, and the star waves)
+                              // so the three finish together
+    flailAttack: 0.05,        // hard in, slow out: it is a reaction
+    flailShakePx: 5.5,        // and the whole body buzzes with it, on the same
+    flailShakeHz: 19,         // envelope. screen/character shake is the other
+                              // half of what makes an impact land
+    flailFullSpeed: 1100,     // impact px/s for a full-amplitude flail
+    flailMin: 0.5,            // ...and the least it ever flails
+
     flinchKick: 26,           // bump impulse -> flinch spring VELOCITY (1/s).
                               // it used to be added to the spring's position,
                               // which is a teleport, not an impulse
@@ -657,6 +743,24 @@ export const rigConfig = {
     // way a chinese dragon works -- was built and measured and is NOT here. See
     // the long note in engine/pose/tailChain.js for why it loses on this
     // particular character. Do not re-add it without re-running that probe.
+    // --- aiming the tail behind the motion --------------------------------
+    // the tail has to TRAIL mew in flight, not sit off to one side like an
+    // accessory. One rigid rotation of the whole rest curve about the screen
+    // normal turns its chord to point opposite the travel. Rigid is the point:
+    // a rigid rotation of a smooth curve is the same smooth curve, so unlike
+    // v4.2's per-segment `flightStraighten` there is no mechanism by which it
+    // can grow a kink -- every segment turns by the same angle.
+    aimSpeedLo: 90,           // px/s where the tail starts swinging behind
+    aimSpeedHi: 460,          // ...and where it is fully committed
+    aimAmount: 0.78,          // how far toward "straight behind" it goes. short
+                              // of 1 on purpose: the last bit is what would drag
+                              // the club through the torso on some headings, and
+                              // the physics lag reads as trailing anyway
+    aimMaxDeg: 150,           // never wrap further than this, either way
+    aimRate: 2.6,             // 1/s. SLOW: this is the "gently circle around"
+                              // rate. the tail takes about a second to come
+                              // round to a new heading, which is a sweep, and
+                              // anything above ~6 starts to look like a snap
     targetLagRate: 9,         // 1/s. THE TARGET LAGS, IT DOES NOT JUMP -- this
                               // is "on a change of direction it should circle
                               // round instead of snapping", stated directly.

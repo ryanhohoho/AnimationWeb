@@ -128,7 +128,8 @@ export function resolveEdges(body, bounds, cfg) {
   return hit;
 }
 
-// run the full pass; emits 'bump' events through the world bus.
+// run the full pass; emits 'bump' (and, on a hard one, 'flail') through the
+// world bus.
 // everything is in document space now, so scrolling moves nothing here.
 export function resolveAll(body, world, cfg) {
   let strongest = null;
@@ -142,6 +143,14 @@ export function resolveAll(body, world, cfg) {
 
   if (strongest && strongest.impact > cfg.bumpEventMinSpeed) {
     world.emit("bump", { normal: { x: strongest.nx, y: strongest.ny }, speed: strongest.impact });
+    // A REALLY HARD ONE gets its own event: limbs flail, face screws up into
+    // >.< . The roll lives HERE, once, rather than in each pose layer, so the
+    // face and the limbs can never disagree about whether it happened -- two
+    // independent rolls off the same seeded rng would consume different values
+    // and desync, which reads as a bug rather than a reaction.
+    if (strongest.impact > cfg.flailMinSpeed && world.random() < cfg.flailChance) {
+      world.emit("flail", { speed: strongest.impact });
+    }
   }
   return strongest;
 }

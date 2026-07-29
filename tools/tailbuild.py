@@ -108,6 +108,48 @@ def boundary_loops(tris):
     return loops
 
 
+def _ray_x(V, tris, y, z, sign):
+    """x of the outermost surface crossing at (y, z), scanning along +-x.
+    Moeller-Trumbore, vectorised over every triangle."""
+    o = np.array([sign * 9.0, y, z])
+    d = np.array([-sign, 0.0, 0.0])
+    T = V[tris]
+    e1, e2 = T[:, 1] - T[:, 0], T[:, 2] - T[:, 0]
+    h = np.cross(d, e2)
+    a = np.einsum("ij,ij->i", e1, h)
+    ok = np.abs(a) > 1e-12
+    f = np.zeros(len(T))
+    f[ok] = 1.0 / a[ok]
+    s = o - T[:, 0]
+    u = f * np.einsum("ij,ij->i", s, h)
+    q = np.cross(s, e1)
+    v = f * (q @ d)
+    t = f * np.einsum("ij,ij->i", e2, q)
+    hit = ok & (u > -1e-9) & (v > -1e-9) & (u + v < 1 + 1e-9) & (t > 1e-6)
+    if not hit.any():
+        return None
+    return float(o[0] + d[0] * t[hit].min())      # the FIRST crossing = outside
+
+
+def _snap_to_mirror(P, I, ring):
+    """move each ring vertex onto the mirror image of the opposite side."""
+    # the intact half, mirrored across x = 0. only triangles entirely on that
+    # side are used, so nothing from the damaged hip leaks into its own repair.
+    side = np.sign(P[ring, 0].mean()) or 1.0
+    keep = (P[:, 0] * side <= 0.02)[I].all(1)
+    if keep.sum() < 8:
+        return
+    V = P.copy()
+    V[:, 0] *= -1.0
+    tris = I[keep]
+    for r in ring:
+        x = _ray_x(V, tris, P[r, 1], P[r, 2], side)
+        # never push a vertex OUTWARD, only pull it in: if the mirror says the
+        # hip is wider here than the stub, the stub was not the problem
+        if x is not None and abs(x) < abs(P[r, 0]):
+            P[r, 0] = x
+
+
 # ---------------------------------------------------------------------------
 def remove(P, I, part, tri_src, label="tail"):
     """drop every triangle of `label` and cap the hole it leaves.
@@ -127,6 +169,18 @@ def remove(P, I, part, tri_src, label="tail"):
 
     for loop in boundary_loops(I):
         ring = np.array(loop, np.int64)
+        # PULL THE RING BACK ONTO THE HIP FIRST. dropping the tail's triangles
+        # only removes the ones ALL of whose vertices are tail, so the ring of
+        # straddling triangles survives -- and on this model that ring sits at
+        # x 0.55..0.65 while the trunk ends at 0.36. Capping there leaves a
+        # wedge sticking out of the rump, a fifth of the body's width, which
+        # is exactly what "a chunk of the tail is still attached to the butt"
+        # was. The character is roughly mirror-symmetric and the LEFT hip is
+        # intact, so the right hip is rebuilt from its own mirror image: shoot
+        # a ray inward at each ring vertex's own height and depth and put it on
+        # the surface it hits. That reconstructs the hip out of the model's own
+        # geometry instead of guessing a shrink factor.
+        _snap_to_mirror(P, I, ring)
         c = P[ring].mean(0)
         rad = float(np.linalg.norm(P[ring] - c, axis=1).mean())
         ax = _unit(c - ctr)

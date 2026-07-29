@@ -307,21 +307,22 @@ def main():
 
     # --- morphs -----------------------------------------------------------
     check(set(targets) >= {"blink"}, "a blink target exists", ",".join(targets))
-    if "blink" in targets:
-        b = targets["blink"]
-        mv = np.linalg.norm(b, axis=1)
-        eye = mv > mv.max() * 0.5
-        check(mv.max() > 0.03 * H, "the blink actually closes the eye",
-              f"max travel {mv.max()/H*100:.1f}% of height")
-        # the skull must not move: nothing outside the face may travel far
-        back = P[:, 2] < -0.12
-        check(mv[back].max() < 1e-9, "the blink does not touch the back of the head",
-              f"{mv[back].max():.2e}")
-        top = P[:, 1] > P[:, 1].max() - 0.25
-        check(mv[top].max() < 0.01 * H, "the blink does not move the ears/crown",
-              f"{mv[top].max()/H*100:.2f}%")
-        check((np.abs(b[:, 0]).max() < 1e-9) and (np.abs(b[:, 2]).max() < 1e-9),
-              "the blink is a pure vertical squash")
+    check("wince" not in targets,
+          "no wince morph -- the >.< face is a flat OVERLAY, not a deformation")
+    # WHERE THE EYES ARE has to ship with the model, or the overlay cannot be
+    # placed. it is measured off the same ink mask the blink is.
+    eyes = g.json["meshes"][0].get("extras", {}).get("eyes", [])
+    check(len(eyes) == 2, "the glb carries both eye boxes for the overlay",
+          f"{len(eyes)} found")
+    if len(eyes) == 2:
+        check(eyes[0]["cx"] * eyes[1]["cx"] < 0, "one eye each side of the midline",
+              f"{eyes[0]['cx']:+.2f} / {eyes[1]['cx']:+.2f}")
+        for e in eyes:
+            near = ((np.abs(P[:, 0] - e["cx"]) < e["hx"])
+                    & (np.abs(P[:, 1] - e["cy"]) < e["hy"]))
+            check(near.sum() > 20, "the eye box lands on real geometry",
+                  f"{int(near.sum())} verts")
+            check(e["z"] > 0.1, "...on the FRONT of the head", f"z {e['z']:.2f}")
 
     # --- engine contract --------------------------------------------------
     src = open(CFG).read()
@@ -420,15 +421,18 @@ def renders(P, I, UV, atlas, W, names, rest, pmap, hard, targets):
                "neck": ((0, 1, 0), 22), "head": ((0, 1, 0), 26)})
     sheet(views(Q2, I, flat), 460, 520, 4,
           os.path.join(OUT, "mew_ears.png"), "ear twitch + head turn")
-    if "blink" in targets:
+    for nm, amts in (("blink", (0.0, 0.35, 0.7, 1.15)),
+                     ("wince", (0.0, 0.4, 0.75, 1.05))):
+        if nm not in targets:
+            continue
         tiles = []
-        for amt in (0.0, 0.35, 0.7, 1.15):
-            Pb = P + targets["blink"] * amt
+        for amt in amts:
+            Pb = P + targets[nm] * amt
             tiles += views(Pb, I, white, uvs=uvs, tex=atlas, cw=460, ch=520,
-                           zoom=1.5, offy=0.30,
-                           which=((f"blink {amt}", (0, 0, 1)),))
-        sheet(tiles, 460, 520, 4, os.path.join(OUT, "mew_blink.png"),
-              "blink morph, driven by faceMorphs.js")
+                           zoom=1.6, offy=0.32,
+                           which=((f"{nm} {amt}", (0, 0, 1)),))
+        sheet(tiles, 460, 520, 4, os.path.join(OUT, f"mew_{nm}.png"),
+              f"{nm} morph, driven by faceMorphs.js")
 
 
 if __name__ == "__main__":

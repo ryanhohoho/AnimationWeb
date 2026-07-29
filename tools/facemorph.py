@@ -121,3 +121,25 @@ def build(P, I, uv, ft, eye_mask, info, cov, part, meta):
         blink[:, 1] += -_profile(d, up, dn) * lat
         squint[:, 1] += -np.where(d > 0, _profile(d, up, dn), 0.0) * lat * SQUINT
     return {"blink": blink, "squint": squint}
+
+
+def eye_meta(P, I, ft, eye_mask, info):
+    """where each painted eye IS, in model space, for the engine to draw on.
+
+    the >.< face is a flat overlay (engine/fx/faceOverlay.js) rather than a morph
+    target: it is a symbol, not a deformation, and a symbol only has to be put in
+    the right place. This is that place -- centre, half-extents and the face's
+    own depth there, so the overlay sits just proud of the surface -- and it is
+    measured off the same ink mask the blink is, so repainting the eyes moves
+    both together."""
+    onface = np.zeros(len(P), bool)
+    onface[np.unique(I[ft])] = True
+    out = []
+    for cx, cy, hx, hy in eye_boxes(eye_mask, info):
+        near = (onface & (np.abs(P[:, 0] - cx) < hx * 1.5)
+                & (np.abs(P[:, 1] - cy) < hy * 1.5))
+        z = float(P[near, 2].max()) if near.any() else 0.0
+        out.append({"cx": round(float(cx), 5), "cy": round(float(cy), 5),
+                    "hx": round(float(hx), 5), "hy": round(float(hy), 5),
+                    "z": round(z, 5)})
+    return out

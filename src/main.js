@@ -23,7 +23,8 @@ import { createBeamFx } from "./engine/fx/beam.js";
 import { createDestruction } from "./engine/fx/destruction.js";
 import { createPresentation } from "./engine/fx/presentation.js";
 import { applySpriteShade } from "./engine/fx/spriteShade.js";
-import { createShinySparkle } from "./engine/fx/shinySparkle.js";
+import { createStarBurst } from "./engine/fx/starBurst.js";
+import { createFaceOverlay } from "./engine/fx/faceOverlay.js";
 import { lerp } from "./utils/math.js";
 
 const canvas = document.getElementById("mew-canvas");
@@ -202,13 +203,30 @@ new GLTFLoader().load(mewUrl, (gltf) => {
     ? createFaceMorphs({ config: cfg, world, brain, body, mesh: skinned })
     : null;
 
+  const limbs = createLimbPose({ config: cfg, world });
+  // the >.< face: a flat overlay over the painted eyes, driven by the same
+  // 'flail' event the limbs are (engine/fx/faceOverlay.js)
+  const faceOv = createFaceOverlay({
+    rig, eyes: skinned?.userData?.eyes, config: cfg.face.overlay, world, view
+  });
+  if (faceOv) {
+    // the patch has to disappear into the face, so it is the LIT skin: the
+    // shading's top band, which is what the front of the head is in every frame
+    // the overlay can be seen at all
+    const u = shade.uniforms;
+    const t = u.spriteTint.value;
+    const l = u.spriteLightTint.value;
+    faceOv.setPatch([t.x * l.x, t.y * l.y, t.z * l.z]);
+  }
+
   poser = createPoser(ctxBase, [
     createBodyPose({ config: cfg, world, squashGroup }),
-    createLimbPose({ config: cfg, world }),
+    limbs,
     createHeadLook({ config: cfg, world }),
     createEarSprings({ config: cfg, world }),
     createTailChain({ config: cfg, world }),
-    ...(face ? [face] : [])
+    ...(face ? [face] : []),
+    ...(faceOv ? [faceOv] : [])
   ]);
 
   // ---- hyper beam fx wiring ------------------------------------------
@@ -252,15 +270,18 @@ new GLTFLoader().load(mewUrl, (gltf) => {
   // THE SPAWN. the sparkle hangs off characterRoot, which carries position and
   // nothing else, so the burst follows mew around without inheriting the body's
   // rotation or the model's scale and its sizes stay honest screen pixels.
-  sparkle = createShinySparkle({
+  sparkle = createStarBurst({
     parent: characterRoot, config: cfg.shiny.sparkle, view
   });
-  if (isShiny) sparkle.burst((Math.random() * 0xffffffff) >>> 0);
+  if (isShiny) sparkle.shiny((Math.random() * 0xffffffff) >>> 0);
+  // ANNOYANCE STARS on a hard collision, same emitter
+  world.on("flail", () => sparkle.annoy((Math.random() * 0xffffffff) >>> 0));
+  limbFx = limbs;
 
   // debug handle for devtools + automated checks
   window.__AW__ = {
-    rig, world, body, brain, view, poser, face, skinned, shade, sparkle,
-    isShiny, THREE
+    rig, world, body, brain, view, poser, face, faceOv, skinned, shade,
+    sparkle, isShiny, THREE
   };
   loop.start();
 }, undefined, (err) => console.error("[mew] failed to load model:", err));
@@ -268,6 +289,7 @@ new GLTFLoader().load(mewUrl, (gltf) => {
 let beamFx = null;
 let sparkle = null;
 let shadeFx = null;
+let limbFx = null;
 
 function fitModel() {
   if (!rig) return;
@@ -302,6 +324,15 @@ const loop = createLoop({
     const bob = ctxBase.visual.bobPx;
     let px = ix + bob.x;
     let py = iy + bob.y;
+    // THE SHAKE. the other half of a good impact: the whole character buzzes
+    // on the flail's own envelope. It rides the RENDER position only, exactly
+    // like the bob, so physics and collision never feel it.
+    if (limbFx && limbFx.flail > 0.001) {
+      const f = limbFx.flail * cfg.limbs.flailShakePx;
+      const w = simTime * cfg.limbs.flailShakeHz * 2 * Math.PI;
+      px += Math.sin(w) * f;
+      py += Math.cos(w * 1.37) * f * 0.7;
+    }
     const snap = present.snapPx();
     if (snap > 0) {
       // quantize the RENDER position to the texel grid: classic sprite crawl.

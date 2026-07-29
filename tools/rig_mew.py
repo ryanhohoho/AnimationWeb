@@ -274,7 +274,7 @@ def explode(P, I, uv, W_full, morphs):
     return Pv, np.arange(n, dtype=np.uint32).reshape(-1, 3), UVv, Nv, Wv, Mv
 
 
-def write_glb(P, I, N, UV, Jo, Wo, J, morphs, atlas, path):
+def write_glb(P, I, N, UV, Jo, Wo, J, morphs, atlas, path, eyes=None):
     import io
     from PIL import Image
     gw = GlbWriter()
@@ -325,7 +325,7 @@ def write_glb(P, I, N, UV, Jo, Wo, J, morphs, atlas, path):
         "scene": 0, "scenes": [{"nodes": [root_node]}], "nodes": nodes,
         "meshes": [{"name": "MewBody", "primitives": [prim],
                     "weights": [0.0] * len(names),
-                    "extras": {"targetNames": names}}],
+                    "extras": {"targetNames": names, "eyes": eyes or []}}],
         "skins": [{"name": "MewRig", "joints": [idx[n] for n in ORDER],
                    "inverseBindMatrices": a_ibm, "skeleton": idx["root"]}],
         "materials": [{"name": "MewSkin", "doubleSided": False,
@@ -393,6 +393,9 @@ def build(verbose=True):
 
     # --- 6. expression morphs ----------------------------------------------
     morphs = fm.build(P, I, uv, ft, eye, uvinfo, cov, part, meta)
+    # WHERE THE EYES ARE, for the engine to draw the >.< overlay on. It travels
+    # in the glb rather than rigConfig so it can never drift from the atlas.
+    eyes = fm.eye_meta(P, I, ft, eye, uvinfo)
 
     Pv, Iv, UVv, Nv, Wv, Mv = explode(P, I, uv, Wfull, morphs)
     order = np.argsort(-Wv, axis=1)[:, :4]
@@ -400,9 +403,9 @@ def build(verbose=True):
     Wov = np.take_along_axis(Wv, order, axis=1)
     Wov /= np.maximum(Wov.sum(1, keepdims=True), 1e-9)
 
-    write_glb(Pv, Iv, Nv, UVv, Jov, Wov, J, Mv, atlas, DST)
+    write_glb(Pv, Iv, Nv, UVv, Jov, Wov, J, Mv, atlas, DST, eyes)
     if os.path.isdir(os.path.dirname(PUB)):
-        write_glb(Pv, Iv, Nv, UVv, Jov, Wov, J, Mv, atlas, PUB)
+        write_glb(Pv, Iv, Nv, UVv, Jov, Wov, J, Mv, atlas, PUB, eyes)
     with open(os.path.join(HERE, "joints.json"), "w") as fh:
         json.dump({k: [round(float(x), 4) for x in v] for k, v in J.items()},
                   fh, indent=2)
@@ -412,6 +415,7 @@ def build(verbose=True):
         print(f"wrote {os.path.relpath(DST, ROOT)}  (+ {os.path.relpath(PUB, ROOT)})")
         print(f"  welded {len(P)} verts / {len(I)} tris -> exported {len(Pv)} verts")
         print(f"  joints {len(ORDER)}   morphs {list(Mv)}   atlas {atlas.shape[0]}px")
+        print(f"  eyes {[(e['cx'], e['cy'], e['z']) for e in eyes]}")
         print(f"  shells {ncomp}   face island {len(ft)} tris")
         print(f"  bounds x[{lo[0]:+.3f},{hi[0]:+.3f}] y[{lo[1]:+.3f},{hi[1]:+.3f}] "
               f"z[{lo[2]:+.3f},{hi[2]:+.3f}]")

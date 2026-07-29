@@ -12,6 +12,8 @@ import { createBrain } from "../src/engine/behavior/brain.js";
 import { createPathfinder } from "../src/engine/behavior/pathfinder.js";
 import { buildRig } from "../src/engine/pose/rig.js";
 import { createTailChain } from "../src/engine/pose/tailChain.js";
+import { createLimbPose } from "../src/engine/pose/limbPose.js";
+import { createFaceOverlay } from "../src/engine/fx/faceOverlay.js";
 import { QuatSpring } from "../src/engine/pose/quatSpring.js";
 import {
   clipSegmentToRect, beamLength, corridorHitsRect, beamChord,
@@ -21,7 +23,7 @@ import {
   linearToSrgb, coverFit, scrollUvOffset, shadeBand, inkness
 } from "../src/engine/fx/presentMath.js";
 import { INK_ALPHA, hexToLinear } from "../src/engine/fx/spriteShade.js";
-import { createShinySparkle } from "../src/engine/fx/shinySparkle.js";
+import { createStarBurst } from "../src/engine/fx/starBurst.js";
 import { mulberry32 } from "../src/utils/math.js";
 import { rigConfig } from "../src/config/rigConfig.js";
 
@@ -496,6 +498,31 @@ section("behavior: flourish flies a full circle");
 }
 
 // ---------------------------------------------------------------------------
+section("modules: every shader-carrying module actually parses");
+{
+  // THIS EXISTS BECAUSE OF ONE CHARACTER. The shaders live in template
+  // literals, so a BACKTICK anywhere inside one -- including in a // comment --
+  // terminates the string and the whole module fails to parse. Vite reports
+  // nothing useful and the page just renders no character at all. It has
+  // happened twice. A bare import is enough to catch it, costs nothing, and is
+  // the only check that would have.
+  const mods = [
+    "../src/engine/fx/pixelate.js",
+    "../src/engine/fx/cutout.js",
+    // presentation.js is not here: it `?url`-imports a png, which node cannot
+    // resolve. Its own shape is covered by the config-shape section below.
+    "../src/engine/fx/spriteShade.js",
+    "../src/engine/fx/starBurst.js",
+    "../src/engine/fx/faceOverlay.js",
+    "../src/engine/fx/beam.js",
+    "../src/engine/fx/beamGeometry.js",
+    "../src/engine/fx/presentMath.js"
+  ];
+  const loaded = await Promise.all(mods.map((m) =>
+    import(m).then(() => null).catch((e) => `${m}: ${e.message}`)));
+  loaded.forEach((err, i) => ok(!err, err || `${mods[i]} parses`));
+}
+
 section("presentation: linear -> sRGB transfer");
 {
   ok(linearToSrgb(0) === 0, "black maps to black");
@@ -663,6 +690,159 @@ section("presentation: sprite shading cuts the light into flat sections");
   ok(INK_ALPHA < 1, "...but is distinguishable from shaded skin");
 }
 
+section("bump reaction: a hard hit flails the limbs and screws the face up");
+{
+  // ---- 1. the EVENT. one decision, made in colliders.js, so the face and the
+  // limbs can never disagree about whether it happened.
+  const world = createWorld({ headless: true, seed: 3 });
+  world.docSize = { w: 4000, h: 4000 };
+  world.colliders = [{ rect: { x: 500, y: 0, w: 400, h: 900 }, el: null }];
+  world.collidersVersion = 1;
+  let flails = 0;
+  let bumps = 0;
+  world.on("flail", () => flails++);
+  world.on("bump", () => bumps++);
+
+  const graze = createBody({ x: 430, y: 400, radius: 60, config: rigConfig.physics });
+  graze.vel.x = 120;
+  for (let i = 0; i < 20; i++) { graze.step(1 / 120); resolveAll(graze, world, rigConfig.physics); }
+  ok(flails === 0, `a graze never flails (${bumps} bumps, ${flails} flails)`);
+
+  let hard = 0;
+  for (let trial = 0; trial < 60; trial++) {
+    const b = createBody({ x: 300, y: 400, radius: 60, config: rigConfig.physics });
+    b.vel.x = 1300;
+    for (let i = 0; i < 60; i++) { b.step(1 / 120); resolveAll(b, world, rigConfig.physics); }
+    if (flails > hard) hard++;
+  }
+  ok(hard > 10 && hard < 60,
+    `a hard hit flails OCCASIONALLY (${hard}/60 at chance ${rigConfig.physics.flailChance})`);
+
+  // ---- 2. THE FACE. the >.< is a flat OVERLAY over the painted eyes, not a
+  // morph target: it is a symbol, and a morph has to bend real geometry into
+  // the shape of a glyph. What matters is the envelope -- drawn on fast, held,
+  // and whipped off so the eyes OPEN again -- and that it cannot be seen
+  // through the back of the head.
+  const w2 = createWorld({ headless: true, seed: 4 });
+  const headRoot = new THREE.Group();
+  const rootB = new THREE.Bone(); rootB.name = "root";
+  const headB = new THREE.Bone(); headB.name = "head";
+  headB.position.set(0, 0.6, 0);
+  rootB.add(headB);
+  headRoot.add(rootB);
+  headRoot.updateMatrixWorld(true);
+  const rigF = buildRig(headRoot, { root: "root", head: "head", tail: [] });
+  const eyes = [
+    { cx: -0.3, cy: 0.96, hx: 0.13, hy: 0.12, z: 0.38 },
+    { cx: 0.29, cy: 1.03, hx: 0.14, hy: 0.13, z: 0.38 }
+  ];
+  const ov = createFaceOverlay({
+    rig: rigF, eyes, config: rigConfig.face.overlay, world: w2, view: {}
+  });
+  ok(!!ov, "the overlay binds when the glb carries eye boxes");
+  ok(!createFaceOverlay({ rig: rigF, eyes: null, config: rigConfig.face.overlay, world: w2 }),
+    "...and refuses to when it does not");
+
+  const octx = { dt: 1 / 60 };
+  ov.update(octx);
+  ok(ov.amount === 0, "nothing drawn until something happens");
+  w2.emit("flail", { speed: 1200 });
+  const otrace = [];
+  for (let i = 0; i < 120; i++) {
+    ov.update(octx);
+    otrace.push(ov.amount);
+  }
+  const opeak = Math.max(...otrace);
+  const opeakAt = otrace.indexOf(opeak) / 60;
+  ok(opeak > 0.85, `the glyph is drawn (peak ${opeak.toFixed(2)})`);
+  ok(opeakAt < 0.14, `drawn on FAST (${opeakAt.toFixed(3)}s)`);
+  // it has to last as long as the flail, or the face recovers while the limbs
+  // are still going
+  const held = otrace.filter((v) => v > 0.5).length / 60;
+  ok(Math.abs(held - rigConfig.limbs.flailDurS) < 0.35,
+    `and held for the flail's duration (${held.toFixed(2)}s vs ${rigConfig.limbs.flailDurS}s)`);
+  ok(otrace[otrace.length - 1] === 0, "then the eyes OPEN again (back to zero)");
+
+  // facing: it ignores depth so it can sit on the face, which means nothing
+  // stops it sitting on the back of the skull either
+  w2.emit("flail", { speed: 1200 });
+  for (let i = 0; i < 20; i++) ov.update(octx);
+  const facing = ov.amount;
+  headB.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+  headRoot.updateMatrixWorld(true);
+  ov.update(octx);
+  ok(facing > 0.5 && ov.amount === 0,
+    `hidden when the head faces away (${facing.toFixed(2)} -> ${ov.amount.toFixed(2)})`);
+  headB.quaternion.identity();
+  headRoot.updateMatrixWorld(true);
+
+  // ---- 3. THE LIMBS. same event, same duration.
+  const w3 = createWorld({ headless: true, seed: 5 });
+  const body = createBody({ x: 0, y: 0, radius: 60, config: rigConfig.physics });
+  const modelRoot = new THREE.Group();
+  const rootBone = new THREE.Bone(); rootBone.name = "root";
+  modelRoot.add(rootBone);
+  const limbNames = ["armL", "armR", "footL", "footR"];
+  limbNames.forEach((nm, i) => {
+    const b = new THREE.Bone();
+    b.name = nm;
+    b.position.set(i < 2 ? (i ? -0.2 : 0.2) : (i === 2 ? 0.15 : -0.15), i < 2 ? 0.3 : -0.2, 0);
+    rootBone.add(b);
+  });
+  modelRoot.updateMatrixWorld(true);
+  const rig3 = buildRig(modelRoot, {
+    root: "root", armL: "armL", armR: "armR", footL: "footL", footR: "footR", tail: []
+  });
+  const limbs = createLimbPose({ config: rigConfig, world: w3 });
+  const lctx = {
+    rig: rig3, body, brain: { agitation: 0, state: "hover" }, world: w3,
+    dt: 1 / 60, time: 0, shared: { bodyQuat: new THREE.Quaternion() },
+    visual: { bobPx: { x: 0, y: 0 } }
+  };
+  // a CONTROL instance, stepped in lockstep and never told about the collision.
+  // comparing against a snapshot taken earlier does not work: the pose carries
+  // slow noise and a paddle cycle, so its own baseline moves under the test.
+  const wc = createWorld({ headless: true, seed: 5 });
+  const ctrlRoot = modelRoot.clone(true);
+  ctrlRoot.updateMatrixWorld(true);
+  const rigC = buildRig(ctrlRoot, {
+    root: "root", armL: "armL", armR: "armR", footL: "footL", footR: "footR", tail: []
+  });
+  const ctrl = createLimbPose({ config: rigConfig, world: wc });
+  const cctx = { ...lctx, rig: rigC, world: wc };
+
+  const step = () => {
+    lctx.time += 1 / 60;
+    cctx.time = lctx.time;
+    rig3.resetToRest(); limbs.update(lctx);
+    rigC.resetToRest(); ctrl.update(cctx);
+    return limbNames.map((nm) => rig3.bones[nm].quaternion.angleTo(rigC.bones[nm].quaternion));
+  };
+  for (let i = 0; i < 30; i++) step();
+  const quiet = Math.max(...step());
+  // 1e-6 rad, not 0: the control rig is a clone, so its world matrices differ
+  // in the last bits and the two quats land a few 1e-8 apart
+  ok(quiet < 1e-6, `the two instances agree until something happens (${quiet.toExponential(1)})`);
+
+  w3.emit("flail", { speed: 1200 });
+  let worst = 0;
+  const perLimb = [0, 0, 0, 0];
+  for (let i = 0; i < 40; i++) {
+    step().forEach((a, k) => {
+      perLimb[k] = Math.max(perLimb[k], a);
+      worst = Math.max(worst, a);
+    });
+  }
+  ok(worst > 0.15, `the limbs actually windmill (${(worst * 180 / Math.PI).toFixed(0)} deg)`);
+  ok(Math.min(...perLimb) > 0.05, "ALL FOUR limbs move, not just one pair");
+  // they must not move as one: a lockstep flail reads as a machine
+  const spread = Math.max(...perLimb) - Math.min(...perLimb);
+  ok(spread > 0.01, `and not in lockstep (spread ${(spread * 180 / Math.PI).toFixed(1)} deg)`);
+  let settled = 0;
+  for (let i = 0; i < 120; i++) settled = Math.max(...step());
+  ok(settled < 0.02, `and settle back (${(settled * 180 / Math.PI).toFixed(2)} deg residual)`);
+}
+
 section("shiny: the games' colours and an entrance that ends");
 {
   const SH = rigConfig.shiny;
@@ -724,13 +904,13 @@ section("shiny: the games' colours and an entrance that ends");
 
   // THE ENTRANCE. it has to finish: a burst that never clears leaves the flash
   // uniform stuck wherever it stopped and the character stays blown out.
-  const sp = createShinySparkle({
+  const sp = createStarBurst({
     parent: new THREE.Object3D(),
     config: SH.sparkle,
     view: { worldPerPx: 0.01 }
   });
   ok(!sp.running, "idle until it is fired");
-  sp.burst(1234);
+  sp.shiny(1234);
   ok(sp.running, "burst starts it");
   let frames = 0;
   let peak = 0;
@@ -750,10 +930,10 @@ section("shiny: the games' colours and an entrance that ends");
   // the same seed has to give the same burst, or a "why did that look odd"
   // report can never be reproduced
   const rerun = (seed) => {
-    const s2 = createShinySparkle({
+    const s2 = createStarBurst({
       parent: new THREE.Object3D(), config: SH.sparkle, view: { worldPerPx: 0.01 }
     });
-    s2.burst(seed);
+    s2.shiny(seed);
     const out = [];
     for (let i = 0; i < 40; i++) out.push(s2.update(1 / 60));
     return out.join(",");
