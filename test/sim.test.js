@@ -17,7 +17,11 @@ import {
   clipSegmentToRect, beamLength, corridorHitsRect, beamChord,
   corridorPolygon, edgeSamples, removedFraction
 } from "../src/engine/fx/beamGeometry.js";
-import { linearToSrgb, coverFit, scrollUvOffset } from "../src/engine/fx/presentMath.js";
+import {
+  linearToSrgb, coverFit, scrollUvOffset, shadeBand, inkness
+} from "../src/engine/fx/presentMath.js";
+import { INK_ALPHA, hexToLinear } from "../src/engine/fx/spriteShade.js";
+import { createShinySparkle } from "../src/engine/fx/shinySparkle.js";
 import { mulberry32 } from "../src/utils/math.js";
 import { rigConfig } from "../src/config/rigConfig.js";
 
@@ -520,8 +524,13 @@ section("presentation: light rig lands on bright pastel pink");
   // used to pin the light rig numerically. it is a model, not a screenshot --
   // it catches "the shading is dark or purple" regressions, not fine tuning.
   const PI = Math.PI;
-  const albedo = [0.96, 0.76, 0.84]; // the face texture's base pink, in linear
-                                     // (sRGB 251,228,238 -- matches v1 exactly)
+  // the model's ACTUAL albedo, read from the same rigConfig.skinHex the builder
+  // bakes into the atlas. it used to be a hardcoded copy of the v3.7 pink, which
+  // meant this test happily passed while the shipped model was a different
+  // colour entirely -- it was checking a fiction.
+  const srgbToLin = (v) => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const albedo = [1, 3, 5].map((i) =>
+    srgbToLin(parseInt(rigConfig.skinHex.slice(i, i + 2), 16) / 255));
   const L = rigConfig.lighting;
   const lin = (hex) => { const c = new THREE.Color(hex); return [c.r, c.g, c.b]; };
   const sky = lin(L.skyColor), ground = lin(L.groundColor), keyC = lin(L.keyColor);
@@ -566,6 +575,192 @@ section("presentation: light rig lands on bright pastel pink");
 }
 
 // ---------------------------------------------------------------------------
+section("presentation: sprite shading cuts the light into flat sections");
+{
+  // the shipped look is NOT the raw light rig: engine/fx/spriteShade.js bands
+  // the incident light into flat sections and draws the painted marks flat. the
+  // section above pins the light rig; this pins what actually reaches the
+  // screen, which is the thing the owner sees.
+  const S = rigConfig.presentation.spriteShade;
+  const srgbToLin = (v) => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const skin = [1, 3, 5].map((i) =>
+    srgbToLin(parseInt(rigConfig.skinHex.slice(i, i + 2), 16) / 255));
+  const L = rigConfig.lighting;
+  const lin = (hex) => { const c = new THREE.Color(hex); return [c.r, c.g, c.b]; };
+  const sky = lin(L.skyColor), ground = lin(L.groundColor), keyC = lin(L.keyColor);
+
+  // incident light only -- the albedo is divided back out in the shader
+  function incident(ny, ndotl) {
+    const w = 0.5 * ny + 0.5;
+    return [0, 1, 2].map((i) => (
+      (ground[i] + (sky[i] - ground[i]) * w) * L.ambientIntensity
+      + Math.max(0, ndotl) * keyC[i] * L.keyIntensity) / Math.PI);
+  }
+  const luma = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+
+  function sprite(albedo, ny, ndotl) {
+    const lum = luma(incident(ny, ndotl));
+    const raw = Math.min(1, (Math.floor(lum * S.bands + 0.5) / S.bands) * S.shadeGain);
+    const q = shadeBand(lum, S.bands, S.shadeFloor, S.shadeGain);
+    const ink = inkness(albedo, skin, S.inkLo, S.inkHi);
+    const out = [];
+    for (let i = 0; i < 3; i++) {
+      const tint = S.shadowTint[i] + (S.lightTint[i] - S.shadowTint[i]) * raw;
+      const litC = albedo[i] * q * tint;
+      const sharp = Math.min(1, Math.max(0,
+        skin[i] + (albedo[i] - skin[i]) * S.inkBoost));
+      const flat = sharp * (1 + (q - 1) * S.inkShade);
+      out.push(litC + (flat - litC) * ink);
+    }
+    return out.map((x) => Math.round(linearToSrgb(x) * 255));
+  }
+
+  const front = sprite(skin, 0, 1);
+  const shadow = sprite(skin, -0.6, 0);
+  ok(front[0] > 235, `the lit section reads bright (R=${front[0]})`);
+  ok(front[0] > front[2] && front[2] > front[1],
+    `the lit section is pink, not purple (${front})`);
+  ok(shadow[0] > 140, `the darkest section stays light (R=${shadow[0]})`);
+  ok(shadow[0] > shadow[2] && shadow[2] > shadow[1],
+    `the darkest section is still pink (${shadow})`);
+  // the hue shift is the point: the shadow must be RELATIVELY cooler, not just
+  // darker. compare blue-over-red between the two sections.
+  ok(shadow[2] / shadow[0] > front[2] / front[0] + 0.02,
+    `shadows shift cool (B/R ${(shadow[2] / shadow[0]).toFixed(3)} vs ${(front[2] / front[0]).toFixed(3)})`);
+
+  // SECTIONS, not a gradient: sweep the surface and count distinct levels
+  const levels = new Set();
+  for (let k = 0; k <= 40; k++) {
+    const a = (k / 40) * Math.PI;
+    levels.add(sprite(skin, Math.cos(a), Math.cos(a))[0]);
+  }
+  ok(levels.size >= 3 && levels.size <= S.bands + 1,
+    `the sweep lands on ${levels.size} flat sections (bands=${S.bands})`);
+
+  // INK. these are measured off the shipped atlas, same as tools/retexture.py's
+  // thresholds: the iris navy, the sclera white, and the blush.
+  const px = (r, g, b) => [r, g, b].map((v) => srgbToLin(v / 255));
+  const iris = px(15, 74, 110);
+  const sclera = px(250, 225, 235);
+  const blush = px(250, 106, 141);
+  ok(inkness(skin, skin, S.inkLo, S.inkHi) === 0, "flat skin is not ink");
+  for (const [nm, c] of [["iris", iris], ["sclera", sclera], ["blush", blush]]) {
+    ok(inkness(c, skin, S.inkLo, S.inkHi) > 0.95, `the ${nm} reads as ink`);
+  }
+  // and the whole point: the eye may not be washed out by the shading. it has to
+  // stay dark wherever the head is facing, including in the darkest section.
+  const eyeLit = sprite(iris, 0, 1);
+  const eyeDark = sprite(iris, -0.6, 0);
+  ok(eyeLit[0] < 60 && eyeDark[0] < 60,
+    `the iris stays dark in every section (${eyeLit[0]} / ${eyeDark[0]})`);
+  ok(shadow[0] - eyeDark[0] > 100,
+    `the eye keeps its contrast against the darkest skin (${shadow[0] - eyeDark[0]})`);
+  ok(Math.abs(eyeLit[0] - eyeDark[0]) <= Math.abs(front[0] - shadow[0]) * S.inkShade + 4,
+    "the light rig barely moves the ink");
+
+  // the alpha flag has to survive the pixelate pass's own thresholds
+  ok(INK_ALPHA > 0.5, "ink still counts as solid for the outline test");
+  ok(INK_ALPHA < 1, "...but is distinguishable from shaded skin");
+}
+
+section("shiny: the games' colours and an entrance that ends");
+{
+  const SH = rigConfig.shiny;
+  const S = rigConfig.presentation.spriteShade;
+  ok(SH.chance > 0 && SH.chance < 1, `chance is a probability (${SH.chance})`);
+  // PINNED TO THE GAMES. #9CDEFF is the dominant colour of shiny mew's Gen V
+  // B/W sprite (28.9% of its opaque pixels, and the same sprite PokeAPI serves
+  // by default); #7BACD5 is that palette's shade colour, which is what the
+  // official artwork uses for the cheeks. these are measurements, not taste --
+  // if someone "improves" them the shiny stops being the games' shiny.
+  ok(SH.skinHex.toUpperCase() === "#9CDEFF", `body is the sprite's blue (${SH.skinHex})`);
+  ok(SH.blushHex.toUpperCase() === "#7BACD5", `blush is its shade (${SH.blushHex})`);
+  const shiny = hexToLinear(SH.skinHex);
+  const skin = hexToLinear(rigConfig.skinHex);
+  ok(shiny[2] > shiny[1] && shiny[1] > shiny[0], "shiny reads blue (B > G > R)");
+  ok(skin[0] > skin[2] && skin[2] > skin[1], "...and the default still reads pink");
+
+  // THE RE-ANCHOR must be an identity when nothing is being recoloured, or the
+  // 2 in 3 loads that are NOT shiny would quietly shift colour.
+  const reanchor = (a, ink, tint) => a.map((v, i) => v + (1 - ink) * (tint[i] - skin[i]));
+  for (const ink of [0, 0.5, 1]) {
+    const same = reanchor(skin, ink, skin);
+    ok(same.every((v, i) => Math.abs(v - skin[i]) < 1e-12),
+      `recolour is an identity at ink=${ink}`);
+  }
+  // ...and at ink 0 it lands exactly on the target, which is what stops the
+  // antialiased edge of an eye keeping its pink halo on a blue body
+  const edge = reanchor(skin, 0, shiny);
+  ok(edge.every((v, i) => Math.abs(v - shiny[i]) < 1e-12),
+    "a fully-skin texel recolours exactly onto the target");
+
+  // THE WARM TEST IS NORMALISED BY BRIGHTNESS, and it has to be: an absolute
+  // r-b catches the blush core and misses its own gradient, and a half-strength
+  // blush texel -- which is what the mip chain actually samples over a face
+  // twenty pixels wide -- then falls through both the re-anchor (it is fully
+  // ink) and the warm test (it is pale). that was the last pink left on the
+  // shiny. these are measured off the shipped atlas.
+  const luma = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  const px = (r, g, b) => [r, g, b].map((v) => (v / 255 <= 0.04045
+    ? v / 255 / 12.92 : Math.pow((v / 255 + 0.055) / 1.055, 2.4)));
+  // the same pipeline the shader runs before the warm test: boost, then swap
+  // the skin hiding in the texel for the shiny one
+  const warmOf = (c) => {
+    const d = Math.hypot(...c.map((v, i) => v - skin[i]));
+    const t = Math.min(Math.max((d - S.inkLo) / (S.inkHi - S.inkLo), 0), 1);
+    const ink = t * t * (3 - 2 * t);
+    const sh = c.map((v, i) => Math.min(Math.max(
+      skin[i] + (v - skin[i]) * S.inkBoost + (1 - ink) * (shiny[i] - skin[i]), 0), 1));
+    return (sh[0] - sh[2]) / Math.max(luma(sh), 1e-3);
+  };
+  ok(warmOf(px(250, 106, 141)) > S.warmHi,
+    `the blush clears the warm window (${warmOf(px(250, 106, 141)).toFixed(2)})`);
+  ok(warmOf(px(218, 153, 189)) > S.warmLo,
+    `...and so does a HALF-strength blush (${warmOf(px(218, 153, 189)).toFixed(2)})`);
+  ok(warmOf(skin) < S.warmLo, `plain skin does not (${warmOf(skin).toFixed(2)})`);
+  ok(warmOf(px(250, 225, 235)) < S.warmLo,
+    `nor the eye whites (${warmOf(px(250, 225, 235)).toFixed(2)})`);
+  ok(warmOf(px(15, 74, 110)) < S.warmLo, "and neither does the iris");
+
+  // THE ENTRANCE. it has to finish: a burst that never clears leaves the flash
+  // uniform stuck wherever it stopped and the character stays blown out.
+  const sp = createShinySparkle({
+    parent: new THREE.Object3D(),
+    config: SH.sparkle,
+    view: { worldPerPx: 0.01 }
+  });
+  ok(!sp.running, "idle until it is fired");
+  sp.burst(1234);
+  ok(sp.running, "burst starts it");
+  let frames = 0;
+  let peak = 0;
+  let last = 1;
+  while (sp.running && frames < 60 * 10) {
+    last = sp.update(1 / 60);
+    peak = Math.max(peak, last);
+    ok(Number.isFinite(last), `flash stays finite (frame ${frames})`);
+    if (failures > 3) break;
+    frames++;
+  }
+  ok(!sp.running, `the burst ends (${(frames / 60).toFixed(2)}s)`);
+  ok(frames / 60 < 3, "...and does not outstay a page load");
+  ok(Math.abs(peak - SH.sparkle.flashPeak) < 0.05,
+    `the flash peaks at flashPeak (${peak.toFixed(2)} vs ${SH.sparkle.flashPeak})`);
+  ok(last === 0, "and returns to zero, so nothing is left blown out");
+  // the same seed has to give the same burst, or a "why did that look odd"
+  // report can never be reproduced
+  const rerun = (seed) => {
+    const s2 = createShinySparkle({
+      parent: new THREE.Object3D(), config: SH.sparkle, view: { worldPerPx: 0.01 }
+    });
+    s2.burst(seed);
+    const out = [];
+    for (let i = 0; i < 40; i++) out.push(s2.update(1 / 60));
+    return out.join(",");
+  };
+  ok(rerun(99) === rerun(99), "the same seed replays the same burst");
+}
+
 section("presentation: cutout overlay cover-fit + scroll");
 {
   // square image into a wide viewport -> crop vertically, x untouched
@@ -600,6 +795,17 @@ section("presentation: config shape");
   ok(["pixelate", "cutout", "none"].includes(p.mode), `mode is a known pass (${p.mode})`);
   ok(p.pixelate.pixelSize >= 1 && p.pixelate.colorLevels >= 2, "pixelate knobs sane");
   ok(p.pixelate.shadeLift >= 0 && p.pixelate.shadeLift <= 1, "shadeLift in 0..1");
+  const sh = p.spriteShade;
+  ok(sh.bands >= 2 && sh.bands <= 8, `sprite bands sane (${sh.bands})`);
+  ok(sh.shadeFloor > 0 && sh.shadeFloor < 1, "shadeFloor in 0..1");
+  ok(sh.inkLo < sh.inkHi, "ink ramp is ordered");
+  ok(sh.shadowTint.length === 3 && sh.lightTint.length === 3, "tints are 3-vectors");
+  ok(sh.inkBoost >= 1, "inkBoost never washes the marks toward the skin");
+  ok(sh.warmLo < sh.warmHi, "warm window is ordered");
+  const sk = rigConfig.shiny.sparkle;
+  ok(sk.ringCount > 0 && sk.heroCount > 0, "the burst has a ring and a hero star");
+  ok(sk.ringOuterPx > sk.ringInnerPx, "the ring travels outward");
+  ok(sk.flashPeak > 0 && sk.flashPeak <= 1, "flashPeak in 0..1");
   ok(p.cutout.edgeLo < p.cutout.edgeHi, "cutout edge window is ordered");
   ok(p.cutout.edgeSoftPx > 0, "cutout has a real feather radius");
   ok(rigConfig.lighting.keyOffset.length === 3, "key offset is a 3-vector");

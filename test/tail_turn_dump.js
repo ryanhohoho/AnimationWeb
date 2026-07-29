@@ -1,8 +1,13 @@
 // tail_turn_dump.js  (diagnostic visual)
-// runs the SAME hard-turn scenario twice -- once with the base cone effectively
-// OFF (old behaviour) and once with the shipped value -- and dumps the tail
-// centerline (screen x/y) plus the body's rigid base direction at matched
-// instants, so tools/plot_turn.py can draw a before/after filmstrip.
+// runs the SAME hard-turn scenario twice -- once with the CURVATURE LIMIT
+// effectively off (a 179 deg limit, i.e. no limit) and once with the shipped
+// values -- and dumps the tail centerline (screen x/y) plus the body's rigid
+// base direction at matched instants, so tools/plot_turn.py can draw a
+// before/after filmstrip.
+//
+// v4.2: the muscle cone is gone with the XPBD rod. what is toggled now is the
+// CURVATURE LIMIT (maxBendBaseDeg -> maxBendTipDeg), the strand's one remaining
+// hard constraint, so "off" opens both ends of it.
 
 import * as THREE from "three";
 import { writeFileSync } from "node:fs";
@@ -21,9 +26,12 @@ import { createTailChain } from "../src/engine/pose/tailChain.js";
 
 const glb = await loadGlbHeadless(new URL("../src/assets/mew.glb", import.meta.url));
 
-function run(rootLimitDeg) {
+function run(bendDeg) {
   const cfg = JSON.parse(JSON.stringify(rigConfig));
-  cfg.tail.rootAngleLimitDeg = rootLimitDeg;
+  if (bendDeg !== null) {
+    cfg.tail.maxBendBaseDeg = bendDeg;
+    cfg.tail.maxBendTipDeg = bendDeg;
+  }
   const world = createWorld({ headless: true, seed: 321 });
   world.viewport = { w: 1280, h: 800, dpr: 1 };
   world.docSize = { w: 1280, h: 2400 };
@@ -79,6 +87,6 @@ function run(rootLimitDeg) {
   return frames;
 }
 
-const out = { off: run(179), on: run(rigConfig.tail.rootAngleLimitDeg), onLimit: rigConfig.tail.rootAngleLimitDeg };
+const out = { off: run(179), on: run(null), onLimit: rigConfig.tail.maxBendBaseDeg };
 writeFileSync(new URL("../turn_dump.json", import.meta.url), JSON.stringify(out));
 console.log(`dumped ${out.on.length} matched frames per config (off vs ${out.onLimit} deg)`);

@@ -15,7 +15,13 @@ dist/
 /mew.glb
 /motion_dump.json
 /turn_dump.json
+/pose_frames.json
+/tools/_rig.npy
 
 # OS / editor cruft
 .DS_Store
 Thumbs.db
+
+# Python bytecode
+__pycache__/
+*.pyc

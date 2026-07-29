@@ -8,6 +8,7 @@
 
 import * as THREE from "three";
 import { GLSL_LINEAR_TO_SRGB } from "./presentMath.js";
+import { INK_ALPHA } from "./spriteShade.js";
 
 const VERT = /* glsl */ `
   varying vec2 vUv;
@@ -25,6 +26,7 @@ const FRAG = /* glsl */ `
   uniform float outlineOn;
   uniform float lift;
   uniform float bandLuma;
+  uniform float inkGate;
   varying vec2 vUv;
 
   ${GLSL_LINEAR_TO_SRGB}
@@ -49,6 +51,18 @@ const FRAG = /* glsl */ `
     // default framebuffer, and a raw ShaderMaterial never gets the encode
     // injected). do it here or the whole character comes out gamma-dark.
     vec3 s = linearToSrgb(c.rgb);
+
+    // PAINTED ART PASSES THROUGH UNTOUCHED. fx/spriteShade.js writes this alpha
+    // on the eyes and the blush; they are a decal a dozen pixels across, and
+    // lifting their darks toward the light side then re-banding them is what
+    // was washing a navy eye out into the pink around it. the character's skin
+    // writes alpha 1 and gets the full pass; a blended fx pixel that happens to
+    // land under the gate skips it too, which is what you want on a glow anyway.
+    if (c.a < inkGate) {
+      gl_FragColor = vec4(s, 1.0);
+      return;
+    }
+
     // shade lift: pull the darks up toward the light side. flattens the form
     // without touching the light rig
     s = mix(s, sqrt(s), lift);
@@ -90,7 +104,10 @@ export function createPixelate({ renderer, config }) {
     outlineColor: { value: new THREE.Color(cfg.outlineColor) },
     outlineOn: { value: cfg.outline ? 1 : 0 },
     lift: { value: cfg.shadeLift ?? 0 },
-    bandLuma: { value: (cfg.bandLuma ?? true) ? 1 : 0 }
+    bandLuma: { value: (cfg.bandLuma ?? true) ? 1 : 0 },
+    // halfway between the ink flag and solid, so it cannot be confused with
+    // either. see fx/spriteShade.js -> INK_ALPHA.
+    inkGate: { value: (INK_ALPHA + 1) / 2 }
   };
   const blitScene = new THREE.Scene();
   const blitCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);

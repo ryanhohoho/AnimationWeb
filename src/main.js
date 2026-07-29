@@ -22,6 +22,8 @@ import { createFaceMorphs } from "./engine/pose/faceMorphs.js";
 import { createBeamFx } from "./engine/fx/beam.js";
 import { createDestruction } from "./engine/fx/destruction.js";
 import { createPresentation } from "./engine/fx/presentation.js";
+import { applySpriteShade } from "./engine/fx/spriteShade.js";
+import { createShinySparkle } from "./engine/fx/shinySparkle.js";
 import { lerp } from "./utils/math.js";
 
 const canvas = document.getElementById("mew-canvas");
@@ -108,6 +110,15 @@ const view = {
 // cfg.presentation.mode. purely visual, one common interface (see fx/presentation.js)
 const present = createPresentation({ renderer, config: cfg.presentation });
 
+// SHINY. rolled once per page load, like an encounter. deliberately NOT on the
+// world's seeded rng: that is seeded so the wander is reproducible for the
+// headless tests, and a reproducible shiny roll would mean every load is the
+// same one. ?shiny=1 / ?shiny=0 overrides it for previewing.
+const shinyParam = new URLSearchParams(location.search).get("shiny");
+const isShiny = shinyParam === null
+  ? Math.random() < cfg.shiny.chance
+  : shinyParam !== "0";
+
 function updateViewport() {
   const { w, h, dpr } = world.viewport;
   // each pass decides what resolution it wants to be fed
@@ -158,6 +169,19 @@ new GLTFLoader().load(mewUrl, (gltf) => {
   holder.add(model);
   rig = buildRig(model, cfg.boneRoles);
   fitModel();
+  // cut the light rig's smooth falloff into flat sprite sections, and take the
+  // painted eyes and blush out of the shading entirely (fx/spriteShade.js)
+  const shade = applySpriteShade(model, {
+    config: cfg.presentation.spriteShade,
+    skinHex: cfg.skinHex,
+    blushHex: cfg.shiny.blushHex,
+    renderer
+  });
+  shadeFx = shade;
+  if (isShiny) {
+    shade.setVariant(cfg.shiny);
+    console.log("%c[mew] ✨ shiny!", "color:#4aa8d8;font-weight:bold");
+  }
 
   ctxBase = {
     rig, body, brain, world, view,
@@ -225,12 +249,25 @@ new GLTFLoader().load(mewUrl, (gltf) => {
     beamFx.fire(origin, dir, res.len);
   });
 
+  // THE SPAWN. the sparkle hangs off characterRoot, which carries position and
+  // nothing else, so the burst follows mew around without inheriting the body's
+  // rotation or the model's scale and its sizes stay honest screen pixels.
+  sparkle = createShinySparkle({
+    parent: characterRoot, config: cfg.shiny.sparkle, view
+  });
+  if (isShiny) sparkle.burst((Math.random() * 0xffffffff) >>> 0);
+
   // debug handle for devtools + automated checks
-  window.__AW__ = { rig, world, body, brain, view, poser, face, skinned, THREE };
+  window.__AW__ = {
+    rig, world, body, brain, view, poser, face, skinned, shade, sparkle,
+    isShiny, THREE
+  };
   loop.start();
 }, undefined, (err) => console.error("[mew] failed to load model:", err));
 
 let beamFx = null;
+let sparkle = null;
+let shadeFx = null;
 
 function fitModel() {
   if (!rig) return;
@@ -275,6 +312,9 @@ const loop = createLoop({
     characterRoot.position.set(view.toWorldX(px), view.toWorldY(py), 0);
     aimKey();
     updateDocFxGroup();
+    // the sparkle drives the material flash: one clock, so the stars and the
+    // blow-out can never drift apart
+    if (sparkle && sparkle.running) shadeFx.setFlash(sparkle.update(dt));
     if (beamFx) beamFx.update(dt, simTime);
     present.render(scene, camera, { dt, scrollY: window.scrollY });
   }
