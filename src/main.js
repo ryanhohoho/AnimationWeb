@@ -20,14 +20,22 @@ import { createEarSprings } from "./engine/pose/earSprings.js";
 import { createTailChain } from "./engine/pose/tailChain.js";
 import { createFaceMorphs } from "./engine/pose/faceMorphs.js";
 import { createBeamFx } from "./engine/fx/beam.js";
-import { createDestruction } from "./engine/fx/destruction.js";
+import { beamLength } from "./engine/fx/beamGeometry.js";
 import { createPresentation } from "./engine/fx/presentation.js";
 import { applySpriteShade } from "./engine/fx/spriteShade.js";
 import { createStarBurst } from "./engine/fx/starBurst.js";
 import { createFaceOverlay } from "./engine/fx/faceOverlay.js";
 import { lerp } from "./utils/math.js";
 
-const canvas = document.getElementById("mew-canvas");
+// ONE canvas for the whole session (index.html explains the layer contract).
+// It is never recreated -- not on navigation, not on resize -- because every
+// WebGLRenderer that gets thrown away leaks a GPU context that the browser will
+// only reclaim by killing an older one.
+const canvas = document.getElementById("stage");
+// the document starts with its text painted normally, so a browser with no JS
+// or no WebGL shows a plain readable page. We only take painting over once we
+// know we can actually paint.
+document.body.classList.remove("no-paint");
 const world = createWorld({ seed: 20260719 });
 
 // --- three setup -------------------------------------------------------------
@@ -284,13 +292,17 @@ new GLTFLoader().load(mewUrl, (gltf) => {
     return { x: m.x + dir.x * lead, y: m.y + dir.y * lead };
   }
   beamFx = createBeamFx({ docFxGroup, config: cfg.attack, getMouthDoc: mouthDoc });
-  const destruction = createDestruction({ world, config: cfg.attack });
 
   world.on("beamCharge", () => beamFx.startCharge());
   world.on("beamFire", ({ dir }) => {
     const origin = beamOriginDoc(dir);
-    const res = destruction.fire(origin, dir);
-    beamFx.fire(origin, dir, res.len);
+    // THE BEAM NO LONGER DESTROYS ANYTHING. fx/destruction.js -- which carved
+    // permanent alpha masks into DOM elements -- is deleted; the beam now
+    // DISPLACES the ASCII type field instead and the type drifts home
+    // afterwards (DESIGN_BIBLE.md 6.4, IMPLEMENTATION_PLAN.md phase 5). All
+    // that is left here is how far the shot reaches, which is pure geometry.
+    // The type layer listens for `beamFire` itself; nothing needs wiring here.
+    beamFx.fire(origin, dir, beamLength(origin, dir, world.docSize));
   });
 
   // THE SPAWN. the sparkle hangs off characterRoot, which carries position and

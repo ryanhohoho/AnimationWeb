@@ -1,302 +1,339 @@
-> **v4 NOTE (model swap).** Everything below about the model, the rig and
-> `tools/build_mew.py` describes the retired v3.7 procedural character. The
-> shipped model is now the meshy Mew, built by `tools/rig_mew.py` and gated by
-> `tools/check_mew.py`; the hand joints are gone and there are no morph targets.
-> See the "Model / asset pipeline (v4)" section of HANDOFF.md, which is current.
-> The engine/behaviour sections of this plan are still accurate.
+# IMPLEMENTATION PLAN — the ASCII portfolio
 
-# AnimationWeb Implementation Plan
+Companion to `DESIGN_BIBLE.md` (the look, pinned to numbers) and `HANDOFF.md`
+(the Mew engine, its history and its paid-for pitfalls). The Mew rig's own plan
+is archived at `IMPLEMENTATION_PLAN_MEW.md`; it is finished.
 
-Portfolio site with a floating low-poly Mew-like character, procedurally animated in Three.js. Character moves on a 2D plane (viewport X/Y, no depth translation) but rotates freely in 3D. Physics-driven, bumps into page content, reacts to the cursor.
+**If this plan and the design bible disagree, the bible wins.**
 
-## Locked decisions
+---
 
-| Decision | Choice |
-|---|---|
-| Stack | Vite + Three.js, vanilla ES modules, no framework |
-| Movement space | DOCUMENT coordinates (v2). Scrolling never drags the character; render = doc pos minus scrollY |
-| Colliders | DOM elements marked `data-collider` + document bounds. A* pathfinding routes around them |
-| Interactions | Glance at cursor, dodge fast cursor, poke on click. Seek the cursor when > ~half a page away (v2) |
-| Locomotion model | SEA OTTER swimming / mew flight (v3): LONG AXIS aligns to travel head-first (streamlined dive), belly-in banking on curved paths, spine-to-tail undulation, tail streams straight behind at speed. This is the core motion reference |
-| Loop-de-loop | A flown circle (v3): flourish state steers velocity through 2π; belly faces the circle center via curvature banking. Never an in-place spin |
-| Click interaction | PETTING -> hyper beam (v3): clean click charges 1.5s (brace folds head-first onto the cursor axis from `braceStartS`), then a stationary beam permanently disintegrates elements (canvas mask carving; cinders removed by owner decision). Press + drag = carry, release = fling (v3.4) |
-| Model | Custom procedural low-poly Mew (original mew.glb DISREGARDED: broken skin, no tail bones) |
-| Presentation | SWAPPABLE PASS (v3.6), picked by `rigConfig.presentation.mode`: `"pixelate"` retro sprite (low-res, nearest upscale, luma-banded shades, dark outline), `"cutout"` Mew as a hole in the page onto a stationary png/gif, or `"none"` raw 3D. All behind one interface (fx/presentation.js). Purely visual; animation untouched. Character material/aesthetic details beyond this remain the owner's |
-| Lighting | `rigConfig.lighting`: ambient-dominant pink-family hemisphere + a viewer-relative key re-aimed from the camera at the character each frame. Target look is bright pastel pink and flat/sticker-like, not a moody 3D render |
-| Visual testing | Owner tests in his own browser and reports back. Claude verifies headlessly (tests + motion dumps) |
-| Future model swap | Must require edits to `src/config/rigConfig.js` only |
+## 0. Where the repo already is
 
-## Hard constraints (from project owner)
+Done in the handoff pass, before any of the phases below:
 
-1. Motion must look natural, never stiff. If it looks wrong, find the underlying cause. No surface-level parameter fiddling to mask structural problems. Recognize when an issue actually is surface-level before tuning.
-2. Tail flows with weight/muscle, driven by body velocity. Never flails.
-3. Head/tail behave like a curious creature. Head can look at cursor.
-4. Character floats/idles when not traveling. Idle includes drift and tail motion.
-5. Hands/feet placement during flight follows the mid-flight Mew reference (arms tucked under chest, feet trailing behind).
-6. Code comments: relaxed tone, full lowercase (except abbreviations). Never rewrite whole files when editing, patch the existing file.
+- **The placeholder site is deleted.** `index.html` is now a documented
+  scaffold that establishes the layer contract: `#doc` (real, transparent,
+  accessible DOM = layout + a11y) under `#stage` (one canvas = paint). The old
+  pink/lavender cards, nav, hero and footer are gone.
+- **`src/engine/fx/destruction.js` is deleted.** The beam no longer carves DOM
+  elements. `main.js` now computes only the beam's reach with the pure, already
+  tested `beamGeometry.beamLength`, and leaves an explicit seam for phase 5.
+- The canvas id moved `#mew-canvas` → `#stage`, and `main.js` clears the
+  `no-paint` fallback class once WebGL is confirmed.
+- `npm test` → **661/661**. `python3 tools/check_mew.py` → all pass. Mew still
+  flies, blinks, flails and fires on a bare page. Verified in-browser.
 
-## Status
+**Do not touch `src/engine/**` except where a phase says so.** It is calibrated,
+it is tested, and `HANDOFF.md` lists what it cost to get there.
 
-- [x] `tools/build_mew.py`: Blender headless script builds mesh + rig + weights + GLB (+ eye geometry)
-- [x] `src/assets/mew.glb` / `public/models/mew.glb`: 20 joints, all weights normalized (verified)
-- [x] v1: full engine (physics, behavior, all pose layers), 400+ headless checks, browser-verified (wander, dodge, poke, tail flow)
-- [x] v2: document-space movement, A* pathfinding, cursor-seek/offscreen-return, sea-otter free orientation + undulation
-- [x] v3.5: retro pixel-art presentation pass
-- [x] v3.6: color-space fix (linear->sRGB encode in the blit; luma-banded posterization), lighting rework (flat pastel pink, viewer-relative key), `cutout` presentation pass + mode toggle
-- [x] v3.7: model rebuilt from scratch (all-quad procedural pipeline, no Blender), painted-eye texture + UVs, blink/squint/smile morphs, faceMorphs layer
-- [ ] Owner feedback rounds on motion feel and the new silhouette
+---
 
-## Model asset spec (already built, for reference)
+## 1. Target module layout
 
-Blender 3.6 headless, exported glTF y-up. Character faces +Z in three.js, +Y up. Height ~1.56 units. Tail extends behind (-Z), arc length 1.68.
-
-Joint hierarchy:
-```
-root
-├─ spine ─ chest ─ neck ─ head ─ ear.L, ear.R
-│           ├─ arm.L ─ hand.L
-│           └─ arm.R ─ hand.R
-├─ foot.L, foot.R          (no leg bones, per design)
-└─ tail.001 ... tail.007   (chain, connected)
-```
-Weights: deterministic per part island. Body graded root→spine→chest by height. Ears blend into head at base. Arms blend into chest at shoulder. Tail verts smoothstep-blended between 2 nearest chain bones by arc-length parameter. Rebuild with `blender -b --python tools/build_mew.py -- --out public/models/mew.glb`.
-
-## Architecture
+New code is additive. Nothing below reaches into the rig.
 
 ```
-index.html                  demo portfolio page, sections marked data-collider
 src/
-  main.js                   boot: renderer, GLB load, rig build, loop wiring
-  config/rigConfig.js       bone role map + ALL tuning constants (single source)
-  engine/
-    loop.js                 fixed-step accumulator (120 Hz sim), render interpolation
-    world.js                shared state + event bus (pointer, scroll, viewport, colliders)
-    physics/body2d.js       point-mass: integrate, drag, impulses, max speed
-    physics/colliders.js    DOM rect measure (document space), circle vs rect resolve
-    behavior/brain.js       FSM: hover / cruise / seek / startle / recover + path following
-    behavior/pathfinder.js  document occupancy grid + A* + line-of-sight smoothing
-    pose/quatSpring.js      damped rotational spring (angular velocity state)
-    fx/beamGeometry.js      pure beam math: clipping, corridors (headless)
-    fx/destruction.js       canvas alpha-mask damage on dom elements, permanent
-    fx/beam.js              charge glow + layered additive beam planes
-    fx/presentation.js      picks the presentation pass from config.mode,
-                            one shared interface for main.js
-    fx/presentMath.js       pure: linear->sRGB curve (+GLSL mirror), cover-fit
-    fx/pixelate.js          retro sprite pass: low-res target, nearest upscale,
-                            sRGB encode, luma-banded posterize, alpha-edge
-                            outline, optional grid snap
-    fx/cutout.js            silhouette-as-a-window pass: scene alpha masks a
-                            stationary png/gif sampled in screen space
-    pose/rig.js             load-time: bones by role, capture rest quats/positions
-    pose/poser.js           per-render-frame: run pose layers in fixed order
-    pose/bodyPose.js        orientation from velocity (yaw/bank/pitch), breathing, squash
-    pose/limbPose.js        arm/hand/foot pose targets blended by state + speed
-    pose/headLook.js        cursor look-at, saccades, curiosity noise
-    pose/earSprings.js      ears react to head angular velocity, startle flatten
-    pose/tailChain.js       particle chain sim -> bone quaternions
-    utils/math.js           expDamp, damped springs, noise1d, clamp, tanh soft limit, quat helpers
-test/
-  sim.test.js               headless loop tests (node, no rendering)
+  main.js                boot; owns THE renderer, THE rAF, the dispose registry
+  config/
+    rigConfig.js         Mew. unchanged, except presentation.mode gains "ascii"
+    siteConfig.js    NEW every tunable from the design bible, and nothing else
+  engine/                Mew. unchanged (one addition: world.off, see 2.1)
+  type/              NEW the ASCII layer
+    grid.js              the lattice: breakpoints, cell size, doc<->cell maps
+    atlas.js             loads the baked atlas texture + ramp table
+    match.js             6-D nearest neighbour + quantized cache  (PURE)
+    field.js             cell store, awake set, DRIFT/GATHER/SCATTER/SETTLE
+    fieldRenderer.js     instanced draw: 2 calls (opaque cells, inverted cells)
+    words.js             text -> coverage bitmap -> slots               (PURE-ish)
+    portrait.js          baked frame playback
+  site/              NEW
+    router.js            SPA routes, prefetch, same-document view transitions
+    content/*.js         page content as DATA (not markup)
+    dom.js               builds the semantic DOM from content data
+  utils/
+    math.js              unchanged. Spring / expDamp / noise are reused as-is
+    lifecycle.js     NEW the disposal registry (see §6)
 tools/
-  build_mew.py              model pipeline (done)
+  glyphatlas.py      NEW bakes the atlas PNG + ramp JSON + 6-D vectors
+  portrait.py        NEW video/photo -> packed delta-encoded cell frames
+  check_type.py      NEW the gate for the above, in the spirit of check_mew.py
+test/
+  sim.test.js          existing, 661 checks. must stay green at every phase
+  type.test.js     NEW headless: grid, match, field physics, leak assertions
 ```
 
-### Frame pipeline
+---
 
-1. `loop.js` accumulates real dt, clamps spikes (max 100 ms), steps sim at fixed `1/120 s`:
-   brain.step → body2d.step → colliders.resolve (emits `bump` events)
-2. Render frame: interpolate body position between last two sim states, then pose layers in order:
-   bodyPose → limbPose → headLook → earSprings → tailChain
-3. tailChain runs its own substeps inside the render frame using the same fixed-dt accumulator pattern (stability).
+## 2. Phases
 
-### Coordinate mapping
+Each phase states its **deliverable**, its **acceptance test**, and whether it
+is **serial** (one agent holding the whole picture) or **parallel** (safe to
+delegate). Model assignment lives in `DELEGATION.md`, not here.
 
-Perspective camera (fov 35°), character locked to plane z=0. `worldPerPx = 2 * tan(fov/2) * camDist / viewportHeightPx`. All physics in viewport px; conversion only at render. Canvas is a full-viewport `position: fixed` overlay, `pointer-events: none` (click detection via manual raycast on document listeners).
+### Phase 0 — Foundations · SERIAL
 
-### Module contracts (build to these so phases integrate)
+1. `src/config/siteConfig.js` — transcribe every number in the design bible.
+   Grid breakpoints, colours, ramp names, all four motion verbs' rates, the
+   performance budget, the fringe rule. Same commenting culture as
+   `rigConfig.js`: say *why* a number is that number.
+2. `src/utils/lifecycle.js` — the disposal registry (§6).
+3. **Fix `world.on()`**: it currently has no `off()`. In a single-page life that
+   is harmless; in an SPA every route swap adds listeners that are never
+   removed, and they hold closures over dead DOM. Add `off(type, fn)`, make
+   `on()` return an unsubscribe function, and add `once()`. Update
+   `test/sim.test.js` to assert a removed listener stops firing and that the
+   listener map does not grow across 1000 subscribe/unsubscribe cycles.
+4. `src/type/grid.js` — pure. Viewport → cell size → grid dims → doc↔cell maps.
 
-```js
-// world.js
-world = {
-  viewport: { w, h, dpr },
-  pointer:  { pos, vel, speed, active },        // px, px/s, smoothed
-  scroll:   { y, vel },                          // px, px/s
-  colliders: [ { rect: {x,y,w,h}, el } ],        // viewport-space px
-  events:   tiny bus: on(type, fn), emit(type, payload)
-             // 'bump' {normal:{x,y}, speed}, 'startle' {dir, intensity}, 'poke' {point}
-}
-// body2d.js
-body = { pos, vel, radius, addForce(f), addImpulse(i), step(dt) }
-// brain.js
-brain = { state: 'hover'|'cruise'|'startle'|'recover', agitation: 0..1, step(dt) }
-// rig.js
-rig = { bones: { root, spine, chest, neck, head, earL, earR,
-                 armL, handL, armR, handR, footL, footR, tail: [7] },
-        rest:  { quats, positions, tailDirsWorld, tailPointsWorld } }
-// pose layer signature
-layer.update(ctx)  // ctx = { rig, body, brain, world, dt, time }
+**Acceptance:** `type.test.js` proves cell size is integer at every breakpoint,
+that `cellToDoc(docToCell(p)) ` round-trips within one cell, and that the grid
+never exceeds 24 000 cells at any viewport up to 2560 px. `sim.test.js` green.
+
+### Phase 1 — The glyph atlas pipeline · PARALLEL
+
+`tools/glyphatlas.py`. Renders IBM Plex Mono at 3 weights × the ramp set into a
+single 2048² R8 PNG, and emits `src/assets/ramp.json`:
+
+```json
+{ "cell": [7,12], "atlas": [2048,2048], "glyphs": [
+  { "ch": "J", "w": 600, "uv": [..], "cov": 0.41, "v6": [..6 floats..] }, ... ] }
 ```
 
-## Animation math requirements (anti-stiffness rules)
+`v6` is the 6-D shape vector: coverage under six staggered sampling discs
+(top-L, top-R, mid-L, mid-R, bottom-L, bottom-R), each dimension normalised so
+its max across the set is 1. This is what makes the field look *drawn* rather
+than halftoned — see design bible §3.4.
 
-These are structural. Violating them is what makes motion stiff.
+**Acceptance** (`tools/check_type.py`): every ramp glyph present; coverage
+spans ≥ 0.02 to ≥ 0.55; no two glyphs closer than `epsilon` in 6-D at the same
+weight (confusables are wasted table space); atlas ≤ 2048² and ≤ 1.5 MB;
+renders a contact sheet to `tools/preview/ramp.png` so a regression is visible.
 
-1. Never `lerp(a, b, 0.1)` per frame. Frame-rate independent only:
-   `expDamp(current, target, rate, dt) = target + (current-target) * exp(-rate*dt)`
-   or a critically damped spring (tracks velocity, gives overshoot/settle):
-   ```
-   // semi-implicit critically damped spring
-   v += (omega^2 * (target - x) - 2 * omega * v) * dt;  x += v * dt
-   ```
-2. Springs everywhere a target changes discontinuously (look target, pose blend, squash).
-3. Layered noise for idle, not bare sines: `noise1d(t*f1)*a1 + noise1d(t*f2)*a2` with irrational frequency ratios. Use a smooth value-noise (hash + cubic interp), seeded.
-4. Follow-through and drag: hands/feet/ears lag body acceleration (spring on offset driven by `-accel * k`).
-5. Anticipation: head yaw leads body yaw by ~150-250 ms (head look target includes velocity prediction; body orientation springs are slower than head's).
-6. Asymmetric timing: startle attack fast (spring omega ~18), recovery slow (omega ~2.5).
-7. Soft limits via `tanh(x/limit)*limit`, never hard clamps on angles that a spring feeds.
-8. All idle amplitudes and frequencies scale with `brain.agitation` and inverse with speed (fast travel damps idle wiggle).
+### Phase 2 — Matching · PARALLEL
 
-### Body pose (bodyPose.js) — sea otter locomotion (v2)
+`src/type/match.js`, pure and headless. Nearest neighbour in 6-D with a
+quantized cache (5 bits/axis, packed to one integer key). Must be a **numeric
+mirror** of the Python, the same way `fx/presentMath.js` mirrors its shaders.
 
-The body is FREE in 3D. Orientation runs through a quaternion damped spring
-(`quatSpring.js`, tracks angular velocity → real rotational inertia, shortest-arc
-turns, flips allowed). Never three clamped euler channels.
+**Acceptance:** for 500 random vectors, JS and Python pick the same glyph ≥ 99%
+of the time and are never more than one rank apart. Cache hit rate > 90% on a
+real image. Lookup ≤ 0.5 µs warm.
 
-- Forward target: camera-facing (+ small yaw bias) at rest, blending to the full
-  travel direction between `alignLoPx`..`alignHiPx` speed. Swimming sideways/down
-  shows the body in profile, like an otter.
-- Up hint: world up, switching to camera-facing when travel is near vertical
-  (no gimbal snap).
-- Roll about the long axis = bank (lateral accel + yaw rate, soft-limit ~55°) +
-  lazy cruise corkscrew sine + occasional full 2π barrel roll (spring-unwound,
-  random while cruising, 50% chance on dodges).
-- Undulation: pitch wave traveling spine → tail (`swimPhase` shared with the
-  tail sim so it's ONE continuous wave), amplitude scales with alignment.
-- Breathing: chest scale 1 ± 0.016 at 0.22 Hz (rate * (1 + agitation)).
-- Hover bob: root position offset, 2-octave noise, ±6 px.
-- Squash: on bump event, scale along impact normal, one overshoot then settle.
-- Pose layers (head/limbs/ears) apply their deltas conjugated by `shared.bodyQuat`
-  so they stay body-relative at any orientation, including mid-roll.
+### Phase 3 — The field · SERIAL · this is the heart
 
-### Tail (tailChain.js) — the centerpiece
+`src/type/field.js` + `fieldRenderer.js`.
 
-Particle chain, NOT per-bone sine rotation (per-bone sines are the classic flail look).
+- One `InstancedBufferGeometry`, one quad, per-instance: cell xy, glyph index,
+  weight, ink index, inverted flag.
+- **Two draw calls total**: opaque cells, then inverted cells.
+- **Sleeping.** A cell at rest is not integrated and its buffer slice is not
+  re-uploaded. Wake on disturbance; sleep when `|displacement| < 0.05 cell` and
+  `|velocity| < 0.5 px/s`. Partial uploads via `addUpdateRange` over the awake
+  span. This is the single biggest performance decision in the project.
+- DRIFT with per-cell Poisson glyph re-roll (mean 2.5 s), frozen jitter.
+- Domain-warped density field so the page has weather (bible §4.2).
+- Adaptive frame pacing: 30 fps idle, 60 fps while the awake set is non-empty.
 
-- 8 particles: P0 pinned to tail attach point (root bone world position each frame), P1..P7 free. Rest lengths from rig rest pose.
-- Verlet integration, drag ~2.5/s, tiny gravity (reads as weight), max velocity clamp.
-- Shape memory: force pulling each particle toward the REST CURVE transformed into the character's current root frame. Stiffness ramps base→tip: 6.0 → 0.8 (this is the "muscle"). This keeps the S-curl identity while allowing flow.
-- Idle traveling wave: force perpendicular to each segment, `sin(time*freq - index*phaseStep)`, phaseStep ~0.9 rad, amplitude scales with agitation and inverse speed. Traveling phase = flow; identical phase = flail. Never apply the wave as direct rotation.
-- Velocity coupling: root motion enters through P0 pinning; additionally inject `-bodyAccel * dragCoeff` on all particles (follow-through when the body lunges).
-- Constraints per substep: 3 iterations distance constraints, then soft angle limit between consecutive segments (~40°, blend back don't snap).
-- Bone mapping: for tail bone k with rest world direction `rd_k` and sim direction `sd_k = normalize(P[k+1]-P[k])` (both in root-relative frame):
-  `worldQuat_k = quatFromUnitVectors(rd_k, sd_k) * restWorldQuat_k`, then `local = parentWorld⁻¹ * worldQuat_k`. Apply with slight expDamp (rate ~30) to kill sub-pixel jitter.
+**Acceptance:** 20 000 cells; at rest the field's per-frame CPU is < 0.3 ms and
+zero bytes are uploaded; `renderer.info.memory` is flat across 60 s;
+`renderer.info.render.calls` for the field is exactly 2. Mean coverage lands in
+12–22%. Visual: a still frame, greyscale, thumbnail — is it a good texture?
 
-### Head look (headLook.js)
+### Phase 4 — Words, GATHER, links · SERIAL
 
-- Look target: cursor position on the z=0 plane, plus `pointerVel * 0.12 s` prediction.
-- Convert to yaw/pitch error in chest frame, soft-limit ±55° yaw, ±35° pitch.
-- Saccade gating: when target moved > 8° from current aim, wait 80-200 ms (random), then retarget the spring. Spring omega ~7 while curious, ~3 when calm. This gives the "notice" feel instead of servo tracking.
-- Cursor inactive > 3 s: curiosity mode. Aim wanders via noise between: page interest points (collider corners), travel direction, occasional slow blink-like ear/head dip. Weight toward travel direction while cruising.
-- Neck takes 30% of the rotation, head 70%.
+`src/type/words.js` + the resolve behaviour + `site/dom.js`.
 
-### Ears (earSprings.js)
+- text → coverage bitmap (one cached offscreen 2D canvas) → slots
+- the four legibility rules from bible §4.4, **enforced in code**: assert
+  minimum stem width 2 cells and at least one bare counter cell, and fall back
+  to VOICE rendering with a console warning when a word cannot satisfy them at
+  the current breakpoint
+- GATHER driven by pointer distance *and* by `:focus-visible` on the real link
+- semantic DOM built from content data; `color: transparent`, never
+  `aria-hidden`, never `visibility: hidden`
 
-- Each ear: 2D angular spring (omega ~14, zeta ~0.35, underdamped) driven by head angular velocity (follow-through) + noise micro-twitches (Poisson, mean interval 4 s, small amplitude).
-- Startle: both ears flatten back (target offset), spring there fast, recover slow.
+**Acceptance:** every nav word resolves legibly at all five breakpoints
+(screenshot matrix). Keyboard tab order works and focus resolves the word.
+Screen-reader pass: the page reads as an ordinary document.
 
-### Limbs (limbPose.js)
+### Phase 5 — Beam displacement · SERIAL · small
 
-- Two pose sets (from mid-flight reference): HOVER (arms hang relaxed slightly forward, hands soft, feet dangle with slight outward splay) and CRUISE (arms tucked under chest, hands curled in, feet trailing back, toes pointed).
-- Blend factor = smoothstep(speed, 120, 420 px/s), then spring (omega ~3) so transitions ease.
-- Per-limb noise drift (independent seeds, ±4°, ~0.2 Hz) so limbs never freeze.
-- Follow-through: limb targets offset by `-accel * k` through soft springs (hands lag more than feet).
-- Startle: limbs pull inward briefly.
+Subscribe the field to `beamFire`. SCATTER + SETTLE per bible §6.4. Also wire
+the soft clearing Mew pushes through the field (§6.5) — one distance test in
+the pass that already runs.
 
-### Behavior (brain.js) — v2
+**Acceptance:** firing across a dense heading displaces and fully restores it;
+after 4 s every cell is asleep again and the awake set is empty. No state
+persists — fire twice in the same place and the second is identical to the
+first.
 
-- `hover`: drift around an anchor via noise force. Every 4-10 s pick an interest
-  point sampled inside the CURRENT viewport band (doc coords), rejected if the
-  pathfinder grid says it's blocked. → `cruise`.
-- `cruise`: follow an A* route to the interest point (LOS-smoothed waypoints,
-  seek-with-arrive at the last one). Replan if the route is stale, the target
-  moved, a bump happened, or progress stalls > 1.2 s.
-- `seek` (v2): entered when the cursor is farther than `seekTriggerFactor *
-  max(vw, vh)` (~half a page), or the character has been offscreen > 4 s with no
-  cursor guidance. The goal provider ("cursor" vs "offscreen" = viewport center)
-  is LATCHED at entry — re-electing per step lets the goals fight and freeze the
-  character at the trigger shell. Exits with hysteresis (`seekStopPx`, or safely
-  inside the viewport band) → hover there.
-- `startle`: same triggers as v1 (fast closing cursor / hard bump / poke).
-  Impulse away + lateral randomness, agitation → 1. → `recover` → `hover`.
-- Whisker avoidance: short-range repulsion from collider surfaces while
-  traveling, so spring overshoot doesn't graze walls the path cleared.
-- Ouch: bumps kick a flinch spring in limbPose (quick tuck) + squash + agitation.
-- Agitation (0..1) is a global multiplier read by every pose layer.
+### Phase 6 — Router and transitions · PARALLEL (tightly specified)
 
-### Pathfinding (pathfinder.js) — v2
+`src/site/router.js`. SPA, History API, one persistent canvas.
 
-Occupancy grid over the whole document (cell ~36 px), collider rects inflated by
-body radius + pad. 8-connected A* with corner-cut prevention, then greedy
-line-of-sight smoothing. Blocked start/goal snap to the nearest free cell.
-Rebuilds lazily when `world.collidersVersion` bumps or the doc resizes.
-Path following steers at the furthest waypoint with grid LOS from the body.
+- route modules code-split and prefetched on `requestIdleCallback` + on link
+  `pointerenter`
+- same-document View Transitions API for the DOM layer, with a no-op fallback
+- **the canvas never re-initialises**; a route change is a GATHER re-target
+- scroll restoration, `popstate`, deep links, 404
 
-### Physics (body2d.js + colliders.js) — v2, document space
+**Acceptance:** navigating between all routes 50 times leaves
+`renderer.info.memory` flat, the world's listener map at its initial size, and
+zero detached DOM nodes in a heap snapshot. No white flash, no font reflow.
 
-- Point mass m=1, radius ~66 px, linear drag 1.1/s, quadratic drag small, hard max speed 900 px/s. Position in DOCUMENT pixels.
-- Document bounds: inset 20 px, restitution 0.4 (replaces viewport edges).
-- DOM colliders: `getBoundingClientRect` + scrollY, cached in doc space, remeasured on resize + 500 ms interval (scroll does not move them in doc space). Circle vs rect: closest-point push-out, reflect e=0.35, tangential damp 0.9. `collidersVersion` bumps on real geometry changes so the pathfinder grid rebuilds.
-- Scroll: the character keeps its document position while the viewport slides over it. No scroll shove (v1 behavior removed by design).
+### Phase 7 — Portrait · PARALLEL tooling, SERIAL look pass
 
-## Testing
+`tools/portrait.py` (video/photo → delta-encoded packed frames) and
+`src/type/portrait.js` (playback at 12 fps).
 
-### Headless (test/sim.test.js, plain node, no three.js rendering — import engine modules only; three math classes are fine)
+**Acceptance:** ≤ 200 KB for ~4 s; decode cost < 0.2 ms/frame; the still frame
+holds up against `future-refs/another-reference.jpg` at thumbnail size.
 
-0. v2 additions: pathfinder routes avoid walls and use gaps; blocked targets snap free; QuatSpring converges at 30/120 Hz and survives ~180° turns; seek triggers far away and settles with hysteresis.
-1. No NaN/Infinity anywhere after 60 simulated seconds, multiple seeds.
-2. Frame-rate independence: run at dt=1/30, 1/60, 1/144 with same seed; trajectories qualitatively bounded (positions stay in viewport, no divergence to invalid states).
-3. Tail integrity: segment lengths within 1.5% of rest at all times; no NaN quats.
-4. Smoothness: mean absolute jerk of head yaw and tail tip below threshold; no frame-to-frame angle jumps > 15° except during startle attack.
-5. Collisions: after resolve, penetration < 1 px; energy does not grow (velocity magnitude bounded over time with forces disabled).
-6. Startle triggers exactly on threshold crossings (unit-test the predicate).
+*Blocked on you supplying the clip. Everything else can proceed without it —
+build against a placeholder portrait and swap the asset in.*
 
-### Visual
+### Phase 8 — ASCII Mew pass · SERIAL · optional, deferred
 
-`npm run build:single` produces one self-contained HTML (vite-plugin-singlefile, GLB inlined base64). Open via file:// in Chrome, record short GIFs of: idle hover, cruise + arrive, cursor glance, fast-cursor dodge, click poke, scroll shove, collision bump. Judge against the constraint list. Iterate at the CAUSE level (wrong stiffness model, missing follow-through, phase alignment) not the symptom level.
+`src/engine/fx/asciiPass.js` implementing the existing presentation interface
+(`pixelRatio / snapPx / resize / render / dispose`), plus
+`presentation.asciiPass` config. Flip with `presentation.mode: "ascii"`.
 
-## Milestones
+**Build it, wire it, leave it off.** Bible §7.2 explains the toggle; the whole
+change must remain one string in `rigConfig.js`.
 
-- M1 Scaffold: vite runs, GLB loads, character renders centered, rig roles resolved from rigConfig, resize handled.
-- M2 Physics: drifts, bounces off edges and a test collider, scroll shove works. Headless tests 1, 2, 5 pass.
-- M3 Behavior: wanders between interest points, startle dodge + poke work. Test 6 passes.
-- M4 Secondary motion: all pose layers on. Tests 3, 4 pass.
-- M5 Verified naturalness: GIF review checklist all pass, demo portfolio page content in place.
-- M6 Docs + polish: README, model-swap guide, code cleanup.
+### Phase 9 — Content, polish, performance · SERIAL
 
-### Hyper beam system (v3)
+Real copy for WHO AM I / PROJECTS / CASE STUDIES / MY JOURNEY. Reduced-motion
+path and its on-page toggle. The device matrix (§5). Final pass against the
+bible's §9 acceptance test.
 
-- Flow: `pet` (click on mew) -> brain `charge` (1.5 s planted, gaze locked, shiver
-  ramp, glow + spiral sparks at the mouth) -> `beamFire` event with the direction
-  toward the cursor AT that moment -> `fire` (recoil impulse, beam envelope:
-  0.12 s point-to-full expand, 0.95 s sustain, 0.4 s fade) -> hover + cooldown.
-- Beam visuals (`fx/beam.js`): additive layered planes in doc space -- white
-  core, across-width chroma gradient (magenta -> yellow -> white -> yellow ->
-  cyan per the references), scrolling streak texture, outer glow, origin flare.
-  Stationary in the document while scrolling (doc-anchored fx group).
-- Destruction (`fx/destruction.js`): per-element canvas alpha masks, carved once
-  at fire time (jagged corridor polygon + soft scorch passes + nibbles just
-  outside the beam). GPU-composited afterwards: ZERO per-frame cost. Damage
-  accumulates across fires and persists until refresh. Elements losing more
-  than half their area drop their `data-collider` (grid rebuilds via
-  `recollect`). Candidates: `[data-collider], nav, footer, h1-h3, p, img`,
-  topmost-only.
-- Cinders (`fx/cinders.js`): one InstancedMesh of falling shards spawned along
-  the cut edges, colored from the element's background + embers.
-- All geometry math lives in `fx/beamGeometry.js` and is headless-tested.
+---
 
-## Model swap guide (future custom model)
+## 3. Dependency order
 
-1. Export new GLB: y-up, facing +Z, all verts weighted, any joint names.
-2. Drop into `public/models/`, update path in rigConfig.
-3. Update role map bone names in `rigConfig.js` (tail array in base→tip order; arms/ears optional, layers skip missing roles).
-4. Adjust `characterHeightPx` and collider radius if proportions differ. Nothing else should need edits — if it does, that is an engine bug per the swap constraint.
+```
+Phase 0 ──┬─> Phase 1 ──> Phase 2 ──┐
+          │                          ├─> Phase 3 ──> Phase 4 ──┬─> Phase 5
+          └─> Phase 6 (independent) ─┘                          ├─> Phase 7
+                                                                └─> Phase 9
+                                                     Phase 8 (any time after 3)
+```
+
+Phases 1, 2 and 6 can run concurrently with each other. Everything from 3
+onward is one continuous thread, because from there on the acceptance test is
+"does it look right", and that judgement does not parallelise.
+
+---
+
+## 4. Performance strategy
+
+The budget is in the design bible §7.3. The techniques that meet it:
+
+1. **30 fps when idle, 60 fps when interacting.** Roughly halves sustained GPU
+   load. Implement as a frame-skip on the render, never by throttling the sim.
+2. **Sleeping cells.** Zero CPU and zero upload at rest.
+3. **Two draw calls** for the whole type layer, instanced.
+4. **The atlas is uploaded once** and sampled `NEAREST` — no mip chain, no
+   anisotropy, no filtering cost, and no blur (which would ruin the look
+   anyway).
+5. **DPR capped at 2**, and at 1.5 when the grid exceeds 20 000 cells.
+6. **`visibilitychange` → full stop.** No rAF while hidden.
+7. **Adaptive degradation**: sample frame time over a 2 s window; if the p90
+   exceeds 22 ms, step down in this order — DPR → drift off → glyph re-roll
+   rate halved → 30 fps locked. Never step down glyph *quality*; a coarser
+   field still looks designed, a badly matched one looks broken.
+8. **Mew is untouched.** Her sim is already fixed-step and her pass already
+   renders at quarter resolution.
+
+Measure on the real thing, not on a desktop: Chrome DevTools 4× CPU throttle
+plus a WebGL power-preference of `low-power` approximates a mid-range phone
+well enough to catch the gross errors.
+
+---
+
+## 5. Device matrix (phase 9 gate)
+
+| Device class | Target | Must hold |
+|---|---|---|
+| Desktop, discrete GPU | 60 fps interacting | everything on |
+| Desktop, integrated (2018-era) | 60 interacting / 30 idle | everything on |
+| iPhone 11 / Pixel 5 class | 30 idle, 60 on gather | DPR 2, full grid |
+| Low-end Android (4 GB, 2019) | 30 locked | DPR 1.5, drift may degrade |
+| 5-minute soak, any phone | no thermal step-down | battery graph flat |
+
+---
+
+## 6. Memory-leak protocol
+
+You asked for every possible leak closed. There are six classes and each needs a
+named owner, not vigilance.
+
+**`src/utils/lifecycle.js`** provides one `createScope()` returning
+`{ signal, add, addTimer, addRaf, dispose }`. Every subsystem takes a scope and
+registers into it. Route teardown calls `dispose()` once. Nothing anywhere calls
+`addEventListener` directly.
+
+| # | Class | Owner | Test |
+|---|---|---|---|
+| 1 | **GPU objects** — geometry, material, texture, render target, and the shader program a material holds | every module's `dispose()`; `renderer.info.memory` is the ground truth | navigate 50×, assert `memory.geometries` and `memory.textures` return to baseline |
+| 2 | **DOM listeners** | `scope.signal` — one `AbortController` per scope, `{ signal }` on every listener, one `abort()` removes all | count listeners before/after 50 route swaps |
+| 3 | **rAF and timers** | `scope.addRaf` / `addTimer` | assert zero pending after dispose |
+| 4 | **Observers** — Resize / Intersection / Mutation | registered in scope, `disconnect()` on dispose | as #2 |
+| 5 | **Bus subscriptions** — `world.on` today has **no `off`** and this is a real leak in an SPA | phase 0 fix; `on()` returns an unsubscribe, registered in scope | assert the listener map size is constant across 1000 cycles |
+| 6 | **Closures over detached DOM** — `colliders.js` holds element references in `world.colliders`, and the type layer will hold slot→element maps | clear both on route teardown; prefer `WeakRef` for anything that outlives a route | heap snapshot after 50 swaps: zero detached nodes |
+
+Two further rules, because they are what actually bites:
+
+- **The renderer, the scene, the camera and the atlas are created exactly once**
+  and are never owned by a route. If a module can be created per route, it must
+  take a scope.
+- **`renderer.info` is asserted in CI**, not eyeballed. A leak that only shows
+  up after 50 navigations will never be caught by looking.
+
+---
+
+## 7. Testing strategy
+
+Same shape as the Mew work, which is why that work held up.
+
+- **`test/type.test.js`** — headless, no DOM, no GL. Grid maths, the 6-D
+  matcher, the field's physics integration (frame-rate independence: 60 steps at
+  1/60 must equal 1 step at 1, as `sim.test.js` already asserts for `expDamp`),
+  the sleeping predicate, word slot generation, and the leak assertions that can
+  run without a browser.
+- **`tools/check_type.py`** — the asset gate. Atlas, ramp table, portrait pack.
+  Writes preview PNGs so regressions are *visible*, exactly as `check_mew.py`
+  does.
+- **`test/sim.test.js`** — must stay at 661+ green through every phase. It is
+  the tripwire that says the rig has been disturbed.
+- **A screenshot matrix** at the five breakpoints for every route, checked
+  against the bible's §9 poster test.
+
+A shader-carrying module must be added to the "every module parses" list in
+`sim.test.js`. That check exists because a backtick inside a GLSL comment
+silently kills a whole module, twice. It will happen again.
+
+---
+
+## 8. Risk register
+
+| Risk | Likelihood | Mitigation |
+|---|---|---|
+| ASCII headings are illegible at mobile sizes | **High** | Bible §4.4's four rules, enforced in code with a VOICE fallback. Decide the minimum ASCII type size in phase 4 and design around it rather than fighting it. |
+| The field looks like static | High | Domain-warped density (§4.2) and frozen randomness (§3.5). Judge every build by the greyscale-thumbnail test. |
+| Phones get hot | Medium | 30 fps idle + sleeping cells are worth more than every other optimisation combined. Soak-test from phase 3, not at the end. |
+| Multi-agent aesthetic drift | Medium | Only phases 1, 2 and 6 are delegated, and all three have objective pass/fail. Everything where "does it look right" is the test stays on one thread. |
+| The portrait clip arrives late | Medium | Placeholder asset; the pipeline is testable without the real clip. |
+| Scope creep into a full CMS | Medium | Content is data in `src/site/content/*.js`. No CMS, no markdown pipeline, no build step beyond Vite. |
+| Chromatic fringe drifts into "accent colour" | Low but fatal to the look | The 4% budget is a lint: count fringe cells per frame in dev and warn. |
+
+---
+
+## 9. Immediate next actions
+
+1. **You**: pick the portrait clip (short, slow, near-loop — a blink or a head
+   turn). Confirm the four nav labels. Confirm paper/ink hexes in bible §3.3.
+2. **Next session**: `DELEGATION.md` → prompt A (phase 0), which unblocks
+   everything.

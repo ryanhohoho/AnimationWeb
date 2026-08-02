@@ -1,10 +1,24 @@
 # HANDOFF — AnimationWeb continuation context
 
-For any Claude Code session continuing this project. Read this FIRST, then
-IMPLEMENTATION_PLAN.md (kept current, full specs). CLAUDE_CODE_PROMPTS.md has
-phase-prompt templates. This file carries the context that lived in the
-original Cowork chat: history, conventions, pitfalls already paid for, and the
-owner's standards.
+This file is about MEW: the character engine, its history, its conventions, and
+the pitfalls already paid for. It is still fully current and the engine is
+finished.
+
+>>> THE PROJECT HAS PIVOTED. <<< The placeholder portfolio around mew is gone,
+and the site is being rebuilt from the ground up as a graphic-design-led ASCII
+piece. If you are here to work on the SITE, read these instead, in order:
+
+  1. DESIGN_BIBLE.md          the art direction, pinned to numbers. Binding.
+  2. IMPLEMENTATION_PLAN.md   phases, acceptance tests, the leak protocol.
+  3. DELEGATION.md            which model builds what (operational, for the owner).
+  4. this file                only for the sections you actually touch.
+
+Mew herself does not change. She keeps her sprite shading and her pixelate pass;
+there is a one-string toggle in rigConfig.js to render her as ASCII later, which
+is off by default and explained there and in DESIGN_BIBLE.md 7.2.
+
+IMPLEMENTATION_PLAN_MEW.md is the archived plan for the work below.
+CLAUDE_CODE_PROMPTS.md holds its phase-prompt templates.
 
 ## What this is
 

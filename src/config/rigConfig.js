@@ -150,12 +150,24 @@ export const rigConfig = {
   // flip `mode` to switch looks. purely visual: the animation/movement code
   // never changes and never even knows which one is on.
   //
-  //   "pixelate" retro sprite: low-res + posterized + dark outline
+  //   "pixelate" retro sprite: low-res + posterized + dark outline  (DEFAULT)
+  //   "ascii"    mew drawn out of the same glyphs as the rest of the site
   //   "cutout"   mew is a hole in the page onto a stationary picture
   //   "none"     raw 3d
+  //
+  // >>> HOW TO TURN MEW INTO ASCII <<<
+  // change the one string below to "ascii". That is the entire change. It works
+  // because fx/presentation.js picks a pass behind a single interface
+  // (pixelRatio / snapPx / resize / render / dispose), so fx/asciiPass.js is
+  // just another implementation of it -- mew is rendered into the site's own
+  // glyph atlas at her own, coarser cell size and composited into the type
+  // field. Tuning for it lives in `presentation.asciiPass` below.
+  // The default is deliberately "pixelate": a saturated, smooth, ALIVE mew in a
+  // flat two-ink ascii world is the contrast the whole site is built on.
+  // See DESIGN_BIBLE.md section 7.2.
   // ------------------------------------------------------------------
   presentation: {
-    mode: "pixelate",       // <-- TOGGLE HERE
+    mode: "pixelate",       // <-- TOGGLE HERE ("pixelate" | "ascii" | "cutout" | "none")
 
     // the scene is rendered at low resolution and upscaled with hard pixels,
     // posterized colors, and a dark sprite outline. cheaper than full-res

@@ -3,131 +3,72 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ryan Ho — Portfolio</title>
+  <meta name="color-scheme" content="light" />
+  <title>Ryan Ho</title>
+
+  <!--
+    SCAFFOLD ONLY. Every placeholder section, card and colour that used to live
+    here is gone. What is left is the LAYER CONTRACT the whole site is built on,
+    and it is worth understanding before adding anything:
+
+      #doc     real DOM. Real headings, real links, real paragraphs, laid out by
+               the browser. It is the LAYOUT ENGINE and the ACCESSIBILITY LAYER.
+               Its text is `color: transparent` -- NOT hidden, NOT aria-hidden --
+               so it still reflows, still measures, still takes focus, still gets
+               read by a screen reader, and still selects with the cursor.
+      #stage   one canvas, one WebGL context, for the lifetime of the session.
+               It paints what #doc means: the ASCII type field, and mew on top.
+               Never recreated on navigation. See DESIGN_BIBLE.md.
+
+    So: the browser does layout, we do paint. Nothing here draws itself.
+    Read DESIGN_BIBLE.md first, then IMPLEMENTATION_PLAN.md.
+  -->
   <style>
     :root {
-      --ink: #2a2733;
-      --soft: #6f6a7e;
-      --bg: #f7f4fa;
-      --card: #ffffff;
-      --accent: #e58cb2;
+      /* placeholders for the real tokens -- see DESIGN_BIBLE.md section 3.
+         deliberately neutral so nothing inherits the old pink/lavender look. */
+      --paper: #f4f2ec;
+      --ink: #12100f;
+      --cell-w: 7px;
+      --cell-h: 12px;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+    html, body { height: 100%; }
     body {
-      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-      background: var(--bg);
+      background: var(--paper);
       color: var(--ink);
-      line-height: 1.6;
+      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
       overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
     }
-    nav {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 22px 7vw; position: sticky; top: 0;
-      background: rgba(247, 244, 250, 0.85); backdrop-filter: blur(8px);
-      z-index: 5;
-    }
-    nav .logo { font-weight: 700; letter-spacing: 0.04em; }
-    nav a { color: var(--soft); text-decoration: none; margin-left: 28px; font-size: 0.95rem; }
-    nav a:hover { color: var(--ink); }
-    section { padding: 10vh 7vw; }
-    .hero { min-height: 78vh; display: flex; flex-direction: column; justify-content: center; }
-    .hero-card {
-      max-width: 560px; padding: 38px 42px; border-radius: 20px;
-      background: var(--card); box-shadow: 0 12px 40px rgba(42, 39, 51, 0.08);
-    }
-    h1 { font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.12; }
-    h1 em { font-style: normal; color: var(--accent); }
-    .hero p { margin-top: 14px; color: var(--soft); max-width: 46ch; }
-    h2 { font-size: 1.6rem; margin-bottom: 28px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px; }
-    .card {
-      background: var(--card); border-radius: 18px; padding: 30px;
-      box-shadow: 0 8px 28px rgba(42, 39, 51, 0.07);
-      min-height: 220px; display: flex; flex-direction: column; gap: 10px;
-    }
-    .card .tag { font-size: 0.78rem; color: var(--accent); font-weight: 600; letter-spacing: 0.06em; }
-    .card h3 { font-size: 1.15rem; }
-    .card p { color: var(--soft); font-size: 0.94rem; }
-    .about-wrap { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; }
-    .about-card {
-      background: var(--card); border-radius: 18px; padding: 34px;
-      box-shadow: 0 8px 28px rgba(42, 39, 51, 0.07); max-width: 520px;
-    }
-    .about-card p { color: var(--soft); }
-    footer { padding: 60px 7vw; color: var(--soft); font-size: 0.9rem; }
-    .spacer-note { color: var(--soft); font-size: 0.85rem; opacity: 0.7; margin-top: 40px; }
-    /* the character canvas overlays everything but never blocks input */
-    #mew-canvas {
+
+    /* the semantic layer. present, measurable, focusable, readable by AT --
+       just not painted by the browser. the canvas paints it instead. */
+    #doc { position: relative; z-index: 1; }
+    #doc :is(h1, h2, h3, p, a, li, span) { color: transparent; }
+    /* ...but keyboard focus must still be visible, because the canvas cannot
+       know about it in time. */
+    #doc a:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+
+    /* one canvas, fixed, never rebuilt. pointer-events:none so every click,
+       hover and selection lands on the real DOM underneath. */
+    #stage {
       position: fixed; inset: 0; width: 100vw; height: 100vh;
-      pointer-events: none; z-index: 50;
+      pointer-events: none; z-index: 2;
     }
+
+    /* no-JS / no-WebGL fallback: stop hiding the text. */
+    .no-paint #doc :is(h1, h2, h3, p, a, li, span) { color: var(--ink); }
+    .no-paint #stage { display: none; }
   </style>
 </head>
-<body>
-  <nav>
-    <div class="logo">RYAN HO</div>
-    <div>
-      <a href="#work">Work</a>
-      <a href="#about">About</a>
-      <a href="#contact">Contact</a>
-    </div>
-  </nav>
+<body class="no-paint">
+  <div id="doc">
+    <!-- routes render here. nothing is authored inline any more. -->
+    <main id="route-outlet"></main>
+  </div>
 
-  <section class="hero">
-    <div class="hero-card" data-collider>
-      <h1>Creative developer<br />building <em>playful</em> things.</h1>
-      <p>Interactive experiences, procedural animation, and the occasional
-        floating creature. Scroll around — it can bump into stuff.</p>
-    </div>
-  </section>
-
-  <section id="work">
-    <h2>Selected work</h2>
-    <div class="grid">
-      <div class="card" data-collider>
-        <span class="tag">WEBGL</span>
-        <h3>Procedural Creature Engine</h3>
-        <p>A physics-driven character that lives on the page, reacts to the cursor,
-          and never plays the same animation twice.</p>
-      </div>
-      <div class="card" data-collider>
-        <span class="tag">TOOLING</span>
-        <h3>Headless Asset Pipeline</h3>
-        <p>Blender automation that builds, rigs, and skins low-poly characters
-          from a single reproducible script.</p>
-      </div>
-      <div class="card" data-collider>
-        <span class="tag">EXPERIMENT</span>
-        <h3>Springs All The Way Down</h3>
-        <p>A study in critically damped motion: every value on this site that
-          moves is driven by a spring or a noise field.</p>
-      </div>
-    </div>
-    <p class="spacer-note">More coming soon.</p>
-  </section>
-
-  <section id="about">
-    <h2>About</h2>
-    <div class="about-wrap">
-      <div class="about-card" data-collider>
-        <p>I like building things that feel alive. The little creature floating
-          around this page is procedurally animated — no keyframes, no baked
-          clips. Its tail, ears, and gaze are all simulated in real time.</p>
-      </div>
-    </div>
-  </section>
-
-  <section id="contact">
-    <h2>Contact</h2>
-    <div class="about-card" data-collider>
-      <p>ryanho333@gmail.com</p>
-    </div>
-  </section>
-
-  <footer>© 2026 Ryan Ho. The creature is watching your cursor.</footer>
-
-  <canvas id="mew-canvas"></canvas>
+  <canvas id="stage"></canvas>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
