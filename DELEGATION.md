@@ -26,7 +26,10 @@ treatment.
 | **C** | 3 + 4 + 5 — Field, words, beam | **Opus** | xhigh | The heart. One unbroken thread, one aesthetic. Let it compact rather than splitting it. |
 | **D** | 6 — Router + transitions | **Sonnet** | high | Well-understood problem, objective leak tests, disjoint files. |
 | **E** | 7 — Portrait pipeline | **Sonnet** then **Opus** | high | Sonnet builds the tooling (measurable); Opus does the look pass. |
-| **F** | 8 + 9 — ASCII Mew, content, perf | **Opus** | high | Judgement calls throughout. |
+| **G** | R1 — type render fix | **Opus** | xhigh | The look. This is the one that decides whether the site is beautiful. |
+| **H** | R2 — self-assembly + hover | **Opus** | high | Judgement, and it inherits G's calibration. |
+| **I** | R3 — spatial map + transit | **Opus** | xhigh | New architecture plus a choreographed sequence. Not delegable to a cheaper tier. |
+| **F** | 8 + 9 — ASCII Mew, content, perf | **Opus** | high | Judgement calls throughout. Run **after** G/H/I. |
 
 **Haiku**: only for mechanical file shuffling if you ever need it. Nothing in
 this project qualifies — don't force it.
@@ -39,7 +42,11 @@ A  (alone, must finish first — everything reads siteConfig.js)
 ├── B ──┐
 │       └──> C  (needs B's ramp.json + match.js)
 └── D ──┘        (D is independent; run it any time after A)
-                 C ──> E(look) ──> F
+                 C ──> E(look)
+
+[A–E DONE]  ──>  G  ──>  H  ──>  I  ──>  F
+                 the revision pass. strictly serial: H inherits G's
+                 calibration, and I's arrival beat IS H's assembly.
 ```
 
 **Run A, then B, then C sequentially.** D can run in parallel with B if you want
@@ -163,18 +170,56 @@ the bible ever disagree, the bible wins.
 
 Build, in this order, as one continuous piece of work:
 
-PHASE 3 — src/type/field.js and src/type/fieldRenderer.js.
-One InstancedBufferGeometry, one quad, per-instance attributes (cell xy, glyph
-index, weight, ink index, inverted flag). EXACTLY TWO draw calls for the whole
-type layer: opaque cells, then inverted cells. Implement cell sleeping — a cell
-at rest is not integrated and its buffer slice is not re-uploaded; wake on
-disturbance, sleep below the thresholds in the plan, partial uploads via
-addUpdateRange over the awake span. Implement DRIFT with a per-cell Poisson
-glyph re-roll (mean 2.5s) and frozen per-cell randomness (bible §3.5). The
-resting density must follow a domain-warped noise field so the page has weather
-(§4.2) — uniform random characters look like static and are the most common way
-this aesthetic fails. Adaptive frame pacing: 30fps idle, 60fps while the awake
-set is non-empty.
+PHASE 3 — src/type/fieldMath.js, field.js, fieldRenderer.js.
+
+READ DESIGN_BIBLE.md §7.3 CAREFULLY. It was rewritten after benchmarking three
+architectures head to head (tools/bench/field-bench.html, results in the bible).
+THE FIELD IS A PURE FUNCTION OF (cell identity, absolute time, a few globals),
+EVALUATED IN THE VERTEX SHADER. There is no integration loop, no awake set, no
+sleeping predicate, and no per-frame buffer upload — that machinery must not
+exist. Measured: 18x less CPU than the CPU-driven version for a pixel-identical
+result, and the cost stops scaling with cell count.
+
+One InstancedBufferGeometry, one quad. Instances cover the VIEWPORT plus a
+two-cell margin, not the document. Per-cell content (home, seed, candidate glyph
+ids, word id, slot position, distance to nearest slot, resting density) lives in
+a data texture indexed by DOCUMENT grid coordinate and is read in the vertex
+shader — WebGL2 guarantees at least 16 vertex texture units and the target
+machine reports 16. That texture is written on layout and route change only, via
+texSubImage2D over the changed region. Scrolling is one uniform. EXACTLY TWO
+draw calls: opaque cells, then inverted cells.
+
+All four verbs are closed form, in the vertex shader:
+  DRIFT           noise(seed, t)
+  GATHER          falloff(|home - pointer|) blended toward the slot position
+  SCATTER+SETTLE  impulse * tau * exp(-k*tau), the critically damped impulse
+                  response, tau = t - tHit, with a per-cell phase offset from
+                  the seed so cells arrive at different times
+  glyph re-roll   hash(seed, floor(t/period + phase))
+Per frame the CPU writes about ten uniforms (time, pointer, up to four active
+hit events, mew's position, per-word resolve amounts) and issues one draw. ZERO
+BYTES UPLOADED PER FRAME.
+
+The resting density must follow a domain-warped noise field so the page has
+weather (bible §4.2) — uniform random characters look like static and are the
+most common way this aesthetic fails. Precompute it into the cell data texture
+at layout time; do not evaluate it per frame.
+
+src/type/fieldMath.js is the JS MIRROR of every analytic function in the shader,
+exactly as src/engine/fx/presentMath.js mirrors its GLSL and
+src/engine/fx/beamGeometry.js mirrors the beam. The shader is required to match
+it. This is the whole testing and debugging story for GLSL-resident motion and
+it is not optional — write it first, test it, then port it into the shader.
+
+Render at the display's native rate. Do NOT cap to 30 or 60: the saving is a
+fraction of a percent of a 120 Hz budget and 60-into-120 on a ProMotion panel
+with a moving character is visible judder. Frames are reclaimed only on
+document.hidden, after 45s of no input, and by the degradation ladder.
+
+If some behaviour seems to need per-frame CPU work over cells, first check
+whether it has a closed form — all four verbs did, because they were specified
+as overdamped and non-interacting. If something genuinely needs state, give it
+its own small buffer of ACTIVE cells; do not put the whole field back on the CPU.
 
 PHASE 4 — src/type/words.js, the GATHER behaviour, src/site/dom.js.
 Text -> coverage bitmap (one cached offscreen 2D canvas) -> slots -> glyphs via
@@ -198,16 +243,21 @@ Everything must take a lifecycle scope (src/utils/lifecycle.js) and dispose
 cleanly. Nothing calls addEventListener directly. Read every constant from
 src/config/siteConfig.js; hardcode nothing.
 
-Extend test/type.test.js: frame-rate independence of the field's integration
-(60 steps at 1/60 equals 1 step at 1, the way sim.test.js already asserts for
-expDamp); the sleeping predicate; word slot generation and the legibility
-assertions; that firing the beam twice in the same place gives identical
-results; that after 4s the awake set is empty.
+Extend test/type.test.js against fieldMath.js: every verb is a pure function of
+absolute time, so evaluating at t is identical however you got there (this
+replaces the old frame-rate-independence test and is strictly stronger); the
+impulse response decays to under 0.1% by the settle duration; firing the same
+hit twice gives bit-identical output; word slot generation and the legibility
+assertions from bible §4.4.
 
 Verify in the browser yourself — do not ask the user to check. Use the preview
 tools, take screenshots, and apply the bible's §9 test: greyscale, thumbnail, is
-it a good poster? Also confirm renderer.info.render.calls for the field is
-exactly 2 and renderer.info.memory is flat over 60 seconds.
+it a good poster? Then measure, with tools/bench/field-bench.html as the
+methodology: field CPU under 0.1 ms/frame at 17000+ cells, 0 bytes uploaded per
+frame, renderer.info.render.calls for the field exactly 2, renderer.info.memory
+flat over 60 seconds. Note that fps readings inside an automated preview pane
+are meaningless (rAF is throttled when the pane is not fronted) — trust cpuMs,
+gpuMs and the upload rate.
 
 Do not touch src/engine/** except to subscribe to events. Mew's look does not
 change in this phase.
@@ -340,6 +390,209 @@ new pitfalls entry for anything that cost real time.
 
 Verify in the browser yourself with screenshots. Report npm test, check_mew.py
 and check_type.py.
+```
+
+---
+
+---
+
+# THE REVISION PASS — run G, then H, then I, strictly in order
+
+Phases 0–7 shipped and the site runs. Three things came back from looking at it,
+and all three were **spec defects**: the design bible said what got built. The
+bible has been rewritten (§2 reference table, §3.4a, §3.6, §4.2, §4.3, §4.3a,
+§4.4, §5, §7.1a, §8) and `IMPLEMENTATION_PLAN.md` has phases R1–R3. These three
+prompts bring the code to it.
+
+**Do not run these in parallel.** Each inherits the previous one's calibration.
+
+---
+
+# PROMPT G — R1, the type render fix · Opus, xhigh effort
+
+```
+Look at tools/preview/heading_modes.png FIRST, before reading anything. It
+renders one word five ways with the project's real baked ramp. A is what the
+site currently ships. D is the target. That single image is the brief.
+
+Then read DESIGN_BIBLE.md sections 2, 3.4, 3.4a, 3.6, 4.2, 4.4 and 8 — all of
+them are new or rewritten — and IMPLEMENTATION_PLAN.md phase R1.
+
+Context you need: the site's headings currently render as BLACK RECTANGLES with
+letters knocked out of them, at 166 px against 15 px body copy. Both were caused
+by the bible's original wording, not by a coding mistake, so do not go looking
+for a bug — implement the new spec.
+
+Six changes:
+
+1. DELETE INVERTED CELLS from the field and from every word. Remove
+   field.invert.slotDensityAbove from src/config/siteConfig.js and every code
+   path that reads it. Keep the register available for the portrait ONLY, behind
+   a new portrait.allowInvert flag.
+
+2. ADD OVERSTRIKE (bible 3.4a). The darkest two stops are made by striking a
+   SECOND glyph into the same cell, offset +0.34 cell across and +0.10 cell
+   down, weight 600, picked by the same density lookup. This is where the darks
+   come from now, and it is the owner's own opening brief ("overlapping text in
+   order to bring out some darks"). Implement it as a second instanced draw that
+   REPLACES the inverted-cell draw, so the draw-call budget stays at 3.
+
+3. THIN THE COUNTERS HARD. Counters and the immediate surround of a word go to
+   0.06 effective ink or below. The densest glyph in the ramp is 0.337, so a
+   stem can never be dark in absolute terms -- the word reads by CONTRAST, and
+   the current thinning is far too gentle. This is the single most important
+   number in this phase.
+
+4. BASE CELL 7x12 -> 4x7, with a device-pixel floor:
+   cellW = max(base, ceil(8 / dpr)), so retina gets 4 CSS px and non-retina 8.
+   Re-derive the breakpoint table and the overflow ladder in siteConfig around
+   the new base. The atlas does NOT need re-baking (it is stored at 56x96 per
+   glyph and sampled down; 4/7 = 0.571 is inside the aspect tolerance the ladder
+   already accepts). Check the cell budget still holds -- it will, the ceiling is
+   120 000.
+
+5. THE TYPE SCALE from bible 3.6: VOICE body 16 px, ascii nav links 7 rows of
+   cap height, ascii h1 9 rows. DELETE the `min(13vw, calc(var(--cell-w) * 26))`
+   sizing in src/site/dom.js and derive font-size from capRows x cellHeight.
+
+6. LAYOUT-ANCHORED PRESENCE (bible 4.2). Resting density becomes
+   weather(noise) x presence(distance to the page's content rects), falloff
+   ~18 cells, computed ONCE at layout from the DOM's own getBoundingClientRect
+   and baked into the cell data texture. Right now the cloud is statistically
+   identical across the whole viewport, which reads as wall-to-wall texture; the
+   references all have large confident areas of bare paper.
+
+ACCEPTANCE. Assert in test/type.test.js that no inverted cell can be produced
+outside the portrait. "PROJECTS" as an h1 measures at most 520 px wide at a
+1512 px viewport. 35-55% of the viewport sits below 0.04 effective ink at rest.
+Apply bible 4.4 rule 5 yourself: screenshot each nav label, greyscale it, scale
+to 25%, and confirm it still reads -- if it becomes a grey bar, the counters are
+not cleared hard enough. Field CPU and upload budgets from phase 3 must be
+unchanged; none of this adds per-frame work.
+
+Verify in the browser yourself with screenshots at all five breakpoints. Do not
+ask the owner to check. Report npm test, check_type.py and check_mew.py.
+```
+
+---
+
+# PROMPT H — R2, self-assembly and hover · Opus, high effort
+
+```
+Read DESIGN_BIBLE.md 4.3 and 4.3a (both new) and IMPLEMENTATION_PLAN.md phase
+R2. Prompt G must be finished and merged first.
+
+The problem being fixed: words currently only appear where the pointer is near
+them, so a visitor who does not sweep the cursor across a field of characters
+never discovers the site has navigation at all. That was the bible's original
+design and it was wrong.
+
+1. WORDS ASSEMBLE ON ROUTE SETTLE, not on pointer approach. assembleS 2.6 s,
+   per-cell stagger 0.9 s taken from the cell's existing frozen seed, ordered
+   outside-in by distance to the word's own centre so the silhouette resolves
+   before the interior. Then they STAY assembled -- the field around them keeps
+   drifting and re-rolling, so a formed word is a crowd holding a formation, not
+   a static image. The GATHER verb itself does not change; only its trigger.
+   :focus-visible on a real DOM link forces its word to full assembly instantly.
+
+2. HOVER BECOMES A MODULATION of an already-assembled word (bible 4.3a). Four
+   things on one ~180 ms spring, per word, driven from the per-word uniform array
+   that already exists:
+     - SHARPEN: stem density +15%, counters thinned harder. Contrast rises.
+     - SHIVER: glyph re-roll rate x8 for 250 ms, then decays. The word
+       reconsiders itself and settles.
+     - FRINGE: a one-cell chromatic ghost on the stems' leading edge. This is
+       the one hover allowed to spend chromatic ink, and it must stay inside the
+       4% budget in bible 3.3.
+     - BREATH: stem cells drift outward by at most 0.35 cell and back.
+   No colour swap, no underline, no scale. Off-hover everything relaxes on the
+   same spring; nothing snaps.
+
+3. gatherRadiusPx stops being the primary mechanism. It survives only as the
+   pointer's small local influence on the surrounding field.
+
+ACCEPTANCE. Load any route, touch nothing: every ascii word is fully formed
+within 3 s. Keyboard tab reaches every link and focus assembles its word. Hover
+three words in sequence and the chromatic cell count stays under 4%. Verify in
+the browser with screenshots and a short screen recording of one word assembling.
+Report npm test, check_type.py, check_mew.py.
+```
+
+---
+
+# PROMPT I — R3, the spatial map and the transit · Opus, xhigh effort
+
+```
+Read DESIGN_BIBLE.md 7.1a (new, the whole section including the beat table) and
+5 (the MIGRATE verb), then IMPLEMENTATION_PLAN.md phase R3. Prompts G and H must
+be finished first.
+
+THE IDEA: the site is not a stack of documents, it is one continuous plane, and
+navigating is moving a camera across it. The crowd of characters is the same
+crowd the whole time and it walks with you. Reference for the feel:
+noomoagency.com, where you cannot tell a navigation happened except that the URL
+changed.
+
+1. src/config/siteConfig.js gains `map`: routes -> integer lattice cells, plus a
+   per-axis extent. Home at [0,0], who-am-i [0,-1], projects [1,0],
+   case-studies [0,1], my-journey [-1,0]. THE PLANE IS A TORUS: travel takes the
+   shortest signed delta modulo the extent,
+     delta = ((b - a + E/2) mod E) - E/2
+   which makes West -> East travel LEFT and arrive from the far side, and
+   North -> South travel up. That is the requested behaviour and it must fall
+   out of the modulus, NOT out of special cases. Adding a page must be one line
+   and moving a page must be two numbers; nothing else in the system may know
+   that a compass direction exists.
+
+2. The cell data texture covers the WHOLE map and is sampled REPEAT on both
+   axes, so the wrap-around is literally texture wrapping. WebGL2 allows REPEAT
+   on non-power-of-two. At 4x7 cells on a 1512 px viewport a 3x3 map is about
+   1134x423 texels, ~1.9 MB. Budget it and assert it.
+
+3. GENERALISE THE FIELD'S SCROLL OFFSET INTO A 2D CAMERA. A pan and a scroll are
+   the same operation and the field already recycles cells at the viewport edge
+   -- do not build a second mechanism alongside it.
+
+4. MIGRATE, the fifth verb: analytic, in the vertex shader like the other four,
+   a seeded per-cell stagger over one bump curve along the travel direction.
+   Two new uniforms total: uTransit (dir.xy, t01, amp) and the 2D camera.
+
+5. THE PANEL STAGE: source and destination DOM are both mounted during the
+   transit, positioned by VISUAL offset (source + delta), NOT by the
+   destination's canonical map cell -- get that wrong and a wrapped navigation
+   teleports. The stage moves with one composited translate3d.
+
+6. TIMING EXACTLY AS THE TABLE IN BIBLE 7.1a. The ordering is the entire effect:
+   the crowd leads and the camera chases.
+     t=0      pushState; destination DOM mounts; nothing visible yet
+     0-180    MIGRATE begins, staggered, crowd peels away
+     140      camera starts -- DELIBERATELY LATE, this is what makes it read as
+              following -- on cubic-bezier(0.42, 0, 0.12, 1)
+     ~900     migrate bump falls, crowd decelerates ahead of the camera
+     ~1150    camera arrives and settles
+     900-2400 destination words GATHER (prompt H's assembly). The heading
+              finishes last, which is what makes arrival feel like arrival.
+   Every number is a config knob.
+
+7. Mew does NOT pan -- she is a creature, not scenery. She takes a small impulse
+   opposite the travel direction as the pan starts and then catches up. One
+   world.emit + body.addImpulse.
+
+8. prefers-reduced-motion: the camera jumps and the words cross-fade over 240 ms.
+   The DOM swap, the URL and the focus order are identical either way.
+
+ONE SCREEN PER PAGE is assumed: a panel is exactly one viewport, so North is
+always one screen up. Long copy goes in a bounded internal scroll region inside
+a panel, or gets its own map cell. Flag it to the owner if any current content
+cannot live that way.
+
+ACCEPTANCE. Clicking any link changes the URL immediately with no load, no
+flash, no remount. W->E travels left; N->S travels up; home is one step from
+everywhere. Change a route's map cell in config and confirm the travel direction
+changes and NOTHING else does. Back/forward reverse the pan. 50 navigations
+leave renderer.info.memory flat and the world listener map at baseline (plan
+section 6 still applies in full). Verify in the browser yourself with a screen
+recording of one full transit. Report npm test, check_type.py, check_mew.py.
 ```
 
 ---

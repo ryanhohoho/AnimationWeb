@@ -26,14 +26,44 @@ export function createWorld({ seed = 1337, headless = false } = {}) {
     random: mulberry32(seed),
 
     // -- event bus -------------------------------------------------------
+    // on() RETURNS AN UNSUBSCRIBE, and there is an off(). this used to be
+    // add-only, which is harmless in a single-page life and a real leak the
+    // moment the site is an SPA: every route swap adds listeners that are
+    // never removed, and each one holds a closure over dom that is already
+    // detached. see IMPLEMENTATION_PLAN.md section 6, leak class 5.
+    // existing call sites ignore the return value and keep working unchanged.
     _listeners: new Map(),
     on(type, fn) {
-      if (!this._listeners.has(type)) this._listeners.set(type, []);
-      this._listeners.get(type).push(fn);
+      let fns = this._listeners.get(type);
+      if (!fns) { fns = []; this._listeners.set(type, fns); }
+      fns.push(fn);
+      return () => this.off(type, fn);
+    },
+    off(type, fn) {
+      const fns = this._listeners.get(type);
+      if (!fns) return;
+      const i = fns.indexOf(fn);
+      if (i >= 0) fns.splice(i, 1);
+      // THE KEY GOES TOO once the last listener leaves. otherwise the arrays
+      // stay empty but the MAP keeps growing one entry per event type forever,
+      // which is the same leak wearing a smaller hat.
+      if (fns.length === 0) this._listeners.delete(type);
+    },
+    once(type, fn) {
+      const un = this.on(type, function wrapper(payload) {
+        un();
+        fn(payload);
+      });
+      return un;
     },
     emit(type, payload) {
       const fns = this._listeners.get(type);
-      if (fns) for (const fn of fns) fn(payload);
+      if (!fns) return;
+      // iterate a SNAPSHOT: once() unsubscribes itself from inside the loop,
+      // and a handler is allowed to subscribe another, either of which would
+      // otherwise mutate the array being walked. the copy is one tiny array on
+      // an event that fires per input, never per frame.
+      for (const fn of fns.slice()) fn(payload);
     }
   };
 

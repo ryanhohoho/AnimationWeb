@@ -517,7 +517,22 @@ section("modules: every shader-carrying module actually parses");
     "../src/engine/fx/faceOverlay.js",
     "../src/engine/fx/beam.js",
     "../src/engine/fx/beamGeometry.js",
-    "../src/engine/fx/presentMath.js"
+    "../src/engine/fx/presentMath.js",
+    // the type layer's shaders, for exactly the same reason. fieldMath.js
+    // exports the GLSL that fieldRenderer.js pastes into its vertex program,
+    // so a backtick in either one silently deletes the whole field.
+    "../src/type/fieldMath.js",
+    "../src/type/fieldRenderer.js",
+    "../src/type/field.js",
+    "../src/type/words.js",
+    "../src/type/atlas.js",
+    // ...and site/dom.js, which is not a shader but carries the same hazard:
+    // its stylesheet is a template literal, and a backtick in one of its
+    // comments took the whole module out. The page then renders with no
+    // styles, no routes and no field, and nothing in the console says why.
+    // That is the third time this exact character has cost a debugging round
+    // in this repo (see HANDOFF.md).
+    "../src/site/dom.js"
   ];
   const loaded = await Promise.all(mods.map((m) =>
     import(m).then(() => null).catch((e) => `${m}: ${e.message}`)));

@@ -123,23 +123,53 @@ real image. Lookup ≤ 0.5 µs warm.
 
 ### Phase 3 — The field · SERIAL · this is the heart
 
-`src/type/field.js` + `fieldRenderer.js`.
+**Read design bible §7.3 first — it was rewritten after benchmarking and it
+replaces an earlier CPU-simulated design.** The field is a **pure function**
+evaluated in the vertex shader. There is no integration loop, no awake set, no
+sleeping predicate and no per-frame buffer upload; that machinery does not need
+to exist. Measured on an M2 Max, this is 18× less CPU than the CPU-driven
+version for a pixel-identical result, and it stops scaling with cell count
+altogether.
 
-- One `InstancedBufferGeometry`, one quad, per-instance: cell xy, glyph index,
-  weight, ink index, inverted flag.
+`src/type/field.js` + `fieldRenderer.js` + `fieldMath.js`.
+
+- One `InstancedBufferGeometry`, one quad. Instances cover the **viewport plus a
+  two-cell margin**, not the document.
+- Per-cell content — home, seed, candidate glyph ids, word id, slot position,
+  distance to nearest word slot — lives in a **data texture indexed by document
+  grid coordinate**, read in the vertex shader (WebGL2 guarantees ≥ 16 vertex
+  texture units; the target machine reports 16). Written on layout/route change
+  only, via `texSubImage2D` over the changed region. A long page therefore costs
+  nothing extra, and scrolling is one uniform.
 - **Two draw calls total**: opaque cells, then inverted cells.
-- **Sleeping.** A cell at rest is not integrated and its buffer slice is not
-  re-uploaded. Wake on disturbance; sleep when `|displacement| < 0.05 cell` and
-  `|velocity| < 0.5 px/s`. Partial uploads via `addUpdateRange` over the awake
-  span. This is the single biggest performance decision in the project.
-- DRIFT with per-cell Poisson glyph re-roll (mean 2.5 s), frozen jitter.
-- Domain-warped density field so the page has weather (bible §4.2).
-- Adaptive frame pacing: 30 fps idle, 60 fps while the awake set is non-empty.
+- All four verbs are closed form and live in the vertex shader:
+  `DRIFT = noise(seed, t)`; `GATHER = falloff(|home − pointer|)` blended with the
+  slot position; `SCATTER+SETTLE = impulse · τ · e^(−kτ)`, the critically damped
+  impulse response, with a per-cell phase offset from the seed so cells arrive
+  at different times; glyph re-roll = `hash(seed, floor(t/period + phase))`.
+- Per-frame CPU is: update ~10 uniforms (time, pointer, up to 4 active hit
+  events, Mew's position, per-word resolve amounts) and issue one draw. Nothing
+  else. **Zero bytes uploaded per frame.**
+- Domain-warped density so the page has weather (bible §4.2) — precomputed into
+  the cell data texture at layout time, not evaluated per frame.
+- **`src/type/fieldMath.js` is the JS mirror** of every analytic function in the
+  shader, exactly as `fx/presentMath.js` mirrors its GLSL and `fx/beamGeometry.js`
+  mirrors the beam. The shader is required to match it. This is the entire
+  debugging and testing story for GLSL-resident motion, and it is not optional.
 
-**Acceptance:** 20 000 cells; at rest the field's per-frame CPU is < 0.3 ms and
-zero bytes are uploaded; `renderer.info.memory` is flat across 60 s;
-`renderer.info.render.calls` for the field is exactly 2. Mean coverage lands in
-12–22%. Visual: a still frame, greyscale, thumbnail — is it a good texture?
+**Acceptance:** measured with `tools/bench/field-bench.html` methodology —
+at 17 000+ cells, per-frame field CPU **< 0.1 ms** and **0 bytes uploaded**;
+`renderer.info.memory` flat across 60 s; `renderer.info.render.calls` for the
+field is exactly 2; frame rate is the display's native rate with headroom to
+spare. Mean coverage lands in 12–22%. `type.test.js` proves the JS mirror is
+frame-rate independent and matches known values. Visual: a still frame,
+greyscale, thumbnail — is it a good texture?
+
+> **Do not reintroduce per-frame CPU work over cells.** If a behaviour seems to
+> need it, first check whether it has a closed form — all four verbs did,
+> because they were specified as overdamped and non-interacting. If something
+> genuinely needs state, give it its own tiny buffer of *active* cells rather
+> than putting the whole field back on the CPU.
 
 ### Phase 4 — Words, GATHER, links · SERIAL
 
@@ -203,6 +233,102 @@ build against a placeholder portrait and swap the asset in.*
 **Build it, wire it, leave it off.** Bible §7.2 explains the toggle; the whole
 change must remain one string in `rigConfig.js`.
 
+### Phases R1–R3 — the revision pass · SERIAL · do these before phase 9
+
+Phases 0–7 shipped and the site runs. Three things came back from looking at it,
+and all three are **spec defects, not implementation defects** — the bible said
+what got built. It has been rewritten; these phases bring the code to it.
+
+What went wrong, and where the fix now lives:
+
+| Symptom | Root cause | Fixed by |
+|---|---|---|
+| Headings are black rectangles with letters knocked out | old bible §4.4 rule 1: "a stem is a solid run of SOLID/**INVERT** cells", plus `field.invert.slotDensityAbove: 0.86` | bible §3.4a — darks come from **OVERSTRIKE**, inversion quarantined to the portrait |
+| Headings are gigantic (166 px against 15 px body — 11×) | old rules 2+4 demanded a 2-cell stem and a bare counter out of a 7 px cell, which forces an ~80–130 px cap height | bible §3.6 — size in **rows**, and a finer 4×7 base cell. 63 px, ≈3.9× body |
+| The cloud is uniform texture everywhere | §4.2 specified weather but not composition | bible §4.2 — `density = weather × presence(distance to content)`, baked at layout |
+| The navigation is invisible until you sweep the cursor | §4.3 made the pointer *summon* words | bible §4.3 — words **self-assemble** on route settle; hover is now a modulation (§4.3a) |
+| Route changes do not feel like one place | §7.1 called it "a GATHER re-target" | bible §7.1a — the site is a **torus of panels** and navigation is a camera pan |
+
+Evidence to look at before starting: `tools/preview/heading_modes.png` renders
+the shipped treatment (A) against the proposed one (D) using the real baked
+ramp. D is the target.
+
+#### R1 — the type render fix · the look
+
+1. **Delete inverted cells from the field and from words.** Remove
+   `field.invert.slotDensityAbove`; keep the register available for the portrait
+   only, behind `portrait.allowInvert`.
+2. **Add OVERSTRIKE** (bible §3.4a): a second glyph struck into the same cell at
+   `+0.34 cell` across and `+0.10 cell` down, weight 600, chosen by the same
+   density lookup. It is a **second instanced draw that replaces the inverted
+   draw**, so the draw-call budget is unchanged at 3.
+3. **Counters and surround thin to ≤ 0.06 effective ink** (rule 2). This, not
+   stem darkness, is what makes the word readable. Currently far too gentle.
+4. **Base cell 7×12 → 4×7**, with the device-pixel floor
+   `cellW = max(base, ceil(8 / dpr))`. Re-derive the breakpoint table and the
+   overflow ladder around the new base. The baked atlas does **not** need
+   re-baking: it is stored at 56×96 per glyph and sampled down, and 4/7 = 0.571
+   is within the aspect tolerance the ladder already accepts.
+5. **The type scale from bible §3.6**: VOICE body 16 px, nav links 7 rows, h1
+   9 rows. Delete the `min(13vw, cell-w × 26)` sizing in `src/site/dom.js`.
+6. **Layout-anchored presence** (bible §4.2): a soft field peaked over the DOM's
+   content rects, ~18-cell falloff, multiplied into resting density and baked
+   into the cell data texture at layout.
+
+**Acceptance:** no inverted cell anywhere outside the portrait — assert it in
+`type.test.js` and count it in a dev lint. `PROJECTS` at h1 measures ≤ 520 px
+wide at the 1512 px breakpoint. 35–55% of the viewport is below 0.04 effective
+ink at rest. The greyscale-thumbnail squint test (bible §4.4 rule 5) passes for
+every nav label at all five breakpoints. Field CPU and upload budgets from
+phase 3 are unchanged — none of this adds per-frame work.
+
+#### R2 — self-assembly and hover
+
+1. **Words assemble on route settle**, not on pointer approach (bible §4.3):
+   `assembleS` 2.6 s, per-cell stagger 0.9 s from the frozen seed, outside-in by
+   distance to the word's centre, then they *stay*. GATHER is unchanged — only
+   its trigger moves. `:focus-visible` forces instant full assembly.
+2. **Hover as modulation** (bible §4.3a): sharpen, shiver, fringe, breath — four
+   effects on one spring, per word, from the existing per-word uniform array.
+   The shiver is the one place the glyph re-roll rate is allowed to spike.
+3. Retire `gatherRadiusPx` as the primary mechanism. It survives only as the
+   pointer's *local* influence on the field, which is a separate, smaller thing.
+
+**Acceptance:** load any route, touch nothing, and every ASCII word is fully
+formed within 3 s. Hover changes contrast, re-roll rate and fringe but never
+colour-swaps. Keyboard tab reaches every link and focus assembles its word.
+Chromatic cells stay inside the 4% budget with three words hovered in sequence.
+
+#### R3 — the spatial map and the transit
+
+1. **`siteConfig.map`**: routes → integer lattice cells, plus an extent per axis.
+   Shortest-signed-delta-modulo-extent gives the wrap-around behaviour with no
+   special cases (bible §7.1a). Adding a page is one line.
+2. **The cell data texture covers the whole map** and is sampled `REPEAT` on both
+   axes, so the torus costs nothing. At 4×7 on a 1512 px viewport a 3×3 map is
+   ~1134×423 texels ≈ 1.9 MB. WebGL2 permits `REPEAT` on non-power-of-two.
+3. **Generalise the field's scroll offset to a 2D camera.** A pan and a scroll
+   are the same operation; do not build a second mechanism.
+4. **MIGRATE** (bible §5): analytic, seeded stagger, one bump curve, along the
+   travel direction. Two new uniforms total — `uTransit` (dir.xy, t01, amp) and
+   the 2D camera.
+5. **The panel stage**: source and destination DOM both mounted during transit,
+   positioned by *visual* offset (source + delta, not the destination's canonical
+   cell, or the wrap will teleport), the stage moved by one composited
+   `translate3d`.
+6. **Timing exactly as the table in bible §7.1a.** The camera starts 140 ms
+   *after* the crowd, on `cubic-bezier(0.42, 0, 0.12, 1)`, duration
+   `base × |delta|^0.6`.
+7. **Mew takes a small impulse** opposite the travel direction as the pan starts,
+   then catches up. She does not pan.
+8. `prefers-reduced-motion`: camera jumps, words cross-fade in 240 ms.
+
+**Acceptance:** clicking any link changes the URL immediately and shows no load,
+no flash and no remount. W→E travels left; N→S travels up; home is one step from
+everywhere. Moving a route's map cell in config changes the direction travelled
+and nothing else. 50 navigations leave `renderer.info.memory` flat and the
+listener map at baseline (plan §6 still applies). Back/forward reverse the pan.
+
 ### Phase 9 — Content, polish, performance · SERIAL
 
 Real copy for WHO AM I / PROJECTS / CASE STUDIES / MY JOURNEY. Reduced-motion
@@ -217,9 +343,13 @@ bible's §9 acceptance test.
 Phase 0 ──┬─> Phase 1 ──> Phase 2 ──┐
           │                          ├─> Phase 3 ──> Phase 4 ──┬─> Phase 5
           └─> Phase 6 (independent) ─┘                          ├─> Phase 7
-                                                                └─> Phase 9
-                                                     Phase 8 (any time after 3)
+                                                                │
+   [0–7 SHIPPED] ──> R1 ──> R2 ──> R3 ──> Phase 9 <─────────────┘
+                                          Phase 8 (any time after 3)
 ```
+
+R1 → R2 → R3 is strictly serial: R2's assembly needs R1's readable words to be
+worth looking at, and R3's transit needs R2's assembly as its arrival beat.
 
 Phases 1, 2 and 6 can run concurrently with each other. Everything from 3
 onward is one continuous thread, because from there on the acceptance test is
@@ -229,11 +359,24 @@ onward is one continuous thread, because from there on the acceptance test is
 
 ## 4. Performance strategy
 
-The budget is in the design bible §7.3. The techniques that meet it:
+The budget is in the design bible §7.3, and it is backed by a measurement, not
+an estimate — `tools/bench/field-bench.html` runs the three candidate
+architectures head to head with GPU timer queries. Re-run it on any machine
+before trusting a number here. (Note: its `fps` figures are meaningless inside
+an automated preview pane, which throttles `requestAnimationFrame`; `cpuMs`,
+`gpuMs` and the upload rate are the real outputs.)
 
-1. **30 fps when idle, 60 fps when interacting.** Roughly halves sustained GPU
-   load. Implement as a frame-skip on the render, never by throttling the sim.
-2. **Sleeping cells.** Zero CPU and zero upload at rest.
+The techniques that meet it:
+
+1. **The field is a pure function in the vertex shader.** This is the one that
+   matters; everything else is a rounding error next to it. Zero per-frame CPU
+   over cells, zero per-frame upload, and the cost stops scaling with cell
+   count. See phase 3 and bible §7.3.
+2. **Render at the display's native rate.** Capping to 30/60 was in the earlier
+   draft and is now wrong: it saves a fraction of a percent, and 60-into-120 on
+   a ProMotion panel with a moving character is visible judder. Frames are
+   reclaimed only on `document.hidden` (stop), after 45 s idle (30 fps), and by
+   the degradation ladder.
 3. **Two draw calls** for the whole type layer, instanced.
 4. **The atlas is uploaded once** and sampled `NEAREST` — no mip chain, no
    anisotropy, no filtering cost, and no blur (which would ruin the look

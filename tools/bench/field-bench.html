@@ -1,0 +1,316 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>field bench</title>
+<style>
+  body { margin:0; background:#f4f2ec; color:#12100f; font:12px ui-monospace,monospace; }
+  #out { position:fixed; left:8px; top:8px; z-index:2; white-space:pre; background:#fffc; padding:8px; }
+  canvas { position:fixed; inset:0; width:100vw; height:100vh; }
+</style></head>
+<body>
+<pre id="out">warming up…</pre>
+<canvas id="c"></canvas>
+<script type="module">
+(async () => {
+try {
+// the preview pane can start hidden, in which case innerWidth is 0 and every
+// measurement below is of an empty grid. wait for a real viewport first.
+while (!window.innerWidth || !window.innerHeight) await new Promise(r => setTimeout(r, 120));
+// Raw WebGL2 micro-benchmark. No three.js, so nothing but the architecture is
+// being measured. Three scenarios, same pixel output shape:
+//   A  CPU-driven instances: every cell's transform re-uploaded every frame
+//   B  analytic instances:   motion computed in the vertex shader, zero uploads
+//   C  fullscreen post-pass: one quad, two dependent texture fetches per pixel
+const cv = document.getElementById("c");
+const out = document.getElementById("out");
+const gl = cv.getContext("webgl2", { alpha: false, antialias: false, powerPreference: "high-performance" });
+const timerExt = gl.getExtension("EXT_disjoint_timer_query_webgl2");
+
+const DPR = Math.min(devicePixelRatio, 2);
+function resize() {
+  cv.width = Math.round(innerWidth * DPR);
+  cv.height = Math.round(innerHeight * DPR);
+  gl.viewport(0, 0, cv.width, cv.height);
+}
+resize();
+
+// ---- a stand-in glyph atlas: 16x16 cells of procedural ink -------------------
+const AT = 1024, AC = 16, AS = AT / AC;
+const atlasData = new Uint8Array(AT * AT);
+for (let g = 0; g < AC * AC; g++) {
+  const gx = (g % AC) * AS, gy = ((g / AC) | 0) * AS;
+  const cov = 0.03 + (g / (AC * AC)) * 0.6;      // coverage ramp, like the real one
+  for (let y = 0; y < AS; y++) for (let x = 0; x < AS; x++) {
+    const s = (Math.sin(x * 0.7 + g) * Math.cos(y * 0.5 + g * 1.7) + 1) * 0.5;
+    atlasData[(gy + y) * AT + gx + x] = s < cov ? 255 : 0;
+  }
+}
+const atlas = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, atlas);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, AT, AT, 0, gl.RED, gl.UNSIGNED_BYTE, atlasData);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+// ---- grid -------------------------------------------------------------------
+const CW = 7, CH = 12;                                   // CSS px, the real cell
+const cols = Math.ceil(innerWidth / CW), rows = Math.ceil(innerHeight / CH);
+const N = cols * rows;
+
+function prog(vs, fs) {
+  const p = gl.createProgram();
+  for (const [t, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) {
+    const s = gl.createShader(t);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    gl.attachShader(p, s);
+  }
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+
+const QUAD = new Float32Array([0,0, 1,0, 0,1, 0,1, 1,0, 1,1]);
+
+// ---------------------------------------------------------------- A: CPU-driven
+// per-instance: x, y (px, already displaced on the cpu), glyph, weight
+const instA = new Float32Array(N * 4);
+const cellHome = new Float32Array(N * 2);
+const seed = new Float32Array(N);
+for (let i = 0; i < N; i++) {
+  cellHome[i*2] = (i % cols) * CW;
+  cellHome[i*2+1] = ((i / cols) | 0) * CH;
+  seed[i] = Math.random();
+}
+const vaoA = gl.createVertexArray();
+gl.bindVertexArray(vaoA);
+const qb = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, qb); gl.bufferData(gl.ARRAY_BUFFER, QUAD, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const ib = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, ib); gl.bufferData(gl.ARRAY_BUFFER, instA, gl.DYNAMIC_DRAW);
+gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
+gl.vertexAttribDivisor(1, 1);
+gl.bindVertexArray(null);
+
+const pA = prog(`#version 300 es
+layout(location=0) in vec2 aQuad;
+layout(location=1) in vec4 aInst;      // x, y, glyph, weight
+uniform vec2 uRes; uniform vec2 uCell;
+out vec2 vUv; out float vW;
+void main(){
+  vec2 p = (aInst.xy + aQuad * uCell) / uRes * 2.0 - 1.0;
+  gl_Position = vec4(p.x, -p.y, 0.0, 1.0);
+  float g = aInst.z;
+  vec2 c = vec2(mod(g, 16.0), floor(g / 16.0));
+  vUv = (c + aQuad) / 16.0;
+  vW = aInst.w;
+}`, `#version 300 es
+precision mediump float;
+uniform sampler2D uAtlas;
+in vec2 vUv; in float vW; out vec4 o;
+void main(){
+  float a = texture(uAtlas, vUv).r;
+  if (a < 0.5) discard;
+  o = vec4(vec3(0.07,0.06,0.06), vW);
+}`);
+
+// ---------------------------------------------------------------- B: analytic
+// per-instance: home x, y, seed, baseGlyph -- UPLOADED ONCE, NEVER AGAIN.
+const instB = new Float32Array(N * 4);
+for (let i = 0; i < N; i++) {
+  instB[i*4] = cellHome[i*2];
+  instB[i*4+1] = cellHome[i*2+1];
+  instB[i*4+2] = seed[i];
+  instB[i*4+3] = Math.floor(seed[i] * 255);
+}
+const vaoB = gl.createVertexArray();
+gl.bindVertexArray(vaoB);
+gl.bindBuffer(gl.ARRAY_BUFFER, qb);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const ibB = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, ibB); gl.bufferData(gl.ARRAY_BUFFER, instB, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
+gl.vertexAttribDivisor(1, 1);
+gl.bindVertexArray(null);
+
+const pB = prog(`#version 300 es
+layout(location=0) in vec2 aQuad;
+layout(location=1) in vec4 aInst;      // homeX, homeY, seed, baseGlyph
+uniform vec2 uRes; uniform vec2 uCell; uniform float uT;
+uniform vec2 uPointer; uniform float uGatherR;
+uniform vec4 uHit;                     // x, y, age, strength
+out vec2 vUv; out float vW;
+float h11(float p){ p = fract(p*0.1031); p *= p+33.33; p *= p+p; return fract(p); }
+void main(){
+  vec2 home = aInst.xy; float s = aInst.z;
+  // DRIFT -- analytic noise, no state
+  vec2 d = vec2(sin(uT*0.94 + s*31.4), cos(uT*0.79 + s*17.7)) * uCell * 0.9;
+  // GATHER -- closed form from the pointer
+  float g = 1.0 - smoothstep(0.0, uGatherR, distance(home, uPointer));
+  d = mix(d, vec2(0.0), g);
+  // SCATTER + SETTLE -- critically damped impulse response, closed form
+  vec2 away = home - uHit.xy;
+  float k = uHit.w * exp(-uHit.z * 1.6) * uHit.z / (1.0 + dot(away, away) * 0.0008);
+  d += normalize(away + 1e-4) * k;
+  float w = 0.55 + 0.45 * g;
+  // glyph re-roll: hash of (cell, time slot). also stateless
+  float slot = floor(uT * 0.4 + s * 7.0);
+  float gid = floor(h11(s * 977.0 + slot) * 255.0);
+  vec2 p = (home + d + aQuad * uCell) / uRes * 2.0 - 1.0;
+  gl_Position = vec4(p.x, -p.y, 0.0, 1.0);
+  vec2 c = vec2(mod(gid, 16.0), floor(gid / 16.0));
+  vUv = (c + aQuad) / 16.0;
+  vW = w;
+}`, `#version 300 es
+precision mediump float;
+uniform sampler2D uAtlas;
+in vec2 vUv; in float vW; out vec4 o;
+void main(){
+  float a = texture(uAtlas, vUv).r;
+  if (a < 0.5) discard;
+  o = vec4(vec3(0.07,0.06,0.06), vW);
+}`);
+
+// ---------------------------------------------------------------- C: post-pass
+const cellTexW = cols, cellTexH = rows;
+const cellData = new Uint8Array(cellTexW * cellTexH * 4);
+for (let i = 0; i < cellTexW * cellTexH; i++) cellData[i*4] = (seed[i] * 255) | 0;
+const cellTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, cellTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, cellTexW, cellTexH, 0, gl.RGBA, gl.UNSIGNED_BYTE, cellData);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+const vaoC = gl.createVertexArray();
+gl.bindVertexArray(vaoC);
+gl.bindBuffer(gl.ARRAY_BUFFER, qb);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+gl.bindVertexArray(null);
+const pC = prog(`#version 300 es
+layout(location=0) in vec2 aQuad;
+out vec2 vP;
+void main(){ vP = aQuad; gl_Position = vec4(aQuad*2.0-1.0, 0.0, 1.0); }`,
+`#version 300 es
+precision mediump float;
+uniform sampler2D uAtlas; uniform sampler2D uCells;
+uniform vec2 uRes; uniform vec2 uCell; uniform float uT;
+in vec2 vP; out vec4 o;
+void main(){
+  vec2 px = vP * uRes;
+  vec2 cell = floor(px / uCell);
+  vec2 f = fract(px / uCell);
+  float g = floor(texture(uCells, (cell+0.5)/vec2(textureSize(uCells,0))).r * 255.0);
+  vec2 c = vec2(mod(g,16.0), floor(g/16.0));
+  float a = texture(uAtlas, (c + f)/16.0).r;
+  if (a < 0.5) discard;
+  o = vec4(vec3(0.07,0.06,0.06), 1.0);
+}`);
+
+// ---- harness ----------------------------------------------------------------
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+const U = (p, n) => gl.getUniformLocation(p, n);
+let mode = 0, t0 = performance.now(), frames = 0, times = [], uploaded = 0;
+const MODES = ["A cpu-driven", "B analytic", "C post-pass"];
+const results = {};
+let queries = [], gpuSamples = [];
+
+function drawA(t) {
+  // the honest CPU cost: recompute and re-upload every instance every frame
+  for (let i = 0; i < N; i++) {
+    const s = seed[i];
+    instA[i*4]   = cellHome[i*2]   + Math.sin(t*0.94 + s*31.4) * CW * 0.9;
+    instA[i*4+1] = cellHome[i*2+1] + Math.cos(t*0.79 + s*17.7) * CH * 0.9;
+    instA[i*4+2] = (s * 255) | 0;
+    instA[i*4+3] = 0.8;
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, ib);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, instA);
+  uploaded += instA.byteLength;
+  gl.useProgram(pA);
+  gl.uniform2f(U(pA,"uRes"), innerWidth, innerHeight);
+  gl.uniform2f(U(pA,"uCell"), CW, CH);
+  gl.uniform1i(U(pA,"uAtlas"), 0);
+  gl.bindVertexArray(vaoA);
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, N);
+}
+function drawB(t) {
+  gl.useProgram(pB);
+  gl.uniform2f(U(pB,"uRes"), innerWidth, innerHeight);
+  gl.uniform2f(U(pB,"uCell"), CW, CH);
+  gl.uniform1f(U(pB,"uT"), t);
+  gl.uniform2f(U(pB,"uPointer"), innerWidth*0.5 + Math.sin(t)*300, innerHeight*0.5);
+  gl.uniform1f(U(pB,"uGatherR"), 260);
+  gl.uniform4f(U(pB,"uHit"), innerWidth*0.3, innerHeight*0.6, (t % 3.0), 900);
+  gl.uniform1i(U(pB,"uAtlas"), 0);
+  gl.bindVertexArray(vaoB);
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, N);
+}
+function drawC(t) {
+  gl.useProgram(pC);
+  gl.uniform2f(U(pC,"uRes"), innerWidth, innerHeight);
+  gl.uniform2f(U(pC,"uCell"), CW, CH);
+  gl.uniform1f(U(pC,"uT"), t);
+  gl.uniform1i(U(pC,"uAtlas"), 0);
+  gl.uniform1i(U(pC,"uCells"), 1);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, cellTex);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindVertexArray(vaoC);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+
+let cpuAccum = 0;
+function frame(now) {
+  const t = now / 1000;
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, atlas);
+  gl.clearColor(0.957, 0.949, 0.925, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  let q = null;
+  if (timerExt) { q = gl.createQuery(); gl.beginQuery(timerExt.TIME_ELAPSED_EXT, q); }
+  const c0 = performance.now();
+  if (mode === 0) drawA(t); else if (mode === 1) drawB(t); else drawC(t);
+  cpuAccum += performance.now() - c0;
+  if (q) { gl.endQuery(timerExt.TIME_ELAPSED_EXT); queries.push(q); }
+
+  for (let i = queries.length - 1; i >= 0; i--) {
+    const qq = queries[i];
+    if (gl.getQueryParameter(qq, gl.QUERY_RESULT_AVAILABLE)) {
+      gpuSamples.push(gl.getQueryParameter(qq, gl.QUERY_RESULT) / 1e6);
+      gl.deleteQuery(qq); queries.splice(i, 1);
+    }
+  }
+
+  frames++;
+  times.push(now);
+  if (now - t0 > 2500) {
+    const dts = [];
+    for (let i = 1; i < times.length; i++) dts.push(times[i] - times[i-1]);
+    dts.sort((a,b)=>a-b);
+    gpuSamples.sort((a,b)=>a-b);
+    results[MODES[mode]] = {
+      fps: (frames / ((now - t0)/1000)).toFixed(1),
+      cpuMs: (cpuAccum / frames).toFixed(3),
+      gpuMs: gpuSamples.length ? gpuSamples[(gpuSamples.length*0.5)|0].toFixed(3) : "n/a",
+      gpuP95: gpuSamples.length ? gpuSamples[(gpuSamples.length*0.95)|0].toFixed(3) : "n/a",
+      uploadMBs: (uploaded / 1e6 / ((now-t0)/1000)).toFixed(1)
+    };
+    mode++; t0 = now; frames = 0; times = []; cpuAccum = 0; uploaded = 0;
+    gpuSamples = []; queries.forEach(q=>gl.deleteQuery(q)); queries = [];
+    if (mode > 2) {
+      window.__BENCH__ = { cells: N, cols, rows, dpr: DPR,
+        px: cv.width + "x" + cv.height, timer: !!timerExt, results };
+      out.textContent = JSON.stringify(window.__BENCH__, null, 1);
+      return;
+    }
+  }
+  out.textContent = `cells ${N} (${cols}x${rows})  dpr ${DPR}  ${cv.width}x${cv.height}\n`
+    + `running ${MODES[mode]} …\n` + JSON.stringify(results, null, 1);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+} catch (e) { document.getElementById("out").textContent = "ERROR: " + (e && e.message ? e.message : e); window.__BENCH__ = { error: String(e && e.message || e) }; }
+})();
+</script>
+</body></html>
