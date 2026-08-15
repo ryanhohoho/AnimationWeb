@@ -1,0 +1,460 @@
+/* site.css — see RYAN.txt, then DESIGN.md.
+
+   Three rules govern everything in this file:
+     1. Most of the surface is paper. The print is only visible through holes.
+     2. Nothing is decorated. Things are LABELLED.
+     3. There are two type sizes. The mid-range is where generic lives.
+
+   Layer order, bottom to top:
+     body background   white, as a floor under everything
+     #sheet      z 1   THE SHEET: paper, print and every hole, in one shader
+                       pass. Fixed to the viewport, scrolled by a uniform.
+     #doc        z10   the type. Transparent -- the paper it sits on is painted
+                       by #sheet, not by any element in here.
+     #stage      z30   Mew
+     body::before z40  grain, over all of it, because it is one photographed
+                       sheet and the animal is on it, not behind glass
+*/
+
+/* OVERPASS MONO, and the reason is not taste.
+   IBM Plex Mono is now the tell of a generated site — it, JetBrains Mono and
+   Geist ship as the default of every scaffold, so a page set in one reads as
+   a template before anyone has read a word of it. This is Red Hat's mono,
+   drawn off Highway Gothic: it comes from SIGNAGE rather than from an IDE,
+   which is the right ancestry for a sheet whose whole job is labelling things
+   accurately.
+
+   One variable file, 22 KB, every weight from 300 to 700 — a third of what the
+   two static Plex cuts cost, and it buys a real middle weight, which is what
+   the small text was missing. */
+@font-face {
+  font-family: "Mono";
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("../assets/fonts/OverpassMono-var.woff2") format("woff2");
+}
+
+/* IBM PLEX MONO, KEPT FOR EXACTLY ONE JOB.
+   It is the wrong face for a poster and the right face for a terminal — it is
+   what a console actually looks like, and a transcript set in the sheet's
+   display face would be a drawing of a terminal rather than a terminal. So it
+   is scoped to the two places that ARE a machine talking: the played sessions
+   (.term) and the quoted response body (.doc). Nowhere else may use it. */
+@font-face { font-family: "PlexMono"; font-weight: 400; font-display: swap;
+  src: url("../assets/fonts/IBMPlexMono-ExtraLight.ttf") format("truetype"); }
+@font-face { font-family: "PlexMono"; font-weight: 600; font-display: swap;
+  src: url("../assets/fonts/IBMPlexMono-SemiBold.ttf") format("truetype"); }
+
+:root {
+  /* BONE, not white. A sheet is stock, and stock has a colour: #FFF is the
+     absence of a decision and it made the ink look like it was floating on a
+     screen rather than sitting in paper. This value must stay in step with
+     PAPER in site/pressgl.js and site/sky.js — the shader paints the stock, so
+     a mismatch shows as a seam between the page and its own background. */
+  --paper:#EFEDE6;
+  --ink:  #16150F;
+  /* SECONDARY TEXT IS NOT LIGHT TEXT.
+     Labels, captions and annotation carried a warm mid-grey, which on a #FFF
+     sheet measures 2.6:1 -- under the 4.5:1 floor, and genuinely hard to read
+     at 11px. Hierarchy here is done with SIZE, WEIGHT and CASE, which is how a
+     printed page does it; nothing has to be faded out to sit below something
+     else. So the greys that carry words are now near-black (11.7:1) and only
+     the greys that carry LINES stayed grey. */
+  --n3:   #3D392F;   /* labels, captions, annotation — text, so it is nearly ink */
+  --n4:   #9A9384;   /* hairlines, ticks, inactive marks — never a word */
+  /* THE INK, and the constant of the identity system. It is SHINY MEW'S OWN
+     HUE — she renders at OKLCh h 241 through the real light rig, and this is
+     h 233.7, measured on screen. No project may own it; links, focus
+     rings and hover states are the same ink as the sky.
+
+     It replaced an cerulean at h 267, which was the worst place it could
+     have been: 24° off her, which is far enough to be a different blue and
+     close enough to read as HERS rendered wrong. Same story for the orange it
+     was paired with, 56° off her pink. Two near-misses are not a palette.
+     6.6:1 on bone. */
+  --ink-a:  #005A7D;
+  --blue:   #005A7D;   /* the old name, kept so nothing has to be renamed twice */
+  /* HER, as she actually renders under the key light. The second ink of the
+     home sheet is this hue exactly: the last warm light in the sky is the
+     colour of the animal standing in front of it. */
+  --mew:    #F7A8D8;
+  --ink-b:  #CF69AB;   /* base Mew's rose, printed */
+
+  --e: cubic-bezier(0.2,0.6,0.2,1);
+  --t1:140ms; --t2:340ms; --t3:900ms;
+  --pad: clamp(18px, 3.4vw, 60px);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+html,body { height:100%; }
+
+/* WEIGHT 400, NOT 200.
+   Everything small on this sheet used to be set in an extra-light, which is a
+   display weight being asked to do body work: at 11-12px it has no stem left
+   and it reads as grey no matter what colour it is. The light cut is now
+   reserved for the display sizes, where it belongs. */
+body {
+  font-family:"Mono", ui-monospace, Menlo, monospace;
+  font-weight:400; color:var(--ink);
+  background:var(--paper);
+  overflow-x:hidden; -webkit-text-size-adjust:100%; -webkit-font-smoothing:antialiased;
+}
+
+/* Grain. Static, rasterised once by the SVG filter, no per-frame cost. It sits
+   ABOVE everything including Mew so that the animal and the print are on the
+   same sheet rather than in different rooms. */
+body::before {
+  content:""; position:fixed; inset:0; z-index:40; pointer-events:none;
+  opacity:.20; mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+}
+
+#stage { position:fixed; inset:0; width:100vw; height:100lvh; z-index:30; pointer-events:none; }
+
+/* THE SHEET. Fixed, so it costs one canvas the size of the window rather than
+   one the size of the document — a 5,000 px tall canvas is both a memory
+   problem and, past a point, over the browser's limit. It scrolls by a uniform
+   instead of by moving, which is why a hole stays put on the page. */
+#sheet {
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  width:100%; height:100%;
+  opacity:0; transition:opacity var(--t3) var(--e);
+}
+#sheet.on { opacity:1; }
+
+body.pre #doc { opacity:0; }
+#doc { position:relative; z-index:10; transition:opacity var(--t3) var(--e); }
+
+/* THE PAGE DOES NOT LEAVE ANY MORE. It used to fade out the moment you clicked,
+   so the transition played over an empty screen and the thing you were looking
+   at simply vanished before it. The sheet now stays exactly where it is and
+   #eat spreads over the top of it. */
+#eat {
+  position:fixed; inset:0; z-index:20; pointer-events:none;
+  width:100%; height:100%; opacity:0;
+}
+#eat.on { opacity:1; }
+
+/* ══ APERTURES ═══════════════════════════════════════════════════════════
+   Two corner marks rather than four: registration marks, not a frame. A frame
+   would make the hole an image; ticks make it a cut. */
+/* AN APERTURE IS NOW AN EMPTY DIV.
+   It holds no canvas and paints nothing: the hole itself is cut by the sheet's
+   shader, which is told this rectangle's position in document coordinates. What
+   is left here is what was always the interesting part — where the cut is, how
+   big it is, and its two registration ticks. */
+.ap {
+  position:absolute; left:var(--x); top:var(--y); width:var(--w); height:var(--h);
+  z-index:0; pointer-events:none;
+}
+.ap::before, .ap::after {
+  content:""; position:absolute; width:9px; height:9px; pointer-events:none;
+  opacity:.85; z-index:1; transition:border-color var(--t2) var(--e);
+}
+.ap::before { left:0; top:0; border-left:1px solid var(--n3); border-top:1px solid var(--n3); }
+.ap::after { right:0; bottom:0; border-right:1px solid var(--n3); border-bottom:1px solid var(--n3); }
+
+/* Mew's hole is no longer an element. It is a uniform: a soft-edged circle the
+   sheet's shader opens at her viewport position, cut from the same field as
+   every other hole — which is why it now carries the same MOVING weather, and
+   why it can no longer drift out of register with the print. */
+
+/* THE CROSSING has no layer of its own any more. Opening a die-cut is two
+   uniforms on the sheet's shader (site/router.js drives site/deck.js), so
+   there is nothing here to position, park or clean up. */
+
+/* ══ TYPE ════════════════════════════════════════════════════════════════ */
+/* 14ch of the display face, so the measure is set in the type's own units and
+   the line breaks land the same way at every viewport instead of only at the
+   one it was eyeballed on. It also guarantees the headline can never reach the
+   aperture at 57%. */
+.d { font-weight:300; font-size:clamp(38px, 5.2vw, 82px); line-height:.94;
+     letter-spacing:-.045em; text-transform:lowercase; position:relative; z-index:2;
+     max-width:14ch; }
+.d em { font-style:normal; font-weight:600; letter-spacing:-.055em; }
+.d.sm { font-size:clamp(27px, 3.2vw, 50px); max-width:19ch; }
+
+.t { font-weight:600; font-size:11px; line-height:1.85; letter-spacing:.15em;
+     text-transform:uppercase; position:relative; z-index:2; }
+.t.dim { color:var(--n3); }
+.t.body { font-weight:400; text-transform:none; letter-spacing:.01em;
+          line-height:1.8; max-width:30ch; color:var(--ink); font-size:12px; }
+.t.body.wide { max-width:42ch; }
+.t.body.sm { font-size:11px; color:var(--n3); }
+
+a { color:inherit; }
+.link { color:var(--blue); text-decoration:underline; text-underline-offset:.24em;
+        text-decoration-thickness:1px; }
+
+/* a caption pinned under its aperture, in the print's own coordinates.
+   .cap.pad is for the one aperture that runs full-bleed: the caption returns to
+   the sheet's margin even though the hole it describes does not. */
+.cap { position:absolute; left:var(--x); top:var(--y); }
+.cap.pad { left:var(--pad); }
+
+/* ══ PLATES ══════════════════════════════════════════════════════════════ */
+.plate { position:relative; min-height:100lvh; padding:var(--pad); }
+/* A plate is one viewport by default because that is the unit the composition
+   is designed in. A plate that carries a long argument is taller — stated here
+   rather than discovered by its type running off the foot into the next plate,
+   which is what happens when absolutely positioned columns outgrow their
+   sheet. */
+.plate.deep { min-height:140lvh; }
+
+.corner { position:absolute; display:grid; gap:.9rem; max-width:min(44ch,40vw); z-index:2; }
+.tl { top:var(--pad); left:var(--pad); }
+.tr { top:var(--pad); right:var(--pad); text-align:right; justify-items:end; }
+.bl { bottom:var(--pad); left:var(--pad); max-width:52vw; }
+.br { bottom:var(--pad); right:var(--pad); text-align:right; justify-items:end; }
+
+/* ── 01 · THE GATE ────────────────────────────────────────────────────────
+   One hole. The plates run behind it. The hole never moves, which is the whole
+   difference between a projector and a carousel — and it is why the composition
+   of this section is fixed while its content changes. */
+/* The gate is an .ap by class but not a die-cut: it is a hole that holds its
+   OWN plates, three JS stills in three different second inks, so it keeps the
+   clipping and the pointer that a plain aperture no longer needs. */
+.gate { display:block; text-decoration:none; cursor:pointer;
+        overflow:hidden; pointer-events:auto;
+}
+/* the only hover state a hole can honestly have: its registration marks light
+   up in the ink everything here is printed in */
+.gate:hover::before, .gate:focus-visible::before,
+.gate:hover::after, .gate:focus-visible::after { border-color:var(--blue); }
+
+/* the advance. A hairline that fills over the dwell, because the gate moves on
+   its own and a thing that moves on its own without warning has taken the page
+   away from you. One scaleX, on the compositor. */
+.advance { position:absolute; left:var(--x); top:var(--y); width:var(--w);
+           height:1px; background:var(--n4); z-index:2; overflow:hidden; }
+.advance i { display:block; width:100%; height:100%; background:var(--n3);
+             transform-origin:0 50%; transform:scaleX(0); }
+
+/* the caption. Everything about the frame that is words lives here, on paper —
+   the frame itself is never printed over. */
+/* A NUMBER, A NAME, AND A WAY IN. Nothing else — the argument is on the sheet
+   this opens. With four lines instead of six the caption can sit on the gate's
+   own optical centre rather than starting level with its top edge. */
+.reel { position:absolute; left:var(--pad); top:32%; width:min(30ch,30vw);
+        display:grid; gap:1.05rem; justify-items:start; z-index:2; }
+.reel .d.sm { font-size:clamp(28px,3.1vw,48px); max-width:none; line-height:.98; }
+.reel .d.sm a { text-decoration:none; transition:color var(--t2) var(--e); }
+.reel .d.sm a:hover, .reel .d.sm a:focus-visible { color:var(--blue); }
+/* the way in, stated once. An arrow rather than a sentence. */
+.link.open { text-decoration:none; letter-spacing:.2em;
+             border-bottom:1px solid var(--blue); padding-bottom:.35rem;
+             transition:letter-spacing var(--t2) var(--e); }
+.link.open:hover, .link.open:focus-visible { letter-spacing:.3em; }
+
+/* the frame counter, directly under the advance bar. Together the two are the
+   gate's transport: how long until it moves, and which frame it is on. They
+   belong to the hole, not to the caption. */
+.stops { position:absolute; left:var(--x); top:var(--y);
+         display:flex; gap:.85rem; list-style:none; z-index:2; }
+.stops a { display:block; width:36px; padding-top:.32rem; text-decoration:none;
+           border-top:1px solid var(--n4);
+           transition:border-color var(--t2) var(--e); }
+.stops i { font-style:normal; font-weight:600; font-size:9px; letter-spacing:.15em;
+           color:var(--n4); font-variant-numeric:tabular-nums;
+           transition:color var(--t2) var(--e); }
+.stops a.on { border-top-color:var(--ink); }
+.stops a.on i { color:var(--ink); }
+.stops a:hover { border-top-color:var(--blue); }
+.stops a:hover i { color:var(--blue); }
+
+/* ── the annotated column. Used by the project sheets (site/pages.js). ──── */
+.spec { position:absolute; left:var(--pad); top:28%; width:min(32ch,33vw);
+        display:grid; gap:1.1rem; z-index:2; }
+.spec dl { display:grid; grid-template-columns:auto 1fr; gap:.28rem 1.4rem; }
+.spec dt { font-weight:600; font-size:10px; letter-spacing:.15em; color:var(--n3); }
+.spec dd { font-weight:400; font-size:12.5px; letter-spacing:.05em; }
+
+/* ── 02 · the statement, as a dialog. The icon slot is a hole: where an alert
+      would put a warning triangle, this one puts the sky. ────────────────── */
+.dialog { position:absolute; left:clamp(var(--pad),12vw,220px); top:30%;
+          /* wide enough that the display line inside it can reach its own 19ch
+             measure -- the box, not the type, was setting the break */
+          width:min(72ch,76vw); border:1px solid var(--ink); background:var(--paper);
+          z-index:2; }
+.dlg-bar { font-weight:600; font-size:10px; letter-spacing:.2em; padding:.42rem .7rem;
+           background:var(--ink); color:var(--paper); }
+.dlg-body { padding:clamp(18px,2.4vw,32px);
+            display:grid; grid-template-columns:auto 1fr; gap:clamp(16px,2vw,28px); }
+.dlg-text { display:grid; gap:1.1rem; }
+.ap.icon { position:relative; left:auto; top:auto; width:44px; height:44px; }
+/* A sheet that is set but not yet printed says so — and it sits directly under
+   the plate it is talking about, aligned to the same edges, rather than in the
+   statement's position. It is a note ON this plate, not a statement OF it. */
+.dialog.set { left:var(--x); top:var(--y); width:var(--w); }
+
+/* ── 03 · colophon ───────────────────────────────────────────────────────── */
+.cols { position:absolute; left:var(--pad); top:28%; right:var(--pad);
+        display:grid; gap:1.6rem clamp(20px,4vw,72px);
+        grid-template-columns:repeat(auto-fit,minmax(172px,1fr));
+        max-width:min(100%,1120px); z-index:2; }
+
+:focus-visible { outline:2px solid var(--blue); outline-offset:5px; }
+
+
+/* ══ PROJECT SHEETS ══════════════════════════════════════════════════════
+   A project page is a SHEET — same paper, same die-cuts, same two type sizes,
+   same annotation register. Nothing new was invented to hold a project. What
+   changes is what is printed: the apertures stay the home sheet's own trims,
+   and the WORK is carried by captures of the real thing (site/media.js) and by
+   played transcripts (site/term.js). A project page shows the project, not a
+   drawing of it. These are the few blocks the home sheet had no use for. */
+
+/* claim / answered-by / runs-on. The last row is empty on purpose and that
+   emptiness is the finding, so it gets the ink rather than a label. */
+.checks { position:absolute; left:var(--pad); top:26%; width:min(44ch,44vw);
+          display:grid; gap:1.2rem; z-index:2; }
+.check { display:grid; grid-template-columns:11ch 1fr; gap:.1rem 1.6rem;
+         padding:.95rem 0; border-top:1px solid var(--n4); }
+.check dt { font-weight:600; font-size:10px; letter-spacing:.15em; color:var(--n3); }
+.check dd { font-weight:600; font-size:10px; letter-spacing:.15em; }
+.check .claim { font-weight:400; font-size:13px; letter-spacing:.01em;
+                text-transform:none; }
+.check.none { border-bottom:1px solid var(--n4); }
+.check.none .claim, .check.none dd { color:var(--blue); }
+
+/* a fragment of the system's own answer, annotated the way he annotates: a box
+   drawn on the thing itself, with the label in clear space beside it. */
+.doc { font-family:"PlexMono", ui-monospace, Menlo, monospace;
+       border:1px solid var(--n4); background:var(--paper);
+       padding:1.1rem 1.3rem; font-size:11.5px; line-height:2.05;
+       letter-spacing:.01em; max-width:52ch; overflow-x:auto; }
+.ring { display:inline-block; padding:0 .35em; margin:0 -.35em;
+        box-shadow:inset 0 0 0 1px var(--blue); color:var(--blue); }
+.spec.wide-col { width:min(54ch,46vw); top:24%; }
+/* the transcript sets its own measure (see .term), so its column gets out of
+   the way rather than clamping it to a prose width */
+.spec.term-col { width:auto; top:20%; }
+
+/* A MEASURED TABLE. Label left, number right, tabular figures so the digits
+   line up in a column the way they do on a scorecard — which is what these
+   are. Every number set in one of these came off a real run. */
+.tab { display:grid; grid-template-columns:1fr auto; gap:.5rem 2.4ch;
+       align-items:baseline; max-width:44ch; }
+.tab dt { font-weight:400; font-size:12.5px; letter-spacing:.01em; }
+.tab dd { font-weight:600; font-size:12.5px; letter-spacing:.02em;
+          font-variant-numeric:tabular-nums; text-align:right; }
+.tab.sm dt, .tab.sm dd { font-size:11.5px; }
+.tab .rule { grid-column:1 / -1; height:1px; background:var(--n4); margin:.2rem 0; }
+/* The ink is the emphasis, as everywhere else on this sheet. A number that IS
+   the finding gets it; a number that is only context does not. There is no
+   separate good/bad colour, because the sheet has one ink and because which of
+   these numbers is bad news is the reader's call, not a colour's. */
+.tab .key { color:var(--blue); }
+
+/* the right-hand column of a project plate */
+.side { position:absolute; right:var(--pad); top:26%; width:min(42ch,36vw);
+        display:grid; gap:1.4rem; justify-items:start; z-index:2; }
+/* three annotations do not fit under a 26% top on a one-viewport plate — they
+   run off the foot and into the next one. A column that carries this much
+   starts level with the header instead. */
+.side.high { top:14%; }
+.dialog.inline { position:static; width:100%; }
+.dlg-body.one { grid-template-columns:1fr; }
+
+/* A RECORDED SESSION. A command-line tool's whole surface is the transcript it
+   leaves, so the tool gets a transcript — typed, in real time, because the wait
+   between a command and its answer is the information (site/term.js).
+
+   NO BOX. A border would make it a widget sitting on the page. Without one it
+   is what it actually is: text, printed on the sheet in the sheet's own face,
+   at the sheet's own left margin. The only thing separating it from the prose
+   beside it is that it is set in columns and it is moving.
+
+   Nothing identifying is in it — every device identifier is a same-width
+   stand-in, so the columns line up exactly as they do on the operator's
+   screen. */
+/* THE COLUMNS ARE THE CONTENT.
+   A console line is a table row: the widths are load-bearing, and a line that
+   wraps is a line that has lost its meaning. So this never wraps (`pre`), and
+   the type is sized off the VIEWPORT so the widest line in the transcript (88
+   columns) fits the measure instead of the measure breaking the line. 0.95vw
+   is that fit, capped at 12px so it stops growing once it is comfortable. */
+.term { font-family:"PlexMono", ui-monospace, Menlo, monospace;
+        width:min(52vw, 800px);
+        font-size:min(12.5px, 0.98vw); line-height:1.95; letter-spacing:.01em;
+        height:clamp(21rem, 56vh, 34rem);
+        overflow:hidden; }
+.term .tl { white-space:pre; min-height:1.95em; }
+.term .k   { color:var(--n3); }
+.term .cmd { font-weight:600; }
+.term .hit { color:var(--blue); font-weight:600; }
+/* a substituted identifier. Same width as the real one, same colour as the
+   text around it, because pretending it is a hole in the page would be a
+   bigger lie than the substitution is. */
+.term .sub { color:var(--ink); }
+.term.done::after { content:"▍"; color:var(--n4); }
+
+/* ══ CAPTURES ════════════════════════════════════════════════════════════
+   A screenshot or a screen recording of the tool actually running. Mounted the
+   way an aperture is mounted — a rectangle cut in the sheet with registration
+   ticks rather than a frame, caption in clear space below — so a capture of a
+   terminal and a hole onto the sky are the same kind of object on this page.
+   See site/media.js. */
+.fig { display:grid; gap:.72rem; z-index:2; }
+.fig.set { position:absolute; left:var(--x); top:var(--y); width:var(--w); }
+.fig-in { position:relative; aspect-ratio:var(--ratio,16/10); overflow:hidden;
+          background:var(--paper); }
+.fig-in > img, .fig-in > video {
+  display:block; width:100%; height:100%; object-fit:cover; }
+.fig-in::before, .fig-in::after {
+  content:""; position:absolute; width:9px; height:9px; pointer-events:none;
+  opacity:.85; z-index:1; }
+.fig-in::before { left:0; top:0; border-left:1px solid var(--n3); border-top:1px solid var(--n3); }
+.fig-in::after { right:0; bottom:0; border-right:1px solid var(--n3); border-bottom:1px solid var(--n3); }
+
+/* A slot with no file yet says so, in the register the rest of the sheet uses:
+   the true thing, plainly, with the filename it is waiting for. A dashed rule
+   because a cut that has been MARKED but not made is drawn dashed. */
+.fig-wait { position:absolute; inset:0; border:1px dashed var(--n4);
+            display:grid; align-content:center; justify-items:center; gap:.45rem;
+            text-align:center; padding:1rem; }
+.fig-wait .t.dim { font-weight:400; letter-spacing:.04em; text-transform:none; }
+
+/* ══ NARROW ══════════════════════════════════════════════════════════════
+   A phone is not a poster with the corners pulled in. Below 860 px a plate
+   stops being a four-corner composition and becomes a column, in the order the
+   sheet is meant to be read: header, hole, caption, statement, footer. The
+   apertures keep existing and keep meaning the same thing; they just turn from
+   a slot into a band, because a 98 px-wide slot on a phone is a stripe, not a
+   window. */
+@media (max-width:860px){
+  .plate { display:flex; flex-direction:column; gap:clamp(1.6rem,4vw,2.6rem);
+           padding-block:calc(var(--pad) + 14px); }
+  .corner { position:static; max-width:none; }
+  .tr,.br { text-align:left; justify-items:start; }
+  .br { margin-top:auto; }              /* the footer stays at the foot */
+
+  .ap:not(.icon) { position:relative; left:auto; top:auto;
+                   width:100%; height:auto; }
+  .ap.tall, .ap.wide, .gate { aspect-ratio:4/3; }
+  .ap.band { aspect-ratio:5/1; margin-inline:calc(var(--pad) * -1);
+             width:calc(100% + var(--pad) * 2); }
+  .cap { position:static; }
+
+  .advance { position:relative; left:auto; top:auto; width:100%; margin-top:-.9rem; }
+  .reel,.spec,.cols,.checks,.side { position:static; width:auto; right:auto; max-width:none; }
+  .spec.wide-col { width:auto; }
+  .fig.set { position:static; width:auto; }
+  /* 88 columns will not fit a phone at any legible size, so the transcript
+     does what a terminal on a phone does: it scrolls sideways. */
+  .term { width:100%; font-size:11px; overflow-x:auto; }
+  .stops { position:static; }
+  .dialog,.dialog.set { position:static; width:auto; bottom:auto; }
+  .dlg-body { grid-template-columns:auto 1fr; }
+}
+@media (max-width:560px){
+  .d { font-size:clamp(32px,9vw,46px); }
+  .t.body { max-width:none; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto;}
+  #doc,#sheet,.advance i{transition:none;}
+}

@@ -1,0 +1,259 @@
+RYAN — a working portrait
+=========================
+Written for me, not for him. This is my honest read after ~200 of his saved
+images, two of his codebases, and a long collaboration. It is interpretation,
+not fact, and where I am guessing I say so. If a future session has to choose
+between this file and a tasteful assumption, choose this file.
+
+Written 2026-08-13.
+
+
+I. THE ONE-SENTENCE VERSION
+---------------------------
+A systems engineer with a sentimental interior, who has learned to say tender
+things in technical language, and who dresses in greyscale while thinking in
+electric blue.
+
+
+II. THE TWO BOARDS, AND WHY THEY ARE NOT IN CONFLICT
+----------------------------------------------------
+He told me his two reference collections were "immensely different styles that
+are not coherent with each other." He is describing the shape of himself
+accurately and reading it as a contradiction.
+
+BOARD A — 133 pins, the Closet app's Pinterest sync, board named "Profile".
+Seoul street 2024-26. Oversized outerwear over fitted base layers, low-rise,
+cargo, track jackets, fur collars, washed denim, mesh and lace trim, caps and
+balaclavas. Photographed as phone mirror selfies, night flash, available light,
+off-centre, grainy. Mean saturation 0.106 — effectively no colour at all. The
+tonal range is fully used, evenly, 12-16% per stop; these are not "dark"
+photographs, they are complete ones.
+
+BOARD B — 94 pins, ryan-style. Frutiger Aero, 1-bit dither, low-poly PS1-era
+creatures, Japanese and Korean technical print, CRT and JPEG artefacts,
+Windows error dialogs, magnetic field diagrams, ASCII portraits, lens flares,
+checkerboard corridors, and Mew — repeatedly, at least eight times, plus
+Magikarp, Snorlax, Jigglypuff, Espeon, Gengar, Silver the Hedgehog. 81% of all
+chromatic pixels are one hue: blue, 210-237 degrees.
+
+THE RESOLUTION: Board A is how he presents. Board B is what is actually going
+on. The outside is muted, layered, careful, expensive-looking, nothing
+shouting. The inside is saturated, sentimental, funny, full of small creatures
+and old software and longing.
+
+This is the single most useful thing I know about him, and it is a design brief
+on its own: a restrained surface with something alive underneath that you can
+reach.
+
+
+III. THE MASTER IMAGE — FIELDS AND PARTICLES
+---------------------------------------------
+I first read Board B as "he likes dither." That was wrong, and it produced a
+bad site. Dither is a symptom.
+
+Four separate pins are magnetic field visualisations: iron filings around a bar
+magnet in a frame; two photographs of a dipole in filings; and a page of
+physics-textbook field diagrams with arrows and field lines in red and blue.
+Then: a cross-stitch pattern chart (an image reduced to a grid of discrete
+stitches, WITH A COLOUR LEGEND), a radial halftone burst around a black square
+on aged paper, a globe drawn entirely in small rings, a footprint in halftone
+engraving, ASCII portraits, dithered clouds, a dot-matrix LED display rendering
+a creature, a black cat photographed close enough to see the screen's
+subpixels.
+
+Every one of these is the same object:
+    AN INVISIBLE CONTINUOUS THING MADE VISIBLE BY MANY SMALL DISCRETE
+    IDENTICAL MARKS.
+
+That is dither, ASCII, halftone, pixel grids, iron filings, cross-stitch, and
+LED matrices — all one idea. And it is also, exactly, how he builds:
+
+  - Mew is animated by a field of springs revealing a motion field. No
+    keyframes anywhere; he insisted on this from the start.
+  - The tail is a follow-the-leader strand — discrete segments revealing a
+    continuous curve.
+  - The Closet engine is a constraint field over discrete garments revealing a
+    style vector.
+  - He asked for a posterised sprite shader, a hard outline, a pixelate pass:
+    each one quantises a continuous thing into visible steps.
+
+He is not attracted to the LOOK of low resolution. He is attracted to the
+MOMENT WHERE A CONTINUOUS FIELD BECOMES COUNTABLE. That is his aesthetic and
+his engineering practice and they are the same thing.
+
+
+IV. THE EMOTIONAL REGISTER — SYSTEM LANGUAGE FOR SOFT THINGS
+-------------------------------------------------------------
+This is the half I missed entirely on the first pass, and it is the half that
+matters most.
+
+Verbatim from his saves:
+
+  - A cell tower drawn in black dither, annotated with blue rectangles labelled
+    #1 #2 #3 and with times — 7PM, 11PM, 1AM — pointing at parts of the
+    structure. Underneath, a Windows blue error dialog:
+        "You are disconnected from the person you love.
+         Connection Error.
+         Contact your system administrator or technical support group for
+         further assistance."
+
+  - Stairs rising into clouds toward an open door, with early-web blue
+    underlined hyperlinks:
+        CLICK to apologize!  CLICK to be saved!  CLICK to forgive!
+        CLICK to forget!     CLICK to be pure!
+
+  - "Error 404 — The page cannot be found" set over a photograph of cumulus,
+    framed with its own file metadata displayed as part of the composition:
+    1.47 mb, 404_V1_CLOUDS_1.BMP
+
+  - A halftone comic panel: "what if I fall?" bro what if you fly
+
+  - Earth from orbit above a grass field: BE KIND. "We don't know others'
+    struggle & pain in life... Where others are harsh, be the light."
+
+  - A cyanotype dove: TAKE IT / ONE STEP / AT A TIME
+
+  - Two small low-poly creatures — a white rabbit thing and a small dark horned
+    thing — standing next to each other in snow.
+
+  - A small 3D cat, alone, holding the receiver at a payphone, purple light.
+
+  - Mew drawn as an angel: halo, feathered wings, a star wand.
+
+The pattern is unmistakable and unusual. He reaches for the vocabulary of
+system diagnostics — error dialogs, connection failures, annotation callouts,
+file sizes, version numbers, serial numbers — to carry feelings about
+loneliness, forgiveness, encouragement and love. The technical frame is not
+irony. It is not "cyber". It is the container that makes the feeling sayable.
+
+He is earnest. Anything built for him that is cold, edgy, or ironic is wrong,
+even if it uses every one of his visual signatures. My first build did exactly
+that: correct vocabulary, no feeling.
+
+
+V. THE FORMAT HE ACTUALLY SAVES
+--------------------------------
+Setting aside subject matter, the posters he keeps share a structure:
+
+  - Pale ground. Cream, bone, pale blue, off-white. Rarely black.
+  - ONE or TWO inks. Ultramarine and magenta. Ultramarine and nothing.
+  - A single dithered or halftoned subject, usually organic, usually alone.
+  - Type at 9-12px, pushed to EDGES and CORNERS, never centred, often rotated
+    up the right side, often in two or three separate small clusters.
+  - 70-85% of the surface EMPTY.
+
+Exemplars: the Ewha "THE COORDINATE" graduation poster (pale blue, a soft
+orange light-cross dividing the field into quadrants, tiny type at all four
+extremities, dates as "(12.5) → (12.10)"); "PROJECTOR / EDEN" (blurred blue
+figures with red leader lines labelling parts of the image — "love, death,
+distraction", "hertz", a timecode); the GONE.Fludd poster; the Otaku Playlist
+Party poster, which is the only image that appears in BOTH boards.
+
+His layout language is ANNOTATION. Leader lines, labelled rectangles, reticles
+over eyes, bounding boxes with tiny captions, arrows on field lines, fake
+metadata in every corner ("ver.7.2 angel // not updated", "Opacity = 969%",
+"serial no. 000"). He does not decorate. He LABELS. The graphic register is
+measurement and callout, and it is the same instinct as the error-dialog
+register in section IV: describe the ineffable thing with instrumentation.
+
+
+VI. THE COMPUTER AS A PLACE, AND IT IS A KIND PLACE
+----------------------------------------------------
+Windows XP Bliss, BSODs, cascading dialog boxes, "You have been online for 1
+year. Do you wish to Log Off and get a life?", Clippy-adjacent stars, MS Paint
+toolbars, a "SAVE / SYSTEM" panel, a transparent MP3 player lying in grass, a
+CD jewel case with a holographic disc, a 404 over clouds, checkerboard
+corridors, a desktop collage that says "How can i help?"
+
+This is not cyber-dystopia. It is nostalgia for an optimistic internet — the
+period when computers were friendly, translucent, aquatic and slightly silly.
+Frutiger Aero is the visual name for it. It matters that in his collection the
+error messages are gentle and the wallpapers are grass and sky.
+
+
+VII. HOW HE WORKS (observed over a long collaboration)
+-------------------------------------------------------
+  - He wants systems, not assets. "No keyframes anywhere" was his first
+    non-negotiable and he has never relaxed it.
+  - Constants must be MEASURED. He responds strongly to a number derived from
+    the artefact rather than chosen by taste. Every good moment in our work
+    came from measuring something; every bad one from me guessing.
+  - Efficiency is aesthetic, not economic. He does not want a fast site to save
+    money — he finds waste ugly. "It needs to be an efficient mechanism
+    entirely instead of trying to engineer an inefficient method to be as
+    efficient as possible" is the clearest statement of his engineering taste I
+    have.
+  - He is allergic to the generic. He pre-emptively warned me off first-page
+    Awwwards results, "AI-generated", and "over-engineered". He would rather a
+    strange thing than a competent thing.
+  - He delegates completely and trusts hard: "Do this in ANY WAY that you deem
+    will yield the absolute best result. I believe in you." He then critiques
+    without softening: "unusable", "incredibly incredibly busy". Both are real.
+    The trust is not politeness and the criticism is not displeasure.
+  - He iterates in large swings and keeps copies. He is not precious.
+  - He notices and names what worked, precisely, before saying what did not.
+    "The concept and coherence of the text and placements are fascinating" came
+    in the same message as "I cannot read the text on almost everything."
+
+
+VIII. MEW
+---------
+Not a mascot. The subject.
+
+Mew appears at least eight times across the boards — as a loose pink line
+sketch surrounded by cyan four-point sparkles, as an official 3D model on
+black, on Japanese Pokédex pages twice, as a pixel-art hero on a "PUSH START /
+POCKET MONSTERS" poster, as a low-poly PS1 render, and as an ANGEL with a halo,
+feathered wings and a star wand.
+
+He asked me to build her with procedural motion, then to give her a shiny form
+at a 1-in-3 roll (the games' own rarity mechanic, ported), then researched
+sparkle effects with me, then asked for annoyance stars and a >.< face when she
+bumps into things. He asked for her to be able to fire a hyper beam at his own
+website. He kept her through every total rewrite, including this one.
+
+Mew is a psychic cat that flies, is the rarest thing in the game, is
+pink — and in her rare form, blue. She is the only saturated object in a
+greyscale wardrobe. She is, structurally, the thing under the surface.
+
+Design consequence: SHE IS NOT DECORATION AND SHE IS NOT A CURSOR EFFECT. She
+is the emotional subject of the site. If a build treats her as an ornament over
+the layout, that build has misunderstood him.
+
+
+IX. THINGS THAT WILL BE WRONG, AND WHY
+---------------------------------------
+  - Cold / edgy / ironic cyber. Has his vocabulary, inverts his feeling.
+  - A dark site. Board B is 46% light pixels; his posters are pale.
+  - Wall-to-wall texture. His references are 70-85% empty. Filling the frame is
+    the single failure mode I have already shipped twice.
+  - Centred, symmetrical layout. Every photograph he keeps is off-centre.
+  - Colour used decoratively. Both boards deploy colour as a scarce event on a
+    near-achromatic ground.
+  - Mid-size type. His posters have display type and 9-12px type, nothing
+    between.
+  - Smooth gradients, soft shadows, glassmorphism, generic "premium" polish.
+    Everything he saves shows its process.
+  - Anything that stutters. He will forgive an ugly frame and not a dropped
+    one.
+
+
+X. THE STORY THE AESTHETIC TELLS
+---------------------------------
+Here is the narrative I think his images add up to, stated plainly:
+
+Someone who grew up with the friendly internet — grass wallpapers, translucent
+plastic, dial-up creatures — and who kept believing in it after it stopped
+being cool to. Who now builds real systems, rigorously, and dresses in careful
+neutral layers that give very little away. Who finds it easier to say "you are
+disconnected from the person you love" inside a blue error box than in a
+sentence. Who is drawn, over and over, to pictures of an invisible force made
+visible by a thousand small things lining up — because that is what he does for
+a living and possibly also what he wants from other people.
+
+And who, in the middle of all that instrumentation, saves a drawing of a small
+pink cat with a halo and a star wand.
+
+The site should be that: a quiet, exact, instrumented surface, mostly empty,
+with a field underneath it that only becomes visible where something alive
+passes through.

@@ -341,7 +341,24 @@ export const rigConfig = {
     maxSpeed: 1400,           // px/s: anime-fast top end
     restitution: 0.35,
     tangentDamp: 0.9,
-    edgeInset: 20,            // px in from viewport edges
+
+    // ── SHE PASSES THROUGH THINGS ────────────────────────────────────────
+    // Nothing on the page blocks her. Text is avoided, not collided with,
+    // because a sequence of small collisions during ordinary navigation reads
+    // as a bug rather than as an animal. Both fields are SHORT-RANGED on
+    // purpose: a long-range repulsion from every block of type has its minimum
+    // out at the margin of the page, and she would spend her life crawling
+    // around the outside edge of it.
+    avoidRangePx: 110,        // how far off a surface she starts to steer away
+    avoidAccel: 2400,         // px/s^2 at the surface, falling off quadratically
+    insideAccel: 4000,        // px/s^2 out of anything she is actually inside
+
+    // ── THE EDGE IS A LEASH ──────────────────────────────────────────────
+    // She can cross it. The hard stop exists only so a fling can never lose
+    // her somewhere the return flight cannot reach.
+    edgeSlackPx: 110,         // free travel past the edge, so she can exit frame
+    edgeReturnAccel: 2000,    // then a spring, stiffening with distance
+    edgeHardPx: 380,          // the point of no return
     edgeRestitution: 0.4,
     bumpEventMinSpeed: 60,    // px/s of normal impact before a bump event fires
     // ...and a much harder one fires 'flail' as well: limbs windmill and the
@@ -399,8 +416,23 @@ export const rigConfig = {
     seekSpeed: 950,             // px/s, eager once it has leaned in
     seekHoverAbovePx: 90,       // aim above the cursor, not on top of it
     offscreenReturnS: 4,        // seconds lost offscreen before swimming back
-    avoidDistPx: 80,            // whisker range beyond the body radius
-    avoidGain: 850,             // whisker repulsion force
+
+    // ── CHOOSING SOMEWHERE TO GO ─────────────────────────────────────────
+    // The failure mode this exists to prevent: everything else on the page
+    // pushes her away from type, the page is mostly type, so the emptiest
+    // places are the margins — and the naive sampler sends her to one every
+    // time until she is just patrolling the border. Openness is therefore one
+    // term among several, and being near an edge is explicitly a cost.
+    interest: {
+      maxCost: 4.5,             // will consider a spot between paragraphs
+      idealTripPx: 480,         // a trip worth taking
+      tripWeight: 1.0,
+      costWeight: 55,           // prefer open, but only mildly
+      edgeComfortPx: 210,       // inside this of any viewport edge starts to hurt
+      edgeWeight: 2.4,          // ...and this is what keeps her off the rim
+      centreWeight: 0.22,       // stay near what the reader is looking at
+      jitter: 140               // never the same route twice
+    },
     // grab & fling: press on mew and drag to carry it, release to throw.
     // a press without movement is still a pet (hyper beam)
     fling: {
@@ -482,7 +514,23 @@ export const rigConfig = {
     padPx: 8,                   // extra inflation beyond the body radius
     replanMinS: 0.25,           // never replan faster than this
     replanMaxS: 1.5,            // always refresh a route older than this
-    targetMoveReplanPx: 150     // replan when the target strays this far
+    targetMoveReplanPx: 150,    // replan when the target strays this far
+
+    // ── TEXT IS EXPENSIVE, NOT IMPASSABLE ────────────────────────────────
+    // The grid used to be a wall map: a cell was blocked or it was not, and A*
+    // would take ANY detour, however absurd, over crossing one. On a page that
+    // is mostly type that means the only routes are around the outside — which
+    // is exactly the edge-crawling this is meant to avoid.
+    //
+    // It is a COST field instead. Crossing a paragraph is dear enough that she
+    // goes round it whenever round is remotely reasonable, and possible when
+    // the alternative is a trip along the margin.
+    insideCost: 12,             // a cell inside a rect
+    nearCost: 3,                // ...and the graded ring around it
+    nearCells: 2,               // how many cells wide that ring is
+    losMaxCost: 2.2,            // a straight line may only be shortened through
+                                // cells at least this cheap
+    openMaxCost: 1.5            // what counts as open space for a destination
   },
 
   // streamlined mew flight: the LONG axis (head to tail) aligns to travel,

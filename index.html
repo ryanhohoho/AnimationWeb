@@ -4,71 +4,233 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light" />
-  <title>Ryan Ho</title>
-
+  <title>RYAN HO</title>
+  <meta name="description" content="Interactive systems. Procedural animation." />
   <!--
-    SCAFFOLD ONLY. Every placeholder section, card and colour that used to live
-    here is gone. What is left is the LAYER CONTRACT the whole site is built on,
-    and it is worth understanding before adding anything:
+    Read RYAN.txt first, then DESIGN.md.
 
-      #doc     real DOM. Real headings, real links, real paragraphs, laid out by
-               the browser. It is the LAYOUT ENGINE and the ACCESSIBILITY LAYER.
-               Its text is `color: transparent` -- NOT hidden, NOT aria-hidden --
-               so it still reflows, still measures, still takes focus, still gets
-               read by a screen reader, and still selects with the cursor.
-      #stage   one canvas, one WebGL context, for the lifetime of the session.
-               It paints what #doc means: the ASCII type field, and mew on top.
-               Never recreated on navigation. See DESIGN_BIBLE.md.
+    THE OBJECT
+    ==========
+    This page is two sheets of paper and one animal.
 
-    So: the browser does layout, we do paint. Nothing here draws itself.
-    Read DESIGN_BIBLE.md first, then IMPLEMENTATION_PLAN.md.
+      SHEET 1 · THE PLATE  a two-ink riso print of a sky, running from last
+                           light at the top of the document to full night at
+                           the bottom, with real weather moving slowly in it on
+                           a seamless loop. It is drawn by one fragment shader
+                           (src/site/pressgl.js) from a 120 KB density sheet
+                           baked off a cloud clip (src/site/skyclip.js). The
+                           clouds move; the dots do not, because the halftone
+                           lattice is a property of the PAPER and is computed
+                           from document position.
+
+      SHEET 2 · THE MASK   white stock, die-cut. It is everything you are
+                           reading. Type NEVER sits on the print -- the print is
+                           only ever visible through a hole -- which is what
+                           makes this legible where three earlier grounds were
+                           not. The paper is painted by the same shader, so
+                           there is one surface here, not two stacked ones.
+
+      THE ANIMAL           Mew. Not a mascot and not a cursor effect: the one
+                           thing on the page that is not printed. She is also
+                           the only thing that can open the sheet without a die
+                           -- she carries a soft hole with her, cut by the same
+                           shader from the same field, so it shows the same
+                           moving weather as every other hole. That is the whole
+                           argument of the site stated as a mechanism rather
+                           than as a sentence.
+
+    IT IS ONE SHEET. Not five. The sections are numbered because they are
+    sections, and the header carries how far down the sheet you are in real
+    document pixels -- which is the honest way to say "this is continuous", and
+    it is measured at runtime rather than typed in.
+
+    Nothing here is decorated. Everything is LABELLED, and every label is TRUE.
+    The screen angles, the ruling, the misregistration and the percentages are
+    the constants the renderer actually uses. Fake metadata as composition is
+    his move; real metadata as composition is the same move, kept honest.
   -->
-  <style>
-    :root {
-      /* placeholders for the real tokens -- see DESIGN_BIBLE.md section 3.
-         deliberately neutral so nothing inherits the old pink/lavender look. */
-      --paper: #f4f2ec;
-      --ink: #12100f;
-      --cell-w: 7px;
-      --cell-h: 12px;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      background: var(--paper);
-      color: var(--ink);
-      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
-      overflow-x: hidden;
-      -webkit-text-size-adjust: 100%;
-    }
-
-    /* the semantic layer. present, measurable, focusable, readable by AT --
-       just not painted by the browser. the canvas paints it instead. */
-    #doc { position: relative; z-index: 1; }
-    #doc :is(h1, h2, h3, p, a, li, span) { color: transparent; }
-    /* ...but keyboard focus must still be visible, because the canvas cannot
-       know about it in time. */
-    #doc a:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
-
-    /* one canvas, fixed, never rebuilt. pointer-events:none so every click,
-       hover and selection lands on the real DOM underneath. */
-    #stage {
-      position: fixed; inset: 0; width: 100vw; height: 100vh;
-      pointer-events: none; z-index: 2;
-    }
-
-    /* no-JS / no-WebGL fallback: stop hiding the text. */
-    .no-paint #doc :is(h1, h2, h3, p, a, li, span) { color: var(--ink); }
-    .no-paint #stage { display: none; }
-  </style>
 </head>
-<body class="no-paint">
-  <div id="doc">
-    <!-- routes render here. nothing is authored inline any more. -->
-    <main id="route-outlet"></main>
-  </div>
+<body class="pre">
+  <!-- THE SHEET. One fixed canvas, behind everything, that paints the paper AND
+       the print AND every hole cut in the paper in a single pass (site/pressgl.js).
+       Outside a hole it outputs flat white stock; inside one it outputs the
+       two-ink print at that DOCUMENT position, so a hole stays registered to the
+       page while the page scrolls under the window.
 
-  <canvas id="stage"></canvas>
+       The paper is NOT a DOM layer with holes masked out of it. A mask over a
+       dozen rectangles is a compositing problem that behaves differently in
+       every browser; this is just what the shader returns where the fragment is
+       not inside a hole. The apertures below are therefore empty divs -- they
+       carry their registration ticks and their position, and nothing else. -->
+  <canvas id="sheet" aria-hidden="true"></canvas>
+
+  <!-- THE EATING, on its own layer above the words. The page used to fade out
+       when you clicked a project, which meant the transition happened to an
+       empty screen; now the sheet stays exactly where it is and the opening
+       spreads OVER it. Transparent and idle except during a crossing. -->
+  <canvas id="eat" aria-hidden="true"></canvas>
+
+  <main id="doc">
+
+    <!-- ══ 00 · SHEET ═══════════════════════════════════════════════════════
+         One tall slot, right of centre, because the sun is off the top-RIGHT of
+         the print and this is the aperture that has to hold the last warm
+         light. Type in three corner clusters; the middle-left is left open for
+         Mew, who spawns at 72% width and drifts. -->
+    <section class="plate" id="s0" data-node="00">
+      <div class="corner tl">
+        <p class="t">RYAN&nbsp;HO</p>
+        <p class="t dim">INTERACTIVE&nbsp;SYSTEMS<br />PROCEDURAL&nbsp;ANIMATION</p>
+      </div>
+      <div class="corner tr">
+        <p class="t dim">ONE&nbsp;SHEET&nbsp;·&nbsp;<span data-at>—</span></p>
+        <p class="t">19:00</p>
+      </div>
+
+      <div class="ap tall" data-ap style="--x:57%; --y:9%; --w:25%; --h:74%"></div>
+      <p class="t dim cap" style="--x:57%; --y:85%">AP.&nbsp;00&nbsp;—&nbsp;LAST&nbsp;LIGHT</p>
+
+      <div class="corner bl">
+        <h1 class="d" data-collider>two inks,<br />one animal,<br /><em>and the light going out</em></h1>
+      </div>
+      <div class="corner br">
+        <p class="t dim">THE&nbsp;PRINT&nbsp;GETS&nbsp;DARKER&nbsp;ON&nbsp;THE&nbsp;WAY&nbsp;DOWN</p>
+        <p class="t">SCROLL&nbsp;↓</p>
+      </div>
+    </section>
+
+    <!-- ══ 01 · WORK ════════════════════════════════════════════════════════
+         THE GATE. One hole, fixed, with the project plates advancing behind it
+         one at a time. A grid would give every project the same weight and ask
+         you to compare them; a gate gives you one and asks you to look at it.
+
+         It also keeps the sheet's one-or-two-ink rule: each project owns a
+         different SECOND ink (site/projects.js), and you only ever see one of
+         them at once. The colour is the thing that changes.
+
+         Clicking OPENS the hole: it grows until the paper is gone, the screen
+         coarsens until the halftone is countable marks, and the next sheet's
+         paper closes back in around its own holes (site/router.js). That is
+         RYAN.txt III, the idea under every reference he keeps.
+
+         THE CAPTION SAYS ALMOST NOTHING, on purpose. A paragraph here is a
+         paragraph read standing in the doorway; the argument belongs on the
+         sheet it opens. A number, a name, and what kind of thing it is. -->
+    <section class="plate work" id="s1" data-node="01">
+      <div class="corner tl">
+        <p class="t">01&nbsp;—&nbsp;WORK</p>
+        <p class="t dim">THREE&nbsp;PLATES,&nbsp;ONE&nbsp;GATE</p>
+      </div>
+      <div class="corner tr">
+        <p class="t dim"><span data-at>—</span></p>
+        <p class="t">20:40</p>
+      </div>
+
+      <!-- THE GATE IS A HOLE. It used to hold three offscreen presses — three
+           still bitmaps in three inks, which by the time the sheet itself was
+           live had become the only dead thing on the page. It is now cut by the
+           sheet's own shader like every other aperture, and simply pulled in
+           the project's pair rather than the sheet's: same weather, same
+           lattice, same clock, and it cannot fall out of step with the page it
+           is a window onto. -->
+      <a class="gate ap" data-gate data-ap data-route data-collider
+         href="/projects/usb-provisioning"
+         style="--x:47%; --y:20%; --w:41%; --h:46%"></a>
+      <!-- the advance bar. The gate moves on its own, and a thing that moves on
+           its own without warning is a thing that took the page away from you. -->
+      <span class="advance" style="--x:47%; --y:67.4%; --w:41%"><i data-advance></i></span>
+
+      <div class="reel" data-collider>
+        <p class="t dim"><span data-fr-n>01</span>&nbsp;/&nbsp;03</p>
+        <h2 class="d sm"><a href="/projects/usb-provisioning" data-route data-fr-open><span data-fr-title>—</span></a></h2>
+        <p class="t dim" data-fr-kind>—</p>
+        <p class="t"><a class="link open" href="/projects/usb-provisioning" data-route data-fr-open2>OPEN&nbsp;→</a></p>
+      </div>
+
+      <ol class="stops" data-collider style="--x:47%; --y:69.6%">
+        <li><a href="#s1" data-stop><i>01</i></a></li>
+        <li><a href="#s1" data-stop><i>02</i></a></li>
+        <li><a href="#s1" data-stop><i>03</i></a></li>
+      </ol>
+    </section>
+
+    <!-- ══ 02 · STATEMENT ═══════════════════════════════════════════════════
+         The one earnest thing, said inside system chrome -- which is his actual
+         register (RYAN.txt IV), not a joke about it. The dialog's icon slot is a
+         hole: where an alert would put a warning triangle, this one puts the
+         sky. That 44 px square is the most important element on the page. -->
+    <section class="plate" id="s2" data-node="02">
+      <div class="corner tl">
+        <p class="t">02&nbsp;—&nbsp;STATEMENT</p>
+      </div>
+      <div class="corner tr">
+        <p class="t dim"><span data-at>—</span></p>
+        <p class="t">23:00</p>
+      </div>
+
+      <div class="dialog" data-collider>
+        <p class="dlg-bar">SYSTEM</p>
+        <div class="dlg-body">
+          <span class="ap icon" data-ap></span>
+          <div class="dlg-text">
+            <p class="d sm">i make things that<br /><em>show their working</em></p>
+            <p class="t dim body wide">Grain, halftone, visible dots, a creature
+              moved by springs instead of keyframes. Nothing on this sheet is
+              smoothed over and nothing is hiding how it was done.</p>
+            <p class="t body wide">If you can see how a thing was made, it was
+              made by someone.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="corner br">
+        <p class="t dim">ver.&nbsp;1.0&nbsp;//&nbsp;not&nbsp;updated</p>
+      </div>
+    </section>
+
+    <!-- ══ 03 · COLOPHON ════════════════════════════════════════════════════
+         01:00, and the aperture is a full-bleed band: the horizon, where both
+         plates run solid and their overprint is night. The sheet ends on a
+         line. Two numbers here are measured off the render at runtime. -->
+    <section class="plate" id="s3" data-node="03">
+      <div class="corner tl">
+        <p class="t">03&nbsp;—&nbsp;COLOPHON</p>
+      </div>
+      <div class="corner tr">
+        <p class="t dim"><span data-at>—</span></p>
+        <p class="t">01:00</p>
+      </div>
+
+      <div class="cols" data-collider>
+        <div><p class="t dim">PLATE</p><p class="t body">One two-ink riso of a
+          sky, screened at 5.2 px and printed once. It does not move. Its
+          steady-state cost is zero, so it cannot drop a frame on any machine.</p></div>
+        <div><p class="t dim">MASK</p><p class="t body">One continuous bone
+          sheet, die-cut. <span data-open>—</span> of it is still paper. Type
+          never sits on the print.</p></div>
+        <div><p class="t dim">SUBJECT</p><p class="t body">One live specimen.
+          Procedurally animated, no keyframes anywhere. One load in three is
+          shiny. She is the only thing here that is not printed.</p></div>
+        <div><p class="t dim">INK</p><p class="t body">Two inks on bone,
+          covering <span data-ink>—</span> of the print, and they are both
+          <em style="font-style:normal">hers</em>: the sky is the blue she turns
+          when she comes up shiny, and the last warm light is the pink she
+          usually is. The blue is the constant; the second ink is what a project
+          owns.</p></div>
+      </div>
+
+      <div class="ap band" data-ap style="--x:0%; --y:69%; --w:100%; --h:14%"></div>
+      <p class="t dim cap pad" style="--y:84.5%">AP.&nbsp;03&nbsp;—&nbsp;HORIZON.&nbsp;FULL&nbsp;BLEED.&nbsp;THE&nbsp;LAST&nbsp;WEATHER.</p>
+
+      <div class="corner br">
+        <p class="t"><a class="link" href="mailto:ryanho333@gmail.com">ryanho333@gmail.com</a></p>
+        <p class="t dim">serial&nbsp;no.&nbsp;000</p>
+      </div>
+    </section>
+
+  </main>
+
+  <canvas id="stage" aria-hidden="true"></canvas>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

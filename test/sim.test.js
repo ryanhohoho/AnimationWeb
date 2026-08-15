@@ -94,11 +94,76 @@ section("physics: collision resolution leaves no penetration, adds no energy");
     if (failures > 3) break;
   }
 
-  // document bounds keep the body inside at any speed
-  body.pos.x = -500; body.pos.y = 9000; body.vel.x = -2000; body.vel.y = 3000;
-  resolveEdges(body, { w: 1280, h: 3000 }, rigConfig.physics);
-  ok(body.pos.x >= rigConfig.physics.edgeInset + body.radius - 1, "clamped to left doc edge");
-  ok(body.pos.y <= 3000 - rigConfig.physics.edgeInset - body.radius + 1, "clamped to bottom doc edge");
+  // THE EDGE IS A LEASH, NOT A WALL (changed deliberately: she used to be
+  // clamped inside the document, and an animal that stops dead at an invisible
+  // line is a sprite in a box). Three things have to hold instead.
+  const P = rigConfig.physics;
+  const bounds = { w: 1280, h: 3000 };
+
+  // 1. she may cross an edge and keep going — no clamp, no bounce
+  const drift = createBody({ x: -60, y: 1500, radius: 60, config: P });
+  drift.vel.x = -120;
+  const driftHit = resolveEdges(drift, bounds, P);
+  ok(drift.pos.x === -60, "she may sit outside the edge without being pushed back");
+  ok(driftHit === null, "...and crossing it is not an impact");
+
+  // 2. past the slack line a spring starts pulling her home
+  const out = createBody({ x: -(P.edgeSlackPx + 80), y: 1500, radius: 60, config: P });
+  resolveEdges(out, bounds, P);
+  out.step(1 / 60);
+  ok(out.vel.x > 0, `beyond the slack she is pulled back (vx ${out.vel.x.toFixed(1)})`);
+
+  // 3. and however hard she is thrown, she is never lost
+  body.pos.x = -5000; body.pos.y = 90000; body.vel.x = -2000; body.vel.y = 3000;
+  resolveEdges(body, bounds, P);
+  ok(body.pos.x >= -P.edgeHardPx - 1, "never lost past the left hard stop");
+  ok(body.pos.y <= bounds.h + P.edgeHardPx + 1, "never lost past the bottom hard stop");
+}
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// The predicted failure of soft avoidance: every force pushes her away from
+// type, the page is mostly type, so the emptiest places are the margins — and
+// she ends up patrolling the border of the sheet forever. These two checks are
+// what stop that being possible.
+section("navigation: she does not end up crawling the margins");
+{
+  const world = createWorld({ headless: true, seed: 11 });
+  world.viewport = { w: 1280, h: 900 };
+  world.docSize = { w: 1280, h: 900 };
+  world.scroll = { x: 0, y: 0 };
+  // a page like the real ones: columns of type down the middle, clear rim
+  world.colliders = [
+    { rect: { x: 90, y: 120, w: 420, h: 300 }, el: null },
+    { rect: { x: 90, y: 520, w: 420, h: 240 }, el: null },
+    { rect: { x: 700, y: 160, w: 480, h: 560 }, el: null }
+  ];
+  world.collidersVersion = 1;
+
+  const body = createBody({ x: 620, y: 450, radius: 60, config: rigConfig.physics });
+  const brain = createBrain({
+    body, world,
+    config: rigConfig.behavior, pathConfig: rigConfig.path, attackConfig: rigConfig.attack
+  });
+
+  // 1. a cost field, not a wall map: the gap between the two left columns is
+  //    expensive but crossable, so a route through the middle exists at all
+  const pf = brain.pathfinder;
+  const through = pf.findPath({ x: 300, y: 60 }, { x: 300, y: 830 }, 60);
+  ok(through && through.length >= 2, "a route exists straight down the type");
+
+  // 2. and the places she CHOOSES are not all against the rim
+  let onRim = 0, total = 0;
+  for (let i = 0; i < 200; i++) {
+    const p = brain.pathfinder && brain._pickInterest ? brain._pickInterest() : null;
+    if (!p) continue;
+    total++;
+    const edge = Math.min(p.x, world.viewport.w - p.x, p.y, world.viewport.h - p.y);
+    if (edge < 140) onRim++;
+  }
+  ok(total > 100, `the sampler finds somewhere to go (${total}/200)`);
+  ok(onRim / Math.max(total, 1) < 0.35,
+    `most destinations are not on the rim (${onRim}/${total} were)`);
 }
 
 // ---------------------------------------------------------------------------
@@ -521,18 +586,12 @@ section("modules: every shader-carrying module actually parses");
     // the type layer's shaders, for exactly the same reason. fieldMath.js
     // exports the GLSL that fieldRenderer.js pastes into its vertex program,
     // so a backtick in either one silently deletes the whole field.
-    "../src/type/fieldMath.js",
-    "../src/type/fieldRenderer.js",
-    "../src/type/field.js",
-    "../src/type/words.js",
-    "../src/type/atlas.js",
     // ...and site/dom.js, which is not a shader but carries the same hazard:
     // its stylesheet is a template literal, and a backtick in one of its
     // comments took the whole module out. The page then renders with no
     // styles, no routes and no field, and nothing in the console says why.
     // That is the third time this exact character has cost a debugging round
     // in this repo (see HANDOFF.md).
-    "../src/site/dom.js"
   ];
   const loaded = await Promise.all(mods.map((m) =>
     import(m).then(() => null).catch((e) => `${m}: ${e.message}`)));

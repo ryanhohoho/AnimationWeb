@@ -40,7 +40,10 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     step,
     triggerStartle,
     startlePredicate,
-    pathfinder            // exposed for tests + debugging
+    pathfinder,           // exposed for tests + debugging
+    /** the destination sampler, exposed so the margin-crawling check can run
+        it a couple of hundred times without stepping the whole simulation */
+    _pickInterest: () => pickInterest()
   };
 
   world.on("bump", (e) => {
@@ -242,37 +245,53 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     body.addForce(v2.clampLen(steer, steer, cfg.steerMaxForce * mul));
   }
 
-  // light repulsion near collider surfaces: catches spring overshoot before
-  // it becomes a bump. only active while traveling.
-  function avoidWhiskers() {
-    const range = cfg.avoidDistPx;
-    for (const c of world.colliders) {
-      const r = c.rect;
-      const cx = Math.max(r.x, Math.min(body.pos.x, r.x + r.w));
-      const cy = Math.max(r.y, Math.min(body.pos.y, r.y + r.h));
-      const dx = body.pos.x - cx;
-      const dy = body.pos.y - cy;
-      const d = Math.hypot(dx, dy);
-      if (d > 1e-6 && d < body.radius + range) {
-        const f = cfg.avoidGain * (1 - (d - body.radius) / range);
-        body.addForce(v2.set(tmpF, (dx / d) * f, (dy / d) * f));
-      }
-    }
-  }
+  // Avoidance used to live here and run only while travelling. It is now part
+  // of the physics pass (physics/colliders.js: avoidColliders), so it applies
+  // in every state — including hovering, which is when she is most likely to
+  // drift into a paragraph and just sit in it.
 
+  // WHERE SHE DECIDES TO GO NEXT.
+  //
+  // This is the one place the whole avoidance scheme can go wrong. Everything
+  // else pushes her AWAY from type, and on a page that is mostly type the
+  // furthest thing from all of it is the margin — so the obvious version of
+  // this sampler sends her to the edge of the sheet every time and she ends up
+  // patrolling the border. The fix is not in the physics, it is here: openness
+  // is one term among several, and sitting near an edge is explicitly a COST.
   function pickInterest() {
     const vp = world.viewport;
     const m = cfg.margin;
     // sample inside the currently visible band so it stays with the user
     const y0 = world.scroll.y + m;
     const y1 = Math.min(world.scroll.y + vp.h, world.docSize.h) - m;
+    const cx = vp.w * 0.5;
+    const cy = world.scroll.y + vp.h * 0.5;
     let best = null;
     let bestScore = -Infinity;
-    for (let i = 0; i < 24; i++) {
+
+    for (let i = 0; i < 30; i++) {
       const p = v2.make(m + world.random() * (vp.w - 2 * m), y0 + world.random() * Math.max(y1 - y0, 1));
-      if (!pathfinder.isFreePoint(p, body.radius)) continue;
+      const c = pathfinder.costPoint(p, body.radius);
+      if (c > cfg.interest.maxCost) continue;
+
+      // a trip worth taking: neither next door nor across the document
       const d = v2.len(v2.sub(v2.make(), p, body.pos));
-      const score = -Math.abs(d - 500) + world.random() * 120;
+      let score = -Math.abs(d - cfg.interest.idealTripPx) * cfg.interest.tripWeight;
+
+      // open space is nicer than a gap between two paragraphs, but only mildly
+      score -= (c - 1) * cfg.interest.costWeight;
+
+      // ...and the middle of the sheet is nicer than the rim of it. Without
+      // this term she converges on the margins, because that is where the
+      // emptiness is.
+      const edge = Math.min(p.x, vp.w - p.x, p.y - world.scroll.y, world.scroll.y + vp.h - p.y);
+      score -= Math.max(0, cfg.interest.edgeComfortPx - edge) * cfg.interest.edgeWeight;
+
+      // gentle pull toward the centre of what the reader is looking at, so
+      // she stays company rather than scenery
+      score -= Math.hypot(p.x - cx, p.y - cy) * cfg.interest.centreWeight;
+
+      score += world.random() * cfg.interest.jitter;
       if (score > bestScore) { bestScore = score; best = p; }
     }
     return best;
@@ -366,7 +385,6 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
       }
       case "cruise": {
         const dist = followPath(brain.interest, cfg.cruiseSpeed, dt);
-        avoidWhiskers();
         // rare spontaneous loop mid-flight
         if (maybeFlourish(cfg.flourish.cruiseChancePerS * dt)) break;
         if (dist < 26 || brain.stateTime > 14) {
@@ -382,7 +400,6 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
       }
       case "seek": {
         followPath(seekGoal(brain.seekMode), cfg.seekSpeed, dt);
-        avoidWhiskers();
         // arrived (with hysteresis vs the entry trigger): maybe celebrate
         // with a loop-de-loop, else settle and hover
         if (seekDone(brain.seekMode) || brain.stateTime > 30) {
@@ -407,8 +424,7 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
         const steer = v2.set(tmpF,
           (Math.cos(theta) * f.speed - body.vel.x) * cfg.steerGain * 3,
           (Math.sin(theta) * f.speed - body.vel.y) * cfg.steerGain * 3);
-        body.addForce(v2.clampLen(steer, steer, cfg.flourish.steerCap));
-        avoidWhiskers(); // loops don't pathfind; at least shy off walls
+        body.addForce(v2.clampLen(steer, steer, cfg.flourish.steerCap)); // loops don't pathfind; at least shy off walls
         if (brain.stateTime >= f.durationS) {
           brain.flourish = null;
           v2.copy(brain.anchor, body.pos);

@@ -1,29 +1,51 @@
 // pathfinder.js
-// coarse occupancy grid over the whole document + a* + line-of-sight smoothing.
-// obstacles are dom collider rects inflated by the body radius, so any path the
-// grid returns is one the physics circle can actually fly without bumping.
+// coarse COST grid over the whole document + a* + line-of-sight smoothing.
 // pure math, runs headless.
+//
+// WHY A COST FIELD AND NOT A WALL MAP
+// -----------------------------------
+// This used to be occupancy: a cell was blocked or it was not, obstacles were
+// inflated by the body radius, and A* would take any detour at all rather than
+// cross one. That is correct when the obstacles are walls. These obstacles are
+// PARAGRAPHS, they cover most of the page, and nothing collides with them any
+// more — so a wall map has exactly one consequence: the only routes left run
+// around the outside of the sheet, and she crawls the margins forever.
+//
+// Crossing type is expensive instead. She goes around whenever around is
+// remotely reasonable, and cuts through when the alternative is absurd.
 
 export function createPathfinder(world, cfg) {
   const cell = cfg.cellPx;
   let cols = 0, rows = 0;
-  let blocked = null;
+  let cost = null;
   let builtVersion = -1;
   let builtRadius = 0;
 
   function build(radius) {
     cols = Math.max(1, Math.ceil(world.docSize.w / cell));
     rows = Math.max(1, Math.ceil(world.docSize.h / cell));
-    blocked = new Uint8Array(cols * rows);
-    const inflate = radius + cfg.padPx;
+    cost = new Float32Array(cols * rows).fill(1);
+    const inflate = radius * 0.5 + cfg.padPx;
+    const ring = cfg.nearCells;
     for (const c of world.colliders) {
       const r = c.rect;
-      const x0 = Math.max(0, Math.floor((r.x - inflate) / cell));
-      const y0 = Math.max(0, Math.floor((r.y - inflate) / cell));
-      const x1 = Math.min(cols - 1, Math.floor((r.x + r.w + inflate) / cell));
-      const y1 = Math.min(rows - 1, Math.floor((r.y + r.h + inflate) / cell));
-      for (let y = y0; y <= y1; y++) {
-        for (let x = x0; x <= x1; x++) blocked[y * cols + x] = 1;
+      const x0 = Math.floor((r.x - inflate) / cell);
+      const y0 = Math.floor((r.y - inflate) / cell);
+      const x1 = Math.floor((r.x + r.w + inflate) / cell);
+      const y1 = Math.floor((r.y + r.h + inflate) / cell);
+      // the graded ring first, so the solid core overwrites it rather than the
+      // other way round
+      for (let y = y0 - ring; y <= y1 + ring; y++) {
+        if (y < 0 || y >= rows) continue;
+        for (let x = x0 - ring; x <= x1 + ring; x++) {
+          if (x < 0 || x >= cols) continue;
+          const out = Math.max(x0 - x, x - x1, y0 - y, y - y1);
+          const v = out <= 0
+            ? cfg.insideCost
+            : 1 + (cfg.nearCost - 1) * (1 - (out - 1) / ring);
+          const i = y * cols + x;
+          if (v > cost[i]) cost[i] = v;
+        }
       }
     }
     builtVersion = world.collidersVersion;
@@ -31,7 +53,7 @@ export function createPathfinder(world, cfg) {
   }
 
   function ensure(radius) {
-    if (!blocked || builtVersion !== world.collidersVersion || Math.abs(builtRadius - radius) > 2) {
+    if (!cost || builtVersion !== world.collidersVersion || Math.abs(builtRadius - radius) > 2) {
       build(radius);
     }
   }
@@ -41,21 +63,31 @@ export function createPathfinder(world, cfg) {
     y: Math.min(rows - 1, Math.max(0, Math.floor(p.y / cell)))
   });
   const toWorld = (c) => ({ x: (c.x + 0.5) * cell, y: (c.y + 0.5) * cell });
-  const isFree = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows && !blocked[y * cols + x];
+  const inGrid = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows;
+  const costAt = (x, y) => (inGrid(x, y) ? cost[y * cols + x] : cfg.insideCost);
+  /** cheap enough to fly a straight line through, or to aim at */
+  const isFree = (x, y) => inGrid(x, y) && cost[y * cols + x] <= cfg.losMaxCost;
+  const isOpen = (x, y) => inGrid(x, y) && cost[y * cols + x] <= cfg.openMaxCost;
 
-  // nearest free cell via expanding ring search (for targets inside obstacles)
+  // nearest genuinely open cell (for targets that landed inside type)
   function nearestFree(c) {
-    if (isFree(c.x, c.y)) return c;
+    if (isOpen(c.x, c.y)) return c;
     for (let ring = 1; ring < Math.max(cols, rows); ring++) {
       for (let dy = -ring; dy <= ring; dy++) {
         for (let dx = -ring; dx <= ring; dx++) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
-          if (isFree(c.x + dx, c.y + dy)) return { x: c.x + dx, y: c.y + dy };
+          if (isOpen(c.x + dx, c.y + dy)) return { x: c.x + dx, y: c.y + dy };
         }
       }
     }
     return null;
   }
+  // A START inside type is normal now — she can be sitting in a paragraph. It
+  // must never fail to plan, so it only has to be somewhere on the grid.
+  const clampCell = (c) => ({
+    x: Math.min(cols - 1, Math.max(0, c.x)),
+    y: Math.min(rows - 1, Math.max(0, c.y))
+  });
 
   // supercover-ish line of sight on the grid
   function losCells(ax, ay, bx, by) {
@@ -85,9 +117,10 @@ export function createPathfinder(world, cfg) {
   // 8-connected a* with corner-cut prevention
   function findPath(from, to, radius) {
     ensure(radius);
-    let start = nearestFree(toCell(from));
-    let goal = nearestFree(toCell(to));
-    if (!start || !goal) return null;
+    // the start is wherever she IS, type or not; only the goal has to be open
+    const start = clampCell(toCell(from));
+    const goal = nearestFree(toCell(to));
+    if (!goal) return null;
 
     const idx = (c) => c.y * cols + c.x;
     const open = [];   // binary-ish: small grids, a sorted-insert array is fine
@@ -117,13 +150,12 @@ export function createPathfinder(world, cfg) {
         for (let dx = -1; dx <= 1; dx++) {
           if (dx === 0 && dy === 0) continue;
           const nx = cur.x + dx, ny = cur.y + dy;
-          if (!isFree(nx, ny)) continue;
-          // no cutting corners diagonally past a blocked cell
-          if (dx !== 0 && dy !== 0 && (!isFree(cur.x + dx, cur.y) || !isFree(cur.x, cur.y + dy))) continue;
+          if (!inGrid(nx, ny)) continue;
           const ni = ny * cols + nx;
           if (closed.has(ni)) continue;
-          const cost = (dx === 0 || dy === 0) ? 1 : Math.SQRT2;
-          const g = gScore.get(ci) + cost;
+          // the step LENGTH times what that cell charges to be in
+          const step = (dx === 0 || dy === 0) ? 1 : Math.SQRT2;
+          const g = gScore.get(ci) + step * costAt(nx, ny);
           if (g < (gScore.get(ni) ?? Infinity)) {
             gScore.set(ni, g);
             came.set(ni, ci);
@@ -154,18 +186,29 @@ export function createPathfinder(world, cfg) {
       }
     }
     pts.push(toWorld(cells[cells.length - 1]));
-    // walk to the real target if it's in a free cell (grid centers are coarse)
-    if (isFree(toCell(to).x, toCell(to).y)) {
+    // walk to the real target if it's in an open cell (grid centers are coarse)
+    if (isOpen(toCell(to).x, toCell(to).y)) {
       pts[pts.length - 1] = { x: to.x, y: to.y };
     }
     return pts;
   }
 
+  /** open enough to be a destination */
   function isFreePoint(p, radius) {
     ensure(radius);
     const c = toCell(p);
-    return isFree(c.x, c.y);
+    return isOpen(c.x, c.y);
   }
 
-  return { findPath, losPoints, isFreePoint, _debug: { build, get grid() { return { cols, rows, blocked }; } } };
+  /** what a point charges to be in — the interest sampler scores on this */
+  function costPoint(p, radius) {
+    ensure(radius);
+    const c = toCell(p);
+    return costAt(c.x, c.y);
+  }
+
+  return {
+    findPath, losPoints, isFreePoint, costPoint,
+    _debug: { build, get grid() { return { cols, rows, cost }; } }
+  };
 }
