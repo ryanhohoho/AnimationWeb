@@ -35,11 +35,12 @@ const BUDGET_MS = 5;
 const LOOP_S = 16;        // seconds for one pass of the clip. The source is
                           // ten, so this is about 0.6x speed: weather, not
                           // time-lapse.
-const PUFF_LOOP_S = 3.4;  // how fast the return dissolve's own clouds drift.
-                          // They are generated rather than sampled, so this is
-                          // free to be quicker than the sky's 16 s loop — and
-                          // it has to be, or a 2.6 s transition shows almost no
-                          // movement at all.
+const PUFF_LOOP_S = 5;    // the return dissolve reads the SAME clip as the sky,
+                          // one pass in five seconds instead of sixteen. Not a
+                          // different animation — the same weather, run at a
+                          // rate a 2.6 s transition can actually show. At 16 s
+                          // a transition sees a sixth of the loop and the
+                          // clouds look pinned.
 const FPS = 20;           // the cloud loop's own rate. A printed animation is
                           // shot on twos or fours; 60 fps of halftone boils.
 
@@ -109,9 +110,12 @@ export function createDeck({ scope, haloPx = 200 }) {
     return sheet;
   }
 
-  // The dissolve generates its own weather, so its clock is just seconds — it
-  // has no sheet of frames to index into and nothing to stay in step with.
-  const puffFrame = (now) => (now / 1000) * (1 / PUFF_LOOP_S) * 10;
+  // The dissolve indexes the same sheet of frames the sky does, just faster.
+  // Absolute, like the weather clock, for the same reason: anything that resets
+  // it restarts the loop from frame zero, and a jump is exactly what a
+  // transition exists to hide.
+  const puffFrame = (now) =>
+    ((((now / 1000) / PUFF_LOOP_S) * clip.frames) % clip.frames);
 
   function paint(now, scrollOverride) {
     if (!ensure()) return false;

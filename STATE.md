@@ -803,3 +803,186 @@ the deck built from the failed compile. The console warnings were stale too. The
 way out was to import the module with a cache-busting query and compile the
 shader into a scratch canvas directly, which is now the reliable way to check a
 shader change here.
+
+---
+
+## Return dissolve, rebuild 3 — the sky itself, with the sky taken out
+
+The generated-noise version above was wrong too, and for a reason worth keeping:
+it solved the "looks like the background sliding" problem by throwing away the
+press. Correct instruction was to use the EXISTING formula and filter the sky
+out of it. That is what this is.
+
+**`pressAt`** — the press with every input it used to read out of global state
+handed to it instead: lattice position, `u`, `v`, band phase, field lookup, fold
+sign, clip frame, coverage bias, inks, identity. It returns the printed colour
+AND the cloud mask in `.a`. That mask has always existed — the press needs it to
+shade cloud differently from clear air — and handing it back is the whole trick:
+use it as the alpha and the cloud stays while the blue goes. `printAt` is now a
+four-line wrapper that supplies the page's own numbers.
+
+**Eight samples, four groups, two each.** One sample per group made a group's
+coverage the CLIP's coverage, and the clip is a flythrough running 15% cloud to
+95%: across the 20 starting frames, some transitions sat at zero until the fill
+arrived. Each group is now paired with the moment half a loop opposite it.
+Groups are a third of a loop apart. Thresholds set off the field's measured
+distribution, not guessed.
+
+**The fill is three samples over an opaque floor, not one sample with its
+threshold dropped.** Dropping it far enough to cover the window puts the whole
+field over the line, the density gradient goes flat, the shading has nothing to
+shade, and out comes an even grey wash — which is exactly what "the 4 frame is
+not even a dense number of clouds" was describing. The fill's envelope also
+starts early (0.34) because its floor is opaque, so it is the one part of the
+rise that owes nothing to what the clip happens to be doing.
+
+### Three bugs in the press found by putting it full-screen
+
+The dissolve is the first thing to show the whole sheet at once, and it exposed
+three faults that a die-cut had been hiding:
+
+1. **`slice` clamped x but not y.** Frames are stacked in the sheet, so a lookup
+   a hair past the top of frame f returned frame f-1. Only the shading gradient
+   reads past an edge, and it does so exactly AT the edges — so it printed a
+   hard dark line along the top and bottom of every band. Fixed in `slice`;
+   fixes the background too.
+2. **`foldV` flipped the lighting.** On a mirrored pass the field runs backwards,
+   so the vertical gradient points the other way and the lit and shadowed faces
+   of every cloud swap over at the fold — a dead straight line the full width of
+   the sheet. New `foldS` returns the pass direction and `pressAt` multiplies the
+   gradient by it.
+3. **The clip is not even down its own frame** — mean density 108 across the top
+   half, climbing to 168 in the bottom quarter (the deck at the horizon). A
+   mirror turns around at both ends, so the dense end meets itself and stripes.
+   `foldW` folds the dissolve inside the top 0.60 of the frame, putting the two
+   turning points 13 levels apart instead of 60. The background keeps the whole
+   frame; its stripe predates this and is not this task.
+
+Layer offsets are a WHOLE number of bands, so every fold lands at the window's
+own edge rather than in the middle of it. Odd offsets get the mirrored pass,
+which is different weather for free. The remaining variety is horizontal:
+per-sample zoom and offset through `foldU`, plus the clip's own clock.
+
+`PUFF_V = 0.10` pins the time of day near the top of the plate. Eight samples
+stack up far more ink than the one the sheet lays, so at a middling `v` the
+dissolve printed darker than any sky it stands in front of.
+
+### Measured, on a freshly compiled shader in a scratch canvas
+
+| | |
+|---|---|
+| worst coverage dip | **0.07** over one tenth of the transition (was 0.205) |
+| full cover at the end | **100% at every one of the 20 starting frames** |
+| moves | 79.7% of pixels change between two clip moments; 44.1% sub-frame |
+| scroll / sky offset / night ramp | **0 differing pixels** for all three |
+| tone spread at full cover | 217 — cloud, not a slab |
+| cost @1728x1117 | 0.94 ms peak overlay + 0.37 ms sheet, of a 16.7 ms budget |
+
+`PUFF_LOOP_S` is 5 s in deck.js: the same clip as the sky, run faster, because
+at the sky's 16 s a 2.6 s transition sees a sixth of the loop and looks pinned.
+
+**Note on how this was checked.** The preview pane reports `innerWidth: 0` and
+`document.hidden: true`, so the deck's rAF never runs and a screenshot of the
+live transition is not available here. Everything above was measured by
+importing `pressgl.js` with a cache-busting query, compiling into a scratch
+canvas, and reading pixels back — plus contact sheets decoded to disk and looked
+at. Renders at 250 px wide moiré badly against a 5.2 px ruling and made the
+clouds look like static; the judgement calls were made at native resolution.
+
+---
+
+## Return dissolve, rebuild 4 — the level animates, not the opacity
+
+Three notes on the previous version, all acted on:
+
+1. clouds straight from the source vary too much, and are too large
+2. the fill at waves 3-4 was synthetic — an opaque sheet of SKY under the cloud,
+   visibly pulled across to hide the page changing
+3. the induced fade fought the clip, which already has clouds forming and
+   dissipating in it. Prefer the innate behaviour to a crossfade.
+
+### The opacity envelope is gone
+
+What animates now is THE LEVEL THE CLOUD MASK IS CUT AT. Fading a layer up is a
+photographic dissolve and reads as one; lowering the level makes the picture
+behave like weather — cloud appears where the field has just crossed the line,
+spreads at its own edges, joins its neighbours, and on the way back shrinks and
+goes. Nothing is ever semi-transparent. The forming and dissipating is the
+clip's own; the level only decides how much of it is above water.
+
+### The doubling is in the count: 2, 4, 8, 16
+
+Sixteen cuts of the field, four waves adding 2, 2, 4 and 8 of them, so the total
+on screen doubles each wave. Doing it by threshold instead does not work — the
+field's density is heaped in the middle, so the levels giving 6%, 12% and 25% of
+the window are 0.685, 0.650 and 0.617, near enough identical to look like one
+wave breathing.
+
+Starting from ONE cut also failed: a single cut is at the mercy of one moment of
+a clip that has moments with no cloud in them at all, and the dissolve would
+open on an empty screen and stay there for a third of its length.
+
+### The level moves in two movements, and it has to
+
+Overlapping cuts SATURATE. Two cuts covering a tenth each cover a fifth between
+them; sixteen cover four fifths, not sixteen tenths. So one level per wave cannot
+do both ends of the job — sparse enough for the first wave to be a scatter and
+sixteen still leave the window open; deep enough to close and the first wave
+arrives as overcast.
+
+  ARRIVE   each wave cuts down to the same shallow level (0.66, the densest
+           twentieth of the field), one wave later than the last. The doubling.
+  SETTLE   then all sixteen go on down together to 0.38. This closes the window,
+           and closes it as sixteen clouds thickening at once — which is what an
+           overcast sky is — rather than as one lid.
+
+The settle acts ON TOP OF each wave's arrival (`arrive * (A + (1-A) * settle)`),
+not beside it. Taking the greater of the two looks equivalent and is not: the
+settle then counts for nothing until it passes the arrival level, so the screen
+held still and the entire closure happened in the last fifth, all at once. It is
+also eased (^1.75), because coverage is not linear in the level — a straight run
+shut the window at four fifths of the way through and left the rest with nothing
+to do.
+
+### Where small clouds come from, which is not where I looked first
+
+The obvious answer is to tile more of the field into the window — three frames
+across instead of one. It does not work: the field MIRRORS at each repeat, and a
+mirror inside the window is a line of symmetry you can see. At 3.2 across,
+sixteen samples folded twice apiece and the screen came out a Rorschach card.
+Squeezing x harder than y to fit more in is worse — a 2:1 anamorphic squash that
+stands every cloud on end, which is what produced the "vertical flames" pass.
+
+The answer was the level, which was already there. Cut the field high and what
+is left is not whole clouds shrunk, it is their dense CORES: small, separate,
+scattered wherever the weather is thick. So the field is read one frame to one
+screen and each sample is offset by a WHOLE number of frames in each direction —
+a whole number puts the mirror exactly on the window's edge where it cannot be
+seen. Four positions, sixteen moments, no repeat visible anywhere.
+
+### A second ramp for the shading
+
+The mask was doing two jobs: the alpha AND how much the cloud's own lighting
+replaces the open sky's. Hardening it to 0.035 so the window could close hardened
+the lighting too, and sixteen hard-lit cuts average to flat grey — all the tone
+in the picture lives in that ramp. `pressAt` now cuts the mask at `soft` and
+shades at 0.115. Identical when soft is 0.115, so the sheet is untouched.
+
+### Measured, fresh compile, across all 20 starting frames of the clip
+
+| | |
+|---|---|
+| coverage by t | 0, 0, 0, 5, 7, 18, 44, 75, 98, 100, 100 |
+| holes at full | **0.00%**, every start |
+| tone spread at full | 217 — weather, not a slab |
+| cost @1728x1117 | 1.87 ms peak overlay + 0.44 ms sheet, of 16.7 ms |
+
+Tuning: `PUFF_HI` (where a wave starts, must clear the field's 0.863 max),
+`PUFF_LO` (where everything settles — lower closes harder), `PUFF_ARRIVE` (how
+deep a wave's own arrival goes; lower is a sparser first wave), `PUFF_SOFT`
+(mask hardness). Wave stagger is `g * 0.16` and the sweep `0.30` in `puffAt`.
+
+**A trap:** a comment inside the shader's template literal used backticks around
+an identifier and closed the literal. `node -e "import(...)"` catches this in a
+second; the browser reports it as `SyntaxError: Unexpected identifier`, which
+looks like a fault in the harness rather than in the file.

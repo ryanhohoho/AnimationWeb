@@ -172,9 +172,22 @@ float foldV(float y) {
   float t = mod(y / max(uBand, 1.0), 2.0);
   return 1.0 - abs(1.0 - t);
 }
+// WHICH WAY UP THIS PASS IS. On a mirrored pass the field runs backwards, so a
+// vertical gradient measured in it points the opposite way — and the shading
+// reads that gradient to decide which side of a cloud the sun is on. Left
+// uncorrected the lit and shadowed faces swap over at every fold and print a
+// dead straight line the full width of the sheet. Behind a small die-cut that
+// almost never lands where you can see it; across the whole window it is the
+// first thing you see.
+float foldS(float y) { return mod(y / max(uBand, 1.0), 2.0) < 1.0 ? 1.0 : -1.0; }
 
+// BOTH COMPONENTS CLAMP. x always did; y did not, and the frames are stacked
+// one above the other in the sheet, so a lookup a hair past the top of frame f
+// silently returned frame f-1. Nothing reads past an edge except the gradient
+// the shading is built on — which is exactly at the edges — so what it produced
+// was a hard dark line along the top and bottom of every band.
 float slice(vec2 uv, float f) {
-  float y = (f + uv.y) / uFrames;
+  float y = (f + clamp(uv.y, 0.0, 1.0)) / uFrames;
   return TEX(uDens, vec2(clamp(uv.x, 0.0, 1.0), y)).r;
 }
 
@@ -200,117 +213,65 @@ float screenDot(float d, vec2 pos, float ang) {
   return clamp((rad(d) - length(e)) * uRuling + 0.5, 0.0, 1.0);
 }
 
-// ── THE RETURN DISSOLVE ──────────────────────────────────────────────────
-// Its clouds are ITS OWN. Two earlier attempts read the sky's baked sheet: one
-// pinned to a single row (a photograph, which never moved) and one animated off
-// it (which was recognisably the same weather as the background, so the
-// transition looked like the sky sliding rather than like something arriving).
+// THE PRESS ITSELF, with every input it used to read off the page handed to it
+// instead. Nothing here changed except where the numbers come from: the return
+// dissolve needs the SAME press run at a different place in the field, at a
+// different moment of the clip and at a different coverage threshold, and the
+// only way to get that without a second copy of the press is to stop reading
+// the position out of the global state.
 //
-// These are generated — the same recipe the base sky was built from before the
-// clip replaced it: value noise, four octaves, one level of domain warp, and a
-// slow drift. Four layers, each reading the field at a different place and a
-// lower threshold, so each admits more of the window than the last.
-float hash21(vec2 p) {
-  p = fract(p * vec2(123.34, 456.21));
-  p += dot(p, p + 45.32);
-  return fract(p.x * p.y);
-}
-float vnoise2(vec2 p) {
-  vec2 i = floor(p), f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), u.x),
-             mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), u.x), u.y);
-}
-float fbm2(vec2 p) {
-  float s = 0.0, amp = 0.5, n = 0.0;
-  for (int i = 0; i < 4; i++) { s += amp * vnoise2(p); n += amp; amp *= 0.5; p *= 2.03; }
-  return s / n;
-}
-// ONE level of warp, as on the sky: it is what makes an edge billow instead of
-// fizz, and stacking them turns weather into marbling.
-float puffField(vec2 p, float tm) {
-  vec2 q = p + vec2(tm * 0.075, tm * 0.026);
-  float w1 = fbm2(q * 0.9);
-  float w2 = fbm2(q * 0.9 + vec2(3.7, 1.9));
-  return fbm2(q + 0.85 * vec2(w1, w2));
-}
-
-// x = coverage 0..1, y = the density that produced it
-vec2 puffAt(vec2 vp) {
-  if (uPuff.y < 0.5) return vec2(0.0);
-  float t = clamp(uPuff.x, 0.0, 1.0);
-  // ANISOTROPIC, like the sky: a cloud is wider than it is tall, because that
-  // is what perspective does to a deck of cloud seen from underneath.
-  vec2 uv = vp / uRes * vec2(3.4, 1.5);
-  vec2 best = vec2(0.0);
-  for (int k = 0; k < 4; k++) {
-    float fk = float(k);
-    float inA = fk * 0.21;
-    // each layer arrives well before the one before it has gone
-    float env = (k == 3)
-      ? smoothstep(inA - 0.06, inA + 0.24, t)
-      : smoothstep(inA, inA + 0.14, t) * (1.0 - smoothstep(inA + 0.36, inA + 0.60, t));
-    if (env <= 0.002) continue;
-    float d = puffField(uv + vec2(fk * 5.3, fk * 3.1), uPuff.z + fk * 2.0);
-    float a;
-    if (k == 3) {
-      // THE LAST LAYER COVERS COMPLETELY, AND IS STILL WEATHER.
-      // Thresholding it left 2-4% of the window open, which is enough to see
-      // the page change through. So its ALPHA is solid and the cloud lives in
-      // its INK instead: the field drives how much ink lands, biased dense, so
-      // it reads as heavy overcast rather than as the flat wash it was the
-      // first time round.
-      a = env;
-      d = mix(d, 0.80, 0.45);
-    } else {
-      float th = 0.565 - fk * 0.105;
-      a = smoothstep(th - 0.05, th + 0.07, d) * env;
-    }
-    if (a > best.x) best = vec2(a, d);
-  }
-  return best;
-}
-
-// The dissolve's own ink. NO NIGHT ON IT — no ramp, no sun, no time of day.
-// These clouds belong to neither the sky being left nor the one arrived at;
-// giving them a time of night made them read as a third sky rather than as a
-// transition. Two inks, screened on the sheet's own lattice, nothing else.
-vec3 puffPrint(vec2 px, float d) {
-  float dA = clamp((d - 0.30) * 2.6, 0.0, 1.0) * 0.95;
-  float dB = clamp((d - 0.40) * 2.0, 0.0, 1.0) * 0.70;
-  float cA = screenDot(dA, px, ANG_A);
-  float cB = screenDot(dB, px + REG, ANG_B);
-  return PAPER * mix(vec3(1.0), uInkA2, cA) * mix(vec3(1.0), uInkB2, cB);
-}
-
-// the print, at a position on the document
-vec3 printAt(vec2 px, vec3 inkA, vec3 inkB, float idn) {
-  float u = px.x / uPlate.x;
-  float v = clamp((px.y + uSkyRamp) / uRefH, 0.0, 1.0);
+//   px      where the halftone lattice is sampled — the screen is a property of
+//           the PAPER, so this stays in document space whatever else moves
+//   u, v    across the plate, and down it. v is the time of day.
+//   bandPh  the coverage wobble's phase, in bands
+//   fuv     where to read the cloud field. Both components already folded, so
+//           an offset can be any size without running off the clip.
+//   fs      +1 on an upright pass of the field, -1 on a mirrored one
+//   fr      which moment of the clip
+//   covB    added to the coverage threshold. Negative admits more cloud.
+//   soft    how far above the threshold a cloud becomes solid. The sheet wants
+//           0.115, which is dot gain and the reason its clouds have air in their
+//           edges. The dissolve wants a tenth of that: it has to CLOSE, and a
+//           cloud that only goes solid 0.115 above its own threshold leaves a
+//           fifth of the window translucent no matter how many are stacked up.
+//           A hard edge is also the right look for it — a cut shape rather than
+//           a photograph of one.
+//
+// Returns the printed colour in .rgb and THE CLOUD MASK in .a — the press has
+// always computed that mask, because it has to shade cloud differently from
+// clear air. Handing it back is what makes the sky removable.
+vec4 pressAt(vec2 px, float u, float v, float bandPh, vec2 fuv, float fs, float fr, float covB,
+             float soft, vec3 inkA, vec3 inkB, float idn) {
   float aspect = uPlate.x / uRefH;
 
   float t = smoothstep(0.02, 1.02, v);
   float day = 1.0 - t;
   float L0 = 0.93 - 0.80 * pow(t, 0.85);
-  float band = uBand > 0.0 ? 0.055 * cos(((px.y + uSky) / uBand - 0.42) * TAU) : 0.0;
+  float band = uBand > 0.0 ? 0.055 * cos((bandPh - 0.42) * TAU) : 0.0;
 
   float sun = exp(-length(vec2((u - SUN_U) * aspect, v - SUN_V)) * 2.2);
   float L = L0 + 0.06 * sun * day;
   float a = 0.0, lit = 0.0;
 
-  vec2 fuv = vec2(u, foldV(px.y + uSky));
-  float cov = 0.478 + 0.075 * v - band;
-  float d = dens(fuv);
+  float cov = 0.478 + 0.075 * v - band + covB;
+  float d = densF(fuv, fr);
   if (d > cov) {
-    a = smoothstep(cov, cov + 0.115, d);
+    a = smoothstep(cov, cov + soft, d);
+    // THE SHADING KEEPS ITS OWN, WIDER RAMP. The mask is doing two jobs — it is
+    // what this returns AND how much the cloud's own lighting replaces the open
+    // sky's. Hardening it for the mask hardened the lighting too, and sixteen
+    // hard-lit cuts laid over each other average out to a flat grey: all the
+    // tone in the picture lives in that ramp. Identical when soft is 0.115, so
+    // the sheet is untouched.
+    float aL = soft >= 0.115 ? a : smoothstep(cov, cov + 0.115, d);
     vec2 sdir = normalize(vec2(SUN_U - u, SUN_V - v));
     vec2 e = vec2(FIELD_PX / uPlate.x, FIELD_PX / max(uBand, 1.0));
     // the surface normal points AWAY from the cloud's own dense interior, so
     // it is -grad that faces outward and the dot product is negated
-    float gx = dens(fuv + vec2(e.x, 0.0)) - dens(fuv - vec2(e.x, 0.0));
-    float gy = dens(fuv + vec2(0.0, e.y)) - dens(fuv - vec2(0.0, e.y));
+    float gx = densF(fuv + vec2(e.x, 0.0), fr) - densF(fuv - vec2(e.x, 0.0), fr);
+    float gy = (densF(fuv + vec2(0.0, e.y), fr) - densF(fuv - vec2(0.0, e.y), fr)) * fs;
     lit = smoothstep(0.16, 0.86, 0.5 - dot(vec2(gx, gy), sdir) * 13.0);
-    L = mix(L, L0 * (0.38 + 1.02 * lit), a);
+    L = mix(L, L0 * (0.38 + 1.02 * lit), aL);
   }
   L = clamp(L, 0.0, 1.0);
 
@@ -337,7 +298,216 @@ vec3 printAt(vec2 px, vec3 inkA, vec3 inkB, float idn) {
   // ink on paper is subtractive: each plate multiplies what is under it
   float cA = screenDot(dA, px, ANG_A);
   float cB = screenDot(dB, px + REG, ANG_B);
-  return PAPER * mix(vec3(1.0), inkA, cA) * mix(vec3(1.0), inkB, cB);
+  return vec4(PAPER * mix(vec3(1.0), inkA, cA) * mix(vec3(1.0), inkB, cB), a);
+}
+
+// the print, at a position on the document — the press reading the page
+vec3 printAt(vec2 px, vec3 inkA, vec3 inkB, float idn) {
+  float u = px.x / uPlate.x;
+  float v = clamp((px.y + uSkyRamp) / uRefH, 0.0, 1.0);
+  float bandPh = uBand > 0.0 ? (px.y + uSky) / uBand : 0.0;
+  return pressAt(px, u, v, bandPh, vec2(u, foldV(px.y + uSky)), foldS(px.y + uSky),
+                 uF, 0.0, 0.115, inkA, inkB, idn).rgb;
+}
+
+// ── THE RETURN DISSOLVE ──────────────────────────────────────────────────
+// It is the sky, brought to the front with the sky taken out of it.
+//
+// Same clip, same press, same lattice, same inks as the sheet being left. The
+// one thing that is different is what carries the alpha: pressAt returns the
+// CLOUD MASK it needed anyway, and using that as the alpha keeps the cloud and
+// drops the blue. What floats over the page is weather with nothing behind it.
+//
+// Two earlier attempts did not do this. The first pinned each layer to one row
+// of the baked sheet, which is a photograph and never moved. The second grew
+// its own noise so as not to look like the background sliding — which solved a
+// problem that only existed because the first one was static, and threw away
+// the press to do it.
+//
+// NOTHING HERE IS EVER SEMI-TRANSPARENT, AND NOTHING FADES.
+// The version before this faded each wave up on an opacity envelope, and it
+// read as exactly what it was: photographs cross-dissolving. Worse, the clip
+// ALREADY has clouds forming and dissipating in it, so a fade laid over the top
+// fought the thing it was imitating.
+//
+// So the envelope is gone and what animates is THE LEVEL THE CLOUD IS CUT AT.
+// Lowering it makes the picture behave like weather — cloud appears where the
+// field has just crossed the line, spreads at its own edges, joins up with its
+// neighbours — and raising it again shrinks it back and takes it away. Every
+// pixel is either cloud or nothing. The forming and dissipating is the clip's;
+// the level only decides how much of it is above water.
+//
+// FOUR WAVES, AND THE DOUBLING IS IN THE COUNT: one cut of the field, then two,
+// then four, then eight. Fifteen in total. Doing it by threshold instead was the
+// obvious route and it does not work — the field's density is heaped up in the
+// middle, so the levels that give 6%, 12% and 25% of the window are 0.685, 0.650
+// and 0.617, which are near enough the same level to look like one wave
+// breathing. Twice the cuts is twice the clouds however the field is heaped.
+//
+// None of them ever leaves: a wave that faded out again is what let coverage run
+// backwards, and the clip provides plenty of coming and going by itself.
+//
+// AND THE LAST WAVE IS REAL CLOUD, not a lid. It used to be an opaque sheet of
+// sky with cloud laid over it, which covered the window and looked like exactly
+// that — a sky pulled across to hide the page changing. Fifteen overlapping cuts
+// close the window on their own.
+//
+// Viewport space, so scrolling cannot get out from under it, and no centre, so
+// any link anywhere dissolves the same way.
+
+// the field mirrors every band vertically; this is the same trick sideways, so
+// a layer can be offset horizontally without running into the clip's clamp
+float foldU(float x) { float t = mod(x, 2.0); return 1.0 - abs(1.0 - t); }
+
+// AND THE VERTICAL FOLD IS WINDOWED, for the dissolve only.
+// The clip is not even down its own frame: measured off the baked sheet, mean
+// density runs 108 across the whole top half and then climbs to 168 in the last
+// quarter, which is the dense deck at the horizon. A mirror turns around at both
+// ends, so the dense end meets itself and prints a hard dark stripe the full
+// width of the sheet. In the background that happens once per viewport, where a
+// die-cut is usually in the way; across a full-screen dissolve it happens twice
+// with nothing in the way at all.
+//
+// Folding inside the top 0.60 of the frame instead of all of it puts the two
+// turning points 13 levels apart rather than 60. The background keeps the whole
+// frame — its stripe has always been there and is not this task.
+float foldW(float y) { return 0.02 + foldV(y) * 0.60; }
+
+// NO TIME OF DAY ON THE DISSOLVE. v is pinned, so there is no night ramp down
+// the screen and no accumulation across navigations — these clouds belong to
+// neither the sheet being left nor the one arrived at. Pinned to daylight
+// rather than to nothing: it is still the press, so it still needs a v.
+//
+// AND PINNED NEAR THE TOP OF THE PLATE, at 0.10 rather than 0.30. Ten cuts of
+// the field stack up a great deal more ink than the one the sheet lays, so at a
+// middling time of day the dissolve came out far darker than any part of the
+// sky it is standing in front of. The top of the plate is the open, light end;
+// ten layers of it land where one layer of the middle does.
+const float PUFF_V = 0.10;
+
+// WHERE THE SMALL CLOUDS COME FROM, which is not where I first went looking.
+//
+// The obvious answer is to tile more of the field into the window — three
+// frames across instead of one, so every cloud is a third the size. It does not
+// work. The field MIRRORS at each repeat, and a mirror inside the window is a
+// line of symmetry you can see: at 3.2 across, sixteen samples each folded
+// twice and the screen came out a Rorschach card of butterflies. Squeezing x
+// harder than y to fit more in is worse still — it is a 2:1 anamorphic squash,
+// and it stands every cloud on end.
+//
+// The answer is the LEVEL, which was already there. Cut the field high and what
+// is left above the line is not whole clouds shrunk down, it is their dense
+// cores — small, separate, scattered wherever the weather happens to be thick.
+// Sixteen of those from sixteen moments of the clip is a sky full of small
+// clouds, at the clip's own scale, with no repeat anywhere in it.
+//
+// So the field is read one frame to one screen, and each sample is offset by a
+// WHOLE number of frames in each direction. A whole number puts the mirror
+// exactly on the window's edge, where it has always been and where it cannot be
+// seen; anything else drags it into the middle of the picture. Four positions,
+// sixteen moments.
+
+// The level a wave starts at, which has to clear the field's measured maximum
+// of 0.863 plus the 0.055 the coverage wobble can lend it — otherwise a wave
+// begins with cloud already on the screen instead of with nothing.
+const float PUFF_HI = 0.94;
+// and the level everything ends at. 0.38 leaves about 42% of any one cut solid,
+// which over sixteen of them closes the window to the last pixel.
+const float PUFF_LO = 0.38;
+// how far down a wave's own arrival takes it, as a fraction of that run. Half
+// lands it at 0.66, the densest twentieth of the field — a scatter of small
+// clouds rather than a bank of them.
+const float PUFF_ARRIVE = 0.50;
+const float PUFF_SOFT = 0.035;
+
+// THE LATTICE IS VIEWPORT-LOCKED HERE, and only here. Everywhere else the
+// screen belongs to the PAPER, so it is cut from document position and stays
+// registered while the page scrolls under it. But this cloud is a sheet in
+// FRONT of the page — its own paper — and it does not scroll. Leaving the
+// lattice on the document made the dots crawl under stationary clouds when the
+// reader scrolled mid-dissolve: 78% of the frame changing for a scroll the
+// clouds themselves ignored.
+//
+// premultiplied: rgb is already scaled by a
+vec4 puffAt(vec2 vp) {
+  if (uPuff.y < 0.5) return vec4(0.0);
+  float t = clamp(uPuff.x, 0.0, 1.0);
+  float u = clamp(vp.x / uRes.x, 0.0, 1.0);
+  vec3 acc = vec3(0.0);
+  float accA = 0.0;
+  for (int k = 0; k < 16; k++) {
+    // THE DOUBLING IS IN THE TOTAL ON SCREEN, not in what each wave adds: two
+    // cuts, then four, then eight, then sixteen. So the waves add 2, 2, 4 and 8
+    // of them. Starting from one cut instead of two put the whole first wave at
+    // the mercy of a single moment of the clip, and the clip has moments with
+    // no cloud in them at all — the dissolve would begin with an empty screen
+    // and stay that way for a third of its length.
+    int gi = k < 2 ? 0 : (k < 4 ? 1 : (k < 8 ? 2 : 3));
+    float g = float(gi);
+    float fk = float(k);
+
+    // THE LEVEL, IN TWO MOVEMENTS — and it took getting this wrong to see why
+    // it has to be two.
+    //
+    // Overlapping cuts SATURATE. Two cuts covering a tenth each cover a fifth
+    // between them; sixteen covering a tenth each cover four fifths, not
+    // sixteen tenths. So a single level per wave cannot do both ends of this
+    // job: set it sparse enough for the first wave to be a scatter of clouds
+    // and sixteen of them still leave the window open, set it deep enough to
+    // close and the first wave arrives as overcast.
+    //
+    //   ARRIVE  each wave cuts down to the same shallow level, a wave later
+    //           than the one before. This is the doubling, and it is purely a
+    //           count: two clouds, four, eight, sixteen.
+    //   SETTLE  then every wave, all sixteen cuts of them, goes on down
+    //           together. This is what closes the window, and it closes it as
+    //           sixteen clouds all thickening at once — which is what an
+    //           overcast sky actually is — rather than as one lid.
+    //
+    // The settle acts ON TOP OF what a wave has arrived at, rather than beside
+    // it. Taking the greater of the two instead looks like the same thing and
+    // is not: the settle then counts for nothing until it passes the arrival
+    // level, so for two thirds of its run the screen held still and the whole
+    // closure happened in the last fifth of the dissolve, all at once.
+    float arrive = clamp((t - g * 0.16) / 0.30, 0.0, 1.0);
+    // eased, because coverage is not linear in the level: a cut opens up fastest
+    // just as it passes the field's middle, so a straight run at the level shut
+    // the window at four fifths of the way through and left the last fifth with
+    // nothing to do
+    float settle = pow(clamp((t - 0.30) / 0.70, 0.0, 1.0), 1.75);
+    float q = arrive * (PUFF_ARRIVE + (1.0 - PUFF_ARRIVE) * settle);
+    if (q <= 0.001) continue;
+    float th = mix(PUFF_HI, PUFF_LO, q);
+
+    // TEN PLACES IN THE FIELD AND TEN MOMENTS IN THE LOOP, spread by the golden
+    // ratio. Successive multiples of it fall about as evenly into a cycle as any
+    // ten numbers can, which is what keeps the samples from agreeing with each
+    // other — and samples that agree leave the same holes open, so the window
+    // never closes however many of them there are.
+    //
+    // NOT wound on by uSky: the plate is wound on at the swap, which lands in
+    // the middle of the dissolve, and the middle is when this cloud is all
+    // there is to look at. It owes the page's weather no continuity.
+    float ph = fract(fk * 0.6180339);
+    float ix = mod(fk, 2.0);
+    float iy = mod(floor(fk * 0.5), 2.0);
+    float yo = vp.y + iy * uBand;
+    float bandPh = uBand > 0.0 ? yo / uBand : 0.0;
+    vec2 fuv = vec2(foldU(u + ix), foldW(yo));
+    float fr = uPuff.z + uFrames * ph;
+
+    // pressAt adds the page's own base coverage, so the level is handed to it
+    // as the difference from that
+    float covB = th - (0.478 + 0.075 * PUFF_V);
+    vec4 pr = pressAt(vp, u, PUFF_V, bandPh, fuv, foldS(yo), fr, covB,
+                      PUFF_SOFT, uInkA2, uInkB2, 1.0);
+
+    // the mask IS the alpha. Nothing is scaled by an envelope.
+    float a = pr.a;
+    acc  = pr.rgb * a + acc * (1.0 - a);
+    accA = a + accA * (1.0 - a);
+  }
+  return vec4(acc, accA);
 }
 
 void main() {
@@ -372,8 +542,7 @@ void main() {
   // density field the sky is made of, sampled here to push the boundary in and
   // out — so the paper is eaten away rather than wiped, and no two crossings
   // tear along the same line.
-  vec2 pf = puffAt(vp);
-  float eaten = pf.x;
+  float eaten = 0.0;
   if (uCross.z > 0.0 || uCross2.z > 0.0) {
     vec2 cfuv = vec2(doc.x / uPlate.x, foldV(doc.y));
     float mess = (dens(cfuv) - 0.5) * 2.2;
@@ -395,10 +564,18 @@ void main() {
   // else — and that result is blitted to a layer above the words. The page
   // itself no longer fades out; it is covered.
   if (uOverlay > 0.5) {
+    // The dissolve is only ever an overlay — it is cloud in FRONT of the page,
+    // not a hole in it, so it must not reach the sheet pass at all. It arrives
+    // premultiplied already, which is what the four layers compositing over
+    // each other produce.
+    if (uPuff.y > 0.5) {
+      vec4 pf = puffAt(vp);
+      if (pf.a <= 0.002) { OUT = vec4(0.0); return; }
+      OUT = pf;
+      return;
+    }
     if (eaten <= 0.002) { OUT = vec4(0.0); return; }
-    // the dissolve carries its own flat ink; the eating carries the sky
-    vec3 c = uPuff.y > 0.5 ? puffPrint(doc, pf.y) : printAt(doc, uInkA2, uInkB2, 1.0);
-    OUT = vec4(c * eaten, eaten);   // premultiplied
+    OUT = vec4(printAt(doc, uInkA2, uInkB2, 1.0) * eaten, eaten);   // premultiplied
     return;
   }
 
