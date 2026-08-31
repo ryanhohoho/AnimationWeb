@@ -1,5 +1,5 @@
 // lifecycle.js
-// the disposal registry. IMPLEMENTATION_PLAN.md section 6: every subsystem
+// the disposal registry. every subsystem
 // takes a scope and registers into it, route teardown calls dispose() once,
 // and NOTHING anywhere calls addEventListener directly.
 //

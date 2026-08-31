@@ -1,6 +1,6 @@
 // math.js
 // frame-rate independent motion primitives. everything animated in this project
-// flows through these -- raw per-frame lerps are banned (see IMPLEMENTATION_PLAN.md)
+// flows through these -- raw per-frame lerps are banned (see CLAUDE.md, rule 6)
 
 export const clamp = (x, lo, hi) => (x < lo ? lo : x > hi ? hi : x);
 export const lerp = (a, b, t) => a + (b - a) * t;

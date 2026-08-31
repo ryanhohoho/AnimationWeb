@@ -46,7 +46,7 @@
 //     base and nearly free at the tip. because it runs inside the same
 //     root-to-tip walk, it never fights the length constraint.
 //
-// KEPT (all of it paid for once, see HANDOFF.md)
+// KEPT (all of it paid for once, see STATE.md 'Traps already paid for')
 //   - ANISOTROPIC AERODYNAMIC DRAG, several times higher across the tail than
 //     along it. that ratio is why real tails, ribbons and hair stream and
 //     flutter instead of merely lagging, and it is the only damping here.

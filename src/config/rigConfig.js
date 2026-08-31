@@ -250,7 +250,7 @@ export const rigConfig = {
   // field. Tuning for it lives in `presentation.asciiPass` below.
   // The default is deliberately "pixelate": a saturated, smooth, ALIVE mew in a
   // flat two-ink ascii world is the contrast the whole site is built on.
-  // See DESIGN_BIBLE.md section 7.2.
+  // See DESIGN.md.
   // ------------------------------------------------------------------
   presentation: {
     mode: "pixelate",       // <-- TOGGLE HERE ("pixelate" | "ascii" | "cutout" | "none")

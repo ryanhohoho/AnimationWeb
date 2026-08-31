@@ -35,7 +35,7 @@ export function createWorld({ seed = 1337, headless = false } = {}) {
     // add-only, which is harmless in a single-page life and a real leak the
     // moment the site is an SPA: every route swap adds listeners that are
     // never removed, and each one holds a closure over dom that is already
-    // detached. see IMPLEMENTATION_PLAN.md section 6, leak class 5.
+    // detached.
     // existing call sites ignore the return value and keep working unchanged.
     _listeners: new Map(),
     on(type, fn) {

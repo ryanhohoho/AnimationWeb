@@ -5,7 +5,7 @@
 // -------------------------------------
 // a >.< is a SYMBOL. It is not what a face does, it is what a cartoonist draws
 // instead of what a face does -- the same vocabulary as the sweat drop, the
-// anger cross and the spiral eye (manga iconography; see HANDOFF for the
+// anger cross and the spiral eye (manga iconography; see STATE.md for the
 // sources). A morph target has to bend real geometry into the shape of a glyph,
 // which on a twenty-pixel face is both harder to author and less legible than
 // simply drawing the glyph. The first version of this did exactly that -- a

@@ -56,7 +56,6 @@ import facemorph as fm                       # noqa: E402
 
 SRC = os.path.join(ROOT, "mewNew.glb")
 DST = os.path.join(ROOT, "src", "assets", "mew.glb")
-PUB = os.path.join(ROOT, "public", "models", "mew.glb")
 
 NTAIL = 10          # more joints than the old 7: the solver is a rod now, and
                     # segment count is what buys it curvature resolution
@@ -404,15 +403,13 @@ def build(verbose=True):
     Wov /= np.maximum(Wov.sum(1, keepdims=True), 1e-9)
 
     write_glb(Pv, Iv, Nv, UVv, Jov, Wov, J, Mv, atlas, DST, eyes)
-    if os.path.isdir(os.path.dirname(PUB)):
-        write_glb(Pv, Iv, Nv, UVv, Jov, Wov, J, Mv, atlas, PUB, eyes)
     with open(os.path.join(HERE, "joints.json"), "w") as fh:
         json.dump({k: [round(float(x), 4) for x in v] for k, v in J.items()},
                   fh, indent=2)
 
     if verbose:
         lo, hi = Pv.min(0), Pv.max(0)
-        print(f"wrote {os.path.relpath(DST, ROOT)}  (+ {os.path.relpath(PUB, ROOT)})")
+        print(f"wrote {os.path.relpath(DST, ROOT)}")
         print(f"  welded {len(P)} verts / {len(I)} tris -> exported {len(Pv)} verts")
         print(f"  joints {len(ORDER)}   morphs {list(Mv)}   atlas {atlas.shape[0]}px")
         print(f"  eyes {[(e['cx'], e['cy'], e['z']) for e in eyes]}")

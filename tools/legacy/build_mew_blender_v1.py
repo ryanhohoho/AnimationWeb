@@ -1,7 +1,7 @@
 # build_mew.py
 # blender headless script that procedurally builds a low-poly mew-like character,
 # rigs it, skins it deterministically, and exports a glb.
-# run: blender -b --python tools/build_mew.py -- --out public/models/mew.glb
+# run: blender -b --python tools/build_mew.py -- --out mew.glb
 #
 # conventions: blender z-up, character faces -Y. gltf exporter converts to y-up,
 # so in three.js the character faces +Z (toward camera) with +Y up.

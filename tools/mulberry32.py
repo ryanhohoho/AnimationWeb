@@ -14,7 +14,7 @@ every arithmetic step that js would truncate has to be masked back to int32/
 uint32 explicitly, in the same order js evaluates it in.
 
 verified against the real mulberry32() for multiple seeds before this file was
-relied on for anything -- see the session notes in DELEGATION.md prompt B.
+relied on for anything.
 """
 
 

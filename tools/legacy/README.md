@@ -11,7 +11,11 @@ because the maths in some of it is worth stealing.
 | `split_foot.py` | narrowest-waist limb splitter; produced `mewNew_split.glb` | **its output was broken.** the split left 18 non-manifold edges — a doubled surface welded back onto itself — which defeats every topological operation downstream. that file has been deleted; the build now reads the clean, perfectly manifold `mewNew.glb` and `tools/meshsurgery.py` does the splitting |
 | `tailshape.py` | re-routed the meshy tail along a new centreline with rotation-minimising frames, so it trailed backward instead of sticking out sideways | it fixed the DIRECTION but could not move the ATTACHMENT: the tail is welded to the right hip at x +0.60, so a third of it still read as part of the body. it was also a lumpy tube -- 53 vertices over 64 rings, some rings holding one vertex. `tools/tailbuild.py` deletes it outright and grows a new one out of the butt instead. the RMF maths here is worth stealing |
 | `build_mew_blender_v1.py` | the original blender script (v1 model) | historical |
-| `mew_sketchfab_original.glb`, `mew_v1_current.glb` | the models those scripts produced | historical |
+
+the two model binaries these scripts produced (`mew_sketchfab_original.glb`,
+`mew_v1_current.glb`, 4.3 MB between them) were deleted in the cleanup. they were
+historical only — nothing reads them. `git log --diff-filter=D` finds them if a
+provenance question ever needs the actual geometry.
 
 these scripts `sys.path.insert` their own directory and import `glbtool`, which
 now lives one level up in `tools/`. to run one, add `tools/` to `PYTHONPATH`.

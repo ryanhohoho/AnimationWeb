@@ -3,7 +3,7 @@
 // entrance (ported from the games) and the ANNOYANCE stars a hard collision
 // knocks out of mew.
 //
-// WHAT THE GAMES ACTUALLY DO (see HANDOFF for the sources)
+// WHAT THE GAMES ACTUALLY DO (sources recorded in the comments below)
 // -------------------------------------------------------
 // Bulbapedia's one-line definition is the whole brief: a Shiny Pokémon "is
 // surrounded by a FLASH OF STARS OR LIGHT, which is accompanied by a pinging

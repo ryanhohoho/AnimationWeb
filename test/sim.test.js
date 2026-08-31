@@ -633,7 +633,7 @@ section("modules: every shader-carrying module actually parses");
     // comments took the whole module out. The page then renders with no
     // styles, no routes and no field, and nothing in the console says why.
     // That is the third time this exact character has cost a debugging round
-    // in this repo (see HANDOFF.md).
+    // in this repo (see STATE.md).
   ];
   const loaded = await Promise.all(mods.map((m) =>
     import(m).then(() => null).catch((e) => `${m}: ${e.message}`)));

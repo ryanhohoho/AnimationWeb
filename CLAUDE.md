@@ -44,3 +44,154 @@
 ## Grounding & Hallucination Prevention
 - **Admit Uncertainty**: If required information is missing or no available tool fits what is requested, state so directly rather than guessing.
 - **Document Analysis**: When summarizing or analyzing long context documents (>20k tokens), extract direct quotes to ground conclusions before performing tasks.
+
+---
+---
+
+# AnimationWeb — project instructions
+
+Everything above is the global behavioural contract and stands unchanged.
+Everything below is specific to this repository and takes precedence where the
+two overlap.
+
+## What this is
+
+A personal portfolio site that is **one document**, printed as a **two-ink riso
+sky** seen through **die-cut apertures**, with **Mew** — a procedurally animated
+3D character — loose on the page as the only unprinted thing on it.
+
+Vite + Three.js, no framework, no CSS library. Real routes via the History API,
+because Mew is a live WebGL context with physics and a brain: a real navigation
+would kill her, so the SHEET changes, not the window.
+
+Read in this order when picking it up cold:
+
+| file | what it is | when |
+|---|---|---|
+| `RYAN.txt` | the owner's taste, distilled from ~200 reference images and the whole collaboration | **first, always.** Never regenerate it. Do NOT re-analyse the image folders — that work is done |
+| `STATE.md` | what exists, how it works, the numbers, and every trap already paid for | before touching anything |
+| `DESIGN.md` | what was built and why each part is there | when the question is "why is it like this" |
+| `CLAUDE.md` | this file | how to work |
+
+## Commands
+
+```bash
+npm run dev            # localhost:5173 — the owner tests here, in his own browser
+npm test               # 826 checks: the headless sim + the router harness
+npm run test:sim       # just the engine/behaviour suite
+npm run test:router    # just the router + page-swap harness (needs a fake DOM)
+npm run build          # production bundle
+npm run build:single   # one-file dist, for file:// checks
+```
+
+Model pipeline (Python 3 + numpy/scipy/Pillow, only needed if you touch the rig):
+
+```bash
+python3 tools/rig_mew.py     # rebuild src/assets/mew.glb from mewNew.glb (~20 s)
+python3 tools/check_mew.py   # the model gate — weights, shells, skin, blink, tail
+```
+
+Sky pipeline (only if the cloud field itself changes):
+
+```bash
+node tools/bake_sky.mjs assets-source/<clip>.mp4 20 320   # -> src/assets/media/sky-field.webp
+```
+
+## Working rules — non-negotiable
+
+1. **Naturalness is the acceptance bar.** If motion looks wrong, find the
+   STRUCTURAL cause — wrong stiffness model, wrong reference frame, missing
+   follow-through, geometry too small to read. Do not mask symptoms by fiddling
+   parameters. Recognise when something genuinely IS surface-level before tuning.
+2. **Purpose per element.** Every object must be explainable: why it exists and
+   why it is *there*. This is the rule the whole site is built on.
+3. **A ground must be a made thing, not a running function.** The craft has to
+   live in a decision — a separation, a screen angle, a lighting model, a
+   misregistration — not in the fact that maths is visibly happening. Anything is
+   permitted as material; "it exists because the function does" is not.
+4. **Measured, not chosen.** Constants come from artefacts and get their
+   provenance in a comment. A number nobody can defend is a number that drifts.
+5. **All tuning constants live in `src/config/rigConfig.js`.** Never hardcode
+   bone names or magic numbers in engine files. A future model must swap in by
+   editing rigConfig alone.
+6. **Everything frame-rate independent.** `expDamp`, `Spring`, `QuatSpring`.
+   Raw per-frame lerps are banned. The sim runs at a fixed 120 Hz (`loop.js`);
+   pose layers run per render frame with their own substepping.
+7. **FX cost is one-time, at event time.** Zero or near-zero per frame. Pure
+   maths goes in headless-testable modules — the pattern is `fx/beamGeometry.js`.
+8. **Comments: relaxed tone, lowercase except abbreviations.** Say WHY, and say
+   what was tried and rejected. Never regenerate a whole file when a patch does.
+9. **The owner verifies visually, you verify headlessly.** Do not ask him to
+   check something you could have measured. Do not browser-test each change.
+10. **Character aesthetics are his call.** Do not redesign the silhouette or
+    repaint the face unasked.
+
+## Verification, and its one real limitation
+
+**The Browser pane in this environment reports `innerWidth: 0` and
+`document.hidden: true`.** The deck's rAF never runs, so live screenshots of
+transitions are impossible and always have been. Every visual claim in `STATE.md`
+was measured instead by:
+
+- cache-busted module imports compiling the real shaders into a scratch canvas,
+  then `readPixels` and comparing;
+- the node sim harness driving the real engine;
+- `window.__DECK__.debug.paint(t, scrollY)` to draw a frame by hand.
+
+**Say so when you have not seen something.** Never describe motion as verified
+when only the numbers were.
+
+## Invariants — break these and something silently dies
+
+- **Never put a backtick in a GLSL comment.** Shaders live in template literals;
+  one backtick anywhere inside terminates the string and the whole MODULE fails
+  to parse. Vite reports nothing useful. Check with
+  `node -e "import('./src/site/pressgl.js')"` — the browser console will not
+  find it.
+- **The escape from inside type must out-push the hardest steer.**
+  `physics.insideAccel` > `steerMaxForce × leanThrust.maxMul`. There is a test.
+- **`world.scroll.y` and `world.docSize` are stale during a page swap.** The
+  router swaps `#doc`, scrolls to the top and emits `recollect` in one
+  synchronous block, and `scroll` is async. Anything positional must read the
+  re-measured values — world.js re-measures on `recollect`, subscribed first.
+- **Read `window.scrollY` BEFORE replacing `#doc`.** A shorter page clamps the
+  scroll on the spot, so a value read afterwards is where the reader ENDED UP.
+- **A teleport must copy `prevPos`.** The render loop interpolates
+  `prevPos → pos`; leaving it behind draws one frame of a streak.
+- **Bones are reset to rest every frame** by the poser. Cross-frame smoothing
+  keeps its own state; never smooth on `bone.quaternion` directly.
+- **InstancedMesh: `frustumCulled = false`.** The bounding volume sits at the
+  fx-group origin, which is nearly always off camera.
+
+The full catalogue, with the failures that produced each one, is in `STATE.md`
+under **Traps already paid for**. Read it before debugging anything that smells
+like one.
+
+## Security — a hard constraint on the USB project
+
+`src/site/pages/usb-provisioning.js` documents a real RCMP hardware pipeline.
+The source tooling for it lives OUTSIDE this repository and contains a hardcoded
+credential.
+
+**None of the following may ever appear in this repository, on any page, in any
+committed file, or in any transcript:** credentials or key material, real asset
+numbers, drive serials, or volume identifiers.
+
+The transcript on that page is a real run with **every device identifier
+substituted** (`id #1234567`, `#2345678` are placeholders), and the page carries
+a DISCLOSURE block saying so. If you edit that page, keep both true. If you are
+ever asked to include real capture data, censor it in a copy of the file rather
+than reading the original into context.
+
+## Conventions
+
+- Comments carry the argument, not just the description. When something was
+  tried and rejected, the comment says so and why — that is what stops the next
+  session redoing it.
+- Tests are named as sentences about behaviour, not about functions
+  (`"a frightened flail is not an annoyed one"`).
+- Every route assertion that could pass by accident is **paired against a
+  control** — the same code with the fix disabled. If a check would pass either
+  way, it is not testing anything.
+- Scratch/probe scripts belong in the session scratchpad, not in the repo.
+- `git commit` only when asked.
