@@ -19,6 +19,11 @@ export function createWorld({ seed = 1337, headless = false } = {}) {
     scroll: { y: 0, vel: 0 },
     colliders: [],          // [{ rect: {x, y, w, h}, el }] in DOCUMENT coords
     collidersVersion: 0,    // bumped on every remeasure so consumers can rebuild
+    panicking: false,       // the flight, see brain.panicFrom
+    offLeash: false,        // ...and the two moments when being off the page is
+                            // the POINT: that flight, and the beat she waits
+                            // outside the frame before entering a new sheet.
+                            // Written by the brain, read by resolveEdges.
     // written by the pose side each render frame, read by the brain's thrust
     // gating: how much the posed body axis agrees with the intended direction
     poseState: { leanIn: 0 },
@@ -121,6 +126,33 @@ function attachBrowser(world) {
 
   let lastScrollY = window.scrollY;
   let docCheck = 0;
+
+  // ── A NEW SHEET IS A NEW MEASUREMENT ──────────────────────────────────────
+  // The router replaces #doc, scrolls to the top and emits `recollect` in ONE
+  // synchronous block. `scroll` is an asynchronous event and the document-height
+  // check only runs twice a second, so at the instant `recollect` fires:
+  //
+  //   world.scroll.y   is still however far down the OLD sheet the reader was
+  //   world.docSize.h  is still the old sheet's height
+  //
+  // Anything that places her relative to "the window" in that moment places her
+  // relative to a window that no longer exists. That is why she stopped
+  // entering from the side after a page swap: the handler asks for a y inside
+  // the viewport, gets `oldScroll + a bit`, and puts her hundreds or thousands
+  // of pixels down the new sheet — off the bottom of it, so the fly-in comes up
+  // from below instead of in from the edge.
+  //
+  // Subscribed HERE, at construction, so it runs before the brain's and the
+  // collider tracker's handlers for the same event: the bus fires in
+  // subscription order and createWorld runs before either of them.
+  world.on("recollect", () => {
+    measureViewport();
+    world.scroll.y = window.scrollY;
+    // and the jump to the top is not the reader scrolling — left alone, the
+    // next tick sees the whole old offset as one frame's delta
+    lastScrollY = window.scrollY;
+    world.scroll.vel = 0;
+  });
 
   // called once per sim step from the loop so pointer/scroll velocity is
   // smoothed with proper dt regardless of event timing

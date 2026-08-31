@@ -24,6 +24,7 @@ import { beamLength } from "./engine/fx/beamGeometry.js";
 import { createPresentation } from "./engine/fx/presentation.js";
 import { applySpriteShade } from "./engine/fx/spriteShade.js";
 import { createStarBurst } from "./engine/fx/starBurst.js";
+import { createSweatDrops } from "./engine/fx/sweatDrops.js";
 import { createFaceOverlay } from "./engine/fx/faceOverlay.js";
 import { lerp } from "./utils/math.js";
 import { createScope } from "./utils/lifecycle.js";
@@ -347,20 +348,31 @@ new GLTFLoader().load(mewUrl, (gltf) => {
     parent: characterRoot, config: cfg.shiny.sparkle, view
   });
   if (isShiny) sparkle.shiny((Math.random() * 0xffffffff) >>> 0);
-  // ANNOYANCE STARS on a hard collision, same emitter
+  // ANNOYANCE STARS on a hard collision. The panic flails the same limbs and
+  // gets none of this: it is a separate event for exactly that reason.
   world.on("flail", () => sparkle.annoy((Math.random() * 0xffffffff) >>> 0));
+
+  // PANIC SWEAT, off the same root for the same reason
+  sweat = createSweatDrops({ parent: characterRoot, config: cfg.sweat, view });
+  world.on("startle", (e) => {
+    // the drops go off around the ESCAPE, and screen y runs down while this
+    // spray is built in maths coordinates, so the sign flips on the way in
+    sweat.burst(e.dir.x, -e.dir.y, e.intensity ?? 1,
+      (Math.random() * 0xffffffff) >>> 0);
+  });
   limbFx = limbs;
 
   // debug handle for devtools + automated checks
   window.__AW__ = {
     rig, world, body, brain, view, poser, face, faceOv, skinned, shade,
-    sparkle, isShiny, THREE, mouthDoc, beamOriginDoc
+    sparkle, sweat, isShiny, THREE, mouthDoc, beamOriginDoc
   };
   loop.start();
 }, undefined, (err) => console.error("[mew] failed to load model:", err));
 
 let beamFx = null;
 let sparkle = null;
+let sweat = null;
 let shadeFx = null;
 let limbFx = null;
 
@@ -425,6 +437,7 @@ const loop = createLoop({
     // the sparkle drives the material flash: one clock, so the stars and the
     // blow-out can never drift apart
     if (sparkle && sparkle.running) shadeFx.setFlash(sparkle.update(dt));
+    if (sweat && sweat.running) sweat.update(dt);
     if (beamFx) beamFx.update(dt, simTime);
     present.render(scene, camera, { dt, scrollY: window.scrollY });
   }

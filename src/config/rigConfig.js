@@ -118,6 +118,92 @@ export const rigConfig = {
   },
 
   // ------------------------------------------------------------------
+  // PANIC SWEAT (engine/fx/sweatDrops.js). The other half of the startle,
+  // and the half that carries it: 汗マーク, many of them, FLUNG. One drop at
+  // the temple is embarrassment; a dozen thrown off in waves is an animal
+  // that moved before it finished looking.
+  //
+  // The numbers that matter are the last three groups. apexOvershoot is what
+  // keeps a drop from ever being seen coming down — it is culled a shade past
+  // the top of its own arc, so the spray always reads as LEAVING. holdFrac is
+  // what keeps it at full size for nearly all of that flight instead of
+  // shrinking the whole way, which reads as receding rather than travelling.
+  // And riseBlend is how much of the escape direction survives being bent
+  // toward vertical: at 1 the spray is a jet along the escape, at 0 it is a
+  // fountain straight up regardless, and neither of those is a startled animal.
+  // ------------------------------------------------------------------
+  sweat: {
+    // TWO CLUSTERS, TAKING TURNS. Four waves of three, alternating temples, so
+    // you see a group leap off one side, then the other, then back. The first
+    // build threw them on a radial fan out of a ring round the head — which is
+    // how the annoyance stars are thrown, and that is precisely the problem: a
+    // radial burst is the vocabulary of IMPACT. Sweat is drawn as little groups
+    // leaping off the sides of a head, and the grouping is the whole read.
+    waves: 4,
+    perWave: 3,
+    waveGapS: 0.12,         // FAST. the stars' waves are 0.36 s apart because a
+                            // tantrum lasts a second and a half; a flinch is
+                            // over in half of that and the spray must keep up
+    waveDecay: 0.82,        // each wave a little weaker than the last
+                            // (no jitter INSIDE a cluster — the three of them
+                            // leave on the same frame or it is a trickle,
+                            // not a spray)
+
+    spawnRadiusPx: 30,      // they start out already ON a ring around her, each
+                            // travelling straight down its own radius. That is
+                            // what makes the cluster read as coming OUT OF her
+                            // rather than appearing beside her
+    originYPx: 46,          // where the ring is centred, above the body
+
+    sideSpreadDeg: 34,      // how far off vertical a cluster throws, outward
+    fanDeg: 26,             // and how much the three of them open up
+    jitterDeg: 7,
+    escapeLeanDeg: 26,      // the whole spray leans with the escape, so it is
+                            // carried by the flight rather than ignoring it
+    minElevDeg: 14,         // ...but never below the horizontal. A drop thrown
+                            // downward is a drip, the calm end of this glyph
+
+    speedLoPx: 300,         // they SHOOT. the annoyance stars amble by
+    speedHiPx: 560,         // comparison, because those are a slow burn
+    gravityPx: 1150,        // steep, so the arc is short and tight
+    apexOvershoot: 1.18,    // culled just past the top — see sweatDrops.js
+    lifeMaxS: 0.5,
+
+    popInFrac: 0.08,        // in fast...
+    growFrom: 0.74,         // ...and GROWS the whole way out. Popping to full
+    growTo: 1.22,           // size and shrinking reads as receding; a drop that
+                            // grows reads as gaining, and it is what the drawn
+                            // version does so the eye can follow it
+    holdFrac: 0.88,         // and the vanish is the last tenth, so it goes
+                            // rather than dwindles
+    stretchPerPx: 620,      // speed at which a drop is twice as long
+    stretchMax: 1.5,
+    sizePx: 15,
+
+    // A COMMA, NOT A RAINDROP. A straight teardrop is what falls off a tap; the
+    // one drawn on a panicking face has its point hooked right over. All of the
+    // bend gathers in the last third, where the taper is — which is where a
+    // real flung droplet's tail whips round.
+    //
+    // 0.46 was far too timid, and worse, it was being flattened: the old fit
+    // fudge squeezed the shape back in proportion to the bend, so turning this
+    // up past about a half stopped changing anything. The quad is mapped to the
+    // shape's measured bounding box now (sweatDrops.js), so this is honest —
+    // 1.30 throws the point more than half the drop's own width sideways.
+    curve: 1.30,
+
+    // the reference palette: cyan body, a dark keyline, two white speculars.
+    // the keyline is the EYES' own darkest ink, so the glyph belongs to this
+    // character rather than sitting on top of it — the same choice the >.<
+    // overlay makes (face.overlay.inkColor).
+    bodyColor: "#6FD4F2",
+    lineColor: "#123049",
+    hiColor: "#FFFFFF",
+    keyline: 0.30,          // border weight, as a fraction of the drop
+    zOffset: 0.02
+  },
+
+  // ------------------------------------------------------------------
   // bone role map. tail is base -> tip. roles other than root/tail are
   // optional: pose layers skip missing ones.
   // NOTE: three's gltfloader sanitizes node names (dots, colons, spaces are
@@ -351,14 +437,63 @@ export const rigConfig = {
     // around the outside edge of it.
     avoidRangePx: 110,        // how far off a surface she starts to steer away
     avoidAccel: 2400,         // px/s^2 at the surface, falling off quadratically
-    insideAccel: 4000,        // px/s^2 out of anything she is actually inside
+    // ── AND THE WAY OUT MUST BEAT THE WAY IN ───────────────────────────
+    // This was 4000 against a steering force that peaks at steerMaxForce
+    // (2600) x leanThrust.maxMul (1.7) = 4420. A fully leaned-in steer
+    // therefore WON, by 420 px/s^2 — so any time the thing she was flying at
+    // sat inside a block of type, she flew in, held herself there against the
+    // escape, and stayed until something changed the geometry. That is the
+    // "pushes into an element and will not come out without a nudge": the
+    // nudge was not freeing her, it was breaking the tie.
+    //
+    // Nothing may out-push the escape. There is a check on this in
+    // test/sim.test.js so the two numbers cannot drift back past each other.
+    insideAccel: 5600,        // px/s^2 out of anything she is actually inside
 
     // ── THE EDGE IS A LEASH ──────────────────────────────────────────────
     // She can cross it. The hard stop exists only so a fling can never lose
     // her somewhere the return flight cannot reach.
-    edgeSlackPx: 110,         // free travel past the edge, so she can exit frame
-    edgeReturnAccel: 2000,    // then a spring, stiffening with distance
-    edgeHardPx: 380,          // the point of no return
+    // ── THE LEASH, LOOSENED ──────────────────────────────────────────────
+    // A narrow gap between an element and the rim is the one place she reliably
+    // jammed: the avoidance field pushes her off the element, the leash pushes
+    // her off the rim, and between the two there was nowhere left to be. The
+    // answer is not to weaken the avoidance — that is what keeps her off the
+    // type — but to let her go AROUND, outside the frame, which costs nothing
+    // because the sheet does not end at the viewport.
+    edgeSlackPx: 240,         // free travel past the TOP and BOTTOM, so she can
+                              // exit frame
+                              // and come back in somewhere else entirely
+    edgeReturnAccel: 1250,    // then a spring, stiffening with distance
+    edgeHardPx: 520,          // the point of no return
+    // ── THE SIDES ARE THE SCREEN, AND SHE STAYS ON IT ──────────────────
+    // There was a version of this where the sides were a very long leash (560
+    // px of free travel) so she could round an element flush to the rim by
+    // going outside the page. It worked, and it read as her wandering off the
+    // sheet constantly — worse than the thing it fixed. Getting past an
+    // element is the push ramp's job now (behavior.push): she leans on it until
+    // she is through, rather than walking round the outside of the paper.
+    //
+    // So: no free travel at all sideways. The spring starts at the rim and is
+    // at full within `edgeRampXPx`, and full is FIRMER than `insideAccel`, so an
+    // element sitting flush to the edge cannot push her off the page — see the
+    // exit-direction choice in avoidColliders, which will not pick a way out
+    // that does not exist either.
+    //
+    // The STOP is still well out, because it is not what contains her. It is
+    // there so a fling cannot lose her, and it has to leave room for the two
+    // things that legitimately begin outside the frame: a page-swap entry
+    // (behavior.entryOffsetPx, 170) and the tail of a throw. A startled exit is
+    // a third case and switches the sideways leash off entirely while it runs.
+    // Measured against her SKIN, not her centre: the line sits one body radius
+    // inside the rim, so what stops at the edge of the screen is the edge of
+    // her. Held by the centre instead, half of a 150 px animal hangs off the
+    // page, which is the thing being complained about.
+    edgeSlackXPx: 0,          // no free travel past the LEFT and RIGHT
+    edgeRampXPx: 40,          // the spring is at full within this
+    edgeReturnAccelX: 12000,  // ...and full is more than twice the escape out
+                              // of type (insideAccel), so she settles ~19 px
+                              // over the line rather than 60
+    edgeHardXPx: 420,         // the stop — a backstop, not the boundary
     edgeRestitution: 0.4,
     bumpEventMinSpeed: 60,    // px/s of normal impact before a bump event fires
     // ...and a much harder one fires 'flail' as well: limbs windmill and the
@@ -385,6 +520,49 @@ export const rigConfig = {
       posGain: 4.2,             // px/s^2 per px of error
       velDamp: 3.4              // near-critical: follows the path smoothly
     },
+    // WHERE SHE RE-ENTERS after a page swap. Far enough out to be genuinely
+    // offscreen at any sensible viewport, close enough that she is not gone for
+    // a second and a half first.
+    entryOffsetPx: 170,
+    entrySpeed: 620,          // and this is the speed she comes in at
+    entryDelayS: 2.0,         // ...after waiting this long out of frame. She
+                              // used to ride in on the same frame the swap
+                              // happened, which is before the paper has even
+                              // finished closing; an entrance needs somewhere
+                              // to arrive into, so the sheet settles first
+
+    // ── SHE PUSHES HARDER THE LONGER IT IS TAKING ──────────────────────
+    // There is no stuck DETECTOR any more. A detector has to decide from the
+    // outside that something has gone wrong, and it can be wrong both ways: it
+    // fires on a slow arrival and misses a slow grind that never quite crosses
+    // its threshold. Whatever it does next is also a mode, so there is a seam
+    // in the motion at each end of it.
+    //
+    // A force that grows with time has no threshold, no mode and no seam. The
+    // clock starts when the destination is ASSIGNED, so it is a statement about
+    // the trip rather than about any instant of it, and nothing on this page
+    // pushes back with a force that GROWS — so nothing can hold her.
+    //
+    // Free when it is not needed: steerArrive asks for a SPEED, so the force is
+    // proportional to how far she is from having it. In open air the error is
+    // zero and a ceiling three times higher changes nothing. It only ever shows
+    // up against something resisting her.
+    //
+    // maxMul has to clear the escape she is pushing against. That is
+    // steerMaxForce (2600) x leanThrust.maxMul (1.7) x THIS, against
+    // physics.insideAccel (5600) — doubled where two overlapping blocks push
+    // the same way. 3.2 gives 14,100 against a worst case of 11,200.
+    push: {
+      delayS: 3.0,            // grace. Nothing changes at all for this long
+      rampS: 3.5,             // ...then it climbs, squared, over this
+      maxMul: 3.2             // ...to this many times its normal peak
+    },
+    cruiseGiveUpS: 14,        // a trip that has not landed by now is not a
+                              // force problem, it is a PLACE problem: abandon
+                              // it and want something else
+    blockedForS: 9,           // and she remembers the spot for this long
+    blockedRadiusPx: 190,     // ...and anywhere within this of it
+    blockedMax: 6,            // only the last few failures are interesting
     interestMinS: 4,
     interestMaxS: 10,
     cruiseSpeed: 640,           // px/s
@@ -407,6 +585,27 @@ export const rigConfig = {
     startleImpulse: 620,
     startleDurMinS: 0.5,
     startleDurMaxS: 0.9,
+
+    // THE PANIC — the press opening is not the cursor, and she does not treat
+    // it like the cursor. Timings are the take: look, decide, go.
+    panicGlanceS: 0.50,       // square on to the viewport, HELD. Twice this beat
+                              // has failed to read: once for being a fifth of a
+                              // second, once for being aimed at a place a few
+                              // hundred pixels away, which at a six-unit look
+                              // plane is a two-degree turn nobody can see
+    panicBrake: 14,           // and she is braked to a stop for the whole of
+                              // beat one. A head turning on a drifting body is
+                              // a glance; on a stopped body it is a double-take
+    panicTurnS: 0.16,         // then whips onto the escape line. Faster than
+                              // the glance: turning away slowly is reluctance,
+                              // and this is fright
+    panicDurS: 1.9,           // and she is gone for this long, which has to
+                              // outlast the crossing that scared her
+    panicImpulse: 1250,       // the kick on beat three...
+    panicThrust: 2600,        // ...and she keeps ACCELERATING out, so she is
+                              // still gaining when she leaves the frame. A
+                              // bolt that coasts looks like a glide
+    // (the limbs get their own event, 'panic' — see limbs.panic* below)
     agitationTau: 2.5,          // seconds, exp decay
     pokeImpulse: 760,
     margin: 90,                 // interest points keep this far from edges
@@ -414,8 +613,20 @@ export const rigConfig = {
     seekTriggerFactor: 0.55,    // of max(viewport w, h): "about half a page"
     seekStopPx: 200,            // settle distance (hysteresis vs the trigger)
     seekSpeed: 950,             // px/s, eager once it has leaned in
+    seekPatienceS: 1.2,         // ...and then she loses patience. Below this
+                                // nothing changes, so a short hop is unaffected
+    seekRampS: 2.6,             // over which she winds up to...
+    seekSpeedMax: 1380,         // ...a flat sprint, just under the body's own
+                                // ceiling (physics.maxSpeed 1400). Asking for
+                                // more than the cap is not a faster mew, it is
+                                // a number that gets quietly clamped, and then
+                                // this knob would stop meaning anything
     seekHoverAbovePx: 90,       // aim above the cursor, not on top of it
     offscreenReturnS: 4,        // seconds lost offscreen before swimming back
+    offscreenSidePx: 340,       // ...and this far past a SIDE is offscreen too.
+                                // The sideways leash makes this nearly
+                                // unreachable outside a startle; it is the
+                                // backstop for a throw that beat it
 
     // ── CHOOSING SOMEWHERE TO GO ─────────────────────────────────────────
     // The failure mode this exists to prevent: everything else on the page
@@ -431,7 +642,11 @@ export const rigConfig = {
       edgeComfortPx: 210,       // inside this of any viewport edge starts to hurt
       edgeWeight: 2.4,          // ...and this is what keeps her off the rim
       centreWeight: 0.22,       // stay near what the reader is looking at
-      jitter: 140               // never the same route twice
+      jitter: 140,              // never the same route twice
+      blockedWeight: 900        // ...and heavily against anywhere she has just
+                                // failed to reach. Weighted, not vetoed: if the
+                                // only open space left is near a spot she gave
+                                // up on, going back beats standing still
     },
     // grab & fling: press on mew and drag to carry it, release to throw.
     // a press without movement is still a pet (hyper beam)
@@ -515,6 +730,13 @@ export const rigConfig = {
     replanMinS: 0.25,           // never replan faster than this
     replanMaxS: 1.5,            // always refresh a route older than this
     targetMoveReplanPx: 150,    // replan when the target strays this far
+    reachedPx: 46,              // ...and a waypoint she is this close to is
+                                // BEHIND her. The cursor used to advance only
+                                // by line of sight, which does not exist inside
+                                // type — so a route that crossed a block froze
+                                // on its last cheap node and she stood on it.
+                                // A little over one cell (36), so she never
+                                // stalls between two adjacent nodes.
 
     // ── TEXT IS EXPENSIVE, NOT IMPASSABLE ────────────────────────────────
     // The grid used to be a wall map: a cell was blocked or it was not, and A*
@@ -530,7 +752,38 @@ export const rigConfig = {
     nearCells: 2,               // how many cells wide that ring is
     losMaxCost: 2.2,            // a straight line may only be shortened through
                                 // cells at least this cheap
-    openMaxCost: 1.5            // what counts as open space for a destination
+    openMaxCost: 1.5,           // what counts as open space for a destination
+
+    // ── AND A GAP SHE CANNOT FIT THROUGH IS PRICED LIKE NO GAP ───────────
+    // The cost above prices what a cell CONTAINS. It said nothing about how
+    // much ROOM a cell has, so a 40 px crack beside a paragraph cost 1 and A*
+    // threaded it as a shortcut the body could not fly. The grid measures
+    // clearance now and charges for the squeeze.
+    //
+    // Both ends come off the body rather than being typed in: `fit` is about
+    // her half-width (radius 75), `ease` adds the reach of the avoidance field
+    // she has to fly against (physics.avoidRangePx, 110) — the width at which
+    // nothing is touching her at all.
+    //
+    // `tightCost` matching `insideCost` is the whole rule in one number. A gap
+    // too narrow to use is worth exactly what no gap is worth, so where a
+    // roomier one exists nearby A* takes it, and where none does every route
+    // costs the same per cell — the shortest wins, and the shortest is straight
+    // through. No threshold, no "half a screen away" test; the search does the
+    // comparison itself, at every scale.
+    tightFitFactor: 1.05,       // x body radius: at or under this she does not fit
+    tightEasePx: 110,           // ...and this much more is a gap she can fly
+    tightCost: 12,              // the charge at `fit` — the same as being in type
+
+    // ── THE GRID STOPS WHERE THE PAGE DOES ───────────────────────────────
+    // ...and it does not reach past the page either. It used to carry 500 px of
+    // open space past each rim so a route could round a flush element from the
+    // outside — which is exactly the wandering-off-the-sheet that has now been
+    // taken away from her, and a planner that keeps proposing it would just be
+    // driving her into the leash. Routes stay on the paper; the push ramp is
+    // what gets her past things.
+    outsideXPx: 0,
+    outsideYPx: 0
   },
 
   // streamlined mew flight: the LONG axis (head to tail) aligns to travel,
@@ -585,6 +838,10 @@ export const rigConfig = {
     // the collar off the chest. these are what a neckless chibi can actually do.
     yawLimitDeg: 42,
     pitchLimitDeg: 26,
+    omegaWhip: 34,            // the panic's head snaps. At the merely-curious
+                              // 11.2 the spring was still travelling when the
+                              // beat ended, so the pose it was aiming for never
+                              // appeared on screen at all
     omegaCurious: 7,
     omegaCalm: 2.7,
     microYawDeg: 2.2,         // ever-present gaze micro-drift (kills stiffness)
@@ -735,6 +992,18 @@ export const rigConfig = {
                               // number (face.overlay.durS, and the star waves)
                               // so the three finish together
     flailAttack: 0.05,        // hard in, slow out: it is a reaction
+    // THE FRIGHTENED FLAIL, which is not the annoyed one (engine/pose/limbPose).
+    // The bump's is a tantrum: wide, loose, 7 Hz winding down to 3.4 over a
+    // second and a half while she tells the wall about it. This is terror —
+    // SMALLER, TIGHTER and much faster, and it does not wind down, because she
+    // is not getting over it, she is leaving. It holds flat for as long as she
+    // is running and drops only at the very end.
+    panicDeg: 27,             // less throw than the tantrum's 42...
+    panicHz: 13.5,            // ...at nearly twice the rate
+    panicHzEnd: 11.0,         // and barely slowing
+    panicDurS: 1.6,           // as long as the flight
+    panicAttack: 0.03,        // snapped on
+    panicHold: 0.78,          // held flat this far, then dropped
     flailShakePx: 5.5,        // and the whole body buzzes with it, on the same
     flailShakeHz: 19,         // envelope. screen/character shake is the other
                               // half of what makes an impact land

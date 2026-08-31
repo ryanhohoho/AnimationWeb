@@ -56,7 +56,30 @@ export function createHeadLook({ config, world }) {
       let curious;
       const cursorIdle = time - p.lastMoveAt > cfg.idleAfterS;
 
-      if (p.active && !cursorIdle) {
+      if (brain.gazeFront) {
+        // STRAIGHT OUT OF THE SCREEN, AT THE VIEWER.
+        //
+        // This is the panic's first beat, and it is a direction rather than a
+        // place on purpose. Aiming the head at the opening as though it were an
+        // object in the page barely moved it: the look plane is six world units
+        // out, so a window a few hundred pixels away subtends almost nothing,
+        // and the "glance" was a couple of degrees nobody could see.
+        //
+        // But the thing that is frightening her is not IN the page — it is the
+        // page, coming apart. The honest pose for that is the one an animal
+        // takes when the whole room is the threat: square on to it. So she turns
+        // to face the viewport dead on, perpendicular to it, which is the
+        // largest and most legible head pose available and is unmistakably a
+        // TAKE rather than a glance at some furniture.
+        curious = true;
+        _dir.set(0, 0, 1);
+      } else if (brain.gazeAt) {
+        // FORCED GAZE at a place — where she has decided to go.
+        curious = true;
+        const gx = brain.gazeAt.x - body.pos.x;
+        const gy = brain.gazeAt.y - body.pos.y;
+        _dir.set(gx * view.worldPerPx, -gy * view.worldPerPx, LOOK_PLANE_DIST).normalize();
+      } else if (p.active && !cursorIdle) {
         curious = true;
         // predict where the cursor is heading; heads aim at intent, not history
         const px = p.pos.x + p.vel.x * cfg.predictS - body.pos.x;
@@ -111,9 +134,15 @@ export function createHeadLook({ config, world }) {
 
       // startle snaps attention: fast springs, no saccade delay.
       // charging does too: mew locks onto the cursor while powering up
-      const locked = brain.state === "startle" || brain.state === "charge";
+      const locked = brain.state === "startle" || brain.state === "charge"
+        || !!brain.gazeAt || !!brain.gazeFront;
       const omega = locked || brain.agitation > 0.3 || curious ? cfg.omegaCurious : cfg.omegaCalm;
-      yawS.omega = locked ? cfg.omegaCurious * 1.6 : omega;
+      // A WHIP IS NOT A LOOK. The panic's two head moves have to arrive well
+      // inside their own beats — a spring that is still travelling when the beat
+      // ends never shows the pose it was heading for, which is exactly how the
+      // first version lost its glance.
+      yawS.omega = brain.gazeWhip ? cfg.omegaWhip
+        : locked ? cfg.omegaCurious * 1.6 : omega;
       pitchS.omega = yawS.omega;
       if (locked) {
         aimYaw = relYaw;

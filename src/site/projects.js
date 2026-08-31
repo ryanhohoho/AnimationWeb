@@ -45,8 +45,24 @@ export const PROJECTS = [
     year: "2026—",
     line: "Every wardrobe app maximises similarity under fixed weights and a fixed piece count, so it collapses to the closet's average item — one shawl in 24 of 24 outfits, measured. This one picks a statement piece first and adds a piece only while it contributes more than it costs. Then the harder half: a judge that can tell whether the result is any good.",
     skills: "CLIP IMAGE EMBEDDINGS · DEEPSETS SET ENCODER · CONSTRAINT SEARCH · VLM INTAKE · PGVECTOR · FASTAPI · SWIFTUI",
-    inkA: "#2E2E2E",   // a greyscale sky
-    ink: "#7A7A78",    // mid grey
+    // TWO NEUTRAL GREYS THAT ARE NOT NEUTRAL IN THE CAN, for the same reason
+    // the home sheet's blue is not a blue in the can: the press puts the paper
+    // into everything it prints. Bone is warm — OKLCh h 94, C 0.0096 — and it is
+    // the LIGHTEST PIXEL OF EVERY SKY on this site, because zero coverage is
+    // bare stock. On the three blue sheets that is a warm ground under a cool
+    // ink and it is the whole reason they look printed rather than rendered.
+    //
+    // On this one there is no cool ink to play against. Measured, the greyscale
+    // page came out warm from end to end — highlights C 0.0094 at h 94, mids
+    // 0.0074 at h 95, shadows 0.0043 at h 98 — which is not greyscale, it is
+    // cream monochrome, and the paper was the only thing colouring it.
+    //
+    // So the greys are pulled a few points cool to spend the paper's warmth
+    // rather than sit in it. Measured after: mids 0.0046, shadows 0.0028. Pulled
+    // FURTHER and it overshoots — at twice this the shadows come back at 0.0081
+    // in blue, which is a split tone and a different page again.
+    inkA: "#2C2D31",   // prints as near-neutral black
+    ink: "#78797B",    // prints as near-neutral mid grey
     inkName: "TWO&nbsp;GREYS",
     // No colour at all, and that is the accurate one: his own wardrobe board
     // measures 0.106 mean saturation. The project about how clothes go together

@@ -986,3 +986,895 @@ deep a wave's own arrival goes; lower is a sparser first wave), `PUFF_SOFT`
 an identifier and closed the literal. `node -e "import(...)"` catches this in a
 second; the browser reports it as `SyntaxError: Unexpected identifier`, which
 looks like a fault in the harness rather than in the file.
+
+---
+
+## Dissolve, rebuild 5 — shapes and churn
+
+Two notes: the clouds stayed too long so the whole thing read as one fade up and
+one fade down, and the shapes could be better. Both had measurable causes.
+
+### The shapes were a texture-filtering artefact, not a cloud problem
+
+The sheet is 320 texels across and about a hundred usable rows per frame. Over a
+full window that is 4x magnification one way and 8x the other, and BILINEAR
+filtering at that distance is a grid of flat triangles. Cutting a hard mask
+through flat triangles gives diamonds and star points — which is exactly what
+the cloud edges were.
+
+`slice` now curves the blend weights with a smoothstep before the fetch, so the
+reconstruction is continuous in slope as well as value and an edge cut through
+it bulges and hooks the way a cloud does. One fetch still, four multiplies more.
+Needed the sheet's texel size, so `uTex` is a new uniform. **This improves the
+background sky too** — the same artefact was in every die-cut, just smaller.
+
+### Despeckling, free
+
+Cutting the field as high as the first waves do leaves single texels above the
+line scattered through the open sky like spatter. The four neighbour taps the
+SHADING already fetches are about 1.3 texels out — exactly the size of the thing
+to remove — so `pressAt` now takes them BEFORE the branch when `blur > 0`, uses
+the blend for the level test, and reuses them for the gradient. No extra
+fetches. The sheet passes 0 and keeps the point sample and the branch it had.
+
+Measured: spatter (cloud pixels with <=2 of 8 neighbours lit) 0.69% of cloud.
+
+### Why the clouds stayed: the level only descends
+
+A cloud can only leave if the field moves out from under it. At `PUFF_LOOP_S`
+5 s a 2.6 s transition saw half a loop, the field barely moved, and everything
+that arrived stayed and grew. Now 2.1 s — a loop and a quarter — and each of the
+sixteen cuts runs the clip at its OWN RATE (0.72x to 1.34x) rather than only
+from its own place in it. Sixteen cuts on one clock are the same curve shifted
+sideways: they thicken and thin together and the screen breathes as one thing.
+
+Measured turnover, per 5% step of the transition:
+**4.6% of the screen LOSES cloud while 10.6% gains** — net rise, constant churn.
+
+Coverage 0, 0, 0, 7, 9, 22, 47, 75, 96, 100, 100. Worst hole at full 0.05%.
+
+---
+
+## Paper vs the four skies — bone stays, the closet INK was the fault
+
+Owed since the per-page skies landed. Measured, not argued.
+
+The paper is OKLCh L 0.946, C 0.0096, h 94, and it is **the lightest pixel of
+every sky on the site**, because zero coverage is bare stock.
+
+| page | mean C | mean h |
+|---|---|---|
+| home | 0.0424 | 265 |
+| iClicker | 0.0432 | 233 |
+| CLI | 0.0162 | 255 |
+| closet | 0.0071 | **95** |
+
+Three sheets are blue and bone is a warm ground under a cool ink — the reason
+they read as printed. The closet sheet had NO cool ink to play against, so it
+came out warm end to end: highlights C 0.0094 h 94, mids 0.0074 h 95, shadows
+0.0043 h 98. Not greyscale — cream monochrome, and the paper was the only thing
+colouring it.
+
+Neutralising the paper would fix one page and cost the other three their ground,
+for a conceit ("one sheet") that is load-bearing. So the ink moved instead, which
+is the technique already in this file: the greys are pulled a few points cool to
+SPEND the paper's warmth rather than sit in it.
+
+`#2E2E2E / #7A7A78` -> **`#2C2D31 / #78797B`**
+
+| closet | before | after |
+|---|---|---|
+| mean C | 0.0075 | **0.0044** |
+| mids | 0.0074 | **0.0046** |
+| shadows | 0.0043 | **0.0028** |
+| L | 0.673 | 0.672 |
+
+Highlights stay 0.0092 — that is the stock and cannot change without changing
+the stock. Home, iClicker and CLI measured after: 0.0424 / 0.0432 / 0.0162,
+unchanged to four places.
+
+Tuned by ladder, not by eye. Pulled FURTHER it overshoots into a split tone —
+at twice this correction the shadows come back at C 0.0081 in blue.
+
+### Dead time at the start of the dissolve
+
+Measured: not one pixel of cloud for the first fifth of the transition — half a
+second of nothing after the click. The cause is the field's shape, not the
+timing. Density peaks at 0.44 and the densest thing in the sheet is 0.863, so
+the whole stretch of level between 0.94 and about 0.75 has essentially nothing
+above it; run through linearly, two thirds of the first wave's arrival happens
+on a blank screen.
+
+`arrive` is now `pow(raw, 0.24)` — it crosses the empty stretch almost at once
+and then slows right down over the part where cloud actually lives. `pow(0, x)`
+is 0, so t = 0 is still exactly empty and the reverse still ends on nothing
+rather than popping out. The first wave also cuts 0.08 deeper than the others,
+being the one that has to break the silence and the one most exposed to a thin
+moment of the clip.
+
+| | before | after |
+|---|---|---|
+| first cloud on screen | t 0.30 (avg) | **t 0.05 .. 0.25** |
+| coverage at t=0 | 0 | 0 |
+| cloud lost / gained per step | 4.6 / 10.6 | **5.1 / 8.1** |
+| worst hole at full | 0.05% | **0.01%** |
+
+Curve: 0, 0, 2, 3, 8, 16, 24, 40, 64, 84, 97, 100, 100.
+
+### Two-target footer retreat — verified in pixels this time
+
+The earlier "verification" of this was invalid: it read `deck.debug.cross.second.r`,
+the deck's own arithmetic, which was correct all along while `uCross2` was never
+uploaded. Now measured off the framebuffer, alpha inside a disc at the second
+opening's centre:
+
+  with only the first opening set — first 1.000, second spot **0.000**
+  with both set                   — first 1.000, second **0.978**
+
+### Still blocked
+
+The spacing/positioning half of the visual pass cannot be done here: this
+preview pane reports `innerWidth: 0` and `document.hidden: true`, so the layout
+is degenerate and every `getBoundingClientRect` is meaningless. It needs a real
+viewport. Everything above was verified by compiling into a scratch canvas and
+reading pixels, which does not depend on the pane's layout.
+
+---
+
+## The clouds are gone. The return is the crossing, mirrored.
+
+The cloud dissolve is deleted outright — `uPuff`, `puffAt`, `foldU`/`foldW`, all
+the `PUFF_*` constants, the soft/blur split, deck's `setPuff`/`puffFrame`, and
+router's cloud `runReturn`. pressgl.js went 770 -> 544 lines, and with only one
+caller left `pressAt` collapsed back into a single `printAt`.
+
+KEPT, deliberately: the background cloud-sky, the die-cut windows, and the
+home -> project crossing. The crossing is now the ONLY transition mechanism.
+
+**The return is that same opening run the other way round.** Going in, the paper
+opens at the window you clicked and spreads to the edges. Coming out, the print
+closes IN from every edge until the page is gone, and then on the home sheet it
+retreats into the window you came out of. Only the first half is new, and even
+that is the same boundary with the paper on the other side of it:
+
+    uEatOut = 0   eat INSIDE uCross   — a hole opening out of the sheet
+    uEatOut = 1   eat OUTSIDE it      — an island of page shrinking
+
+The second half is literally the crossing's retreat, unchanged. Measured:
+forward gives centre 1.000 / edges 0.079; return gives centre 0.000 / edges
+0.921 — the exact mirror. Early inward leaves the page whole (0/0), late covers
+it (1.0/1.0). `RETURN_MS` 2600 -> 2000.
+
+### The night ramp reset
+
+`commit()` winds `skyRamp` on by the reader's scroll at EVERY navigation.
+`runCrossing` eased it back across its retreat; the dissolve never did, so every
+trip home left the sheet further into the night and a few of them ran it to
+01:00 for good. The new return captures `rampAtSwap` AFTER `onSwap()` (so it
+includes the wind-on) and eases it to zero, then hard-sets zero — the same
+contract the forward direction always had.
+
+---
+
+## Startled Mew
+
+Most of the behaviour already existed: `brain.triggerStartle` sets the state and
+adds an escape impulse, `faceMorphs` already widens the eyes for `"startle"`,
+`headLook` already locks onto it. What was missing was any trigger from a
+transition, and the sweat.
+
+### The take: three beats, and the order IS the performance
+
+An animal that has seen something does not leave in the same instant. It LOOKS
+— that is what tells you it saw. Then it turns its head to where it is going —
+that is what tells you it decided. Then it goes.
+
+    1. GLANCE  0.20 s   head snaps onto the thing. Body has not moved.
+    2. TURN    0.11 s   head whips off it and onto the escape line. Faster than
+                        the glance: turning away slowly reads as reluctance,
+                        and this is fright.
+    3. BOLT             the impulse lands on THAT beat, not before, and the
+                        limbs windmill the whole way out. She keeps
+                        accelerating as she leaves — a bolt that coasts is a
+                        glide.
+
+`brain.gazeAt` is a new forced-gaze override that headLook honours over the
+cursor; it is a POINT, not a direction, because a head aims at places.
+
+**She leaves by the shortest line.** `triggerStartle` deliberately mixes a
+lateral component in so a cursor-shy animal scatters unpredictably. `panicFrom`
+does not: the press comes out of one specific place and the way out is directly
+opposite it. Measured dot with the true away-vector: 0.99999. With no source (the
+rim closing in) the rule is the same applied to an edge — she runs at the middle
+of the room and glances at the nearest edge, the part arriving soonest.
+
+**The flail is shared, the face is not.** A panic windmills the same limbs as a
+wall-bump, but `>.<` is PAIN — eyes screwed shut — and the whole point of a
+startle is that they are WIDE. `flail` now carries `glyph: false`, which the
+`>.<` overlay and the gold annoyance stars both sit out.
+
+### The sweat — fx/sweatDrops.js
+
+汗マーク. The glyph has a range set by how many there are and whether they fall
+or fly: one at the temple is embarrassment; many, FLUNG, is absolute panic.
+This is the last one, so none of them is ever seen coming down — each is culled
+just past the top of its own arc while it is still travelling
+(`apexOvershoot` 1.18), and the next wave is already on its way out behind it.
+
+Built like the annoyance stars it replaces: instanced billboards, shape solved
+in the fragment shader, no texture, written at INK_ALPHA so the pixelate pass
+treats them as art and the outline pass gives them the character's own border.
+The keyline is the EYES' darkest ink, so the glyph belongs to this animal.
+
+THE SHAPE IS SOLVED:  w(y) = sqrt(1 - y²) · sqrt((1 - y)/2)
+
+At the base the first factor goes as sqrt(1+y) — a CIRCULAR bottom. At the tip
+the two together go as (1-y) — a straight-sided POINT. The keyline is the same
+profile shrunk about its own middle rather than an outline traced round it, so
+it keeps an even weight all the way to the point where a traced one pinches.
+Two white speculars in the fat of the drop are what make a flat cyan blob read
+as WET. The tip TRAILS and turns through the arc: the quad angle is recomputed
+from instantaneous velocity every frame, and it stretches by speed.
+
+### Three real bugs, all caught by measurement
+
+1. **The fan threw drops DOWNWARD.** On a sideways escape its lower edge dipped
+   under the horizon — and a drop that starts by falling is a drip, the calm end
+   of this glyph and the opposite of what is being drawn.
+2. **Folding them back up to the limit fixed the direction and ruined the
+   spray** — three drops landed on the exact same angle and read as one fat one.
+   The fan is NARROWED to the room available on the downward side instead, and
+   opens fully upward. Asymmetric, evenly spread, never below horizontal.
+3. **Every drop rendered as a teardrop sitting on a dark SLAB.** I had divided
+   the sampled coordinate by the stretch to "un-stretch" it. That squeezes the
+   sampled y toward zero, the half-width profile stops varying across the quad,
+   and a shape whose width is constant in y is a RECTANGLE. vP must NOT
+   compensate — the point is for the shape to be drawn longer.
+
+Verified on a real GL context after the fix: 196 rows, max width 196, widest at
+0.63 down the shape, ends tapering to 2 px and 28 px. `isRectangle: false`.
+Shader compiles with no errors and all three tones present.
+
+719/719 checks. New sections: the three-beat take and its direction, the spray's
+physics, and the teardrop profile itself.
+
+---
+
+## Startle, second pass
+
+### The drops are commas now, in clusters, not a sprout
+
+Two changes, and the second matters more than the first.
+
+**Bent.** A straight teardrop is what falls off a tap. The one drawn on a
+panicking face is a COMMA — its point hooks over. The spine is displaced by t²
+along the length, so the base stays put and all of the bend gathers in the last
+third where the taper is, which is where a real flung droplet's tail whips
+round. The speculars ride the spine so they stay in the body of the drop once it
+is bent, and the sampled x is scaled by the bend so the curve cannot clip out of
+its own quad. Measured on a GL context: the spine drifts 39 px across a 172 px
+drop; `isStraight: false`.
+
+**Clustered.** The first build threw them on a radial fan out of a ring round
+the head — which is exactly how the annoyance stars are thrown, and that was the
+problem: a radial burst is the vocabulary of IMPACT. Sweat is drawn as a little
+group of drops leaping off ONE side of a head, and the grouping is the read. So
+each wave is a cluster of three leaving one temple together, and successive
+waves alternate sides. Four waves, three each.
+
+The three do not leave from a point — a cluster that does reads as one drop
+splitting rather than three jumping — and the outer two curl OPPOSITE ways, so a
+cluster opens like a hand. The curl handedness rides the sign of the stretch
+attribute, which is always >= 1, so it cost no new channel.
+
+The whole spray still leans with the escape. That sign was wrong first time:
+angles run counter-clockwise, so a positive offset leaned it AGAINST the flight.
+
+### The glance now reads, because she stops
+
+Beat one at 0.20 s did not read at all — she went from looking at the cursor to
+looking at her escape line, because the head spring had barely started swinging
+before the next beat took it away. Two fixes, and the second is the real one:
+
+  · 0.20 s -> 0.44 s
+  · SHE IS BRAKED TO A STOP for the whole of it
+
+A head turning on a drifting body is a glance. A head turning on a body that has
+stopped is a double-take. The stillness is what buys the beat the time to be
+seen, and it is what an animal does anyway: everything stops for the instant it
+takes to understand what it is looking at. Braked, not zeroed — a velocity
+snapped to nothing is a teleport, and the follow-through layers read that as a
+collision. Beat two 0.11 -> 0.16 s.
+
+### The yellow stars, and where they were really coming from
+
+Not from my panic flail — that already opted out. `colliders.js` fires a genuine
+`flail` on any hard bump, and a mew crossing the page at panic speed clips
+whatever is in the way. Every one of those was hard enough to trigger the
+tantrum: `>.<` and a shower of gold stars, in the middle of a flight meant to
+read as fear. She is not annoyed at the furniture; she has not noticed it.
+
+`world.panicking` gates it. Cleared on ANY exit from the startle state, not just
+the tidy one — she can be grabbed mid-flight, and a flag left set would have
+muted every bump for the rest of the session.
+
+### And the frightened flail is its own animal
+
+The `glyph: false` flag is gone; the panic emits its own `panic` event, which is
+why the `>.<` overlay and the annoyance stars now sit it out by construction
+rather than by a check. Both windmill all four limbs and that is where the
+resemblance stops:
+
+|  | bump (annoyed) | panic (frightened) |
+|---|---|---|
+| throw | 42 deg | **27 deg** — tighter |
+| rate | 7.2 -> 3.4 Hz | **13.5 -> 11.0 Hz** — nearly twice as fast |
+| envelope | decays over 1.5 s | **held flat to 0.78, then dropped** |
+| attack | 0.05 | 0.03 |
+
+The tantrum winds down because she is getting over it. The panic does not,
+because she is not getting over it, she is leaving.
+
+731/731 checks.
+
+---
+
+## Eight changes, one at a time
+
+### 1. The head whip, which had failed twice for two different reasons
+
+First it was too short. Then it was long enough and STILL invisible, and the
+second reason was the interesting one: it was aimed at a PLACE. The look plane
+is six world units out, so an opening a few hundred pixels away subtends almost
+nothing — the whole "glance" was about two degrees.
+
+It is a DIRECTION now. `brain.gazeFront` turns her square on to the viewport,
+perpendicular to it, which is the largest head pose the rig has and cannot be
+mistaken for anything else. Held half a second. And `omegaWhip` (34, against the
+merely-curious 11.2) makes both of the panic's head moves SNAP — a spring still
+travelling when its beat ends never shows the pose it was heading for, which is
+how the first version lost its glance.
+
+The thing that is frightening her is not in the page; it is the page coming
+apart. Squaring up to the whole viewport is the honest pose for that.
+
+### 2. The drops are properly bent now
+
+0.46 read as almost straight, and worse, it was being flattened by its own fix:
+the old `fit` fudge squeezed the shape back in proportion to the bend, so past
+about a half, turning the curve up did nothing at all.
+
+The quad is mapped onto the shape's measured bounding box instead — sampled off
+the same two functions the shader solves, once, in JS — so the bend can be any
+size without clipping or squashing. Curve 0.46 -> 1.30. Measured: the spine now
+drifts 0.65 of the drop's own width, against 0.23 before.
+
+### 3. Fired like a shotgun, growing as they go
+
+The three of a cluster leave on the exact same frame (no stagger inside a
+cluster — that reads as a trickle), from points already spread around a ring
+centred on her, each travelling straight out along its own radius. Measured: all
+three share a delay, all sit within 20% of `spawnRadiusPx`, and each one's
+velocity is radial to better than 0.999.
+
+And they GROW through the flight, 0.74 -> 1.22, rather than popping to full size
+and shrinking. A thing getting smaller is a thing going into the distance; these
+are coming off her. The vanish is the last tenth, so it is a disappearance
+rather than a dwindle.
+
+### 4. Pathing: avoiding a place has to mean going somewhere else
+
+The stuck handler dropped the PATH and kept the DESTINATION. So: the grid says
+the far side is reachable, the route threads a gap between an element and the
+rim, the avoidance field pushes her off the element, the leash pushes her off
+the rim, the two cancel into a standstill a few pixels wide — and replanning
+finds the same gap. Forever.
+
+`giveUp()` abandons the destination, remembers it for nine seconds, and picks
+another; `pickInterest` scores heavily against anywhere it has recently failed
+(weighted, not vetoed — if the only open space left is near a bad spot, going
+back beats standing still). A seek cannot abandon the cursor, so it gets shoved
+sideways off whatever it is grinding on and plans again from there.
+
+And the leash is loosened — slack 110 -> 240 px — so she can go AROUND the
+outside rather than jam against the rim. Weakening the avoidance instead would
+have been the wrong lever: that is what keeps her off the type.
+
+Measured: 300 fresh destinations steer clear of a failed spot 90%+ of the time.
+
+### 5. She loses patience
+
+A seek at one speed is fine across half a screen and hopeless across a scrolled
+document. Ramped on ELAPSED TIME, not distance left — distance can grow, and a
+speed that fell when the target ran away would be exactly the wrong response.
+Flat for 1.2 s, then winds up over 2.6 s to 1380 px/s, which is deliberately
+just under the body's own 1400 ceiling: asking for more is not a faster mew, it
+is a number that gets quietly clamped and a knob that stops meaning anything.
+
+### 6. She comes in from the side
+
+`recollect` fires at the one moment in the transition when the window is
+completely covered, so a teleport there is free — and it is the only chance to
+place her deliberately. She leaves wherever the escape line took her and the
+reader lands at the TOP of the new sheet; her document position is untouched by
+that, so she would wander in from four hundred pixels down a page nobody has
+scrolled to. Now: vertical position inside the viewport, horizontal just outside
+it, on whichever side she was already nearer so the entrance continues the exit.
+The exit is still free to leave over the top.
+
+### 7 and 8. The return: colours, and the flash
+
+Two separate faults.
+
+**The eating had no ink of its own.** It borrowed the gate's, which is fine
+going in — a project sheet has no gate to argue with — and wrong coming back,
+because the home sheet has one: the instant the page committed, the gate claimed
+those uniforms for its preview and the opening changed colour underneath itself.
+`uEatA`/`uEatB` are its own now, and `setEatInk(null, null)` means the home pair.
+
+**And it was more saturated even after that**, which was the other half of
+matching a sheet: IDENTITY. That is how much second ink goes onto the lit cloud
+tops — what makes a pair read as a colour rather than a darkness — and the home
+sheet runs it at ZERO while every project sheet runs it at one. The eating had
+1.0 hard-coded, so coming home it laid rose the home sheet does not lay.
+`uEatIdn` travels with the pair.
+
+Measured, eating against the sheet it resolves into: **0 differing pixels, max
+delta 0**, both directions. With identity forced back to 1: 42,448 differing
+pixels, max delta 139. That was the saturation.
+
+**The flash in the middle** was two bugs stacked. The ragged edge is chewed by
+the weather, which pushes the boundary inward as well as out — so at radius zero
+the inward bite reaches through the middle and opens a hole onto the page. And
+below that, the shader guarded the whole crossing on `radius > 0`, which means
+"there is an opening" when the paper is outside and the exact OPPOSITE when the
+paper is the island: r = 0 is not "no crossing", it is "the page is completely
+gone". Measured as it stood: 0.5% of the window showing at r = 0.01, and 100% of
+it at r = 0 — a full-frame flash of the page.
+
+The island now shrinks PAST zero by the slack the edge can bite, and eat-out
+never tests the radius for being positive. Measured across 600 samples of the
+whole first half: worst coverage backstep **0.000%**, fully closed at the end.
+
+771/771 checks.
+
+## Coming home — the weather stepped, and it was a clamp
+
+Reported: returning from a project to the home sheet, the sky jumps. Same fault
+as the original teleport (round five), other direction, and the reporter said so
+— the offset trick already in `commit()` should have covered it.
+
+It did not, because of the ORDER of two lines.
+
+    doc.innerHTML = html;                       // <- the sheet changes here
+    deck.setSky(deck.sky + window.scrollY, …);  // <- read AFTER
+
+How far down the OLD sheet the reader was is the number the plate winds on by,
+and it is only knowable while the old sheet is still in the document. Replacing
+`#doc` with a **shorter** page makes the browser clamp the scroll position to the
+new maximum on the spot, so reading it afterwards returns where the reader ended
+up, not where they were.
+
+That never showed going IN — project sheets are taller than the home sheet, so
+there is nothing to clamp against, which is exactly why the bug is one-directional
+and why it survived every check aimed at the crossing itself. Coming HOME it is
+the whole thing: leave a long project 7,000 px down, the home sheet holds ~2,700,
+the plate winds on by 2,700 while the picture had been showing 7,000, and **4,300
+px of sky — nearly five bands of it — steps in one frame.**
+
+Fix: `const leftAt = window.scrollY;` at the top of `commit()`, before the
+markup is replaced. One line moved.
+
+**Verified — `test/router.test.mjs`, now part of `npm test`.** The real router,
+driven against a hand-rolled DOM whose only interesting behaviour is that
+shrinking the document clamps the scroll. It watches `scrollY + deck.sky` — where
+the top of the viewport sits in the SKY's own coordinates — frame by frame
+straight through the swap, and reports the worst one-frame step.
+
+| | worst step |
+|---|---|
+| going in, reader 1,200 px down home | 0.0 px |
+| coming home from 500 px | 0.0 px |
+| coming home from 7,000 px | 0.0 px |
+| *same, with the read put back after the innerHTML* | **4,300.0 px** |
+
+The last row is the check having teeth: revert the fix and it fails.
+
+`import.meta.glob` in `site/media.js` is a Vite transform, so the harness
+registers a node loader (`test/viteStubRegister.mjs` → `test/viteStub.mjs`) that
+serves a stub for that one module. Everything else — router, projects, pages — is
+the real code.
+
+**Noticed in passing, not changed:** `body.crossing` is added and removed by the
+router and the comment says it "holds #doc at opacity 0", but there is no such
+rule in site.css any more. It is harmless — `#eat` (z 20) sits above `#doc`
+(z 10), so the eating covers the type without help — but the class and the
+comment are both dead.
+
+## Pathing, round two — width, the outside, and the barge
+
+Reported: on a page with a lot of type she wedges between an element and the
+rim, or between two elements, and grinds there indefinitely. The proposed fix
+was a gap measurement plus a distance rule — "if the gap is too small find the
+next one, and if the nearest is over half a screen away, go straight through".
+
+**That is the right rule, and it belongs one layer lower than proposed.** There
+are no "gaps" in this system and nothing "tries to path around": the grid is a
+COST field, every cell is passable, type simply costs 12x and its halo 3x. A*
+already weighs around against through and picks whichever is cheaper. So the
+proposal was not a new behaviour to add — it was already the design, and it was
+not what was failing.
+
+**What was failing is that the two layers disagreed about what is possible.**
+
+| | knows | does not know |
+|---|---|---|
+| planner | what a cell CONTAINS | how much room it has |
+| body | how much room it has | — |
+
+A 150 px gap beside a paragraph is empty, so it cost ~3, so A* threaded it as a
+bargain. The body is 150 px across and the avoidance field reaches 110 px past
+that, so under about 370 px the push off one side and the push off the other
+point at each other and sum to a **stable well a few pixels wide**. The planner
+kept promising routes the body could not fly.
+
+**So the grid measures clearance and charges for the squeeze.** Chamfer distance
+transform to the uninflated type, then a surcharge that runs from nothing at
+`radius + avoidRangePx` up to `insideCost` at about her half-width. That single
+number is both halves of the proposed rule and needs neither threshold:
+
+- a roomier gap nearby is cheaper, so A* takes it — "find the next gap";
+- where none exists, every route costs the same per cell, so the shortest wins,
+  and the shortest is straight through — "go through the elements".
+
+No "half a screen" constant, because the search does that comparison itself, at
+every scale, correctly.
+
+**And the squeeze is a cost of TRAVELLING, not of BEING.** Two grids now.
+A 190 px corridor is miserable to thread at speed and a perfectly pleasant place
+to hover — standing still, the two fields hold her in the middle of it, which is
+where she wanted to be. `travel` carries the squeeze and A* and the LOS
+smoothing read it; `cost` stays what a cell contains and every destination test
+reads that. Charging the interest sampler for the squeeze emptied the page: she
+would not choose anywhere that was not a hall. (Measured: 0 of 200 samples.)
+
+**The grid does not stop at the page** — 500 px of open space past each rim,
+matching the leash below. An element flush to the edge used to have a crack
+beside it and nothing else.
+
+### The sides are free
+
+`edgeSlackPx` was one number for all four edges, and the sides are not the top
+and bottom. Sideways there is no document, nothing to be lost in that a straight
+line does not recover from, and going around the outside is the natural way past
+anything near a rim. X now gets 560 px of free travel (a whole body outside the
+page with room to spare) against 240 for Y, its own gentler spring, and a hard
+stop at 1000 that exists only so a fling cannot lose her.
+
+Consequence that had to be closed: the offscreen-return predicate was a VERTICAL
+test, safe only while the leash held her within 240 px of a rim. It now counts
+being far off to a side as being lost too (`offscreenSidePx` 340, well inside the
+4 s grace, so a transit around the outside never trips it). And `seekDone` for
+that mode was satisfied on y alone — so a new sheet placing her at the side with
+her height already in the band ended the fly-in before it started.
+
+### Wedged: barge first, give up second
+
+A 36 px approximation of a page laid out in points will be wrong somewhere. The
+old single response was to abandon the DESTINATION, which is a poor first answer:
+the wedge is made of the avoidance field, so the thing to change is the
+avoidance, not the plan.
+
+    grinding 0.45 s   -> `world.pushThrough`. Avoidance computed but not
+                         applied, planner bypassed, straight line at the
+                         destination, 1.2 s. She goes THROUGH.
+    still at 1.8 s    -> the destination itself is the problem. Abandon it,
+                         remember it 9 s, want something else.
+
+The overlap is still REPORTED mid-barge, so a hard one still reads as a bump.
+She is going through the type, not pretending it is not there.
+
+## Pathing, round three — she pressed into things and would not come out
+
+Reported next, and a different fault: she pushes into an element and stays until
+nudged, always near or inside one, on project sheets and not on the home sheet.
+
+**Arithmetic.** The escape from inside type was 4000 px/s². A steer at full lean
+is `steerMaxForce` x `leanThrust.maxMul` = 2600 x 1.7 = **4420**. Whenever the
+thing she was flying at sat inside a block of type she flew in, WON by 420, and
+held. The nudge was not freeing her; it was breaking a tie she was winning.
+
+Three things, because one of them alone was not enough:
+
+**1. Nothing may out-push the escape.** `insideAccel` 4000 -> 5600. Guarded by a
+test on the two numbers so they cannot drift back past each other.
+
+**2. The escape she actually gets must BE that.** Only the single-rect case
+delivered it. Inside one element with a second just beside it — a title over a
+demo, a caption over a figure, which is most of a project sheet — the block she
+is in pushes one way and the block she is beside pushes back the other. Measured
+at a point 40 px under a title, inside the demo:
+
+| | |
+|---|---|
+| push out of the demo | 5600 |
+| title pushing back | 2187 |
+| **net** | **3413** — and 1813 with the original 4000 |
+| a full-lean steer | **4420** |
+
+So the steer beat the real escape by 2.4x in the arrangement she was reported
+stuck in. The escape is normalised now: inside anything, whatever direction the
+sum found gets the full magnitude. Only ever topped UP — two rects that agree
+still push twice as hard. The old saddle nudge was one end of this continuum
+(sum exactly zero) handled on its own; it is now the zero-length branch of the
+same rule.
+
+**3. And she is never AIMED anywhere she cannot be.** A* has always ended at the
+nearest open cell, but the two branches that do not plan — the barge and the
+no-route fallback — flew at the raw target, and the reader's cursor is inside a
+paragraph, a title or the terminal most of the time. `nearestOpenPoint` now
+sanitises the steer target, the seek goal, and every hover anchor.
+
+The seek goal specifically, and not only the steer target: `seekDone` measures
+against that goal, so a raw goal buried in a 700 px element is a distance she can
+never close — the seek never ends and she hangs at the boundary at sprint speed.
+Aim and arrival have to be the same point or one of them is a lie. (Measured: 15 s
+of seek that never completed, before.) Hover anchors for the same reason — every
+settle in brain.js is "stop here and hover", and a fling that ended in a
+paragraph, a beam fired from inside one, or a cruise that timed out mid-page all
+anchor her in it.
+
+**Verified.** 808 checks pass, including a new section whose every route
+assertion is paired against the same grid with the squeeze switched off — a 150 px
+gap that used to be threaded is now routed around (crosses at x 1020 vs 562), a
+page with nothing usable is now crossed dead straight (2 px of sideways wander vs
+758), and a 260 px gap is still used, because the rule is not a hammer. Plus the
+two force invariants above, and a full-loop check with the cursor parked inside a
+large element.
+
+**Not reproduced headlessly:** a three-minute soak on a synthetic busy sheet
+improves (0.5 s -> 0.1 s stalled inside type, longest single stall 0.4 s -> 0.0 s)
+but never showed the multi-second stall as reported, so the arithmetic above is
+the evidence, not the soak.
+
+## Pathing, round four — the cause at the terminal, and a force instead of a detector
+
+Reported with a screenshot: she parks against the LEFT EDGE of the USB sheet's
+terminal block and struggles there. Explicitly asked for no micropatch — replace
+the grinding detector with a push force that grows with time, counted from when
+the destination is assigned, flat for the first three seconds.
+
+### The cause, which was two things and neither of them force
+
+**`.spec.term-col` is `position:absolute; left:var(--pad)` — 48 px at that width
+— about 860 wide and taller than the window.** So the gap between it and the
+left rim is 48 px against a body 150 px across, and the block itself is wider
+than she can coast over.
+
+**1. The waypoint cursor could only advance by LINE OF SIGHT.**
+
+    while (i < path.length - 1 && losPoints(pos, path[i + 1], r)) i++;
+
+Line of sight means "through cells at most `losMaxCost` (2.2)", which is the
+whole point of it — a shortcut that cuts a corner through a paragraph is not a
+shortcut. But it made sight the *only* way forward, and inside expensive terrain
+there is never any sight. A route across a block therefore gets no smoothing at
+all — measured, 32 nodes, one per cell — and **every one of them fails the
+test**, so the cursor froze on node 1 and she stood on the last cheap node
+before the type, at ~5 px/s, being steered at a point she was already standing
+on. The last cheap node before the terminal is its left edge, 48 px off the rim.
+That is the screenshot.
+
+Reaching a node now advances past it, unconditionally (`path.reachedPx` 46, a
+little over one cell). Sight is what it always was — an optimisation that skips
+AHEAD — and no longer the only thing that can move her along a route she has
+already committed to.
+
+This one was made worse by round two, honestly: before the squeeze surcharge the
+crack beside the terminal cost ~1, so a route threaded it and sight worked along
+it. Pricing the crack as solid was right, and it moved the failure from "wedged
+in the crack" to "parked outside the block".
+
+**2. The escape that always beats the steer also means she can never CROSS.**
+Round three raised `insideAccel` above the steer so nothing could hold her inside
+type. The same fact, read the other way: she is ejected sideways faster than she
+can be driven forward, so a block wider than she can coast over is impassable.
+Both halves of that are needed, and a static force cannot give both.
+
+### The force, which is what makes both true at once
+
+The detector — "under 40 px/s for 0.45 s, therefore switch avoidance off for
+1.2 s" — is gone entirely, along with `world.pushThrough`, `brain.stuckTime`,
+`unwedgeImpulse` and four config keys. A detector has to decide from outside that
+something has gone wrong and can be wrong in both directions: it fires on a slow
+arrival and misses a slow grind that stays just above its threshold. Whatever it
+does next is a mode, so the motion has a seam at each end of it.
+
+    push: { delayS: 3.0, rampS: 3.5, maxMul: 3.2 }
+
+Measured from `brain.stateTime`, which for a travel state IS the age of the
+destination. No threshold, no mode, no seam, and nothing on this page pushes back
+with a force that GROWS — so nothing can hold her.
+
+**It is free when it is not needed**, which is what makes it safe to leave armed:
+`steerArrive` asks for a SPEED, so the force is proportional to the error, and in
+open air the error is zero. Measured, an unobstructed 1,000 px trip:
+
+| ceiling | time | peak speed |
+|---|---|---|
+| x1 (off) | 2.15 s | 502 px/s |
+| x3.2 | 2.15 s | 502 px/s |
+| x6 | 2.15 s | 502 px/s |
+
+Identical. It only ever shows up against something resisting her.
+
+**And it is not gated on the lean.** The throttle normally opens only once the
+posed body axis has turned onto the travel line — and that axis follows travel,
+so a body that is not moving never leans in and sits at `minMul`, a third of
+thrust. Self-reinforcing, and the exact opposite of what being stuck calls for.
+The ramp blends the gate out as it comes on.
+
+**Verified** against a wall running past both ends of the grid and 700 px deep,
+so there is no way round and the only route is through:
+
+| ceiling | travelling (leanIn 1) | stalled (leanIn 0) |
+|---|---|---|
+| x1 | **never, in 40 s** | **never, in 40 s** |
+| x2 | 11.2 s | 11.3 s |
+| **x3.2** | **7.7 s** | **8.1 s** |
+| x4.5 | 7.1 s | 7.6 s |
+| x6 | 6.8 s | 7.4 s |
+
+x1 is the check having teeth. 3.2 is the knee; past it the return is small, and
+crossing a block of type ought to look like effort.
+
+Giving up on a destination survives, driven by the trip timing out
+(`cruiseGiveUpS` 14) rather than by a grind detector — the same clock as
+everything else in the file, and it cannot mistake a slow arrival for a stall.
+By then she has been pushing at full weight for seconds, so it is the place that
+is wrong, not the force.
+
+Three-minute soak on the busy synthetic sheet: **distance travelled 35,400 ->
+44,500 px** in the same time, longest stall 0.3 s -> 0.2 s. 810 checks pass.
+
+## Pathing, round five — she stays on the screen
+
+Round two gave the sides a 560 px leash and let the planner see 500 px past each
+rim, so she could round an element flush to the edge by going outside the page.
+It worked, and it read as her wandering off the sheet constantly — worse than
+the thing it fixed. Reverted, deliberately: **getting past an element is the push
+ramp's job now**, which is only true because round four made pushing through
+actually work.
+
+| | before | now |
+|---|---|---|
+| `path.outsideXPx` | 500 | **0** — routes stay on the paper |
+| `physics.edgeSlackXPx` | 560 | **0** — no free travel sideways |
+| the line is drawn at | her centre | **her skin** (one radius in) |
+| `edgeRampXPx` | — | 40, the spring is at full within this |
+| `edgeReturnAccelX` | 900 | **12000**, more than twice `insideAccel` |
+| `edgeHardXPx` | 1000 | 420 — a backstop, not the boundary |
+
+**Three things had to be true at once, and each needed its own change.**
+
+**1. The planner must not propose what the leash will fight.** The grid stops
+where the page does. Otherwise A* keeps finding the beautiful outside route and
+she spends her life driving into a spring.
+
+**2. An element flush to the rim must not be able to push her off the page.**
+The escape from inside a rect goes out the SHALLOWEST wall, and for the USB
+sheet's terminal — 48 px off the left rim — that is the wall facing the rim. Two
+answers, both needed: the sideways spring is now firmer than `insideAccel`, and
+`avoidColliders` will no longer CHOOSE a wall whose far side is off the page. A
+way out that does not exist is not the shallowest way out; it is not a way out.
+Second shallowest, then.
+
+**3. The line is her skin, not her centre.** Held at the rim by the centre, half
+of a 150 px animal hangs off the page — which is exactly the thing being
+complained about. The sideways line sits one body radius in.
+
+Measured over five minutes of ordinary life on a sheet shaped like the USB one
+(title, the terminal flush at `--pad` and taller than the window, an aperture
+against the right rim, things nested inside both, reader scrolling and moving
+the cursor throughout):
+
+| | by the centre | by the skin |
+|---|---|---|
+| worst overhang | 139 px | **29 px** of a 150 px body |
+| time with any part over the line | 13.7 s of 300 | **3.7 s of 300** |
+| stalled inside type | 0 | **0** |
+
+**And the three things that legitimately involve the outside all still work**,
+which is why the stop stayed at 420 rather than becoming a wall:
+
+- a **startled exit** leaves the frame entirely (reaches x −421) — the sideways
+  leash switches off while `world.panicking`, because leaving is the whole shape
+  of it;
+- a **page swap** still places her off the side (x 1570) and she flies in within
+  0.3 s;
+- **crossing the terminal block** got faster, not slower — 8.0 s → **4.1 s** —
+  because she now goes through it instead of hunting for a way round.
+
+**Also fixed, unrelated and found by it:** the shiny-entrance test bailed out of
+its loop on the file-wide `failures` counter, so any four failures anywhere
+earlier in the suite broke it on frame zero and reported three more failures that
+had nothing to do with the burst. The guard is local now. A cascade like that
+makes a real regression look like it broke something it never touched.
+
+817 checks pass, build clean.
+
+## The entry, round two — a stale measurement, not a stale position
+
+Reported: after a page swap her vertical position persists, so she does not come
+in strictly from a side. Both directions.
+
+The `recollect` handler has always set her y inside the viewport. It was reading
+the wrong viewport.
+
+`commit()` does three things in ONE synchronous block: replace `#doc`, scroll to
+the top, emit `recollect`. But `scroll` is an **asynchronous** event, and the
+document-height check runs twice a second. So at the instant `recollect` fires:
+
+| | holds |
+|---|---|
+| `world.scroll.y` | however far down the OLD sheet the reader was |
+| `world.docSize.h` | the old sheet's height |
+
+`body.pos.y = world.scroll.y + vp.h * (0.3 … 0.7)` therefore reads
+`oldScroll + a bit` — hundreds or thousands of pixels down the NEW sheet, well
+below a window that now starts at 0. Her x was placed correctly outside a side
+the whole time, which is why it reads as "not strictly from the side" rather than
+as a teleport: she is off the side AND far below, so she arrives diagonally from
+under the corner.
+
+Measured, with the fix removed:
+
+| | her y | the window she landed in |
+|---|---|---|
+| home → project, reader 1,200 down | 1,694 | 0..900 |
+| project → home, reader 4,800 down | 5,101 | 0..900 |
+
+794 px and 4,201 px below the window.
+
+**Fix:** world.js re-measures on `recollect` — viewport, document size and scroll
+offset — subscribed at construction so it runs before the brain's handler and
+the collider tracker's (the bus fires in subscription order and `createWorld`
+runs first). `docSize.h` mattered too: the pathfinder grid was the previous
+sheet's height for up to half a second after every swap.
+
+Also fixed in the same handler: **a teleport is not a move.** The render loop
+interpolates `prevPos -> pos`, so leaving `prevPos` on the old sheet draws one
+frame of her halfway between where she left and where she arrived — a streak
+across the page on the first frame of every entry.
+
+**The test needed the browser half of world.js**, which the headless sim suite
+does not have — so this lives in `test/router.test.mjs`, driving the real router
+and a real (non-headless) world against the fake DOM, whose `window` never fires
+`scroll` because a real one does not fire it synchronously either.
+
+The first version of that check passed with the bug still in, because it compared
+her y against `world.scroll.y` — the stale value — which is a stale thing checked
+against itself. It asserts against the harness's own scroll position now, plus
+`world.scroll.y === window.scrollY` directly. **4 failures with the fix removed,
+clean with it.**
+
+## The entry, round three — a beat before she arrives
+
+`entryDelayS: 2.0`. She used to ride in on the same frame as the swap, which is
+before the paper has even finished closing; an entrance needs somewhere to
+arrive into, so the sheet settles first.
+
+She waits at a standstill outside the frame, which meant the sideways leash had
+to let go of her for it — the same exemption a startled exit uses, and for the
+same reason: being off the page is the POINT there rather than a failure. That
+was `world.panicking` on its own; it is `world.offLeash` now, written by the
+brain and covering both moments, so `resolveEdges` has one flag to read instead
+of a growing list of special cases.
+
+Nothing steers her during the wait and `stateTime` does not run, so the seek she
+starts afterwards begins from zero — the push ramp's three-second grace is not
+quietly eaten by the two seconds she spent holding.
+
+Traced: parked at x 1570, `vx 0` and `offLeash true` through t=1.90; the kick
+lands at 2.0; wholly on screen at **2.20 s**. 826 checks, router harness clear,
+build clean.

@@ -67,6 +67,20 @@ export function createRouter({ scope, deck, world, onPage }) {
   function commit(route) {
     current = route;
     const { html, title, ink, inkA } = render(route);
+    // ── READ THE OFFSET BEFORE THE SHEET CHANGES ─────────────────────────
+    // How far down the OLD sheet the reader was is the number the plate winds
+    // on by, and it is only knowable while the old sheet is still in the
+    // document. Replacing #doc with a SHORTER page makes the browser clamp the
+    // scroll position to the new maximum on the spot, so reading it afterwards
+    // returns where the reader ended up rather than where they were.
+    //
+    // That never showed going IN — project sheets are taller than the home
+    // sheet, so there is nothing to clamp against. Coming HOME it is the whole
+    // bug: leave a long project 7,000 px down and the home sheet can only hold
+    // ~2,700, so the plate wound on by 2,700 while the picture had been showing
+    // 7,000, and 4,300 px of sky — nearly five bands of it — stepped in one
+    // frame. Same fault as the original teleport, same fix, other direction.
+    const leftAt = window.scrollY;
     doc.innerHTML = html;
     document.title = title;
     // ── THE READER LANDS AT THE TOP; THE PLATE WINDS ON ──────────────────
@@ -80,7 +94,7 @@ export function createRouter({ scope, deck, world, onPage }) {
     //
     // `behavior: "instant"` because `html { scroll-behavior: smooth }` would
     // otherwise animate this, and the animation outlives the closing paper.
-    deck.setSky(deck.sky + window.scrollY, deck.skyRamp + window.scrollY);
+    deck.setSky(deck.sky + leftAt, deck.skyRamp + leftAt);
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 
     deck.setInk(inkA, ink);
@@ -117,7 +131,8 @@ export function createRouter({ scope, deck, world, onPage }) {
   const EDGE_MESS  = 150;    // how ragged the boundary is, in px
   const SKY_SETTLE = true;   // unwind the TIME OF NIGHT after a crossing. The
                              // weather is never unwound — see uSky in pressgl.js
-  const RETURN_MS  = 2600;   // the dissolve, each way
+  const RETURN_MS  = 2000;   // the whole trip home. Quicker than the way in:
+                             // you already know where you are going.
   const MIN_OUT    = 0.55;   // never swap before this much of the outward half
                              // has run, even if the opening covers early
   const SWAP_AT    = 0.56;   // WHEN the sheet underneath is replaced. The
@@ -187,32 +202,79 @@ export function createRouter({ scope, deck, world, onPage }) {
    * window, and then closes back down onto the hole the new sheet has.
    */
   /**
-   * THE RETURN. Four groups of cloud dissolve in, each covering more than the
-   * last, until the fourth is the whole window; the page is swapped behind it;
-   * then the same in reverse. It is deliberately not the crossing: coming out
-   * of a hole only means something when there is a hole you came out of, and a
-   * "back" link is a word in a corner.
+   * THE RETURN — THE CROSSING RUN BACKWARDS.
+   *
+   * Going in, the paper opens at the window you clicked and the opening spreads
+   * out to the edges. Coming out is that move mirrored: the print closes IN from
+   * every edge until the page is gone, and then, on the home sheet, it retreats
+   * into the window you came out of.
+   *
+   * Only the first half is new, and even that is the same boundary with the
+   * paper on the other side of it (uEatOut in the shader). The second half is
+   * literally the crossing's own retreat, unchanged — including the unwinding of
+   * the night, which is why the home sheet stops getting darker every trip.
+   *
+   * There is no clicked point to work from, so the shrinking island of page is
+   * centred on the window of the sheet being LEFT: you leave by the way you
+   * came in.
    */
   function runReturn(onSwap, onDone) {
-    const t0 = performance.now();
-    let dir = 1, phaseStart = t0, swapped = false;
+    const half = RETURN_MS / 2;
+    const here = firstHole()
+      || { x: window.innerWidth / 2, y: window.scrollY + window.innerHeight / 2, r: 40 };
+    let phaseStart = performance.now(), swapped = false, rampAtSwap = 0;
+    const state = { out: true, dir: 1, t: 0, cx: here.x, cy: here.y,
+                    r0: 0, rFull: 0, rEnd: 0, second: null, mess: EDGE_MESS };
+
     const tick = (now) => {
-      const e = Math.min(1, (now - phaseStart) / RETURN_MS);
-      deck.setPuff({ t: dir > 0 ? e : 1 - e });
-      if (dir > 0 && e >= 1) {
-        // the fourth group is the whole window, so this is covered by
-        // construction — there is nothing to measure
-        if (!swapped) { swapped = true; onSwap(); }
-        dir = -1;
-        phaseStart = now;
-      } else if (dir < 0 && e >= 1) {
-        deck.setPuff(null);
-        onDone?.();
-        return;
+      state.t = (now - phaseStart) / half;
+      deck.setCrossing({ ...state });
+
+      if (!swapped) {
+        // the island of page is gone, so there is nothing to see change
+        if (deck.crossCovered && state.t >= MIN_OUT) {
+          swapped = true;
+          onSwap();
+          rampAtSwap = deck.skyRamp;
+          // and from here it IS the crossing's retreat, onto the home window
+          const dest = firstHole();
+          state.out = false;
+          state.dir = -1;
+          state.cx = dest ? dest.x : window.innerWidth / 2;
+          state.cy = dest ? dest.y : window.scrollY + window.innerHeight / 2;
+          state.rEnd = dest ? dest.r : 0;
+          const foot = footerHole();
+          state.second = foot ? { cx: foot.x, cy: foot.y, rEnd: foot.r } : null;
+          state.rFull = coverRadius(state.cx, state.cy) * 1.25;
+          state.t = 0;
+          phaseStart = now;
+        }
+      } else {
+        // THE NIGHT UNWINDS HERE TOO, and it did not before. commit() winds the
+        // plate on by the reader's scroll offset at every navigation; the
+        // crossing eased that back across its retreat and the dissolve never
+        // did, so every trip home left the sheet further into the night and a
+        // few of them ran it to 01:00 for good.
+        if (SKY_SETTLE) deck.setSkyRamp(rampAtSwap * (1 - Math.min(1, state.t)));
+        if (state.t >= 1) {
+          deck.setCrossing(null);
+          if (SKY_SETTLE) deck.setSkyRamp(0);
+          onDone?.();
+          return;
+        }
       }
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
+  }
+
+  /** what radius, centred here, reaches every corner of the window right now */
+  function coverRadius(cx, cyDoc) {
+    const w = window.innerWidth, h = window.innerHeight;
+    const cy = cyDoc - window.scrollY;
+    return Math.max(
+      Math.hypot(cx, cy), Math.hypot(w - cx, cy),
+      Math.hypot(cx, h - cy), Math.hypot(w - cx, h - cy));
   }
 
   /**
@@ -258,7 +320,7 @@ export function createRouter({ scope, deck, world, onPage }) {
           state.rEnd = dest ? dest.r : 0;
           const foot = footerHole();
           state.second = foot ? { cx: foot.x, cy: foot.y, rEnd: foot.r } : null;
-          rFull = currentRadius();
+          rFull = coverRadius(state.cx, state.cy) * 1.25;
           state.rFull = rFull;
           dir = -1;
           phaseStart = now;
@@ -284,16 +346,6 @@ export function createRouter({ scope, deck, world, onPage }) {
       }
       requestAnimationFrame(tick);
     };
-
-    /** what the opening measures right now, so the retreat starts from there
-        rather than snapping to some assumed full-screen value */
-    function currentRadius() {
-      const w = window.innerWidth, h = window.innerHeight;
-      const cy = state.cy - window.scrollY;
-      return Math.max(
-        Math.hypot(state.cx, cy), Math.hypot(w - state.cx, cy),
-        Math.hypot(state.cx, h - cy), Math.hypot(w - state.cx, h - cy)) * 1.25;
-    }
 
     requestAnimationFrame(tick);
   }
@@ -337,11 +389,19 @@ export function createRouter({ scope, deck, world, onPage }) {
     // changes underneath it.
     const leaving = route.name === "home" && current?.name === "project";
     if (leaving) {
-      // the clouds are the colour of the sheet being LEFT
-      deck.setCrossInk(current.project.inkA, current.project.ink);
-      world?.emit("crossing", { ms: RETURN_MS * 2 });
+      // IT EATS IN THE COLOURS OF THE SHEET IT IS OPENING ONTO, which coming
+      // home means the home sheet's own pair — null, which the press reads as
+      // its defaults. It used to eat in the colours of the page being LEFT,
+      // which is the wrong end of the journey: the whole second half of this is
+      // the opening retreating into the home window, and it was arriving there
+      // still wearing the project's ink.
+      deck.setEatInk(null, null);
+      // SHE SEES IT COMING. Closing in from the rim, so there is no one place
+      // it comes from: `from: null` sends her at the middle of the room, which
+      // is the same rule (go where it is furthest away) applied to an edge.
+      world?.emit("crossing", { ms: RETURN_MS, from: null });
       runReturn(land, () => { land(); });
-      setTimeout(() => { land(); deck.setPuff(null); }, RETURN_MS * 4);  // watchdog
+      setTimeout(() => { land(); deck.setCrossing(null); }, RETURN_MS * 4);  // watchdog
       return;
     }
 
@@ -349,12 +409,13 @@ export function createRouter({ scope, deck, world, onPage }) {
     // first frame of it, so the opening spreads in the pair of the sheet it is
     // opening onto and the midpoint has no colour change in it at all.
     const dest = route.name === "project" ? route.project : null;
-    deck.setCrossInk(dest?.inkA || null, dest?.ink || null);
+    deck.setEatInk(dest?.inkA || null, dest?.ink || null);
 
-    // she is on the sheet, so a plate change happens TO her
-    world?.emit("crossing", { ms: CROSS_MS });
     const from = source || firstHole()
       || { x: window.innerWidth / 2, y: window.innerHeight / 2 + window.scrollY, r: 40 };
+    // she is on the sheet, so a plate change happens TO her — and this one has
+    // a definite source, so she leaves on the line straight out of it
+    world?.emit("crossing", { ms: CROSS_MS, from: { x: from.x, y: from.y } });
     runCrossing(from, land, () => { land(); });
     setTimeout(() => { land(); deck.setCrossing(null); }, CROSS_MS * 3);  // watchdog
   }

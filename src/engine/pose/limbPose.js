@@ -44,11 +44,25 @@ export function createLimbPose({ config, world }) {
   let flailT = -1;
   let flailHit = 0;
   let flailPhase = 0;
+  // A FRIGHTENED FLAIL IS NOT AN ANNOYED ONE. Both windmill all four limbs, and
+  // that is where the resemblance stops. The bump's is a tantrum — big, slow,
+  // loose, winding down over a second and a half while she tells the wall about
+  // it. This one is terror: small, TIGHT and very fast, held flat for as long as
+  // she is running rather than decaying, because she is not getting over it, she
+  // is leaving. Same machinery, a different set of numbers, chosen by which
+  // event started it.
+  let panicMode = false;
   if (world) {
     world.on("flail", (e) => {
       flailT = 0;
+      panicMode = false;
       flailHit = Math.max(flailHit,
         clamp(e.speed / cfg.flailFullSpeed, cfg.flailMin, 1));
+    });
+    world.on("panic", () => {
+      flailT = 0;
+      panicMode = true;
+      flailHit = 1;
     });
     world.on("bump", (e) => {
       // VELOCITY kick, not a position jump: an impulse should launch the spring,
@@ -90,15 +104,25 @@ export function createLimbPose({ config, world }) {
       // flail envelope: instant in, tapering out. same shape as the wince, and
       // deliberately the same duration, so the face and the limbs finish
       // together instead of one of them lingering.
+      const durS = panicMode ? cfg.panicDurS : cfg.flailDurS;
       let flail = 0;
       if (flailT >= 0) {
         flailT += dt;
-        const u = flailT / cfg.flailDurS;
-        const a = cfg.flailAttack;
-        flail = u < a ? u / a : Math.max(0, 1 - (u - a) / (1 - a)) ** 1.4;
-        if (flailT >= cfg.flailDurS) {
+        const u = flailT / durS;
+        const a = panicMode ? cfg.panicAttack : cfg.flailAttack;
+        if (panicMode) {
+          // held flat, then dropped at the very end: she flails the whole way
+          // out. A decaying envelope reads as calming down, and she is not.
+          flail = u < a ? u / a
+            : 1 - Math.max(0, (u - cfg.panicHold) / (1 - cfg.panicHold)) ** 1.6;
+        } else {
+          flail = u < a ? u / a : Math.max(0, 1 - (u - a) / (1 - a)) ** 1.4;
+        }
+        flail = Math.max(0, flail);
+        if (flailT >= durS) {
           flailT = -1;
           flailHit = 0;
+          panicMode = false;
         }
       }
       flail *= flailHit;
@@ -109,9 +133,10 @@ export function createLimbPose({ config, world }) {
       // Integrated, not evaluated -- multiplying `time` by a changing frequency
       // makes the phase jump backwards as the rate falls.
       if (flailT >= 0) {
-        const u = Math.min(flailT / cfg.flailDurS, 1);
-        flailPhase += (cfg.flailHz + (cfg.flailHzEnd - cfg.flailHz) * u)
-          * 2 * Math.PI * dt;
+        const u = Math.min(flailT / durS, 1);
+        const hz0 = panicMode ? cfg.panicHz : cfg.flailHz;
+        const hz1 = panicMode ? cfg.panicHzEnd : cfg.flailHzEnd;
+        flailPhase += (hz0 + (hz1 - hz0) * u) * 2 * Math.PI * dt;
       }
       const flailPh = flailPhase;
 
@@ -139,7 +164,7 @@ export function createLimbPose({ config, world }) {
         // and the two axes are a quarter cycle apart so each limb describes a
         // circle rather than a straight flap.
         const fi = ROLES.indexOf(role);
-        const fAmp = flail * cfg.flailDeg * D2R
+        const fAmp = flail * (panicMode ? cfg.panicDeg : cfg.flailDeg) * D2R
           * (isFoot ? cfg.flailFootMul : cfg.flailArmMul);
         const fPh = flailPh + fi * cfg.flailPhaseStep;
         const flailX = Math.sin(fPh) * fAmp;

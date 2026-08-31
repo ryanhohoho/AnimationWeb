@@ -113,10 +113,47 @@ export function resolveCircleRect(body, rect, cfg, colliderVel = { x: 0, y: 0 },
 // purely so a fling can never lose her somewhere unreachable. The brain's own
 // offscreen-return already flies her back; this only has to make sure that
 // return is always possible.
-export function resolveEdges(body, bounds, cfg) {
-  const slack = cfg.edgeSlackPx;
-  const hard = cfg.edgeHardPx;
+//
+// THE SIDES ARE NOT THE TOP AND BOTTOM, and they were the same number. They are
+// different in both directions at once:
+//
+//   Y is the DOCUMENT. Thousands of pixels of real content, and she travels it
+//     with the reader. `edgeSlackPx` of genuinely free drift past either end,
+//     then a spring, then a stop — an animal that stops dead at an invisible
+//     line is a sprite in a box.
+//
+//   X is the SCREEN, and she stays on it. There was a version of this where the
+//     sides were a very long leash so she could round an element flush to the
+//     rim by going outside the page; it worked, and it read as her wandering off
+//     the sheet constantly, which is worse than the thing it fixed. Getting past
+//     an element is the push ramp's job now (behavior.push) — she leans on it
+//     until she is through, rather than walking round the outside of the paper.
+//
+//     So X has no free travel at all: the spring starts at the rim and reaches
+//     full within `edgeRampXPx`, and full is FIRMER than the escape from inside
+//     type, so an element sitting flush to the edge cannot push her off the
+//     page. The stop is still well out, because it is not there to contain her
+//     — it is there so a fling cannot lose her, and it has to leave room for the
+//     two things that legitimately begin outside the frame: a page-swap entry
+//     (behavior.entryOffsetPx) and the tail of a throw.
+//
+// `free` is the third case: she is RUNNING. A startled exit is supposed to leave
+// the frame — that is the whole shape of it — so the leash is off while it lasts.
+export function resolveEdges(body, bounds, cfg, free = false) {
+  const slackY = cfg.edgeSlackPx;
+  const hardY = cfg.edgeHardPx;
+  const hardX = cfg.edgeHardXPx ?? hardY;
+  const rampX = cfg.edgeRampXPx ?? Math.max(1, hardX - slackY);
+  // ── THE LINE IS DRAWN AT HER SKIN, NOT AT HER CENTRE ─────────────────────
+  // Held at the rim by the centre, half of a 150 px animal is off the page, and
+  // half of her hanging off the side is exactly what "she goes outside the
+  // screen" describes. So the sideways line sits one radius in, and it is her
+  // BODY that stops at the edge.
+  const slackX = free
+    ? cfg.edgeHardXPx
+    : -(body.radius) + (cfg.edgeSlackXPx ?? slackY);
   const k = cfg.edgeReturnAccel;
+  const kX = cfg.edgeReturnAccelX ?? k;
   let hit = null;
 
   // one axis at a time: over = how far past the slack line she is
@@ -125,19 +162,22 @@ export function resolveEdges(body, bounds, cfg) {
     if (p > hi) return -(p - hi);
     return 0;
   };
-  const ox = pull(body.pos.x, -slack, bounds.w + slack);
-  const oy = pull(body.pos.y, -slack, bounds.h + slack);
+  const ox = pull(body.pos.x, -slackX, bounds.w + slackX);   // slackX < 0 = inset
+  const oy = pull(body.pos.y, -slackY, bounds.h + slackY);
   if (ox || oy) {
     // the spring stiffens with distance, so drifting out is gentle and being
-    // thrown out is firmly answered
-    const soft = Math.min(1, Math.hypot(ox, oy) / Math.max(1, hard - slack));
-    body.addForce({ x: Math.sign(ox) * k * soft, y: Math.sign(oy) * k * soft });
+    // thrown out is firmly answered. Per axis, because the two no longer agree
+    // about how far out is far: one hypot against one span would have X's
+    // 70 px ramp and Y's 280 px one setting each other's slope.
+    const rx = Math.min(1, Math.abs(ox) / Math.max(1, rampX));
+    const ry = Math.min(1, Math.abs(oy) / Math.max(1, hardY - slackY));
+    body.addForce({ x: Math.sign(ox) * kX * rx, y: Math.sign(oy) * k * ry });
   }
 
   // the point of no return
   const clampAxis = (p, lo, hi) => (p < lo ? lo : p > hi ? hi : p);
-  const cx = clampAxis(body.pos.x, -hard, bounds.w + hard);
-  const cy = clampAxis(body.pos.y, -hard, bounds.h + hard);
+  const cx = clampAxis(body.pos.x, -hardX, bounds.w + hardX);
+  const cy = clampAxis(body.pos.y, -hardY, bounds.h + hardY);
   if (cx !== body.pos.x) {
     const impact = Math.abs(body.vel.x);
     hit = { nx: Math.sign(cx - body.pos.x), ny: 0, impact };
@@ -201,33 +241,66 @@ export function avoidColliders(body, world, cfg) {
       continue;
     }
 
-    // centre is inside this rect: out along the shallowest wall
+    // ── CENTRE IS INSIDE THIS RECT: OUT ALONG THE SHALLOWEST WALL ────────
+    // ...THAT LEADS ANYWHERE. The shallowest wall of an element sitting flush
+    // to a rim is the one facing the rim, so the nearest way out of the USB
+    // sheet's terminal is off the left of the page — and now that she is held
+    // on the sheet, that is a push into the leash, which is a standstill by
+    // construction. A way out that does not exist is not the shallowest way
+    // out; it is not a way out. Second shallowest, then.
     inside++;
     const left = body.pos.x - rect.x;
     const right = rect.x + rect.w - body.pos.x;
     const top = body.pos.y - rect.y;
     const bottom = rect.y + rect.h - body.pos.y;
-    const m = Math.min(left, right, top, bottom);
-    let ex = 0, ey = 0;
-    if (m === left) ex = -1;
-    else if (m === right) ex = 1;
-    else if (m === top) ey = -1;
-    else ey = 1;
+    const w = world.docSize?.w ?? Infinity;
+    const ways = [
+      { d: left,   ex: -1, ey: 0, ok: rect.x - r > 0 },
+      { d: right,  ex: 1,  ey: 0, ok: rect.x + rect.w + r < w },
+      { d: top,    ex: 0,  ey: -1, ok: true },      // Y is the document: there
+      { d: bottom, ex: 0,  ey: 1,  ok: true }       // is always more of it
+    ];
+    let pick = null;
+    for (const way of ways) if (way.ok && (!pick || way.d < pick.d)) pick = way;
+    if (!pick) for (const way of ways) if (!pick || way.d < pick.d) pick = way;
+    const ex = pick.ex, ey = pick.ey;
     fx += ex * cfg.insideAccel;
     fy += ey * cfg.insideAccel;
     const speed = Math.hypot(body.vel.x, body.vel.y);
     if (!worst || speed > worst.impact) worst = { nx: ex, ny: ey, impact: speed };
   }
 
-  // A SADDLE IS A TRAP. Dead centre of a symmetric block, or between two that
-  // cancel, the escape sums to zero and she would sit inside the type forever.
-  // The nudge is derived from her own position rather than drawn from the
-  // world's rng, because the rng is seeded and shared and a draw here would
-  // desync every other consumer of it.
-  if (inside && Math.hypot(fx, fy) < cfg.insideAccel * 0.25) {
-    const a = (body.pos.x * 0.013 + body.pos.y * 0.017) % (Math.PI * 2);
-    fx += Math.cos(a) * cfg.insideAccel;
-    fy += Math.sin(a) * cfg.insideAccel;
+  // ── INSIDE THE TYPE, THE WAY OUT IS ALWAYS A FULL PUSH ──────────────────
+  // The invariant this enforces, and the reason it is worth enforcing in one
+  // place: NOTHING MAY OUT-PUSH THE ESCAPE. A steer at full lean is
+  // steerMaxForce x leanThrust.maxMul, and `insideAccel` is set above that on
+  // purpose — but only the single-rect case actually delivered `insideAccel`.
+  // Two rects that overlap, which on these pages is every figure inside a
+  // plate and every caption inside a demo, each push toward their own nearest
+  // wall, and those two directions can be anything from agreeing to opposite.
+  // Partially cancelling left a net of a few hundred px/s^2, the steer won, and
+  // she pressed into the overlap and stayed until something else moved her.
+  //
+  // A saddle — dead centre of a symmetric block, or two that cancel exactly —
+  // is the same failure with the sum at zero, and used to be handled here on
+  // its own with a threshold of a quarter of `insideAccel`. It is not a special
+  // case; it is one end of a continuum, and the fix for the whole continuum is
+  // to normalise. Keep whatever direction the sum found, and give it the full
+  // magnitude.
+  //
+  // Only ever topped UP: two rects that agree still push twice as hard.
+  if (inside) {
+    const m = Math.hypot(fx, fy);
+    if (m > 1e-3) {
+      if (m < cfg.insideAccel) { const k = cfg.insideAccel / m; fx *= k; fy *= k; }
+    } else {
+      // no direction at all. Derived from her own position rather than drawn
+      // from the world's rng, because the rng is seeded and shared and a draw
+      // here would desync every other consumer of it.
+      const a = (body.pos.x * 0.013 + body.pos.y * 0.017) % (Math.PI * 2);
+      fx = Math.cos(a) * cfg.insideAccel;
+      fy = Math.sin(a) * cfg.insideAccel;
+    }
   }
 
   if (fx || fy) body.addForce({ x: fx, y: fy });
@@ -241,7 +314,10 @@ export function resolveAll(body, world, cfg) {
   let strongest = avoidColliders(body, world, cfg);
   const overlapping = !!strongest;
 
-  const edgeHit = resolveEdges(body, world.docSize, cfg);
+  // ...and the sides let go when being off the page is the POINT rather than a
+  // failure: a startled exit, and the beat she waits outside the frame before
+  // entering a new sheet. The brain owns the flag; see its step().
+  const edgeHit = resolveEdges(body, world.docSize, cfg, !!world.offLeash);
   if (edgeHit && (!strongest || edgeHit.impact > strongest.impact)) strongest = edgeHit;
 
   // A BUMP IS NOW AN EVENT, NOT A CONSEQUENCE.
@@ -262,7 +338,13 @@ export function resolveAll(body, world, cfg) {
     // face and the limbs can never disagree about whether it happened -- two
     // independent rolls off the same seeded rng would consume different values
     // and desync, which reads as a bug rather than a reaction.
-    if (strongest.impact > cfg.flailMinSpeed && world.random() < cfg.flailChance) {
+    // NOT WHILE SHE IS ALREADY RUNNING FROM SOMETHING. A panicking mew crosses
+    // the page at speed and clips whatever is in the way, and every one of those
+    // was a hard enough impact to fire the tantrum: the >.< face and a shower of
+    // gold annoyance stars, in the middle of a flight that is supposed to read as
+    // fear. She is not annoyed at the furniture; she has not noticed it.
+    if (!world.panicking
+        && strongest.impact > cfg.flailMinSpeed && world.random() < cfg.flailChance) {
       world.emit("flail", { speed: strongest.impact });
     }
   }

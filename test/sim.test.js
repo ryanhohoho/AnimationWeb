@@ -7,8 +7,9 @@ import * as THREE from "three";
 import { expDamp, Spring, makeNoise1d2, v2 } from "../src/utils/math.js";
 import { createWorld } from "../src/engine/world.js";
 import { createBody } from "../src/engine/physics/body2d.js";
-import { resolveCircleRect, resolveEdges, resolveAll } from "../src/engine/physics/colliders.js";
+import { resolveCircleRect, resolveEdges, resolveAll, avoidColliders } from "../src/engine/physics/colliders.js";
 import { createBrain } from "../src/engine/behavior/brain.js";
+import { createSweatDrops } from "../src/engine/fx/sweatDrops.js";
 import { createPathfinder } from "../src/engine/behavior/pathfinder.js";
 import { buildRig } from "../src/engine/pose/rig.js";
 import { createTailChain } from "../src/engine/pose/tailChain.js";
@@ -107,17 +108,58 @@ section("physics: collision resolution leaves no penetration, adds no energy");
   ok(drift.pos.x === -60, "she may sit outside the edge without being pushed back");
   ok(driftHit === null, "...and crossing it is not an impact");
 
-  // 2. past the slack line a spring starts pulling her home
-  const out = createBody({ x: -(P.edgeSlackPx + 80), y: 1500, radius: 60, config: P });
+  // 2. past the slack line a spring starts pulling her home — X and Y have
+  //    their own, and they are deliberately very different lengths
+  const out = createBody({ x: -(P.edgeSlackXPx + 80), y: 1500, radius: 60, config: P });
   resolveEdges(out, bounds, P);
   out.step(1 / 60);
-  ok(out.vel.x > 0, `beyond the slack she is pulled back (vx ${out.vel.x.toFixed(1)})`);
+  ok(out.vel.x > 0, `beyond the side slack she is pulled back (vx ${out.vel.x.toFixed(1)})`);
+
+  const up = createBody({ x: 640, y: -(P.edgeSlackPx + 80), radius: 60, config: P });
+  resolveEdges(up, bounds, P);
+  up.step(1 / 60);
+  ok(up.vel.y > 0, `beyond the top slack she is pulled back (vy ${up.vel.y.toFixed(1)})`);
 
   // 3. and however hard she is thrown, she is never lost
   body.pos.x = -5000; body.pos.y = 90000; body.vel.x = -2000; body.vel.y = 3000;
   resolveEdges(body, bounds, P);
-  ok(body.pos.x >= -P.edgeHardPx - 1, "never lost past the left hard stop");
+  ok(body.pos.x >= -P.edgeHardXPx - 1, "never lost past the left hard stop");
   ok(body.pos.y <= bounds.h + P.edgeHardPx + 1, "never lost past the bottom hard stop");
+
+  // ── THE SIDES ARE THE SCREEN, AND SHE STAYS ON IT ─────────────────────
+  // There was a version where the sides were a 560 px leash so she could round
+  // a flush element from outside the page. It worked and it read as her
+  // wandering off the sheet — worse than the thing it fixed. Getting past an
+  // element is the push ramp's job now.
+  ok(P.edgeSlackXPx === 0, "no free travel past a side at all");
+  ok(P.edgeReturnAccelX > P.insideAccel,
+    `and the sideways spring outweighs the escape out of type ` +
+    `(${P.edgeReturnAccelX} vs ${P.insideAccel}), so an element flush to the rim ` +
+    `cannot push her off the page`);
+
+  // one body-width out, she is already being pulled back hard
+  const out1 = createBody({ x: -75, y: 1500, radius: 75, config: P });
+  resolveEdges(out1, bounds, P);
+  out1.step(1 / 60);
+  ok(out1.vel.x > 40,
+    `a body-width past the rim is answered at once (vx ${out1.vel.x.toFixed(1)})`);
+
+  // ...but the stop is still well out, because it is not what contains her: it
+  // has to leave room for a page-swap entry and the tail of a throw
+  ok(P.edgeHardXPx > rigConfig.behavior.entryOffsetPx * 2,
+    `the backstop still clears a page-swap entry ` +
+    `(${P.edgeHardXPx} px vs an entry at ${rigConfig.behavior.entryOffsetPx})`);
+
+  // ...and A STARTLED EXIT IS EXEMPT: leaving the frame is the shape of it
+  const fleeing = createBody({ x: -200, y: 1500, radius: 75, config: P });
+  fleeing.vel.x = -900;
+  resolveEdges(fleeing, bounds, P, true);
+  fleeing.step(1 / 60);
+  ok(fleeing.vel.x < -800,
+    `while she is running, nothing holds her in (vx ${fleeing.vel.x.toFixed(0)})`);
+
+  // and the planner never proposes what the leash would fight
+  ok(rigConfig.path.outsideXPx === 0, "routes stay on the paper");
 }
 
 // ---------------------------------------------------------------------------
@@ -1106,11 +1148,16 @@ section("shiny: the games' colours and an entrance that ends");
   let frames = 0;
   let peak = 0;
   let last = 1;
-  while (sp.running && frames < 60 * 10) {
+  // THE BAIL-OUT IS LOCAL. It used to read the file-wide `failures`, so any
+  // four failures ANYWHERE EARLIER broke this loop on frame zero and reported
+  // three more failures here that were nothing to do with the burst — a
+  // cascade that makes a real regression look like it broke the shiny.
+  let bad = 0;
+  while (sp.running && frames < 60 * 10 && bad <= 3) {
     last = sp.update(1 / 60);
     peak = Math.max(peak, last);
+    if (!Number.isFinite(last)) bad++;
     ok(Number.isFinite(last), `flash stays finite (frame ${frames})`);
-    if (failures > 3) break;
     frames++;
   }
   ok(!sp.running, `the burst ends (${(frames / 60).toFixed(2)}s)`);
@@ -1192,6 +1239,909 @@ section("presentation: config shape");
   ok(p.cutout.edgeSoftPx > 0, "cutout has a real feather radius");
   ok(rigConfig.lighting.keyOffset.length === 3, "key offset is a 3-vector");
   ok(rigConfig.lighting.keyOffset[2] > 0, "key comes from the viewer side (+z)");
+}
+
+// ---------------------------------------------------------------------------
+section("a new sheet: she comes in from the side, level with the window");
+{
+  const c = rigConfig.behavior;
+  for (const startX of [120, 1280]) {
+    const world = createWorld({ headless: true, seed: 5 });
+    world.docSize = { w: 1400, h: 5000 };
+    world.viewport = { w: 1400, h: 900 };
+    world.scroll = { x: 0, y: 2600 };          // the reader is deep in the page
+    const body = createBody({ x: startX, y: 300, radius: 60, config: rigConfig.physics });
+    const brain = createBrain({
+      body, world, config: rigConfig.behavior,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack
+    });
+    // she was mid-flight from the sheet that just went away
+    brain.panicFrom({ x: 700, y: 300 }, 1);
+    world.emit("recollect");
+
+    const top = world.scroll.y, h = world.viewport.h;
+    ok(body.pos.y > top && body.pos.y < top + h,
+      `she is level with the window the reader is looking at (y ${Math.round(body.pos.y)} in ${top}..${top + h})`);
+    const outLeft = body.pos.x < 0;
+    const outRight = body.pos.x > world.viewport.w;
+    ok(outLeft || outRight, `and just outside a SIDE of it (x ${Math.round(body.pos.x)})`);
+    // whichever side she was nearer, so the entrance continues the exit
+    ok(startX < 700 ? outLeft : outRight, "the side she was already nearer");
+    // ── AND SHE WAITS THERE A BEAT ────────────────────────────────────
+    // She used to ride in on the same frame as the swap, which is before the
+    // paper has even finished closing. The entrance needs somewhere to arrive
+    // into, so the sheet settles first and then she comes in.
+    ok(Math.abs(body.vel.x) < 1 && Math.abs(body.vel.y) < 1,
+      "she is holding, not travelling, the moment the sheet changes");
+    const C = rigConfig.behavior;
+    for (let i = 0; i < Math.round((C.entryDelayS - 0.1) * 120); i++) {
+      world.time += 1 / 120;
+      brain.step(1 / 120);
+    }
+    ok(Math.abs(body.vel.x) < 1,
+      `still holding a tenth of a second before the beat is up ` +
+      `(${C.entryDelayS}s)`);
+    ok(world.offLeash,
+      "...and the sideways leash is off while she waits, because she is " +
+      "parked outside the frame on purpose");
+    for (let i = 0; i < 24; i++) { world.time += 1 / 120; brain.step(1 / 120); }
+    ok(outLeft ? body.vel.x > 0 : body.vel.x < 0,
+      `then she comes in (vx ${Math.round(body.vel.x)})`);
+    ok(!world.offLeash, "and the leash is back on the moment she is moving");
+    ok(brain.state === "seek" && brain.seekMode === "offscreen",
+      "and she is arriving, not still fleeing");
+    ok(brain.panic === null && world.panicking === false,
+      "the sheet she was running from does not exist any more");
+    ok(brain.blocked.length === 0, "and old failures belong to the old page");
+  }
+}
+
+// ---------------------------------------------------------------------------
+section("seek: she loses patience and sprints");
+{
+  const c = rigConfig.behavior;
+  const at = (t) => {
+    const eager = Math.min(1, Math.max(0, t - c.seekPatienceS) / c.seekRampS);
+    return c.seekSpeed + (c.seekSpeedMax - c.seekSpeed) * (eager * eager);
+  };
+  ok(at(0) === c.seekSpeed, "a short hop is unaffected");
+  ok(at(c.seekPatienceS) === c.seekSpeed, "nothing happens before she is impatient");
+  ok(Math.abs(at(c.seekPatienceS + c.seekRampS) - c.seekSpeedMax) < 1e-6,
+    "and it tops out");
+  ok(at(6) === c.seekSpeedMax, "and stays there");
+  ok(at(2.5) > at(2.0) && at(2.0) > at(1.5), "monotonic in between");
+  ok(c.seekSpeedMax / c.seekSpeed > 1.35,
+    `and the sprint is worth having (x${(c.seekSpeedMax / c.seekSpeed).toFixed(2)})`);
+  // asking for more than the body can do would just be silently clamped
+  ok(c.seekSpeedMax <= rigConfig.physics.maxSpeed,
+    `the target is inside the body's own ceiling (${c.seekSpeedMax} <= ${rigConfig.physics.maxSpeed})`);
+}
+
+// ---------------------------------------------------------------------------
+section("pathing: avoiding a place means going somewhere else");
+{
+  const world = createWorld({ headless: true, seed: 21 });
+  world.docSize = { w: 1400, h: 3000 };
+  world.viewport = { w: 1400, h: 900 };
+  const body = createBody({ x: 700, y: 450, radius: 60, config: rigConfig.physics });
+  const brain = createBrain({
+    body, world, config: rigConfig.behavior,
+    pathConfig: rigConfig.path, attackConfig: rigConfig.attack
+  });
+  const c = rigConfig.behavior;
+
+  // she is cruising at something and cannot get there
+  brain.state = "cruise";
+  brain.stateTime = 0;
+  brain.interest.x = 1350; brain.interest.y = 500;
+  const wanted = { x: brain.interest.x, y: brain.interest.y };
+
+  // pinned: no velocity. By `cruiseGiveUpS` she has been pushing at full
+  // weight for seconds and still has not landed, so it is the PLACE that is
+  // wrong, not the force. (This used to be a grinding detector at 1.8 s. The
+  // trip timing out is the same clock as everything else in the file and
+  // cannot mistake a slow arrival for a stall.)
+  let guard = 0;
+  while (brain.blocked.length === 0 && guard < 120 * 30) {
+    body.vel.x = 0; body.vel.y = 0;
+    brain.step(1 / 120);
+    guard++;
+  }
+  ok(brain.blocked.length === 1, "a trip that never lands makes her give up on the place");
+  ok(Math.abs(guard / 120 - c.cruiseGiveUpS) < 0.4,
+    `and it is the trip timing out that does it (${(guard / 120).toFixed(2)} s ` +
+    `vs ${c.cruiseGiveUpS})`);
+  const b = brain.blocked[0];
+  ok(Math.hypot(b.x - wanted.x, b.y - wanted.y) < 1,
+    "and it is the PLACE she remembers, not the route");
+  ok(b.until > world.time, "for a while");
+
+  // ...and the next place she wants is a different one
+  const moved = Math.hypot(brain.interest.x - wanted.x, brain.interest.y - wanted.y);
+  ok(moved > 1, `so she wants somewhere else now (${moved.toFixed(0)} px away)`);
+
+  // the destination sampler avoids it too
+  let near = 0;
+  for (let i = 0; i < 300; i++) {
+    const p = brain._pickInterest();
+    if (p && Math.hypot(p.x - b.x, p.y - b.y) < c.blockedRadiusPx) near++;
+  }
+  ok(near / 300 < 0.10,
+    `and 300 fresh destinations mostly steer clear of it (${(near / 3).toFixed(0)}%)`);
+
+  // the leash lets her go round the outside rather than jam against the rim
+  ok(rigConfig.physics.edgeSlackPx > 200,
+    `there is real room past the edge (${rigConfig.physics.edgeSlackPx} px)`);
+  ok(rigConfig.physics.edgeSlackPx < rigConfig.physics.edgeHardPx,
+    "and the point of no return is still further out");
+}
+
+// ---------------------------------------------------------------------------
+// THE BUG THIS SECTION EXISTS FOR: a cost field prices what a cell CONTAINS,
+// which says nothing about how much room it has. A 150 px gap beside a
+// paragraph is empty, so it cost ~3, so A* threaded it as a bargain — and the
+// body, 150 px across with an avoidance field reaching 110 px past that, could
+// not use it. The planner kept promising routes the body could not fly, she
+// wedged, replanned, found the same gap, and ground there.
+//
+// Every check here is paired against `blind`: the same grid with the squeeze
+// switched off, which is what it used to be. If a check would pass either way
+// it is not testing anything.
+section("pathing: a gap she cannot fit through is not a shortcut");
+{
+  const R = 60;
+  const blind = { ...rigConfig.path, tightCost: 1 };
+  const mkWorld = (rects) => {
+    const w = createWorld({ headless: true, seed: 5 });
+    w.docSize = { w: 1400, h: 900 };
+    w.viewport = { w: 1400, h: 900 };
+    w.colliders = rects.map((rect) => ({ rect, el: null }));
+    w.collidersVersion = 1;
+    return w;
+  };
+  const spread = (pts) =>
+    (pts ? Math.max(...pts.map((q) => q.x)) - Math.min(...pts.map((q) => q.x)) : -1);
+
+  // ── A. a 150 px gap on the straight line, a 400 px opening 500 px over ──
+  {
+    const WY = 300, WH = 120, MID = WY + WH / 2;
+    const world = mkWorld([
+      { x: 0,    y: WY, w: 500, h: WH },     // gap  500..650  (150 px — too tight)
+      { x: 650,  y: WY, w: 200, h: WH },     // open 850..1250 (400 px — flyable)
+      { x: 1250, y: WY, w: 150, h: WH }
+    ]);
+    const pf = createPathfinder(world, rigConfig.path);
+    const old = createPathfinder(world, blind);
+
+    // where does a route get through the wall?
+    const crossing = (pts) => {
+      for (let i = 1; i < (pts?.length ?? 0); i++) {
+        const a = pts[i - 1], b = pts[i];
+        if (Math.min(a.y, b.y) <= MID && Math.max(a.y, b.y) >= MID) {
+          return a.x + (b.x - a.x) * ((MID - a.y) / ((b.y - a.y) || 1));
+        }
+      }
+      return null;
+    };
+    const from = { x: 575, y: 140 }, to = { x: 575, y: 700 };
+    const now = crossing(pf.findPath(from, to, R));
+    const then = crossing(old.findPath(from, to, R));
+    ok(now !== null && now > 800,
+      `she goes round to the opening (crosses at x ${Math.round(now)})`);
+    ok(then !== null && then < 700,
+      `...and without the squeeze she went straight into the gap ` +
+      `(x ${Math.round(then)}) — the check has teeth`);
+
+    // what the two grids charge for that gap
+    const at = (pathf, x, y) => {
+      const g = pathf._debug.grid;
+      return g.travel[Math.floor((y - g.originY) / g.cell) * g.cols
+                    + Math.floor((x - g.originX) / g.cell)];
+    };
+    ok(at(pf, 575, MID) > 9 && at(old, 575, MID) < 4,
+      `the gap went from ${at(old, 575, MID).toFixed(1)} to ` +
+      `${at(pf, 575, MID).toFixed(1)} — near the ${rigConfig.path.insideCost} ` +
+      `that the type itself costs, which is the rule: a gap she cannot use is ` +
+      `worth what no gap is worth`);
+    ok(at(pf, 1050, MID) < 2,
+      `while a 400 px opening stays free (${at(pf, 1050, MID).toFixed(1)})`);
+
+    // AND IT IS NOT A HAMMER: widen the same gap to 260 px and she uses it
+    const roomy = mkWorld([
+      { x: 0,   y: WY, w: 500, h: WH },      // gap 500..760
+      { x: 760, y: WY, w: 640, h: WH }
+    ]);
+    const wide = createPathfinder(roomy, rigConfig.path);
+    ok(crossing(wide.findPath({ x: 630, y: 140 }, { x: 630, y: 700 }, R)) < 800,
+      "a gap she CAN fly is still the obvious way through");
+  }
+
+  // ── B. nothing usable anywhere: go THROUGH, do not tour the page ────────
+  // The wall runs past both ends of the grid, so the outside is not an answer
+  // here and the only choice is the gap or the type.
+  {
+    const world = mkWorld([
+      { x: -800, y: 250, w: 1700, h: 400 },   // gap 900..1050 (150 px)
+      { x: 1050, y: 250, w: 1150, h: 400 }
+    ]);
+    const pf = createPathfinder(world, rigConfig.path);
+    const old = createPathfinder(world, blind);
+    const from = { x: 200, y: 120 }, to = { x: 200, y: 800 };
+    ok(spread(pf.findPath(from, to, R)) < 60,
+      `with nothing usable she flies straight through the type ` +
+      `(${Math.round(spread(pf.findPath(from, to, R)))} px of sideways wander)`);
+    ok(spread(old.findPath(from, to, R)) > 600,
+      `...where the old grid toured ` +
+      `${Math.round(spread(old.findPath(from, to, R)))} px to reach a gap it ` +
+      `could not have used`);
+  }
+
+  // ── C. an element flush to the rim is gone THROUGH, not walked around ───
+  // There was a version of the grid that carried 500 px of open space past each
+  // rim, so a flush element could be rounded from outside the page. It planned
+  // beautiful routes and she spent her life off the sheet. Routes stay on the
+  // paper now and the push ramp is what gets her past things — so the planner
+  // must not propose the margin, and must not propose the 100 px crack either.
+  {
+    const world = mkWorld([
+      { x: 0,   y: 300, w: 300,  h: 120 },    // flush to the left rim
+      { x: 400, y: 300, w: 1000, h: 120 }     // 100 px crack at 300..400
+    ]);
+    const pf = createPathfinder(world, rigConfig.path);
+    const pts = pf.findPath({ x: 150, y: 140 }, { x: 150, y: 700 }, R);
+    ok(Math.min(...pts.map((q) => q.x)) >= 0,
+      `no part of the route leaves the page ` +
+      `(leftmost x ${Math.round(Math.min(...pts.map((q) => q.x)))})`);
+    const wander = Math.max(...pts.map((q) => q.x)) - Math.min(...pts.map((q) => q.x));
+    ok(wander < 260,
+      `and it goes straight through the element rather than hunting for a way ` +
+      `round (${Math.round(wander)} px of sideways wander)`);
+  }
+
+  // ── D. the squeeze is a cost of TRAVELLING, not a cost of BEING ─────────
+  // A 190 px corridor is miserable to thread at speed and a fine place to
+  // hover — standing still, the two fields hold her in the middle of it.
+  // Charging the interest sampler for the squeeze emptied the whole page.
+  {
+    const world = mkWorld([
+      { x: 90,  y: 120, w: 420, h: 300 },
+      { x: 700, y: 120, w: 480, h: 300 }      // corridor x 510..700
+    ]);
+    const pf = createPathfinder(world, rigConfig.path);
+    const mid = { x: 605, y: 270 };
+    ok(pf.costPoint(mid, R) < rigConfig.behavior.interest.maxCost,
+      `a snug corridor is somewhere she may still want to be ` +
+      `(${pf.costPoint(mid, R).toFixed(1)} against a ceiling of ` +
+      `${rigConfig.behavior.interest.maxCost})`);
+    ok(pf.costPoint({ x: 300, y: 270 }, R) >= rigConfig.path.insideCost,
+      "...but inside the type is not");
+    const clear = pf.clearanceAt(mid, R);
+    ok(clear > 55 && clear < 100,
+      `clearance reads the corridor's half-width, give or take the 36 px grid ` +
+      `(${Math.round(clear)} px, true 95)`);
+    ok(pf.clearanceAt({ x: 300, y: 270 }, R) === 0, "and zero inside the type");
+  }
+
+  // ── E. she is never AIMED at somewhere she cannot be ────────────────────
+  // The cursor sits inside a paragraph constantly, and two of the three steer
+  // paths did not plan — they flew at the raw target.
+  {
+    const world = mkWorld([{ x: 400, y: 300, w: 500, h: 300 }]);
+    const pf = createPathfinder(world, rigConfig.path);
+    const deep = { x: 650, y: 450 };
+    const aim = pf.nearestOpenPoint(deep, R);
+    ok(aim !== deep && pf.isFreePoint(aim, R),
+      `a target inside the type is moved to somewhere she may be ` +
+      `(${Math.round(aim.x)},${Math.round(aim.y)})`);
+    const fine = { x: 200, y: 800 };
+    ok(pf.nearestOpenPoint(fine, R) === fine,
+      "and a target that was already fine is returned untouched");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The other half of the same balance. The ramp is what lets her eventually get
+// THROUGH type; these are what stop her being HELD in it before the ramp has
+// any business firing. Both have to be true or she is either pinned or she
+// lives inside the paragraphs.
+section("pathing: for the first three seconds, type always wins");
+{
+  const P = rigConfig.physics;
+  const B = rigConfig.behavior;
+  const steerPeak = B.steerMaxForce * B.leanThrust.maxMul;   // push not yet on
+
+  ok(P.insideAccel > steerPeak,
+    `the way out beats the hardest ungrown way in (${P.insideAccel} vs ` +
+    `${Math.round(steerPeak)} px/s^2). It was 4000 against 4420, so a full-lean ` +
+    `steer at something inside a paragraph WON, and she held herself there ` +
+    `until the geometry changed — the "nudge" was breaking a tie, not freeing her`);
+
+  // ── dropped in the middle of a paragraph, she leaves ────────────────────
+  {
+    const world = createWorld({ headless: true, seed: 8 });
+    world.docSize = { w: 1400, h: 900 };
+    world.viewport = { w: 1400, h: 900 };
+    const rect = { x: 400, y: 300, w: 500, h: 300 };
+    world.colliders = [{ rect, el: null }];
+    const inside = (b) => b.pos.x > rect.x && b.pos.x < rect.x + rect.w &&
+                          b.pos.y > rect.y && b.pos.y < rect.y + rect.h;
+    const body = createBody({ x: 640, y: 450, radius: 60, config: P });
+    ok(inside(body), "she starts dead centre of the type");
+    let outAt = null;
+    for (let i = 0; i < 240 && outAt === null; i++) {
+      resolveAll(body, world, P);
+      body.step(1 / 120);
+      if (!inside(body)) outAt = (i + 1) / 120;
+    }
+    ok(outAt !== null && outAt < 0.8, `and leaves on her own (${outAt?.toFixed(2)}s)`);
+  }
+
+  // ── INSIDE ONE THING, NEXT TO ANOTHER ───────────────────────────────────
+  // Raising the escape above the steer is worth nothing unless the escape she
+  // actually GETS is `insideAccel`, and in one very ordinary arrangement it was
+  // not: inside one element with a second just above it — a title over a demo,
+  // a caption over a figure, most of a project sheet. The block she is in
+  // pushes one way, the block she is beside pushes back the other, they
+  // partially cancel, and the remainder loses.
+  {
+    const world = createWorld({ headless: true, seed: 6 });
+    world.docSize = { w: 1400, h: 900 };
+    world.viewport = { w: 1400, h: 900 };
+    const demo  = { x: 400, y: 300, w: 500, h: 300 };
+    const title = { x: 400, y: 120, w: 500, h: 140 };     // 40 px above the demo
+    world.colliders = [{ rect: demo, el: null }, { rect: title, el: null }];
+
+    const probe = createBody({ x: 650, y: 340, radius: 75, config: P });
+    avoidColliders(probe, world, P);
+    const net = Math.hypot(probe._force.x, probe._force.y);
+    ok(net >= P.insideAccel - 1,
+      `the push out of the demo survives the title pushing back ` +
+      `(${Math.round(net)} px/s^2, floor ${P.insideAccel}). Un-normalised this ` +
+      `arrangement nets 3,413 — and 1,813 at the old escape of 4000, against a ` +
+      `${Math.round(steerPeak)} steer`);
+
+    const inDemo = (b) => b.pos.x > demo.x && b.pos.x < demo.x + demo.w &&
+                          b.pos.y > demo.y && b.pos.y < demo.y + demo.h;
+    const body = createBody({ x: 650, y: 340, radius: 75, config: P });
+    let outAt = null;
+    for (let i = 0; i < 480 && outAt === null; i++) {
+      const to = { x: 650, y: 450 };                      // deeper in
+      const d = Math.hypot(to.x - body.pos.x, to.y - body.pos.y) || 1;
+      body.addForce({ x: ((to.x - body.pos.x) / d) * steerPeak,
+                      y: ((to.y - body.pos.y) / d) * steerPeak });
+      avoidColliders(body, world, P);
+      body.step(1 / 120);
+      if (!inDemo(body)) outAt = (i + 1) / 120;
+    }
+    ok(outAt !== null,
+      `and she gets out of it even while something pulls her in at the full ` +
+      `ungrown steer (${outAt?.toFixed(2)}s)`);
+  }
+
+  // ── AND THE CURSOR IS ALWAYS INSIDE SOMETHING ───────────────────────────
+  // Which is most of the reported symptom: the reader's pointer sits on the
+  // terminal, the title, the window, and she was flown at it. Full loop.
+  {
+    const world = createWorld({ headless: true, seed: 4 });
+    world.docSize = { w: 1400, h: 2200 };
+    world.viewport = { w: 1400, h: 900 };
+    const rect = { x: 300, y: 250, w: 700, h: 400 };
+    world.colliders = [{ rect, el: null }];
+    world.collidersVersion = 1;
+    world.pointer.active = true;
+    world.pointer.pos.x = 650; world.pointer.pos.y = 450;    // dead centre of it
+
+    const body = createBody({ x: 120, y: 2000, radius: 75, config: P });
+    const brain = createBrain({
+      body, world, config: B, pathConfig: rigConfig.path, attackConfig: rigConfig.attack
+    });
+    const inside = () => body.pos.x > rect.x && body.pos.x < rect.x + rect.w &&
+                         body.pos.y > rect.y && body.pos.y < rect.y + rect.h;
+    let settledInside = 0, sawSeek = false;
+    for (let i = 0; i < 120 * 15; i++) {
+      world.time += 1 / 120;
+      brain.step(1 / 120);
+      resolveAll(body, world, P);
+      body.step(1 / 120);
+      if (brain.state === "seek") sawSeek = true;
+      if (inside() && Math.hypot(body.vel.x, body.vel.y) < 60) settledInside++;
+    }
+    ok(sawSeek, "she does go after a cursor buried in a 700 px element");
+    ok(!inside(), "...and fifteen seconds later she is not sitting in it");
+    ok(settledInside < 60,
+      `nor parked in it at any point (${(settledInside / 120).toFixed(2)}s stalled within)`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+section("navigation: she stays on the screen");
+{
+  const P = rigConfig.physics;
+  const B = rigConfig.behavior;
+
+  // A minute of ordinary life on a sheet shaped like the USB one: a title, the
+  // terminal flush at --pad (48 px) and taller than the window, an aperture
+  // hard against the right rim, and things nested inside both. The reader
+  // scrolls and moves the cursor throughout.
+  const RECTS = [
+    { x: 120,  y: 90,   w: 1100, h: 120 },
+    { x: 48,   y: 560,  w: 862,  h: 2000 },   // .spec.term-col
+    { x: 1180, y: 260,  w: 220,  h: 900  },   // .ap.tall, against the right rim
+    { x: 140,  y: 2700, w: 900,  h: 300  },
+    { x: 60,   y: 700,  w: 300,  h: 200  },   // nested inside the terminal
+    { x: 1220, y: 400,  w: 150,  h: 300  }
+  ];
+  const world = createWorld({ headless: true, seed: 12 });
+  world.docSize = { w: 1400, h: 3600 };
+  world.viewport = { w: 1400, h: 900 };
+  world.colliders = RECTS.map((rect) => ({ rect, el: null }));
+  world.collidersVersion = 1;
+  world.pointer.active = true;
+  world.poseState = { leanIn: 1 };
+  const body = createBody({ x: 700, y: 300, radius: 75, config: P });
+  const brain = createBrain({ body, world, config: B,
+    pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+
+  let worstOut = 0, offFrames = 0, stalled = 0;
+  for (let i = 0; i < 120 * 60; i++) {
+    const t = i / 120;
+    world.scroll.y = 900 + Math.sin(t * 0.05) * 800;
+    world.pointer.pos.x = 700 + Math.sin(t * 0.23) * 620;
+    world.pointer.pos.y = world.scroll.y + 450 + Math.sin(t * 0.17 + 1.1) * 380;
+    world.time += 1 / 120;
+    brain.step(1 / 120);
+    resolveAll(body, world, P);
+    body.step(1 / 120);
+    // how far past a SIDE is any part of HER — skin, not centre
+    const out = Math.max(0, body.radius - body.pos.x,
+                            body.pos.x + body.radius - world.docSize.w);
+    if (out > 0) { offFrames++; worstOut = Math.max(worstOut, out); }
+    const inType = RECTS.some((r) => body.pos.x > r.x && body.pos.x < r.x + r.w &&
+                                     body.pos.y > r.y && body.pos.y < r.y + r.h);
+    if (inType && Math.hypot(body.vel.x, body.vel.y) < 70) stalled++;
+  }
+  ok(worstOut < 45,
+    `a minute of life never hangs more than a fifth of her off the side ` +
+    `(worst ${Math.round(worstOut)} px of a ${body.radius * 2} px body). Holding ` +
+    `her by the CENTRE instead of the skin measured 139`);
+  ok(offFrames / (120 * 60) < 0.03,
+    `and she is wholly on the sheet essentially all of it ` +
+    `(${(offFrames / 120).toFixed(1)}s of 60 with any part over the line)`);
+  ok(stalled === 0, "without stalling in the type to manage it");
+
+  // ── AND THE TWO THINGS THAT LEGITIMATELY START OR END OUTSIDE ───────────
+  {
+    const w2 = createWorld({ headless: true, seed: 3 });
+    w2.docSize = { w: 1400, h: 2400 };
+    w2.viewport = { w: 1400, h: 900 };
+    w2.poseState = { leanIn: 1 };
+    const b2 = createBody({ x: 1000, y: 450, radius: 75, config: P });
+    const br2 = createBrain({ body: b2, world: w2, config: B,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    w2.emit("crossing", { ms: 2000, from: { x: 1300, y: 450 } });
+    let minX = Infinity;
+    for (let i = 0; i < 120 * 3; i++) {
+      w2.time += 1 / 120;
+      br2.step(1 / 120);
+      resolveAll(b2, w2, P);
+      b2.step(1 / 120);
+      minX = Math.min(minX, b2.pos.x);
+    }
+    ok(minX < -b2.radius,
+      `a startled exit still leaves the frame entirely (x ${Math.round(minX)}) — ` +
+      `the sideways leash is off while she is running, because leaving is the ` +
+      `whole shape of it`);
+  }
+  {
+    const w3 = createWorld({ headless: true, seed: 7 });
+    w3.docSize = { w: 1400, h: 2400 };
+    w3.viewport = { w: 1400, h: 900 };
+    w3.poseState = { leanIn: 1 };
+    const b3 = createBody({ x: 700, y: 450, radius: 75, config: P });
+    const br3 = createBrain({ body: b3, world: w3, config: B,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    w3.emit("recollect");
+    ok(b3.pos.x < 0 || b3.pos.x > w3.docSize.w,
+      `a page swap still places her off the side (x ${Math.round(b3.pos.x)})`);
+    let inAt = null;
+    for (let i = 0; i < 120 * 8 && inAt === null; i++) {
+      w3.time += 1 / 120;
+      br3.step(1 / 120);
+      resolveAll(b3, w3, P);
+      b3.step(1 / 120);
+      if (b3.pos.x > 150 && b3.pos.x < w3.docSize.w - 150) inAt = (i + 1) / 120;
+    }
+    ok(inAt !== null && inAt < B.entryDelayS + 2,
+      `...and she flies in once the beat is up (${inAt?.toFixed(1)}s, after a ` +
+      `${B.entryDelayS}s hold)`);
+    ok(inAt > B.entryDelayS,
+      `not before it (${inAt?.toFixed(1)}s)`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// There is no stuck DETECTOR any more. A detector decides from the outside that
+// something has gone wrong, and it can be wrong both ways — it fires on a slow
+// arrival and misses a slow grind that stays just above its threshold — and
+// whatever it does next is a mode, so the motion has a seam at each end of it.
+// A force that grows with the age of the TRIP has no threshold, no mode and no
+// seam, and nothing on this page pushes back with a force that grows.
+section("pathing: she pushes harder the longer it is taking");
+{
+  const P = rigConfig.physics;
+  const B = rigConfig.behavior;
+
+  // ── the shape of it ─────────────────────────────────────────────────────
+  {
+    ok(B.push.delayS >= 3,
+      `three seconds of grace before anything changes (${B.push.delayS}s)`);
+    const peak = B.steerMaxForce * B.leanThrust.maxMul * B.push.maxMul;
+    ok(peak > P.insideAccel * 2,
+      `and full push clears even two overlapping blocks pushing the same way ` +
+      `(${Math.round(peak)} vs ${P.insideAccel * 2} px/s^2)`);
+  }
+
+  // ── IT COSTS NOTHING WHEN NOTHING IS RESISTING ──────────────────────────
+  // The reason a permanently-armed force ramp is safe: steerArrive asks for a
+  // SPEED, so the force is proportional to the error, and in open air the error
+  // is zero. A ceiling three times higher has nothing to do.
+  const openTrip = (maxMul) => {
+    const world = createWorld({ headless: true, seed: 2 });
+    world.docSize = { w: 1400, h: 2600 };
+    world.viewport = { w: 1400, h: 900 };
+    world.scroll = { x: 0, y: 500 };
+    world.poseState = { leanIn: 1 };
+    const behavior = { ...B, push: { ...B.push, maxMul } };
+    const body = createBody({ x: 200, y: 1000, radius: 75, config: P });
+    const brain = createBrain({ body, world, config: behavior,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    brain.state = "cruise"; brain.stateTime = 0;
+    let peak = 0;
+    for (let i = 0; i < 120 * 20; i++) {
+      world.time += 1 / 120;
+      brain.state = "cruise";
+      brain.interest.x = 1200; brain.interest.y = 1000;
+      brain.step(1 / 120);
+      resolveAll(body, world, P);
+      body.step(1 / 120);
+      peak = Math.max(peak, Math.hypot(body.vel.x, body.vel.y));
+      if (Math.hypot(body.pos.x - 1200, body.pos.y - 1000) < 40) {
+        return { t: (i + 1) / 120, peak: Math.round(peak) };
+      }
+    }
+    return { t: null, peak: Math.round(peak) };
+  };
+  {
+    const off = openTrip(1), on = openTrip(B.push.maxMul), lots = openTrip(6);
+    ok(off.t !== null && Math.abs(off.t - on.t) < 1e-9 && off.peak === on.peak,
+      `an unobstructed trip is identical with the ramp and without ` +
+      `(${off.t.toFixed(2)}s, peak ${off.peak} px/s, both)`);
+    ok(lots.t === on.t && lots.peak === on.peak,
+      "and still identical at twice the ceiling — it only ever shows up " +
+      "against something that is pushing back");
+  }
+
+  // ── AND NOTHING CAN HOLD HER ────────────────────────────────────────────
+  // A wall running past both ends of the grid and deeper than she can coast:
+  // there is no way round, so the only route is through, and through is exactly
+  // what an escape that always beats the steer makes impossible. Those two
+  // facts are the same fact — which is why the ramp is not an extra, it is what
+  // makes "she can never be held inside type" and "she can always cross it"
+  // true at the same time.
+  const wallTrip = (maxMul, leanIn) => {
+    const world = createWorld({ headless: true, seed: 2 });
+    world.docSize = { w: 1400, h: 2600 };
+    world.viewport = { w: 1400, h: 900 };
+    world.scroll = { x: 0, y: 500 };
+    world.poseState = { leanIn };
+    world.colliders = [{ rect: { x: -900, y: 700, w: 3200, h: 700 }, el: null }];
+    world.collidersVersion = 1;
+    const behavior = { ...B, push: { ...B.push, maxMul } };
+    const body = createBody({ x: 700, y: 500, radius: 75, config: P });
+    const brain = createBrain({ body, world, config: behavior,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    brain.state = "cruise"; brain.stateTime = 0;
+    for (let i = 0; i < 120 * 40; i++) {
+      world.time += 1 / 120;
+      brain.state = "cruise";
+      brain.interest.x = 700; brain.interest.y = 1600;
+      brain.step(1 / 120);
+      resolveAll(body, world, P);
+      body.step(1 / 120);
+      if (Math.hypot(body.pos.x - 700, body.pos.y - 1600) < 40) return (i + 1) / 120;
+    }
+    return null;
+  };
+  {
+    const through = wallTrip(B.push.maxMul, 1);
+    ok(through !== null && through < 12,
+      `she gets through 700 px of solid type (${through?.toFixed(1)}s)`);
+    ok(wallTrip(1, 1) === null,
+      "and with the ramp turned off she never does, in forty seconds — the " +
+      "check has teeth");
+
+    // ...AND THE RAMP IS NOT GATED ON THE LEAN. The throttle normally opens
+    // only once the posed body axis has turned onto the travel line, and that
+    // axis follows travel — so a body that is not moving never leans in and
+    // sits at a third of thrust. Self-reinforcing, and the exact opposite of
+    // what being stuck calls for.
+    const stalled = wallTrip(B.push.maxMul, 0);
+    ok(stalled !== null && Math.abs(stalled - through) < 2,
+      `a stalled Mew who has never leaned in gets through just the same ` +
+      `(${stalled?.toFixed(1)}s vs ${through?.toFixed(1)}s)`);
+  }
+
+  // ── AND THE WAYPOINT CURSOR MOVES INSIDE TYPE ───────────────────────────
+  // The other half of what parked her at the left edge of the terminal, and
+  // not a force problem at all: the cursor advanced ONLY by line of sight, and
+  // line of sight means "through cells at most losMaxCost". Inside type there
+  // is never any, so every node of a crossing route failed, the cursor froze on
+  // the last cheap node before the block, and she stood on it being steered at
+  // a point she was already on.
+  {
+    const world = createWorld({ headless: true, seed: 2 });
+    world.docSize = { w: 1400, h: 2600 };
+    world.viewport = { w: 1400, h: 900 };
+    world.poseState = { leanIn: 1 };
+    world.colliders = [{ rect: { x: -900, y: 700, w: 3200, h: 700 }, el: null }];
+    world.collidersVersion = 1;
+    const body = createBody({ x: 700, y: 500, radius: 75, config: P });
+    const brain = createBrain({ body, world, config: B,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    brain.state = "cruise"; brain.stateTime = 0;
+    brain.interest.x = 700; brain.interest.y = 1600;
+
+    const route = brain.pathfinder.findPath({ x: 700, y: 500 }, { x: 700, y: 1600 }, 75);
+    ok(route.length > 20,
+      `a route across a block gets no line-of-sight smoothing at all, by ` +
+      `design — ${route.length} nodes, one per cell`);
+    ok(!brain.pathfinder.losPoints(route[0], route[route.length - 1], 75),
+      "...because there is no sight through it");
+
+    let reached = 0;
+    for (let i = 0; i < 120 * 12; i++) {
+      world.time += 1 / 120;
+      brain.state = "cruise";
+      brain.interest.x = 700; brain.interest.y = 1600;
+      brain.step(1 / 120);
+      resolveAll(body, world, P);
+      body.step(1 / 120);
+      reached = Math.max(reached, brain.pathIndex);
+    }
+    ok(reached > 3,
+      `and she still walks along it (reached node ${reached}; sight alone ` +
+      `pinned her on node 1 forever)`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+section("panic: she looks, she turns, she goes — and she goes straight out");
+{
+  const world = createWorld({ headless: true, seed: 11 });
+  world.docSize = { w: 2000, h: 4000 };
+  world.viewport = { w: 1200, h: 800 };
+  const body = createBody({ x: 800, y: 500, radius: 60, config: rigConfig.physics });
+  const brain = createBrain({
+    body, world, config: rigConfig.behavior,
+    pathConfig: rigConfig.path, attackConfig: rigConfig.attack
+  });
+  const c = rigConfig.behavior;
+
+  let startles = 0, flails = 0, panics = 0;
+  world.on("startle", () => startles++);
+  world.on("flail", () => flails++);
+  world.on("panic", () => panics++);
+
+  // the opening is to her LOWER LEFT, so the way out is up and to the right
+  const from = { x: 300, y: 900 };
+  brain.panicFrom(from, 1);
+
+  ok(startles === 1, "the panic emits exactly one startle");
+  ok(brain.state === "startle", "and puts her in the startle state");
+  ok(brain.panic.phase === "glance", "beat one is the glance");
+  ok(brain.gazeFront === true && brain.gazeAt === null,
+    "and the head is square on to the viewport — a direction, not a place");
+  ok(brain.gazeWhip === true, "and it SNAPS there rather than easing");
+  ok(c.panicGlanceS >= 0.5, "and holds it for half a second");
+  ok(world.panicking === true, "and the world knows, so a clipped wall stays quiet");
+
+  // the escape line is DIRECTLY away — no lateral scatter, unlike triggerStartle
+  const ex = 800 - 300, ey = 500 - 900;
+  const el = Math.hypot(ex, ey);
+  const dot = brain.panic.esc.x * (ex / el) + brain.panic.esc.y * (ey / el);
+  ok(dot > 0.9999, `she leaves on the line straight out of it (dot ${dot.toFixed(5)})`);
+
+  // beat one BRAKES HER TO A STOP: that stillness is what makes the look read
+  body.vel.x = 300; body.vel.y = -200;
+  const v0 = Math.hypot(body.vel.x, body.vel.y);
+  let t = 0;
+  const step = (secs) => {
+    for (let i = 0; i < Math.round(secs * 120); i++) { brain.step(1 / 120); t += 1 / 120; }
+  };
+  step(c.panicGlanceS * 0.5);
+  ok(brain.panic.phase === "glance", "still glancing halfway through beat one");
+  const v1 = Math.hypot(body.vel.x, body.vel.y);
+  ok(v1 < v0 * 0.4, `she is braked to a stop while she looks (${Math.round(v0)} -> ${Math.round(v1)} px/s)`);
+  ok(c.panicGlanceS > 0.35, "and the look is held long enough to be seen");
+
+  // beat two: the head comes off it and onto the way out
+  step(c.panicGlanceS * 0.6);
+  ok(brain.panic.phase === "turn", "beat two is the turn");
+  const ahead = (brain.gazeAt.x - body.pos.x) * brain.panic.esc.x
+    + (brain.gazeAt.y - body.pos.y) * brain.panic.esc.y;
+  ok(ahead > 0, "and the head is now aimed down the escape line, ahead of her");
+  ok(panics === 0, "the limbs have not started yet either");
+
+  // beat three: NOW she goes, windmilling
+  step(c.panicTurnS + 0.02);
+  ok(brain.panic.phase === "bolt", "beat three is the bolt");
+  ok(brain.gazeFront === false, "she is no longer facing us; she is facing away");
+  ok(panics === 1, "the limbs windmill on the bolt");
+  ok(flails === 0, "...on their OWN event: no >.< face, no annoyance stars");
+  const sp1 = Math.hypot(body.vel.x, body.vel.y);
+  ok(sp1 > 400, `and she is moving (${Math.round(sp1)} px/s)`);
+  const vdot = (body.vel.x * brain.panic.esc.x + body.vel.y * brain.panic.esc.y) / sp1;
+  ok(vdot > 0.98, `straight out, not sideways (dot ${vdot.toFixed(3)})`);
+
+  // still ACCELERATING on the way out — a bolt that coasts reads as a glide
+  step(0.25);
+  const sp2 = Math.hypot(body.vel.x, body.vel.y);
+  ok(sp2 > sp1, `still gaining speed as she leaves (${Math.round(sp1)} -> ${Math.round(sp2)})`);
+
+  // and it ends
+  step(c.panicDurS);
+  ok(brain.state !== "startle", "the panic ends");
+  ok(brain.gazeAt === null && brain.gazeFront === false, "and hands the head back");
+  ok(world.panicking === false, "and bumps are allowed to be annoying again");
+
+  // ...even if the panic is interrupted rather than finishing. She can be
+  // grabbed mid-flight, and a flag left set would mute every bump after it.
+  brain.panicFrom({ x: 100, y: 100 }, 1);
+  ok(world.panicking === true, "a fresh panic sets the flag");
+  brain.state = "held";
+  brain.panic = null;
+  brain.step(1 / 120);
+  ok(world.panicking === false, "and anything that steals the state clears it");
+
+  // a rim closing in has no source: she goes for the middle of the room
+  const body2 = createBody({ x: 150, y: 200, radius: 60, config: rigConfig.physics });
+  const brain2 = createBrain({
+    body: body2, world, config: rigConfig.behavior,
+    pathConfig: rigConfig.path, attackConfig: rigConfig.attack
+  });
+  brain2.panicFrom(null, 1);
+  ok(brain2.panic.esc.x > 0 && brain2.panic.esc.y > 0,
+    "no source: she runs inward, away from the nearest edges");
+  ok(brain2.gazeFront === true,
+    "and squares up to the viewport just the same — the rim is the whole room");
+}
+
+// ---------------------------------------------------------------------------
+section("a frightened flail is not an annoyed one");
+{
+  const L = rigConfig.limbs;
+  ok(L.panicHz > L.flailHz * 1.5, `terror is much faster (${L.panicHz} vs ${L.flailHz} Hz)`);
+  ok(L.panicDeg < L.flailDeg, `and tighter (${L.panicDeg} vs ${L.flailDeg} deg)`);
+  // the tantrum winds down; the panic does not, because she is not getting over
+  // it, she is leaving
+  ok(L.flailHzEnd / L.flailHz < 0.6, "the tantrum winds right down");
+  ok(L.panicHzEnd / L.panicHz > 0.75, "the panic barely slows");
+  ok(L.panicAttack < L.flailAttack, "and it is snapped on harder");
+  ok(L.panicHold > 0.6, "held flat for most of the flight, then dropped");
+}
+
+// ---------------------------------------------------------------------------
+section("panic sweat: flung, arced, and never seen coming down");
+{
+  const cfg = rigConfig.sweat;
+  const view = { worldPerPx: 1 };
+  const parent = { add() {}, remove() {} };
+  const sweat = createSweatDrops({ parent, config: cfg, view });
+
+  ok(cfg.waves >= 2, "several waves, not one burst");
+  sweat.burst(1, 0, 1, 7);            // fleeing to the right
+  ok(sweat.running, "a burst runs");
+
+  const P = sweat.particles.slice(0, cfg.waves * cfg.perWave);
+
+  // EVERY drop rises. anime sweat goes up and back whatever direction she runs
+  ok(P.every((d) => d.vy > 0), "every drop is thrown upward");
+  // ...and the escape still shows through: fleeing right carries them rightward
+  const meanVx = P.reduce((a, d) => a + d.vx, 0) / P.length;
+  ok(meanVx > 0, `the spray is carried by the escape (mean vx ${Math.round(meanVx)})`);
+
+  // CLUSTERS, ALTERNATING TEMPLES — not one radial burst
+  const cl0 = P.slice(0, cfg.perWave), cl1 = P.slice(cfg.perWave, cfg.perWave * 2);
+  const sideOf = (a) => Math.sign(a.reduce((t, d) => t + d.x0, 0));
+  ok(sideOf(cl0) !== 0 && sideOf(cl0) === -sideOf(cl1),
+    "successive waves leave from opposite sides of the head");
+  const spread0 = Math.max(...cl0.map(d => d.x0)) - Math.min(...cl0.map(d => d.x0));
+  ok(spread0 > 4, `and the three in a cluster do not leave from one point (${spread0.toFixed(0)} px apart)`);
+  ok(cl0.every(d => Math.sign(d.x0) === sideOf(cl0)), "a cluster stays on its own side");
+  // the cluster splays: its outer two hook opposite ways
+  ok(cl0[0].curl === -cl0[cl0.length - 1].curl,
+    "and the outer drops of a cluster curl opposite ways, so it opens like a hand");
+
+  // NONE OF THEM IS EVER SEEN FALLING: life ends at or just past the apex
+  for (const d of P) {
+    const apex = d.vy / cfg.gravityPx;
+    ok(d.life <= apex * cfg.apexOvershoot + 1e-6,
+      "a drop is culled by the top of its own arc");
+  }
+  ok(cfg.apexOvershoot > 1 && cfg.apexOvershoot < 1.5,
+    "just past the top, so it is still travelling when it goes");
+
+  // the waves are staggered, and fast enough to keep up with a flinch
+  const w0 = P.slice(0, cfg.perWave).reduce((a, d) => a + d.delay, 0) / cfg.perWave;
+  const wN = P.slice(-cfg.perWave).reduce((a, d) => a + d.delay, 0) / cfg.perWave;
+  ok(wN > w0, "later waves leave later");
+  ok(cfg.waveGapS < rigConfig.shiny.sparkle.annoy.waveGapS,
+    "and they come faster than the annoyance stars: a flinch is not a tantrum");
+
+  // each wave weaker than the last
+  const spd = (a) => a.reduce((s, d) => s + Math.hypot(d.vx, d.vy), 0) / a.length;
+  ok(spd(P.slice(-cfg.perWave)) < spd(P.slice(0, cfg.perWave)),
+    "and each wave is weaker than the one before");
+
+  // the fan is spread by INDEX, so it cannot clump into one fat drop
+  const angs = P.slice(0, cfg.perWave).map((d) => Math.atan2(d.vy, d.vx)).sort((a, b) => a - b);
+  const gaps = angs.slice(1).map((a, i) => a - angs[i]);
+  ok(Math.min(...gaps) > 0.02, "the fan is spread, not clumped");
+
+  // FIRED LIKE A SHOTGUN: the three of a cluster leave on the same frame...
+  ok(cl0.every(d => d.delay === cl0[0].delay),
+    "the three of a cluster leave at the exact same instant");
+  ok(cl1[0].delay > cl0[0].delay, "and the next cluster is a beat behind it");
+
+  // ...from points already spread around a ring centred on her...
+  const radii = cl0.map(d => Math.hypot(d.x0, d.y0 - cfg.originYPx));
+  ok(Math.min(...radii) > cfg.spawnRadiusPx * 0.8
+     && Math.max(...radii) < cfg.spawnRadiusPx * 1.2,
+    `they start out on a ring around her (${radii.map(r => r.toFixed(0)).join(", ")} px)`);
+
+  // ...and each one travels straight down its own radius, so the bulbous end
+  // leads and points away from her
+  for (const d of cl0) {
+    const rx = d.x0, ry = d.y0 - cfg.originYPx;
+    const rl = Math.hypot(rx, ry), vl = Math.hypot(d.vx, d.vy);
+    const radial = (rx / rl) * (d.vx / vl) + (ry / rl) * (d.vy / vl);
+    ok(radial > 0.999, `and flies straight out along it (dot ${radial.toFixed(4)})`);
+  }
+
+  // and it GROWS on the way out rather than shrinking away
+  ok(cfg.growTo > cfg.growFrom * 1.2,
+    `a drop grows through its flight (${cfg.growFrom} -> ${cfg.growTo})`);
+  ok(cfg.holdFrac > 0.8, "and vanishes in the last tenth rather than dwindling");
+
+  // it runs out on its own
+  let n = 0;
+  while (sweat.running && n < 2000) { sweat.update(1 / 120); n++; }
+  ok(!sweat.running, "and the spray finishes");
+  ok(n / 120 < 1.5, `the whole spray is over in ${(n / 120).toFixed(2)} s`);
+}
+
+// ---------------------------------------------------------------------------
+section("sweat drop: the teardrop profile is a teardrop");
+{
+  // the same half-width function the fragment shader solves
+  const halfW = (y) => {
+    const yy = Math.min(Math.max(y, -1), 1);
+    return Math.sqrt(Math.max(0, 1 - yy * yy))
+      * Math.sqrt(Math.max(0, (1 - yy) * 0.5)) / 0.7698;
+  };
+  ok(Math.abs(halfW(1)) < 1e-9, "it comes to a POINT at the tip");
+  ok(Math.abs(halfW(-1)) < 1e-9, "and closes at the base");
+  // the widest part is BELOW the middle: that is what makes it a drop and not a lens
+  let best = -1, bestY = 0;
+  for (let y = -1; y <= 1; y += 0.001) { const w = halfW(y); if (w > best) { best = w; bestY = y; } }
+  ok(bestY < -0.2, `the bulge sits low (widest at y ${bestY.toFixed(2)})`);
+  ok(Math.abs(best - 1) < 0.01, `and the profile fills its quad (max ${best.toFixed(3)})`);
+  // base is CIRCULAR (width ~ sqrt of the distance up from it)...
+  const r1 = halfW(-1 + 0.0004) / halfW(-1 + 0.0001);
+  ok(r1 > 1.7 && r1 < 2.3, `the base is round (4x the height gives ${r1.toFixed(2)}x the width)`);
+  // ...and the tip is a straight-sided CONE (width ~ distance down from it)
+  const r2 = halfW(1 - 0.0004) / halfW(1 - 0.0001);
+  ok(r2 > 3.4 && r2 < 4.6, `the tip is a cone (4x the depth gives ${r2.toFixed(2)}x the width)`);
 }
 
 // ---------------------------------------------------------------------------

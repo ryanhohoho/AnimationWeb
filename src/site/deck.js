@@ -35,12 +35,6 @@ const BUDGET_MS = 5;
 const LOOP_S = 16;        // seconds for one pass of the clip. The source is
                           // ten, so this is about 0.6x speed: weather, not
                           // time-lapse.
-const PUFF_LOOP_S = 5;    // the return dissolve reads the SAME clip as the sky,
-                          // one pass in five seconds instead of sixteen. Not a
-                          // different animation — the same weather, run at a
-                          // rate a 2.6 s transition can actually show. At 16 s
-                          // a transition sees a sixth of the loop and the
-                          // clouds look pinned.
 const FPS = 20;           // the cloud loop's own rate. A printed animation is
                           // shot on twos or fours; 60 fps of halftone boils.
 
@@ -53,6 +47,9 @@ export function createDeck({ scope, haloPx = 200 }) {
   let aps = [];             // { el, box }  box is in document pixels
   let holes = [];           // the same boxes, flattened for the shader
   let alt = null;           // { index, inkA, inkB } — the gate's own pair
+  let eat = null;           // { inkA, inkB } — what a CROSSING prints in, which
+                            // is not the gate's business and must not be
+                            // clobbered by it. null = the home sheet's pair.
   let inkA = null;          // the plate's FIRST ink;  null = the home sheet's
   let inkB = null;          // the plate's second ink; null = the home sheet's
   let pw = 0, ph = 0;       // the document
@@ -60,7 +57,6 @@ export function createDeck({ scope, haloPx = 200 }) {
   let halo = null;          // { x, y, r } in viewport pixels
   let sky = 0;              // the WEATHER's offset — held for good
   let skyRamp = 0;          // the TIME's offset — eased back after a crossing
-  let puff = null;          // { t } while the return dissolve runs
   let cross = null;         // { dir, t, cx, cy, r0, rFull, rEnd, mess } in DOC space
   let crossCovered = false;
   let xCrossLast = null;    // the last computed opening, for the checks
@@ -110,13 +106,6 @@ export function createDeck({ scope, haloPx = 200 }) {
     return sheet;
   }
 
-  // The dissolve indexes the same sheet of frames the sky does, just faster.
-  // Absolute, like the weather clock, for the same reason: anything that resets
-  // it restarts the loop from frame zero, and a jump is exactly what a
-  // transition exists to hide.
-  const puffFrame = (now) =>
-    ((((now / 1000) / PUFF_LOOP_S) * clip.frames) % clip.frames);
-
   function paint(now, scrollOverride) {
     if (!ensure()) return false;
     const w = window.innerWidth, h = window.innerHeight;
@@ -165,7 +154,24 @@ export function createDeck({ scope, haloPx = 200 }) {
       const slack = feather * 1.6;
 
       let r;
-      if (cross.dir > 0) {
+      if (cross.out) {
+        // ── EATING INWARD, WHICH IS THE RETURN ──────────────────────────
+        // The number the shader gets is still one radius on one boundary. The
+        // difference is that the paper is on the INSIDE of it now, so this is
+        // the island of page still standing, shrinking from whatever covers
+        // the window. Same easing as the way out, so the two halves of a round
+        // trip are the same move mirrored.
+        //
+        // AND IT SHRINKS PAST ZERO, by the slack the ragged edge can bite. The
+        // edge is chewed by the weather, which pushes the boundary inward as
+        // well as outward; at radius zero that bite reaches through the middle
+        // and opens a hole onto the page underneath, right at the moment the
+        // screen is supposed to be solid. Measured: half a percent of the
+        // window still showing at r = 0.01, and the whole of it at r = 0.
+        const e = Math.pow(Math.min(1, cross.t), 1.45);
+        const r0 = need + slack;
+        r = r0 - (r0 + slack) * e;
+      } else if (cross.dir > 0) {
         // OUT. It aims at whatever covering the window takes at this instant,
         // and if it has not got there by the time it was meant to, it stops
         // easing and starts accelerating — so a reader who scrolls away during
@@ -177,8 +183,11 @@ export function createDeck({ scope, haloPx = 200 }) {
         const e = 1 - Math.pow(1 - Math.min(1, cross.t), 1.45);
         r = cross.rFull + (cross.rEnd - cross.rFull) * e;
       }
-      crossCovered = r >= need + slack;
-      xCross = { x: cx, y: cy, r, feather };
+      // covered means the print has the whole window either way — the opening
+      // past every corner, or the island shrunk far enough past nothing that
+      // even the deepest inward bite of the ragged edge cannot reach through it
+      crossCovered = cross.out ? r <= -feather * 1.15 : r >= need + slack;
+      xCross = { x: cx, y: cy, r, feather, out: !!cross.out };
 
       // THE RETREAT CLOSES INTO TWO PLACES AT ONCE. The new sheet arrives fully
       // covered, and with a single target the paper had to sweep the whole
@@ -207,11 +216,11 @@ export function createDeck({ scope, haloPx = 200 }) {
     // is blitted to a canvas ABOVE the words, and then once normally for the
     // sheet itself. Two draw calls and one blit, for four seconds, and only
     // then — the rest of the time this costs nothing.
-    if (eatCtx && (xCross || puff)) {
+    if (eatCtx && xCross) {
       if (eatEl.width !== w || eatEl.height !== h) { eatEl.width = w; eatEl.height = h; }
       sheet.draw({
         w, h, scrollY: sy, plate: { w: pw, h: ph }, bandPx: h,
-        inkA, inkB, alt, holes, halo, f, sky, skyRamp, puff: puff && { ...puff, f: puffFrame(now) }, cross: xCross, overlay: true
+        inkA, inkB, alt, eat, holes, halo, f, sky, skyRamp, cross: xCross, overlay: true
       });
       eatCtx.clearRect(0, 0, w, h);
       eatCtx.drawImage(canvas, 0, 0);
@@ -224,7 +233,7 @@ export function createDeck({ scope, haloPx = 200 }) {
     const ok = sheet.draw({
       w, h, scrollY: sy,
       plate: { w: pw, h: ph }, bandPx: h,
-      inkA, inkB, alt, holes, halo, f, sky, skyRamp, puff: puff && { ...puff, f: puffFrame(now) },
+      inkA, inkB, alt, eat, holes, halo, f, sky, skyRamp,
       cross: xCross
     });
     lastScroll = sy;
@@ -405,10 +414,6 @@ export function createDeck({ scope, haloPx = 200 }) {
      * Pass null to end it.
      */
     setCrossing(c) { cross = c; dirty = true; kick(); },
-    /** The return dissolve: four groups of cloud, each admitting more of the
-        window than the last. Viewport-space, so scrolling cannot escape it, and
-        independent of where the click was — any link can use it. */
-    setPuff(p) { puff = p; dirty = true; kick(); },
     /** Wind the plate on. The reader lands at the TOP of the new sheet and the
         sky is offset to compensate, so the weather does not teleport even
         though the viewport does. */
@@ -437,12 +442,16 @@ export function createDeck({ scope, haloPx = 200 }) {
     /** The gate: one hole on the home sheet pulled in a project's own pair.
         Costs two uniforms and an index — no second press, no canvas, and it
         carries the same live weather as every other hole because it IS one. */
-    /** The crossing's own pair, set before it starts so the opening spreads in
-        the colours of the sheet it is opening onto. Rides the same two uniforms
-        the gate uses — they are never both wanted at once, and when they are,
-        they want the same thing. */
-    setCrossInk(a, b) {
-      if (a) { alt = { index: alt?.index ?? -1, inkA: a, inkB: b }; dirty = true; kick(); }
+    /** THE CROSSING'S OWN PAIR, and it is its own for a reason. It used to ride
+        the two uniforms the gate uses, on the grounds that they are never both
+        wanted at once — which is true going in, where the destination has no
+        gate, and false coming back, where the home sheet has one. The instant
+        the page committed, the gate took those uniforms for its preview and the
+        opening changed colour halfway through its own retreat.
+        Pass null for the home sheet's pair. */
+    setEatInk(a, b) {
+      eat = (a || b) ? { inkA: a || null, inkB: b || null } : null;
+      dirty = true; kick();
     },
     setAltInk(el, a, b) {
       const rec = aps.find((q) => q.el === el);
