@@ -589,11 +589,16 @@ a { color:inherit; -webkit-tap-highlight-color:rgba(0,90,125,.14); }
   filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45));
 }
 
-/* THE SHEET MAKES ROOM. A project sheet puts its own name in the top-left
-   corner, which is now where the control is. Indenting that one cluster is
-   cheaper and more honest than moving the control somewhere it does not
-   belong. */
+/* THE SHEET MAKES ROOM, TOP AND BOTTOM. A project sheet is a four-corner
+   composition and the chrome lives in two of those corners: the back control
+   top-left, the chart bottom-left. Indenting the sheet's own clusters is
+   cheaper and more honest than moving the controls somewhere they do not
+   belong -- and the bottom lift also gets the headline out from under the
+   paper fade that gives the chart its margin. Measured: the chart was sitting
+   on the word "serial". */
 body.on-project .plate .corner.tl { padding-left:calc(clamp(42px, 4.4vw, 56px) + 1.1rem); }
+body.on-project .plate .corner.bl,
+body.on-project .plate .corner.br { bottom:calc(var(--pad) + 2.9rem); }
 
 
 /* ── the annotated column. Used by the project sheets (site/pages.js). ──── */

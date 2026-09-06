@@ -146,8 +146,7 @@ Measured steady state, after the print is finished:
 |---|---|
 | the ground | 0 |
 | scrolling | 0 — no listener, no parallax, no mask to move |
-| Mew's aperture, moving | 0.016 ms |
-| Mew's aperture, stationary | 0.001 ms |
+| Mew moving | 0 — she no longer carries a hole, so she no longer dirties the sheet |
 
 Registration is a property of the geometry, not something a handler maintains:
 the print is one offscreen canvas at document size, and each aperture holds
@@ -254,15 +253,24 @@ moving. Click, and the crossing opens out of that icon.
 - Four columns of real metadata. Two numbers in them are measured at runtime:
   the paper percentage and the ink coverages.
 
-### Mew's aperture (`#halo`)
-She is the only thing that can open the sheet **without a die**, so she carries a
-small soft-edged hole with her. It shows the *same print at the same document
-position* — that is the entire difference between a cut and a spotlight. Soft
-edge, because no die.
+### Mew's aperture — removed
 
-This is `RYAN.txt`'s closing sentence built as a mechanism rather than written
-as a caption: *a quiet, exact, instrumented surface, mostly empty, with a field
-underneath it that only becomes visible where something alive passes through.*
+She used to carry a small soft-edged hole with her, and it was the closing
+sentence of `RYAN.txt` built as a mechanism: *a field underneath the surface that
+only becomes visible where something alive passes through.* It is gone, by
+instruction, and the reason is that the sentence stopped being true of the
+object. On one tall sheet she was the only thing moving and the hole was how you
+knew she was part of the print. On a deck of four cards she reads better
+unaccompanied — the halo followed her everywhere and turned her from a thing on
+the page into a thing with a spotlight on it.
+
+It had a second cost worth recording: it was the one element dirtying the sheet
+on **every pixel of her movement**, so the deck now genuinely idles when nothing
+is happening.
+
+The sentence survives elsewhere. The lens above each card's name, the icon cut
+through each project card, and the disc the back control is made of are all the
+same idea — the field showing through where something opens onto it.
 
 ### The crossing — going through the hole
 You do not slide to another page. **You go through the hole you clicked.**
