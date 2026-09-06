@@ -245,7 +245,10 @@ export function createSweatDrops({ parent, config, view }) {
   function update(dt) {
     if (!running) return;
     t += dt;
-    const wpp = view.worldPerPx;
+    // sized in CHARACTER pixels, so it shrinks with her on a narrow screen.
+    // The fallback keeps the headless checks, which hand in a bare
+    // { worldPerPx: 1 }, working unchanged.
+    const wpp = view.fxPerPx ?? view.worldPerPx;
     mat.uniforms.wpp.value = wpp;
 
     for (let i = 0; i < P.length; i++) {

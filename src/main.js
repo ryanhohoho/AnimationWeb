@@ -151,6 +151,11 @@ function updateDocFxGroup() {
 // view mapping shared with pose layers
 const view = {
   worldPerPx: 0.01,
+  // what an effect pinned to the CHARACTER converts with. Equal to worldPerPx on
+  // a wide window and smaller on a narrow one, because she is smaller there --
+  // see characterPx(). Kept separate so that anything measured against the PAGE
+  // still uses worldPerPx and does not shrink with her.
+  fxPerPx: 0.01,
   modelScale: 1,
   toWorldX: (px) => (px - world.viewport.w / 2) * view.worldPerPx,
   toWorldY: (px) => (world.viewport.h / 2 - px) * view.worldPerPx
@@ -329,7 +334,7 @@ new GLTFLoader().load(mewUrl, (gltf) => {
   // mouth, where the energy should gather; only the shot moves.
   function beamOriginDoc(dir) {
     const m = mouthDoc();
-    const lead = cfg.sizing.characterHeightPx * cfg.attack.muzzleClearFactor;
+    const lead = characterPx() * cfg.attack.muzzleClearFactor;
     return { x: m.x + dir.x * lead, y: m.y + dir.y * lead };
   }
   beamFx = createBeamFx({ docFxGroup, config: cfg.attack, getMouthDoc: mouthDoc });
@@ -398,15 +403,35 @@ let sweat = null;
 let shadeFx = null;
 let limbFx = null;
 
+/**
+ * HOW BIG SHE IS ON THIS SCREEN. Linear between the two named widths, and it is
+ * one function so that her model, her physics circle, her muzzle clearance and
+ * every effect pinned to her all read the same number. Anything sized from her
+ * and NOT from this would keep the proportions of a character twice as big the
+ * moment the window narrowed.
+ */
+function characterPx() {
+  const z = cfg.sizing;
+  const w = Math.max(1, world.viewport.w);
+  const t = Math.min(1, Math.max(0, (w - z.narrowAtPx) / Math.max(1, z.wideAtPx - z.narrowAtPx)));
+  return z.narrowHeightPx + (z.characterHeightPx - z.narrowHeightPx) * t;
+}
+
 function fitModel() {
   if (!rig) return;
-  const s = (cfg.sizing.characterHeightPx * view.worldPerPx) / rig.height;
+  const px = characterPx();
+  const s = (px * view.worldPerPx) / rig.height;
   view.modelScale = s;
+  // EVERY EFFECT PINNED TO HER SCALES WITH HER, through one number. The fx
+  // modules size themselves in "character pixels" -- the sweat's temples, the
+  // stars' ring -- and convert with this instead of worldPerPx, so a spray
+  // tuned against a 150 px animal is still on her temples at 96.
+  view.fxPerPx = view.worldPerPx * (px / cfg.sizing.characterHeightPx);
   holder.scale.setScalar(s);
   // pivot: physics point sits at the body center, not the feet
   const pivotY = rig.bounds.min.y + rig.height * cfg.sizing.pivotFactor;
   holder.position.y = -pivotY * s;
-  body.radius = cfg.sizing.characterHeightPx * cfg.sizing.radiusFactor;
+  body.radius = px * cfg.sizing.radiusFactor;
 }
 
 // --- loop --------------------------------------------------------------------

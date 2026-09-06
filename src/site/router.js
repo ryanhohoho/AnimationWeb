@@ -730,6 +730,48 @@ export function createRouter({ scope, deck, world, onPage }) {
     return true;
   }
 
+  // ── THE SWIPE ────────────────────────────────────────────────────────────
+  // A phone has no arrow keys, and until this the only way through the deck was
+  // two small circles. A horizontal drag is what a thumb reaches for on
+  // something that presents itself as cards, so it drives the same step() the
+  // keyboard does -- same order, same ends, no wrap.
+  //
+  // IT NEVER CALLS preventDefault, and that is the whole design. Setting
+  // touch-action or swallowing the move would take vertical scrolling away from
+  // a page that genuinely scrolls, so instead this only WATCHES: the browser
+  // keeps the gesture, and a drag that turns out to be mostly sideways is read
+  // as an intent afterwards. The 1.5 ratio is what separates "sideways" from "a
+  // slightly untidy scroll".
+  //
+  // Touch only. A mouse drag is a selection, and a trackpad's momentum would
+  // fire this on every flick.
+  const SWIPE_MIN = 56;      // px of travel before it counts as anything
+  const SWIPE_RATIO = 1.5;   // ...and how much more sideways than vertical
+  const SWIPE_MAX_MS = 700;  // a slow drag is a scroll that wandered
+  let sw = null;
+
+  window.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "touch" || !e.isPrimary) { sw = null; return; }
+    // a sideways-scrolling box owns its own horizontal drags -- the terminal
+    // transcript on a project sheet is 87 columns wide and scrolls
+    if (e.target?.closest?.("[data-noswipe], .term")) { sw = null; return; }
+    sw = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId };
+  }, { passive: true, signal: scope?.signal });
+
+  const endSwipe = (e) => {
+    if (!sw || e.pointerId !== sw.id) return;
+    const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+    const dt = performance.now() - sw.t;
+    sw = null;
+    if (dt > SWIPE_MAX_MS) return;
+    if (Math.abs(dx) < SWIPE_MIN) return;
+    if (Math.abs(dx) < Math.abs(dy) * SWIPE_RATIO) return;
+    // drag the page leftward to bring the next card on, the way a thumb expects
+    step(dx < 0 ? 1 : -1);
+  };
+  window.addEventListener("pointerup", endSwipe, { passive: true, signal: scope?.signal });
+  window.addEventListener("pointercancel", () => { sw = null; }, { passive: true, signal: scope?.signal });
+
   window.addEventListener("keydown", (e) => {
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target;

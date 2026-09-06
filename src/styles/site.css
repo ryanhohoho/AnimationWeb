@@ -84,6 +84,10 @@
   --e: cubic-bezier(0.2,0.6,0.2,1);
   --t1:140ms; --t2:340ms; --t3:900ms;
   --pad: clamp(18px, 3.4vw, 60px);
+  /* the phone bar's height, so pages can reserve room for it in one place.
+     44px of control plus its padding; the safe-area inset is added where it is
+     used, because it is zero on everything that is not a notched phone. */
+  --bar: calc(44px + 1rem + env(safe-area-inset-bottom, 0px));
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -184,7 +188,7 @@ body.pre #doc { opacity:0; }
 .t.body.wide { max-width:42ch; }
 .t.body.sm { font-size:11px; color:var(--n3); }
 
-a { color:inherit; }
+a { color:inherit; -webkit-tap-highlight-color:rgba(0,90,125,.14); }
 .link { color:var(--blue); text-decoration:underline; text-underline-offset:.24em;
         text-decoration-thickness:1px; }
 
@@ -247,7 +251,7 @@ a { color:inherit; }
    naming it twice is exact -- while aspect-ratio is not available, because this
    is a flex item in a column and its main size is the one being derived.
    Measured with height:auto + aspect-ratio:1: a 2px dot. */
-.deck-hole {
+.ap.deck-hole {
   --dh:clamp(30px, 3.4vw, 46px);
   position:relative; left:auto; top:auto;
   width:var(--dh); height:var(--dh);
@@ -330,7 +334,14 @@ a { color:inherit; }
          gap:1.6rem; align-items:start; text-decoration:none;
          padding:1rem; margin:-1rem; border-radius:2px;
          transition:background var(--t2) var(--e); }
-.pcard:hover, .pcard:focus-visible { background:rgba(0,0,0,.025); outline:none; }
+/* HOVER IS GUARDED, ALL OF IT. A phone has no hover, so a tap latches every
+   :hover rule until you tap something else -- the card stays lifted, the video
+   stays playing, the contact row stays indented. The focus half is kept
+   unguarded on purpose: a keyboard is a keyboard on any device. */
+@media (hover:hover) {
+  .pcard:hover { background:rgba(0,0,0,.025); }
+}
+.pcard:focus-visible { background:rgba(0,0,0,.025); outline:none; }
 
 /* THE CARD IS A PIECE OF PAPER WITH A HOLE IN IT, like everything else here.
    .pcard-media is the frame and it NEVER MOVES: it was measured once, and the
@@ -381,14 +392,16 @@ a { color:inherit; }
 .pcard-zoom { position:absolute; inset:0; display:block;
               transform:scale(1); transform-origin:50% 50%;
               transition:transform 620ms cubic-bezier(0.16,1,0.3,1); }
-.pcard:hover .pcard-zoom, .pcard:focus-visible .pcard-zoom { transform:scale(1.055); }
+@media (hover:hover) { .pcard:hover .pcard-zoom { transform:scale(1.055); } }
+.pcard:focus-visible .pcard-zoom { transform:scale(1.055); }
 .pcard-still, .pcard-vid { position:absolute; inset:0;
                            width:100%; height:100%; object-fit:cover; display:block; }
 /* the video sits ON the still and is invisible until it has something to show.
    preload="none" means it is not even fetched until the first hover, so three
    cards cost three images on load and no video at all. */
 .pcard-vid { opacity:0; transition:opacity var(--t2) var(--e); }
-.pcard:hover .pcard-vid, .pcard:focus-visible .pcard-vid { opacity:1; }
+@media (hover:hover) { .pcard:hover .pcard-vid { opacity:1; } }
+.pcard:focus-visible .pcard-vid { opacity:1; }
 
 /* the white icon at rest, sitting ON the punch and filling it exactly. Its
    opacity is driven from cards.js by the same tween that opens the hole, so the
@@ -413,9 +426,12 @@ a { color:inherit; }
 .pcard-meta { display:grid; gap:.5rem; align-content:start; padding-top:.2rem; }
 .pcard-title { font-size:19px; font-weight:600; letter-spacing:-.015em;
                text-transform:lowercase; }
-.pcard:hover .pcard-title, .pcard:focus-visible .pcard-title {
-  text-decoration:underline; text-underline-offset:.24em;
-  text-decoration-thickness:1px; }
+@media (hover:hover) {
+  .pcard:hover .pcard-title { text-decoration:underline; text-underline-offset:.24em;
+                              text-decoration-thickness:1px; }
+}
+.pcard:focus-visible .pcard-title { text-decoration:underline; text-underline-offset:.24em;
+                                    text-decoration-thickness:1px; }
 .pcard-kind { font-size:9px; color:var(--n4); }
 .t.body.pcard-line { max-width:46ch; }
 
@@ -425,17 +441,19 @@ a { color:inherit; }
           padding:.75rem 0 .75rem 0;
           border-bottom:1px solid var(--n4);
           transition:padding-left var(--t2) var(--e); }
-.sock-a:hover, .sock-a:focus-visible { padding-left:.6rem; outline:none; }
+@media (hover:hover) { .sock-a:hover { padding-left:.6rem; } }
+.sock-a:focus-visible { padding-left:.6rem; outline:none; }
 .sock-k { width:6rem; flex:none; color:var(--n4); }
 .sock-v { font-size:16px; }
-.sock-a:hover .sock-v, .sock-a:focus-visible .sock-v {
-  text-decoration:underline; text-underline-offset:.24em;
-  text-decoration-thickness:1px; }
+@media (hover:hover) { .sock-a:hover .sock-v { text-decoration:underline;
+  text-underline-offset:.24em; text-decoration-thickness:1px; } }
+.sock-a:focus-visible .sock-v { text-decoration:underline;
+  text-underline-offset:.24em; text-decoration-thickness:1px; }
 .sock-arrow { margin-left:auto; color:var(--blue); opacity:0;
               transform:translateX(-6px);
               transition:opacity var(--t2) var(--e), transform var(--t2) var(--e); }
-.sock-a:hover .sock-arrow, .sock-a:focus-visible .sock-arrow {
-  opacity:1; transform:none; }
+@media (hover:hover) { .sock-a:hover .sock-arrow { opacity:1; transform:none; } }
+.sock-a:focus-visible .sock-arrow { opacity:1; transform:none; }
 /* AN UNSET LINK SAYS SO. A portfolio that links a wrong GitHub is worse than one
    that links none, so a placeholder is drawn as a placeholder until the real
    handle goes into content.js. */
@@ -461,24 +479,55 @@ a { color:inherit; }
   pointer-events:none; z-index:-1;
 }
 
-.prog { position:absolute; top:0; left:0; right:0; height:2px;
-        background:var(--n4); opacity:.35; pointer-events:none; }
-.prog i { display:block; height:100%; width:25%; background:var(--ink);
-          transition:width 420ms cubic-bezier(0.16,1,0.3,1); }
+/* THE PROGRESS RULE IS GONE. It was the same borrowed idea as the pills it sat
+   above, and with a chart in the corner the site was saying how far you had got
+   in two places at once. The chart says it better, because it also says how far
+   there is left. */
 
 .nav { position:absolute; left:var(--pad); bottom:calc(var(--pad) * .8);
-       display:flex; align-items:center; gap:1rem; }
-.nav [data-count] { font-variant-numeric:tabular-nums; color:var(--n4); }
-.dots { display:flex; gap:.4rem; align-items:center; }
-.dots a { display:block; padding:.5rem .1rem; }
-/* a pill that STRETCHES rather than a dot that fills: the current position is
-   legible from the shape at a glance, without needing the colour */
-.dots i { display:block; height:3px; width:3px; border-radius:2px;
-          background:var(--n4);
-          transition:width var(--t2) var(--e), background var(--t2) var(--e); }
-.dots a:hover i { background:var(--n3); }
-.dots a.on i { width:22px; background:var(--ink); }
-.dots a.under i { width:22px; background:var(--n3); }
+       display:flex; align-items:center; gap:.85rem; }
+
+/* ── THE CHART ─────────────────────────────────────────────────────────────
+   Four cells of squared canvas with a shared grid. The borders overlap by a
+   pixel so the rule between two cells is ONE line, the way a chart is ruled --
+   two abutting borders would draw it at double weight and the grid would read
+   as a row of separate boxes instead of as one piece of canvas. */
+.chart { display:flex; align-items:center; }
+.stitch {
+  display:block; width:19px; height:19px; flex:none;
+  border:1px solid var(--n4); margin-left:-1px;
+  text-decoration:none;
+  transition:background var(--t2) var(--e);
+}
+.stitch:first-child { margin-left:0; }
+.stitch svg { display:block; width:100%; height:100%; overflow:visible; }
+/* the stitch itself: two crossed threads, in the one ink no project may own */
+.stitch path {
+  fill:none; stroke:var(--blue); stroke-width:2; stroke-linecap:round;
+  opacity:0;
+  transition:opacity var(--t2) var(--e);
+}
+@media (hover:hover) {
+  .stitch:hover { background:rgba(0,0,0,.05); }
+  .stitch:hover path { opacity:.3; }
+}
+.stitch.done path { opacity:.42; }          /* worked, and behind you */
+.stitch.on path   { opacity:1; }            /* worked, and where you are */
+/* ...and the one you are standing INSIDE is doubled: a second thread, offset,
+   which is what a chart does to say a cell carries more than one pass */
+.stitch.deep { background:rgba(0,90,125,.10); }
+.stitch.deep svg { transform:scale(.78); }
+.stitch.deep path { opacity:1; }
+
+.legend { display:flex; align-items:center; gap:.45rem;
+          font-variant-numeric:tabular-nums; color:var(--n4); }
+/* the legend's own key mark, drawn the same way the worked cell is */
+.legend-key {
+  display:block; width:9px; height:9px; flex:none;
+  background:
+    linear-gradient(to bottom right, transparent 44%, var(--blue) 44%, var(--blue) 56%, transparent 56%),
+    linear-gradient(to bottom left,  transparent 44%, var(--blue) 44%, var(--blue) 56%, transparent 56%);
+}
 
 .keys { position:absolute; right:var(--pad); bottom:calc(var(--pad) * .8);
         color:var(--n4); display:flex; align-items:center; gap:.3rem; }
@@ -522,7 +571,8 @@ a { color:inherit; }
   transition:transform var(--t2) var(--e);
 }
 .backarrow[hidden] { display:none; }
-.backarrow:hover, .backarrow:focus-visible { transform:translateX(-3px); outline:none; }
+@media (hover:hover) { .backarrow:hover { transform:translateX(-3px); } }
+.backarrow:focus-visible { transform:translateX(-3px); outline:none; }
 
 /* the die is CSS: the canvas is square and border-radius cuts the circle out of
    it, so the shader never has to know the control is round */
@@ -733,24 +783,100 @@ body.on-project .plate .corner.tl { padding-left:calc(clamp(42px, 4.4vw, 56px) +
   .deck-in { padding-top:clamp(1.4rem,4vh,2.4rem); gap:1.2rem; }
   .deck-hour { position:absolute; top:var(--pad); right:var(--pad);
                text-align:right; width:auto; }
-  /* the generic .ap rule above turns every aperture into a full-width flowing
-     block, which is right for a die-cut inside a composition and wrong for a
-     lens: a circle that fills the column is a porthole */
-  .deck-hole { --dh:clamp(28px, 8.5vw, 40px); }
+  /* THE SELECTOR HAS TO BE .ap.deck-hole, and the narrow rule has to restate
+     the width. `.ap:not(.icon)` above is (0,2,0) -- :not() takes its argument's
+     specificity -- so a bare `.deck-hole` at (0,1,0) loses to it and the lens
+     inherited `width:100%`. That is right for a die-cut inside a composition,
+     which should become a flowing band on a phone, and completely wrong for a
+     lens: a circle the full width of the column is a porthole. Measured: 2 px,
+     because 100% of a zero-width probe viewport is zero. */
+  .ap.deck-hole {
+    --dh:clamp(28px, 8.5vw, 40px);
+    width:var(--dh); height:var(--dh);
+  }
 
   .pcard { grid-template-columns:1fr; gap:1rem; }
   .pcard-media { --icon:clamp(58px, 22%, 96px); }
   .row-loc { margin-left:0; width:100%; }
 
-  /* the phone has no arrow keys, so the only way through the deck appears */
-  .mob { display:flex; }
+  /* ── THE BAR ─────────────────────────────────────────────────────────
+     On a phone the navigation stops floating and becomes a bar. Everything
+     that used to hang over the content -- the two arrow circles at the right
+     edge, the counter sitting on the last line of the page -- moves into one
+     band at the foot, on its own ground, out of the way of everything.
+
+     It is also the only place a control can live on a phone without competing:
+     a fixed thing anywhere else is a fixed thing on top of the reading. */
+  .nav {
+    left:0; right:0; bottom:0;
+    padding:.5rem var(--pad);
+    padding-bottom:calc(.5rem + env(safe-area-inset-bottom, 0px));
+    padding-left:calc(var(--pad) + env(safe-area-inset-left, 0px));
+    padding-right:calc(var(--pad) + env(safe-area-inset-right, 0px));
+    background:var(--paper);
+    border-top:1px solid var(--n4);
+    justify-content:space-between;
+    gap:.6rem;
+  }
+  /* the bar IS the ground now, so the fade that used to stand in for one is
+     just a veil over the bottom tenth of every screen */
+  #chrome::after { display:none; }
+
+  .mob { position:static; display:flex; flex-direction:row; gap:.45rem;
+         transform:none; margin-left:auto; }
   .keys { display:none; }
-  .nav { bottom:calc(var(--pad) * .55); }
-  .backarrow { left:calc(var(--pad) * .55); }
+
+  /* ── ROOM FOR IT ─────────────────────────────────────────────────────
+     Reserved rather than overlaid. A fixed bar over a scrolling page hides the
+     last line of every card, and "scroll a bit further" is not an answer when
+     the last line is a link. */
+  .plate, .deckpage { padding-bottom:calc(var(--bar) + var(--pad)); }
+
+  /* ── AND THE CARD FITS THE VISIBLE WINDOW ────────────────────────────
+     100lvh is the height with the browser toolbars RETRACTED, so on an iPhone
+     with them showing every card was about 140 px taller than the screen and
+     the deck's "one card, one screen" premise quietly stopped being true.
+     100svh is the other end -- the height with them shown -- and it is just as
+     STABLE, which matters: 100dvh tracks the toolbar and would fire a resize,
+     and a resize remeasures every aperture on the page. */
+  .deckpage { min-height:100svh; }
+
+  .backarrow { left:calc(var(--pad) * .55 + env(safe-area-inset-left, 0px));
+               top:calc(var(--pad) * .55 + env(safe-area-inset-top, 0px)); }
+
+  /* ── TOUCH TARGETS ───────────────────────────────────────────────────
+     A chart cell was 19 px of canvas, which is a fine mark and an impossible
+     target. The cell keeps its drawn size and grows a transparent pad around
+     it, so the chart still reads as a chart and the thing you press is 44 px.
+     Same for the inline links, which were a 20 px line box. */
+  .stitch { width:26px; height:26px; }
+  .chart { position:relative; }
+  .stitch::after { content:""; position:absolute; top:50%; left:0;
+                   width:100%; height:44px; transform:translateY(-50%); }
+  .mob-b { width:44px; height:44px; font-size:19px; }
+  .hint .link, .back-hint .link, .cap.pad + * .link { padding:.7rem 0; display:inline-block; }
+
+  /* a fixed 6rem label column is 28% of a 375 px row for a five-letter word */
+  .sock-k { width:auto; min-width:4.6rem; }
+  .socks { gap:.35rem; }
+
+  /* 11ch resolves against the BLOCK's font size, not the 10px label's, so the
+     track was 105 px -- a third of the column -- for the word CLAIM */
+  .check { grid-template-columns:auto 1fr; gap:.2rem .8rem; }
+  .rows { gap:1.6rem; }
 }
 @media (max-width:560px){
+  /* BOTH OF THESE HAD TO GAIN A CLASS. `.d` is (0,1,0) and `.d.sm` is (0,2,0),
+     so every deck heading ignored the small-screen size and stayed at 27px;
+     `.t.body` is (0,2,0) and `.t.body.wide` is (0,3,0), so 27 paragraphs on the
+     project sheets kept a 42ch measure inside a 339px column. Matching the
+     specificity is the fix -- widening the base rules is not, because 30ch is
+     correct for the annotation column those were set for. */
   .d { font-size:clamp(32px,9vw,46px); }
-  .t.body { max-width:none; }
+  .d.sm { font-size:clamp(24px,7.2vw,34px); }
+  .t.body, .t.body.wide, .t.body.bio, .t.body.row-what, .t.body.pcard-line { max-width:none; }
+  .row-org { font-size:15px; }
+  .name { font-size:clamp(34px,11vw,52px); }
 }
 
 /* ══ REDUCED MOTION ══════════════════════════════════════════════════════
@@ -762,10 +888,10 @@ body.on-project .plate .corner.tl { padding-left:calc(clamp(42px, 4.4vw, 56px) +
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto;}
   #doc,#sheet{transition:none;}
+  .stitch path{transition:none;}
   .deck-in > *, .rows > li, .cards > li, .socks > li {
     animation:none; opacity:1; transform:none;
   }
   .pcard-zoom { transition:none; }
   .pcard:hover .pcard-zoom, .pcard:focus-visible .pcard-zoom { transform:none; }
-  .prog i { transition:none; }
 }

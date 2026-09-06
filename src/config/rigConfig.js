@@ -421,7 +421,21 @@ export const rigConfig = {
   },
 
   sizing: {
-    characterHeightPx: 150,   // on-screen height of the model
+    characterHeightPx: 150,   // on-screen height of the model, on a wide window
+    // ── AND SHE IS SIZED FOR THE SCREEN SHE IS ON ──────────────────────────
+    // 150 px is 12% of a 1280 px window and 38% of a phone: the same animal,
+    // reading as a companion on one and as an obstruction on the other. She has
+    // no colliders any more -- by instruction, so she can go where she likes --
+    // which means on a phone she simply sits on the words.
+    //
+    // The two ends are named rather than a ratio, because what matters is her
+    // size against the COLUMN, and the column stops growing at the deck's
+    // 60rem measure. Between them it is linear. 96 px is 25% of a 390 px phone,
+    // which is about where a character stops being furniture and starts being
+    // company again.
+    narrowHeightPx: 96,
+    narrowAtPx: 380,
+    wideAtPx: 900,
     // physics circle radius = height * this. measured: with the rotation centre
     // at the root joint the furthest body vertex sits at 0.598 x height, the
     // 90th percentile at 0.484, so 0.50 covers ~93% of the character and leaves

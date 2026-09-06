@@ -238,7 +238,10 @@ export function createStarBurst({ parent, config, view }) {
   function update(dt) {
     if (!running) return 0;
     t += dt;
-    const wpp = view.worldPerPx;
+    // sized in CHARACTER pixels, so it shrinks with her on a narrow screen.
+    // The fallback keeps the headless checks, which hand in a bare
+    // { worldPerPx: 1 }, working unchanged.
+    const wpp = view.fxPerPx ?? view.worldPerPx;
     let done = true;
     for (let i = 0; i < active; i++) {
       const s = P[i];

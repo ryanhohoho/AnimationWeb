@@ -26,7 +26,6 @@ export function createChrome({ scope, deck }) {
   if (!root) return { setPage() {} };
 
   const count = root.querySelector("[data-count]");
-  const prog = root.querySelector("[data-prog]");
   const dots = [...root.querySelectorAll("[data-dot]")];
   const prev = root.querySelector("[data-prev]");
   const next = root.querySelector("[data-next]");
@@ -45,22 +44,29 @@ export function createChrome({ scope, deck }) {
     // control, which is why this is on the BODY and not on the chrome
     document.body.classList.toggle("on-project", isProject);
 
-    // ── the counter and the rule ────────────────────────────────────────
-    // On a project sheet they count PROJECTS, because that is the list the
-    // reader is actually inside. A deck position of "03 / 04" while you are two
-    // levels down it is a number about somewhere you are not.
-    const i = isProject ? proj : Math.max(0, onDeck);
-    const n = isProject ? PROJECTS.length : DECK.length;
-    if (count) count.textContent = `${pad(i + 1)} / ${pad(n)}`;
-    if (prog) prog.style.width = `${((i + 1) / n) * 100}%`;
-
-    for (const d of dots) {
-      const k = d.getAttribute("data-dot");
-      d.classList.toggle("on", !isProject && k === name);
-      // a project sheet hangs off card three, so that is the one still lit
-      d.classList.toggle("under", isProject && k === "projects");
-      if (!isProject && k === name) d.setAttribute("aria-current", "page");
+    // ── THE CHART ALWAYS COUNTS THE DECK ────────────────────────────────
+    // Four cells, always, even two levels down -- because the chart is the whole
+    // piece and a stitch chart that changed size as you moved through it would
+    // not be a chart. A project sheet is not a fifth card, it is somewhere
+    // INSIDE card three, so card three is worked and doubled and the legend says
+    // which of the three you are on. That is one sentence about one place,
+    // rather than two numbers about two.
+    const here = Math.max(0, onDeck < 0 && isProject ? DECK.indexOf("projects") : onDeck);
+    for (let k = 0; k < dots.length; k++) {
+      const d = dots[k];
+      const cur = isProject ? k === DECK.indexOf("projects") : k === here;
+      d.classList.toggle("on", cur);
+      // stitches behind you stay worked, in a faded thread: a chart fills in
+      d.classList.toggle("done", k < here && !cur);
+      // ...and the one you are standing INSIDE is doubled
+      d.classList.toggle("deep", cur && isProject);
+      if (cur) d.setAttribute("aria-current", "page");
       else d.removeAttribute("aria-current");
+    }
+    if (count) {
+      count.textContent = isProject
+        ? `${pad(here + 1)} / ${pad(DECK.length)} — ${pad(proj + 1)} of ${pad(PROJECTS.length)}`
+        : `${pad(here + 1)} / ${pad(DECK.length)}`;
     }
 
     // ── the mobile arrows ───────────────────────────────────────────────
