@@ -60,6 +60,11 @@ A personal portfolio site that is **one document**, printed as a **two-ink riso
 sky** seen through **die-cut apertures**, with **Mew** — a procedurally animated
 3D character — loose on the page as the only unprinted thing on it.
 
+It reads as a **deck of four cards** — summary, experience, projects, contact —
+driven by the arrow keys, with three project sheets hanging off the projects card
+as long scrolling documents. The deck shape exists so the work survives being
+skimmed; the sheet it is cut from has not changed.
+
 Vite + Three.js, no framework, no CSS library. Real routes via the History API,
 because Mew is a live WebGL context with physics and a brain: a real navigation
 would kill her, so the SHEET changes, not the window.
@@ -96,6 +101,18 @@ Sky pipeline (only if the cloud field itself changes):
 ```bash
 node tools/bake_sky.mjs assets-source/<clip>.mp4 20 320   # -> src/assets/media/sky-field.webp
 ```
+
+Icon pipeline (only if a project's icon changes, or a project is added):
+
+```bash
+node tools/bake_icons.mjs        # tools/icons/*  ->  icon-atlas.png, glyph-*.png,
+                                 #                    src/site/iconatlas.js
+```
+
+`src/site/iconatlas.js` is **generated — do not edit it.** Add a project by
+dropping its icon in `tools/icons/`, adding a cell to `CELLS` in the tool, and
+re-running it. The words live in `src/site/content.js`, in one file, because copy
+is the thing most likely to change.
 
 ## Working rules — non-negotiable
 
@@ -162,6 +179,21 @@ when only the numbers were.
   keeps its own state; never smooth on `bone.quaternion` directly.
 - **InstancedMesh: `frustumCulled = false`.** The bounding volume sits at the
   fx-group origin, which is nearly always off camera.
+- **Never hold a deck icon RECORD across a `measure()`.** It rebuilds every one
+  of them, so anything keyed on record identity is silently dropped on the next
+  resize or font load. Key on the ELEMENT.
+- **A hidden element has no rectangle and is never measured.** Reveal it,
+  remeasure, then ask the deck for a hole in it — in that order.
+- **A CSS percentage in a custom property is two different lengths.**
+  `width:var(--icon); height:var(--icon)` resolves against the box's width and
+  against its height respectively, so a 4:3 box makes a square drawing oblong.
+  Use `aspect-ratio` for the second axis.
+- **Nothing on a hover or scroll path may read layout.** The card's hover scales
+  the picture INSIDE a fixed frame for exactly this reason: the hole has to stay
+  where it was measured.
+- **`data-collider` appears nowhere in the site markup**, by instruction — Mew
+  passes through everything now. The collision engine is intact and still tested;
+  putting the attribute back on an element turns it on again.
 
 The full catalogue, with the failures that produced each one, is in `STATE.md`
 under **Traps already paid for**. Read it before debugging anything that smells

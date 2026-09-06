@@ -23,3 +23,14 @@ Thumbs.db
 # Python bytecode
 __pycache__/
 *.pyc
+
+# ── reference material, not site code ────────────────────────────────────────
+# aesthetic-images/ is the ~200-image taste board RYAN.txt was distilled from
+# (52 MB); roy/ is a clone of the portfolio the deck's flow was studied from and
+# carries its own .git. Both are inputs to decisions, not inputs to the build.
+aesthetic-images/
+roy/
+
+# personal details. The resume is where content.js's copy came from and it
+# carries a phone number and a home address; the site needs neither.
+Ryan Resume.txt

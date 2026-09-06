@@ -29,7 +29,7 @@ import { createFaceOverlay } from "./engine/fx/faceOverlay.js";
 import { lerp } from "./utils/math.js";
 import { createScope } from "./utils/lifecycle.js";
 import { createDeck } from "./site/deck.js";
-import { createGate } from "./site/gate.js";
+import { createChrome } from "./site/chrome.js";
 import { createRouter } from "./site/router.js";
 import { mountPage } from "./site/pages.js";
 import "./styles/site.css";
@@ -48,12 +48,7 @@ const world = createWorld({ seed: 20260719 });
 // already exists, rather than the page waiting on a 400 KB glb to look like
 // anything at all.
 const siteScope = createScope("site");
-const deck = createDeck({
-  scope: siteScope,
-  // her hole is half again her own height: big enough to read as a cut she is
-  // carrying, small enough that it never becomes a spotlight following a cursor
-  haloPx: Math.round(rigConfig.sizing.characterHeightPx * 1.5)
-});
+const deck = createDeck({ scope: siteScope });
 
 // ROUTING WITHOUT NAVIGATION. Mew is a live WebGL context with physics and a
 // brain; a real page load would kill her and start a new one, and she has to
@@ -62,6 +57,13 @@ const deck = createDeck({
 // committed -- that is the whole leak story for navigation (utils/lifecycle.js).
 let pageScope = null;
 siteScope.add(() => pageScope?.dispose());
+
+// THE CHROME OUTLIVES EVERY PAGE, so it is built once on the site scope and only
+// updated afterwards. It is the counter, the dots, the rule, the mobile arrows
+// and the back arrow -- all of which sit outside #doc precisely so that the
+// wholesale swap below cannot destroy and rebuild them once per navigation.
+const chrome = createChrome({ scope: siteScope, deck });
+
 createRouter({
   scope: siteScope,
   deck,
@@ -69,8 +71,10 @@ createRouter({
   onPage(route) {
     pageScope?.dispose();
     pageScope = createScope("page");
-    createGate({ scope: pageScope, deck });   // only the home sheet has one
     mountPage(route, { scope: pageScope, deck });
+    // after mountPage: the cards clear the masked hole as they are disposed, and
+    // on a project sheet the back arrow is the thing that claims it next
+    chrome.setPage(route);
   }
 });
 document.body.classList.remove("pre");
@@ -428,10 +432,12 @@ const loop = createLoop({
       py = Math.round(py / snap) * snap;
     }
     characterRoot.position.set(view.toWorldX(px), view.toWorldY(py), 0);
-    // the hole she carries. Viewport coords, same as her own render position,
-    // so it can never drift off her -- and it early-outs on whole pixels, so a
-    // stationary mew costs nothing.
-    deck?.setHalo(px, py);
+    // SHE NO LONGER CARRIES A HOLE. She used to open a soft-edged aperture
+    // wherever she went, which was the right idea on a single tall sheet where
+    // she was the only thing moving. On a deck of four cards she reads better
+    // as herself, unaccompanied -- and the hole she carried was the one thing
+    // on the page dirtying the sheet on every pixel of her movement, so the
+    // deck now genuinely idles when nothing is happening.
     aimKey();
     updateDocFxGroup();
     // the sparkle drives the material flash: one clock, so the stars and the

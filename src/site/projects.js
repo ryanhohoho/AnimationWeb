@@ -27,9 +27,13 @@ export const PROJECTS = [
     sub: "batch engraving + encryption tooling · rcmp",
     kind: "SYSTEMS TOOLING · COMMISSIONED",
     year: "2025",
-    // The gate caption is a lede, not a summary. One sentence that says what
-    // the work is worth; the argument is on the sheet it opens.
-    line: "Two command-line tools that took the manual step out of an RCMP hardware pipeline: asset numbers are no longer typed into the engraver pocket by pocket, and drives are no longer encrypted one at a time.",
+    // ONE SENTENCE, WITH THE NUMBER IN IT.
+    // This used to be a gate caption -- read while standing in front of one
+    // project, with nothing competing for the attention. It is a CARD in a list
+    // now, and someone is deciding in a few seconds which of three to open, so
+    // the job changed: not "what is this worth" but "what is this, and why is it
+    // hard". The argument still lives on the sheet it opens.
+    line: "Reverse-engineered a laser cutter's undocumented project format so 10,000 drives could be engraved and encrypted without anyone typing a serial by hand.",
     skills: "POWERSHELL · BITLOCKER / XTS-AES · WINDOWS STORAGE APIS · PYTHON · HUNGARIAN ASSIGNMENT · OPERATOR SOP",
     inkA: "#16305C",   // deep navy: the sky of this sheet
     ink: "#23262B",    // near-black
@@ -43,7 +47,7 @@ export const PROJECTS = [
     sub: "outfit generation engine · learned aesthetic judge",
     kind: "ONGOING · ALGORITHM",
     year: "2026—",
-    line: "Every wardrobe app maximises similarity under fixed weights and a fixed piece count, so it collapses to the closet's average item — one shawl in 24 of 24 outfits, measured. This one picks a statement piece first and adds a piece only while it contributes more than it costs. Then the harder half: a judge that can tell whether the result is any good.",
+    line: "Outfit generation that optimises for interest rather than similarity, because maximising similarity collapses a wardrobe to one shawl in 24 of 24 outfits.",
     skills: "CLIP IMAGE EMBEDDINGS · DEEPSETS SET ENCODER · CONSTRAINT SEARCH · VLM INTAKE · PGVECTOR · FASTAPI · SWIFTUI",
     // TWO NEUTRAL GREYS THAT ARE NOT NEUTRAL IN THE CAN, for the same reason
     // the home sheet's blue is not a blue in the can: the press puts the paper
@@ -76,7 +80,7 @@ export const PROJECTS = [
     sub: "classroom participation · security case study",
     kind: "SECURITY · CASE STUDY",
     year: "2025",
-    line: "An industry-standard attendance system, adopted institution-wide, that asks the machine being measured to grade itself — and then sends that machine the answer to its own check. A study of what a participation mark is actually evidence of.",
+    line: "A classroom attendance system that asks the device being measured to grade itself, and trusts the answer. Written up as a case study, not a tool.",
     skills: "REVERSE ENGINEERING · CLIENT-SIDE TRUST · MV3 EXTENSIONS · DISCLOSURE",
     inkA: "#3576C4",   // his blue
     ink: "#4FAEA6",    // his teal

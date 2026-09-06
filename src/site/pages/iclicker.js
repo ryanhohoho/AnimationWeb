@@ -43,11 +43,11 @@ export function html(p) {
       <p class="t">2025</p>
     </div>
 
-    <div class="ap tall" data-ap data-collider style="--x:57%; --y:12%; --w:25%; --h:64%"></div>
+    <div class="ap tall" data-ap style="--x:57%; --y:12%; --w:25%; --h:64%"></div>
     <p class="t dim cap" style="--x:57%; --y:78%">PL.&nbsp;03&nbsp;—&nbsp;CERULEAN&nbsp;+&nbsp;${inkName}</p>
 
     <div class="corner bl">
-      <h1 class="d" data-collider style="max-width:19ch">a mark that<br />anything can make<br /><em>is not attendance</em></h1>
+      <h1 class="d" style="max-width:19ch">a mark that<br />anything can make<br /><em>is not attendance</em></h1>
     </div>
     <div class="corner br">
       <p class="t dim">FIVE&nbsp;PLATES.&nbsp;NO&nbsp;METHOD&nbsp;IS&nbsp;PUBLISHED&nbsp;HERE.</p>
@@ -65,7 +65,7 @@ export function html(p) {
     </div>
     <div class="corner tr"><p class="t dim"><span data-at>—</span></p></div>
 
-    <div class="checks" data-collider>
+    <div class="checks">
       <div class="check">
         <dt>CLAIM</dt><dd class="claim">“the student is in the classroom”</dd>
         <dt>ANSWERED&nbsp;BY</dt><dd>NAVIGATOR.GEOLOCATION</dd>
@@ -106,7 +106,7 @@ export function html(p) {
     </div>
     <div class="corner tr"><p class="t dim"><span data-at>—</span></p></div>
 
-    <div class="spec wide-col" data-collider>
+    <div class="spec wide-col">
       <div class="doc">{ "session": {<br />
 &nbsp;&nbsp;"id": "…", "state": "RUNNING",<br />
 &nbsp;&nbsp;<span class="ring">"instructorLocation": { "lat": …, "lon": … }</span><br />
@@ -178,7 +178,7 @@ export function html(p) {
     <div class="corner tl"><p class="t">04&nbsp;—&nbsp;DISCLOSURE</p></div>
     <div class="corner tr"><p class="t dim"><span data-at>—</span></p></div>
 
-    <div class="cols" data-collider>
+    <div class="cols">
       <div><p class="t dim">FRAMING</p><p class="t body">A study of a system, not
         a method for defeating one. No procedure is published here.</p></div>
       <div><p class="t dim">CONSENT</p><p class="t body">Built and run with the

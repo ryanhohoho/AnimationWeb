@@ -100,11 +100,11 @@ export function html(p) {
       <p class="t">2026—</p>
     </div>
 
-    <div class="ap tall" data-ap data-collider style="--x:57%; --y:12%; --w:25%; --h:64%"></div>
+    <div class="ap tall" data-ap style="--x:57%; --y:12%; --w:25%; --h:64%"></div>
     <p class="t dim cap" style="--x:57%; --y:78%">PL.&nbsp;02&nbsp;—&nbsp;CERULEAN&nbsp;+&nbsp;${inkName}</p>
 
     <div class="corner bl">
-      <h1 class="d" data-collider style="max-width:19ch">an outfit engine,<br />and a judge that<br /><em>actually grades it</em></h1>
+      <h1 class="d" style="max-width:19ch">an outfit engine,<br />and a judge that<br /><em>actually grades it</em></h1>
     </div>
     <div class="corner br">
       <p class="t dim">SIX&nbsp;PLATES.&nbsp;EVERY&nbsp;NUMBER&nbsp;ON&nbsp;THIS&nbsp;SHEET&nbsp;IS&nbsp;MEASURED.</p>
@@ -122,7 +122,7 @@ export function html(p) {
     </div>
     <div class="corner tr"><p class="t dim"><span data-at>—</span></p></div>
 
-    <div class="spec wide-col" data-collider>
+    <div class="spec wide-col">
       <p class="t dim">V2,&nbsp;ON&nbsp;A&nbsp;115-ITEM&nbsp;POOL&nbsp;·&nbsp;24&nbsp;OUTFITS</p>
       <dl class="tab">
         <dt>“Contrast trim shawl”</dt><dd>24 / 24</dd>
@@ -175,7 +175,7 @@ export function html(p) {
     </div>
     <div class="corner tr"><p class="t dim"><span data-at>—</span></p></div>
 
-    <div class="spec term-col" data-collider>
+    <div class="spec term-col">
       <div class="term" data-term><div data-lines></div></div>
       <p class="t dim">FIG.&nbsp;1&nbsp;—&nbsp;ONE&nbsp;COMPOSITION,&nbsp;EXPLAINING&nbsp;ITSELF.</p>
     </div>
@@ -222,7 +222,7 @@ export function html(p) {
     </div>
     <div class="corner tr"><p class="t dim"><span data-at>—</span></p></div>
 
-    <div class="spec wide-col" data-collider>
+    <div class="spec wide-col">
       <p class="t dim body wide">An engine cannot grade itself, so there was an
         independent harness — a stylist-rules judge checking formality spread,
         value mush, mixed metals, print stacking, duplicates. It had scored the
@@ -331,7 +331,7 @@ export function html(p) {
     <div class="corner tl"><p class="t">05&nbsp;—&nbsp;COLOPHON</p></div>
     <div class="corner tr"><p class="t dim"><span data-at>—</span></p></div>
 
-    <div class="cols" data-collider>
+    <div class="cols">
       <div><p class="t dim">STATUS</p><p class="t body">Ongoing. Engine v3 and
         the learned judge are in; a personal judge is waiting on saved looks.</p></div>
       <div><p class="t dim">STACK</p><p class="t body">Python · FastAPI ·

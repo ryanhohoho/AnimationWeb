@@ -10,19 +10,17 @@
 //      construction, with nothing maintained per frame.
 //   2. Redraw only when something has actually changed — a scroll, a tick of
 //      the cloud loop, Mew moving, an ink change, a resize, a new page.
-//   3. Keep Mew's hole following her. It is now the same kind of object as
-//      every other hole and carries the same moving weather, which the previous
-//      build could not do at any price.
-//   4. Run any OTHER press the page needs — the gate's three project plates,
-//      which are still JS stills — off a per-frame time budget so two printers
-//      can never add up to a dropped frame.
+//   3. Slide and fade the die-cuts with the page during a turn, so an aperture
+//      leaves with the type it is cut around.
+//   4. Run any OTHER press the page needs off a per-frame time budget, so two
+//      printers can never add up to a dropped frame.
 //   5. Measure the numbers the colophon prints, off the real renderer.
 //
 // WHAT CHANGED, AND WHAT IT COST
 // ------------------------------
 // There used to be a document-tall offscreen plate rendered pixel by pixel in
 // JavaScript (~300 ms), one 2D canvas per hole blitting its own rectangle out
-// of it, a separate canvas for Mew's halo, and a full reprint whenever the
+// of it, a separate canvas per moving hole, and a full reprint whenever the
 // second ink changed. All of that is gone. In exchange, scrolling is no longer
 // free: it used to cost EXACTLY zero because every hole was a static bitmap
 // already sitting at its document position, and it now costs one shader pass.
@@ -30,15 +28,31 @@
 import { createPress } from "./sky.js";
 import { createSheetPress } from "./pressgl.js";
 import { loadSkyClip, hasSkyClip } from "./skyclip.js";
+import { loadIconAtlas, hasIconAtlas, cellUV } from "./iconatlas.js";
 
 const BUDGET_MS = 5;
+// ── WHAT TIME IT IS ON A SKY BUTTON ─────────────────────────────────────────
+// A die-cut shows the print at ITS OWN document position, and that rule is what
+// makes a hole a hole rather than a spotlight. A sky BUTTON is not a hole -- it
+// is a disc of print painted over the page -- so the rule does not bind, and
+// following it was actively wrong: pinned to the top of a sheet the control sat
+// where the plate is at its very brightest, and a white arrow on it was
+// invisible. Measured at scroll 0: mean 228,224,224 against bone paper at
+// 239,237,230.
+//
+// So it prints at a fixed hour instead: 2,640 px down pressgl's REF_H of 4,000,
+// which is v = 0.66, about 22:40, and measures mean 82,135,174. The WEATHER is
+// still the weather where the button actually is, so it drifts and lives; only
+// the time of day is held. It is also the right meaning -- the control is a
+// window onto where you are GOING, and where you are going is the work.
+const SKY_BTN_DEPTH = 2640;
 const LOOP_S = 16;        // seconds for one pass of the clip. The source is
                           // ten, so this is about 0.6x speed: weather, not
                           // time-lapse.
 const FPS = 20;           // the cloud loop's own rate. A printed animation is
                           // shot on twos or fours; 60 fps of halftone boils.
 
-export function createDeck({ scope, haloPx = 200 }) {
+export function createDeck({ scope }) {
   const canvas = document.getElementById("sheet");
   const eatEl = document.getElementById("eat");
   const eatCtx = eatEl ? eatEl.getContext("2d") : null;
@@ -53,8 +67,15 @@ export function createDeck({ scope, haloPx = 200 }) {
   let inkA = null;          // the plate's FIRST ink;  null = the home sheet's
   let inkB = null;          // the plate's second ink; null = the home sheet's
   let pw = 0, ph = 0;       // the document
-  let haloMode = "print";
-  let halo = null;          // { x, y, r } in viewport pixels
+  let roundIndex = -1;      // the one aperture drawn as a circle, or -1
+  // ── THE PAGE TURN MOVES THE HOLES TOO ────────────────────────────────────
+  // A die-cut is a rectangle of the DOCUMENT held in a uniform, which is what
+  // keeps it registered while the page scrolls under it -- and is exactly why it
+  // used to sit perfectly still and perfectly opaque while a fade slid the type
+  // thirty pixels out from under it and dissolved it. The router owns both
+  // numbers during a turn and hands them here.
+  let docDX = 0;            // px, the same offset #doc is carrying
+  let docFade = 1;          // 0..1, the same opacity #doc is carrying
   let sky = 0;              // the WEATHER's offset — held for good
   let skyRamp = 0;          // the TIME's offset — eased back after a crossing
   let cross = null;         // { dir, t, cx, cy, r0, rFull, rEnd, mess } in DOC space
@@ -62,6 +83,29 @@ export function createDeck({ scope, haloPx = 200 }) {
   let xCrossLast = null;    // the last computed opening, for the checks
   let clip = null;
   let clipSettled = !hasSkyClip;
+  // ── THE ONE MASKED HOLE ────────────────────────────────────────────────
+  // Icons are measured into their own list rather than into aps/holes. If they
+  // went in with everything else, all three project icons would be measured as
+  // die-cuts and open as SQUARE sky windows at rest, which is the opposite of
+  // the design: an icon is solid white until you point at it. They also must
+  // not shift the flattened index setAltInk holds.
+  let icons = [];           // { el, cell, fixed, box }
+  let mask = null;          // { rec, amt } — at most one, see uMaskBox
+  let atlas = null;         // the decoded glyph atlas
+  let atlasUp = false;      // ...and whether the press has it yet
+  // ── A CONTROL THAT IS MADE OF SKY, AND SITS ABOVE THE PAGE ───────────────
+  // Every other hole is cut in #sheet, at z1, under the type. That is right for
+  // a die-cut in a composition and impossible for a CONTROL: the back arrow on
+  // a project sheet has to stay legible over whatever the page happens to put
+  // beneath it, and no z-index can lift a hole out of a layer that is under the
+  // words by construction.
+  //
+  // So its pixels are taken with an extra pass of the same press, limited by the
+  // scissor to that one button's rectangle -- about three thousand fragments
+  // against a million, which is nothing -- and blitted into a small 2D canvas
+  // that lives up in the chrome. The circle is CSS: the canvas is square and
+  // border-radius does the die.
+  let skyBtns = [];         // { el, cv, ctx, box }  box in VIEWPORT px
 
   let raf = 0;
   let dirty = true;
@@ -92,6 +136,67 @@ export function createDeck({ scope, haloPx = 200 }) {
     if (sheet && holes.length > sheet.maxHoles) {
       console.warn(`deck: ${holes.length} holes, shader carries ${sheet.maxHoles}`);
     }
+    // ── ICONS, AND THE ONES THAT DO NOT SCROLL ───────────────────────────
+    // A fixed aperture — the back arrow on a project sheet — has a document
+    // rectangle that changes on every scroll tick and a VIEWPORT rectangle that
+    // never changes at all. So the viewport box is what gets stored, and paint()
+    // adds the scroll it already has in hand. One addition per frame in place of
+    // a getBoundingClientRect on the scroll path, which is the rule this whole
+    // file is built on.
+    // WHICH APERTURE IS THE ROUND ONE. Marked in the markup rather than
+    // guessed from its proportions, because a square die-cut and a circle are
+    // different intentions and only one of them should read as a lens.
+    roundIndex = -1;
+    for (const a of aps) {
+      if (a.box && a.el.hasAttribute && a.el.hasAttribute("data-round")) {
+        roundIndex = a.index;
+        break;
+      }
+    }
+
+    // the sky buttons: fixed, so like the fixed icons they are measured in the
+    // viewport once and mounted to the document every frame
+    skyBtns = [];
+    for (const el of document.querySelectorAll("[data-sky]")) {
+      const r = el.getBoundingClientRect();
+      if (r.width < 4 || r.height < 4) continue;
+      const cv = el.querySelector("canvas");
+      if (!cv) continue;
+      skyBtns.push({
+        el, cv, ctx: cv.getContext("2d"),
+        box: { x: Math.round(r.left), y: Math.round(r.top),
+               w: Math.round(r.width), h: Math.round(r.height) }
+      });
+    }
+
+    icons = [];
+    for (const el of document.querySelectorAll("[data-icon-ap]")) {
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) continue;
+      const fixed = el.hasAttribute("data-fixed");
+      icons.push({
+        el, fixed,
+        cell: el.getAttribute("data-icon-ap"),
+        box: {
+          x: Math.round(r.left),
+          y: Math.round(r.top + (fixed ? 0 : sy)),
+          w: Math.round(r.width), h: Math.round(r.height)
+        }
+      });
+    }
+    // ── THE MASK SURVIVES A REMEASURE, BY ELEMENT ────────────────────────
+    // measure() builds a fresh record for every icon, so a mask holding the OLD
+    // record matched nothing and was dropped -- silently, on every resize, font
+    // load and remeasure. The back arrow on a project sheet vanished the moment
+    // the window was touched, and a hover held through a resize lost its sky.
+    // Re-finding by ELEMENT keeps the hole across a remeasure and still drops it
+    // when the element itself has gone, which is the case this was written for.
+    if (mask) {
+      const again = icons.find((q) => q.el === mask.rec.el);
+      mask = again ? { rec: again, amt: mask.amt } : null;
+      if (!mask) alt = null;
+    }
+
     pw = document.documentElement.clientWidth;
     ph = Math.max(document.documentElement.scrollHeight, window.innerHeight);
     dirty = true;
@@ -102,6 +207,10 @@ export function createDeck({ scope, haloPx = 200 }) {
     if (sheet || !canvas || !clip) return sheet;
     sheet = createSheetPress(canvas, clip.sheet, clip.frames);
     if (!sheet) return null;
+    // the atlas may have landed before the press existed, and the press is not
+    // built until the sky clip arrives — so whichever wins the race, the upload
+    // happens here or in the loader, never in neither
+    if (atlas && !atlasUp) atlasUp = !!sheet.setMaskTex(atlas);
     canvas.classList.add("on");
     return sheet;
   }
@@ -139,7 +248,13 @@ export function createDeck({ scope, haloPx = 200 }) {
       // instead of sliding around with the viewport. Same reason every other
       // hole is a document rectangle.
       const cx = cross.cx, cyDoc = cross.cy;
-      const cy = cyDoc - sy;
+      // A FIXED TARGET DOES NOT SCROLL AWAY FROM ITSELF. The centre is normally
+      // a document position, which is what keeps the opening on the hole you
+      // clicked while the page moves under it. The back arrow on a project sheet
+      // is the opposite case: it is pinned to the WINDOW, so subtracting the
+      // scroll would slide the closing paper off the very thing it is closing
+      // into, the moment the reader touched the wheel mid-return.
+      const cy = cross.fixed ? cyDoc : cyDoc - sy;
 
       // WHAT IT WOULD TAKE TO COVER THE WINDOW, RIGHT NOW. Recomputed every
       // frame from the CURRENT scroll, so if the reader scrolls mid-crossing
@@ -209,6 +324,61 @@ export function createDeck({ scope, haloPx = 200 }) {
       xCrossLast = xCross;
     }
 
+    // ── THE MASKED HOLE ──────────────────────────────────────────────────
+    // Document coordinates for the shader. A fixed icon was measured in the
+    // viewport, so it is mounted to the document here, every frame, with the
+    // scroll this function was already given.
+    let xMask = null;
+    if (mask && atlas) {
+      const uv = cellUV(mask.rec.cell);
+      const b = mask.rec.box;
+      if (uv) {
+        xMask = {
+          x: b.x, y: mask.rec.fixed ? b.y + sy : b.y, w: b.w, h: b.h,
+          u0: uv.u0, v0: uv.v0, du: uv.du, dv: uv.dv, amt: mask.amt
+        };
+      }
+    }
+
+    // ── THE SKY BUTTONS, FIRST ───────────────────────────────────────────
+    // Before anything else, because this writes into the same drawing buffer the
+    // sheet is displayed from: a scissored pass left as the buffer's final state
+    // would put a wrongly-coloured patch on the page. The full pass at the foot
+    // of this function overwrites it, which is why it has to be last.
+    //
+    // The blit must happen in the SAME task as its draw. preserveDrawingBuffer is
+    // false, so the buffer is gone once the compositor has had it -- there can be
+    // no await and no frame boundary between these two lines.
+    for (const b of skyBtns) {
+      if (b.cv.width !== b.box.w || b.cv.height !== b.box.h) {
+        b.cv.width = b.box.w; b.cv.height = b.box.h;
+      }
+      const docBox = { x: b.box.x, y: b.box.y + sy, w: b.box.w, h: b.box.h };
+      // uSkyRamp is an offset ADDED to the document position before the night
+      // is read off it, so this puts the button at a chosen hour wherever on the
+      // page it happens to be standing.
+      const btnRamp = SKY_BTN_DEPTH - docBox.y;
+      sheet.draw({
+        w, h, scrollY: sy, plate: { w: pw, h: ph }, bandPx: h,
+        // THE HOME SHEET'S PAIR, not this project's. It is a window onto where
+        // you are GOING, and a control that belongs to the site rather than to
+        // whichever sheet it is standing on should not change colour with it.
+        inkA: null, inkB: null, alt: null, eat: null,
+        holes: [docBox], f, sky, skyRamp: btnRamp,
+        cross: null, mask: null, roundHole: -1, holeDX: 0, holeFade: 1,
+        scissor: { x: b.box.x, y: h - (b.box.y + b.box.h), w: b.box.w, h: b.box.h }
+      });
+      // TWO ORIGINS, AND THEY ARE NOT THE SAME ONE. gl.scissor is in GL's
+      // coordinates, which count up from the BOTTOM, so its y is
+      // h - (top + height). drawImage reads the canvas as an IMAGE, which
+      // counts down from the top, so its y is just the top. Using the flipped
+      // value for both reads a band the compositor has already cleared --
+      // measured: a fully transparent 56x56.
+      b.ctx.clearRect(0, 0, b.box.w, b.box.h);
+      b.ctx.drawImage(canvas, b.box.x, b.box.y, b.box.w, b.box.h,
+                      0, 0, b.box.w, b.box.h);
+    }
+
     // ── THE OVERLAY ──────────────────────────────────────────────────────
     // The eating must be able to cover the TYPE, and the type sits above the
     // sheet. So while a crossing runs, the shader is run twice: once in overlay
@@ -220,7 +390,9 @@ export function createDeck({ scope, haloPx = 200 }) {
       if (eatEl.width !== w || eatEl.height !== h) { eatEl.width = w; eatEl.height = h; }
       sheet.draw({
         w, h, scrollY: sy, plate: { w: pw, h: ph }, bandPx: h,
-        inkA, inkB, alt, eat, holes, halo, f, sky, skyRamp, cross: xCross, overlay: true
+        inkA, inkB, alt, eat, holes, f, sky, skyRamp, cross: xCross,
+        mask: xMask, overlay: true,
+        holeDX: docDX, holeFade: docFade, roundHole: roundIndex
       });
       eatCtx.clearRect(0, 0, w, h);
       eatCtx.drawImage(canvas, 0, 0);
@@ -233,8 +405,9 @@ export function createDeck({ scope, haloPx = 200 }) {
     const ok = sheet.draw({
       w, h, scrollY: sy,
       plate: { w: pw, h: ph }, bandPx: h,
-      inkA, inkB, alt, eat, holes, halo, f, sky, skyRamp,
-      cross: xCross
+      inkA, inkB, alt, eat, holes, f, sky, skyRamp,
+      cross: xCross, mask: xMask,
+      holeDX: docDX, holeFade: docFade, roundHole: roundIndex
     });
     lastScroll = sy;
     lastF = f;
@@ -280,28 +453,6 @@ export function createDeck({ scope, haloPx = 200 }) {
   }
   function clearJobs() { jobs.length = 0; }
 
-  // ── Mew's hole ───────────────────────────────────────────────────────────
-  // Called from the render loop with her VIEWPORT position. One uniform, and
-  // the redraw it triggers is the same one the cloud loop was going to do
-  // anyway most frames. No layout is read and nothing reflows.
-  function setHalo(x, y) {
-    if (haloMode === "none") { halo = null; return; }
-    const r = haloPx / 2;
-    const nx = Math.round(x), ny = Math.round(y);
-    if (halo && halo.x === nx && halo.y === ny) return;
-    halo = { x: nx, y: ny, r };
-    dirty = true;
-    kick();
-  }
-
-  function setHaloMode(mode) {
-    if (mode === haloMode) return;
-    haloMode = mode;
-    if (mode === "none") halo = null;
-    dirty = true;
-    kick();
-  }
-
   // ── the page's own numbers ───────────────────────────────────────────────
   // Anything the copy asserts about the print is measured off the renderer,
   // never typed in. Coverage comes from sky.js, which is the same separation
@@ -339,6 +490,9 @@ export function createDeck({ scope, haloPx = 200 }) {
   // ── binding to whatever page is currently in the DOM ─────────────────────
   function bind() {
     io?.disconnect();
+    // before measure(), not after: a stale record would otherwise hold a hole
+    // open at the previous page's coordinates for one frame
+    mask = null;
     aps = [...document.querySelectorAll("[data-ap]")].map((el) => ({ el, box: null }));
     aps.forEach((a) => a.el.classList.add("on"));
 
@@ -372,6 +526,29 @@ export function createDeck({ scope, haloPx = 200 }) {
     ]).then((c) => { clip = c; clipSettled = true; dirty = true; measure(); reportNumbers(); kick(); });
   }
 
+  // ── the glyphs ───────────────────────────────────────────────────────────
+  // Same shape as the weather: one small image, decoded once, and the page is
+  // correct without it — no atlas simply means the icons stay white, which is
+  // their rest state anyway.
+  if (hasIconAtlas) {
+    Promise.race([
+      loadIconAtlas().catch(() => null),
+      new Promise((r) => setTimeout(() => r(null), 3000))
+    ]).then((a) => {
+      // A GLYPH HOLE THAT NEVER ARRIVES IS AN INVISIBLE CONTROL. The back arrow
+      // on a project sheet IS its shader hole and has no picture of its own, so
+      // if the atlas does not land there is a clickable rectangle with nothing
+      // in it. Saying so on the root element lets the stylesheet put a plain
+      // arrow there instead: a degraded page rather than a broken one.
+      if (!a) { document.documentElement.classList.add("no-glyphs"); return; }
+      atlas = a;
+      if (sheet && !atlasUp) atlasUp = !!sheet.setMaskTex(atlas);
+      dirty = true; kick();
+    });
+  } else {
+    document.documentElement.classList.add("no-glyphs");
+  }
+
   // ── nothing runs while the page is not on screen ─────────────────────────
   const onVis = () => {
     onScreen = !document.hidden;
@@ -401,8 +578,22 @@ export function createDeck({ scope, haloPx = 200 }) {
 
   const api = {
     get current() { return current; },
-    setHalo,
-    setHaloMode,
+    /**
+     * THE APERTURES TRAVEL WITH THE PAGE. Called per frame by the fade, with
+     * exactly the offset and opacity #doc is carrying, so a die-cut leaves and
+     * arrives with the type it is cut around instead of hanging in the air
+     * while the words slide out from under it.
+     *
+     * It does NOT touch the crossing: an opening has to be able to cover a
+     * window that is halfway through fading, and it is not part of the page.
+     */
+    setDocShift(dx, fade) {
+      const d = dx || 0;
+      const f = fade === undefined || fade === null ? 1 : (fade < 0 ? 0 : fade > 1 ? 1 : fade);
+      if (d === docDX && f === docFade) return;
+      docDX = d; docFade = f;
+      dirty = true; kick();
+    },
     bind,
     enqueue,
     clearJobs,
@@ -453,6 +644,54 @@ export function createDeck({ scope, haloPx = 200 }) {
       eat = (a || b) ? { inkA: a || null, inkB: b || null } : null;
       dirty = true; kick();
     },
+    /**
+     * THE ONE MASKED HOLE, and it mirrors setAltInk deliberately: look the
+     * element up by identity, keep hold of it, and let paint() do the
+     * arithmetic. The difference is that this keeps the RECORD rather than a
+     * flattened index, because a masked hole is not in uHoles at all — it has
+     * its own rectangle uniform, so it can never take a die-cut's slot and can
+     * never end the hole loop early at zero alpha.
+     *
+     * There is exactly one because the shader has exactly one, which is the
+     * same reason uAltHole is a single int: you may only ever see one project's
+     * second ink at a time. Pass null, or an amount of 0, to close it.
+     *
+     * IT CARRIES THE INK PAIR AS WELL, and that is not a convenience -- it is
+     * the identity rule enforced in one place. A masked hole is a window onto a
+     * PROJECT, so it prints in that project's own sky; and because there can
+     * only ever be one of them, only one project's second ink can be on the
+     * sheet at a time. That is what lets three differently-coloured windows live
+     * on a page whose whole discipline is one or two inks. The pair rides the
+     * alternate uniforms the gate used to use, with the hole index at -1,
+     * because no RECTANGLE wants them.
+     *
+     * @returns true if the hole was really taken. false means the atlas has not
+     *          landed, and the caller should leave its own fallback showing.
+     */
+    setMaskHole(el, amt = 1, hInkA = null, hInkB = null) {
+      if (!el) {
+        if (mask || alt) { mask = null; alt = null; dirty = true; kick(); }
+        return false;
+      }
+      const rec = icons.find((q) => q.el === el);
+      if (!rec) return false;
+      const a = amt < 0 ? 0 : amt > 1 ? 1 : amt;
+      const nextAlt = (a > 0 && hInkA) ? { index: -1, inkA: hInkA, inkB: hInkB } : null;
+      const same = mask && mask.rec === rec && mask.amt === a
+        && !!alt === !!nextAlt
+        && (!alt || !nextAlt || (alt.inkA === nextAlt.inkA && alt.inkB === nextAlt.inkB));
+      if (same) return !!atlas;
+      mask = a > 0 ? { rec, amt: a } : null;
+      alt = nextAlt;
+      dirty = true; kick();
+      return !!atlas;
+    },
+    /** the icon boxes, for anything that needs to aim at one without reading
+        layout of its own — the crossing does exactly this */
+    iconBox(el) {
+      const rec = icons.find((q) => q.el === el);
+      return rec ? { ...rec.box, fixed: rec.fixed } : null;
+    },
     setAltInk(el, a, b) {
       const rec = aps.find((q) => q.el === el);
       alt = rec && a ? { index: rec.index, inkA: a, inkB: b } : null;
@@ -468,7 +707,8 @@ export function createDeck({ scope, haloPx = 200 }) {
     // devtools + the automated checks
     get debug() {
       return {
-        aps, holes, jobs, pw, ph, raf, halo, clipSettled,
+        aps, holes, icons, mask, skyBtns, atlas: !!atlas, atlasUp, jobs, pw, ph, raf,
+        roundIndex, docDX, docFade, clipSettled,
         gpu: !!sheet, webgl2: sheet?.webgl2, cross: xCrossLast, crossCovered,
         /** Draw one frame by hand. rAF is throttled to nothing in a hidden
             preview pane and the pane refuses to scroll at all, so the checks

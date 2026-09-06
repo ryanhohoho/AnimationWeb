@@ -37,10 +37,21 @@ The page is **two sheets of paper and one animal.**
 | **SHEET 2 · THE MASK** | bone paper, die-cut. Everything you read is on it. | `index.html`, `src/styles/site.css` |
 | **THE ANIMAL** | Mew. The one thing on the page that is not printed. | `src/engine/**` — untouched |
 
-It is **one** sheet, not five. The sections are numbered because they are
-sections; the header carries how far down the sheet you are in real document
-pixels (`844 / 3,391`), measured at runtime. Five "SHEET n OF 5" labels were a
-lie about a document that scrolls continuously, and they are gone.
+It is a **deck of four cards**, one screen each, read with the arrow keys —
+summary, experience, projects, contact — with the three project sheets hanging
+off card three as long documents.
+
+That is a change of shape, and the reason is worth stating plainly because it
+overrides an earlier argument in this file. The previous build was one tall sheet
+with a projector gate on it. A gate shows you one thing, holds it, and moves on
+its own: right for something a reader is meant to LOOK at, wrong for something a
+hiring manager is skimming to decide whether to keep reading. **The work has to
+survive being skimmed.** Four cards and two arrow keys is the whole site in about
+forty seconds, and the argument is still there underneath for anyone who opens a
+project.
+
+What did not change is everything the sheet is made of. Same press, same two
+inks, same die-cuts, same animal. It is the same object, cut into cards.
 
 This is not a metaphor imposed on the work. It is `RYAN.txt` II stated as a
 mechanism: Board A is the restrained surface he presents, Board B is the
@@ -161,17 +172,22 @@ plate this press ever pulls, and no project may own it. What a project owns is
 the **second ink** — one variable in a fixed process, which is a system rather
 than a palette.
 
-| project | second ink | why |
+| project | pair | why |
 |---|---|---|
-| iclicker | `#FFC400` signal yellow | the colour a system uses to say it is listening |
-| canvas | `#00A95C` terminal green | the colour of the shell it was found from |
-| engrave | `#3A3F4A` graphite | the colour of the media it writes to |
-| closet | `#FF6C2F` riso orange | the sheet's own ink — this one is not separate from the person |
+| usb-provisioning | `#16305C` navy + `#23262B` near-black | the colour of the hardware it writes to |
+| closet | `#2C2D31` + `#78797B`, two greys | no chroma — the value range his own wardrobe measures at |
+| iclicker | `#3576C4` blue + `#4FAEA6` teal | the system's own colour, used to describe the system |
 
-This is also the only way four differently-coloured frames can live on a sheet
-whose whole discipline is "one or two inks": **the gate shows one at a time**, so
-you never see more than one second ink at once. The colour becomes the thing
-that changes rather than a thing that accumulates.
+(These are the three in `site/projects.js`. A project owns its whole sky now, not
+just the second plate — an earlier version of this table listed four projects and
+a single second ink each, and both of those things changed.)
+
+This is also the only way three differently-coloured windows can live on a sheet
+whose whole discipline is "one or two inks": **only the icon under the pointer is
+open**, so you never see more than one pair at once. The colour becomes the thing
+that changes rather than a thing that accumulates. The gate used to enforce that
+with a timer; the cards enforce it with the reader's own attention, which is
+better because it is theirs.
 
 Two mechanical notes that took real tuning:
 
@@ -194,29 +210,35 @@ Two mechanical notes that took real tuning:
 - **The headline is capped at 14ch of its own face**, so the line breaks land
   the same way at every viewport and it can never reach the aperture at 57%.
 
-### 01 · WORK — 20:40 · THE GATE
-The work does not sit in a grid and it does not sit in a carousel. It runs
-through a **gate**: one hole in the sheet, fixed, with the project plates
-advancing behind it one at a time — which is what a projector is, and
-"PROJECTOR / EDEN" is one of the posters this whole sheet is descended from
-(`RYAN.txt` V).
+### 03 · PROJECTS — 22:45 · THE CARDS
 
-- **Why a gate and not four windows.** A grid gives every project the same weight
-  and asks you to compare them; a gate gives you one and asks you to look at it.
-  It also keeps the one-or-two-ink rule (see above). And a hole that things pass
-  through is the same object as the rest of the page — nothing new had to be
-  invented to hold the work.
-- **The hole never moves.** That is the whole difference between a projector and
-  a carousel, and it is why the composition of this section is fixed while its
-  content changes.
-- **The transport** — an advance hairline that fills over the 6.2 s dwell, and
-  four numbered stops — sits directly under the gate, because it belongs to the
-  hole and not to the caption. The bar exists because the gate moves on its own,
-  and a thing that moves on its own without warning has taken the page away from
-  you. It pauses on hover and on focus, and nothing runs at all while the section
-  is off screen.
-- **Everything that moves here is one transform.** The film is a `translate3d`,
-  the bar is a `scaleX`. Nothing is measured per frame.
+Three cards, stacked, each a picture with that project's **icon cut clean through
+the middle of it**. At rest the cut is filled by a white plate, so the icon reads
+as a solid white mark. Point at a card and the plate clears, the sheet's own sky
+shows through the shape underneath in that project's inks, and the picture starts
+moving. Click, and the crossing opens out of that icon.
+
+- **The card is another piece of die-cut paper.** This is the part worth
+  defending: the obvious way to put a project's colour on a card is to tint the
+  card. Instead the card has a hole in it, and behind the hole is the same sky
+  that is behind every other hole on the site, registered to the same document
+  position. Nothing new was invented to hold the work — which is the same
+  argument the gate was built on, and the reason it survives the gate's removal.
+- **Only the icon under the pointer is open, and that is not a compromise.**
+  Three cards each printing their own pair would be six inks on one page, and the
+  colour would stop being the thing that CHANGES and become a thing that
+  accumulates. The gate enforced one-at-a-time with a timer; this enforces it
+  with the reader's attention, which is better because it is theirs.
+- **The picture is the only thing that scales.** The hole does not move — it
+  cannot, because the deck measured it and re-measuring on a pointer event is the
+  one thing this build refuses to do. So the picture pushes forward inside a
+  fixed frame. That is the gate's own thesis restated: the hole stays, the plate
+  behind it advances.
+- **The white plate and the shader hole are one alpha channel.** They are drawn
+  by two completely different machines — CSS compositing and a fragment shader —
+  and they have to agree on the same edge to within a pixel. `bake_icons.mjs`
+  emits both from one buffer, so agreement is structural rather than a thing to
+  keep checking.
 
 ### 02 · STATEMENT — 23:00
 - **The dialog box.** He says soft things inside system chrome (`RYAN.txt` IV) —
@@ -268,6 +290,13 @@ fashionable, but because **Mew is a live WebGL context with physics and a brain,
 and a real navigation would kill her and start a new one.** She has to still be
 there on the other side, so the sheet changes and the window does not.
 
+**Two kinds of move, because there are two kinds of distance.** A fade is turning
+a page: same place, next thing. A crossing is going somewhere. The deck's middle
+steps fade; stepping off the deck into a project crosses, and so does the first
+step out of the summary — once, because that is where the reader is taught what
+the window in the middle of it is for. After that they know, and a 1.6-second
+event between two lists of text is a toll booth.
+
 - Real paths (`/projects/iclicker`), History API, `appType: "spa"` for the
   fallback. The home markup ships in `index.html` so the first paint needs no JS;
   the router captures it once as the home template, so there is one copy and no
@@ -281,11 +310,18 @@ there on the other side, so the sheet changes and the window does not.
   with a 2.5 s watchdog. A page that renders one project's markup badly is a bug;
   a page that renders nothing at all is a dead site.
 
-### Colliders
-Mew collides with the display headline, the index, the spec column, the dialog,
-the colophon columns and plate 02's aperture. Two reasons, both functional: she
-never sits on text you are reading, and the die-cut holes read as physical
-objects with edges.
+### Colliders — there are none
+
+She used to collide with the headline, the index, the spec column, the dialog and
+the colophon columns, so that she never sat on text you were reading. That is
+gone, by instruction: **`data-collider` appears nowhere in the site markup any
+more**, so the tracker collects an empty list, the pathfinder grid is uniform and
+she flies straight through everything.
+
+Worth knowing that this is markup, not engine. The whole collision system —
+`physics/colliders.js`, the cost grid, the squeeze surcharge, the push ramp, and
+the 826 checks that hold them — is untouched and still correct. Putting
+`data-collider` back on an element turns it back on with nothing else to change.
 
 ---
 
@@ -321,7 +357,10 @@ src/site/sky.js       the press. form -> separate -> screen -> register.
 src/site/deck.js      the mask. pulls the print, cuts the holes, runs any other
                       press the page needs off the same 5 ms budget, tracks Mew's.
 src/site/projects.js  the work, and the second-ink identity system.
-src/site/gate.js      the projector gate: four plates, one hole, one transport.
+src/site/content.js   the words: bio, roles, socials, card media.
+src/site/chrome.js    the furniture that does not turn. Outside #doc.
+src/site/cards.js     the card hover: one tween, one masked hole.
+src/site/iconatlas.js GENERATED by tools/bake_icons.mjs.
 src/site/router.js    going through the hole. History API, page scopes, watchdog.
 src/site/pages.js     sheets other than the home sheet.
 src/styles/site.css   the sheet. two type sizes, one chroma, layer order at top.

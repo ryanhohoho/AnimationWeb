@@ -12,6 +12,12 @@
 import * as iclicker from "./pages/iclicker.js";
 import * as usbProvisioning from "./pages/usb-provisioning.js";
 import * as closet from "./pages/closet.js";
+import { renderDeckPage } from "./pages/deck.js";
+import { mountCards } from "./cards.js";
+
+// the three deck cards that are not the summary. The summary ships as markup in
+// index.html so the first paint needs no JS, and the router captures it once.
+export { renderDeckPage };
 
 // A project with its own sheet is registered here. Everything else falls back
 // to the shared chrome below, which says plainly that it is not printed yet.
@@ -22,7 +28,8 @@ export function sheetFor(slug) { return SHEETS[slug] || null; }
 /** Called after the router has committed a page. */
 export function mountPage(route, ctx) {
   const sheet = route.name === "project" && sheetFor(route.project.slug);
-  ctx.deck?.setHaloMode(sheet?.meta?.halo || "print");
+  // the projects card is the only deck page with anything live on it
+  if (route.name === "projects") mountCards(ctx);
   sheet?.mount?.(ctx);
 }
 
@@ -45,10 +52,10 @@ export function renderProject(p) {
 
       <!-- the plate, pulled in this project's own pair. The cerulean is the
            constant; the second ink is what this piece of work owns. -->
-      <div class="ap wide" data-ap data-collider style="--x:47%; --y:22%; --w:41%; --h:46%"></div>
+      <div class="ap wide" data-ap style="--x:47%; --y:22%; --w:41%; --h:46%"></div>
       <p class="t dim cap" style="--x:47%; --y:70%">PL.&nbsp;${esc(p.n)}&nbsp;—&nbsp;CERULEAN&nbsp;+&nbsp;${esc(p.inkName).replace(/ /g, "&nbsp;")}</p>
 
-      <div class="spec" data-collider>
+      <div class="spec">
         <h1 class="d sm">${esc(p.title)}</h1>
         <dl>
           <dt>SUBJECT</dt><dd>${esc(p.sub).replace(/ /g, "&nbsp;")}</dd>
@@ -60,7 +67,7 @@ export function renderProject(p) {
         <p class="t dim body"><em style="font-style:normal">${esc(p.inkName)}</em> — ${esc(p.inkWhy)}.</p>
       </div>
 
-      <div class="dialog set" data-collider style="--x:47%; --y:74%; --w:41%">
+      <div class="dialog set" style="--x:47%; --y:74%; --w:41%">
         <p class="dlg-bar">SYSTEM</p>
         <div class="dlg-body">
           <span class="ap icon" data-ap></span>

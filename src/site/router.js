@@ -25,9 +25,49 @@
 // already a uniform, so the crossing is two numbers animating on a shader that
 // was going to run this frame regardless.
 
-import { bySlug } from "./projects.js";
-import { renderProject, renderNotFound } from "./pages.js";
+import { PROJECTS, bySlug } from "./projects.js";
+import { renderProject, renderNotFound, renderDeckPage } from "./pages.js";
 
+
+// ── THE DECK ─────────────────────────────────────────────────────────────────
+// Four cards, in reading order, and the order is an argument: who this is, what
+// he has done, what he has made, how to reach him. A hiring manager reads it in
+// that order or reads the first card and leaves, and either is a complete visit.
+//
+// Project sheets are NOT on the deck. They hang off card three, which is why
+// they get a back arrow and the deck cards do not.
+export const DECK = ["home", "experience", "projects", "contact"];
+export const PATH = {
+  home: "/", experience: "/experience", projects: "/projects", contact: "/contact"
+};
+
+// ── AND WHAT TIME IT IS ON EACH ──────────────────────────────────────────────
+// The sheet used to be one tall document and the night fell as you scrolled it:
+// 19:00 at the top, 01:00 at the foot, the labels on the old four sections. Four
+// one-screen cards have no scroll to fall through, so the whole site would sit
+// at last light forever.
+//
+// So the time becomes a property of the CARD instead of a property of how far
+// you have read, and it walks the same 19:00-to-01:00 the sheet always did.
+// uSkyRamp is a document-pixel offset measured against REF_H = 4000, so an hour
+// is 4000/6 px. Home stays at exactly 0, which is what it has always been.
+//
+// These are ABSOLUTE, and that is the whole point: the documented failure of
+// uSkyRamp is that HOLDING it accumulates, so every navigation starts further
+// into the night than the last and a few clicks strand the site at 01:00. A
+// fixed per-page value cannot accumulate. It is the same discipline as before -
+// every trip settles on a known number - with the number no longer always zero.
+const HOUR = 4000 / 6;
+export const RAMP = {
+  home:       0,             // 19:00  - unchanged from the sheet it came from
+  experience: Math.round(HOUR * 1.8),   // ~20:50
+  projects:   Math.round(HOUR * 3.75),  // ~22:45
+  contact:    Math.round(HOUR * 5.25),  // ~00:15
+  // a project sheet is still a tall document and still walks its own night
+  // down its own length, exactly as it does today
+  project:    0,
+  404:        0
+};
 
 export function createRouter({ scope, deck, world, onPage }) {
   const doc = document.getElementById("doc");
@@ -37,16 +77,48 @@ export function createRouter({ scope, deck, world, onPage }) {
   // it once and it is the home template forever after -- one copy, no drift.
   const homeHTML = doc.innerHTML;
   let busy = false;
+  // ── WHICH NAVIGATION IS THE LIVE ONE ─────────────────────────────────────
+  // A watchdog is armed for a move and fires long after that move has finished
+  // -- CROSS_MS * 3 is 4.8 s against a 1.6 s crossing. It used to clear the
+  // eating unconditionally when it fired, so a dead navigation reached forward
+  // and wiped whatever crossing happened to be running at that instant: one
+  // frame with nothing covering the window, the page visible through the
+  // middle of a transition, and then covered again on the very next frame.
+  //
+  // MEASURED, deterministically, on one shared clock for rAF and setTimeout:
+  // a return armed its watchdog at t=3167, a fresh crossing started at t=6334,
+  // and at t=7167 the dead return's timer cleared it and the next frame put it
+  // straight back. That is the flicker, and it needs a couple of navigations
+  // inside about five seconds to show up -- which is why it was intermittent.
+  //
+  // So a watchdog now only speaks for its own move. The timer is cleared when
+  // the move ends normally, AND the generation is checked when it fires, which
+  // are belt and braces on purpose: clearTimeout alone would be enough if
+  // nothing could ever be dropped, and this is not a place to find out.
+  let nav = 0;
 
   const routeOf = (path) => {
-    if (path === "/" || path === "") return { name: "home" };
-    const m = path.match(/^\/projects\/([a-z0-9-]+)\/?$/i);
-    const p = m && bySlug(m[1]);
-    return p ? { name: "project", project: p } : { name: "404", path };
+    // strip the trailing slash FIRST. Without it "/projects/" matches neither
+    // the list nor the detail pattern and 404s, which is a URL a browser will
+    // produce on its own.
+    const p = (path || "/").replace(/\/+$/, "") || "/";
+    if (p === "/") return { name: "home" };
+    if (p === "/experience") return { name: "experience" };
+    if (p === "/projects") return { name: "projects" };
+    if (p === "/contact") return { name: "contact" };
+    const m = p.match(/^\/projects\/([a-z0-9-]+)$/i);
+    const pr = m && bySlug(m[1]);
+    return pr ? { name: "project", project: pr } : { name: "404", path };
   };
+
+  /** the time of night this sheet settles at */
+  const rampOf = (r) => RAMP[r?.name] ?? 0;
 
   function render(route) {
     if (route.name === "home") return { html: homeHTML, title: "RYAN HO", ink: null, inkA: null };
+    if (DECK.includes(route.name)) {
+      return { html: renderDeckPage(route.name), title: `${route.name} — RYAN HO`, ink: null, inkA: null };
+    }
     if (route.name === "project") {
       return {
         html: renderProject(route.project),
@@ -64,7 +136,7 @@ export function createRouter({ scope, deck, world, onPage }) {
   // above would throw at construction.
   let current = routeOf(location.pathname);
 
-  function commit(route) {
+  function commit(route, { carry = true } = {}) {
     current = route;
     const { html, title, ink, inkA } = render(route);
     // ── READ THE OFFSET BEFORE THE SHEET CHANGES ─────────────────────────
@@ -94,10 +166,23 @@ export function createRouter({ scope, deck, world, onPage }) {
     //
     // `behavior: "instant"` because `html { scroll-behavior: smooth }` would
     // otherwise animate this, and the animation outlives the closing paper.
-    deck.setSky(deck.sky + leftAt, deck.skyRamp + leftAt);
+    // ── AND THE CONTINUITY TERM IS NOT A CHOICE ──────────────────────────
+    // Before the swap the reader's eye is at (leftAt + k) with ramp R, so the
+    // shader's numerator is leftAt + k + R. After scrollTo(0) the eye is at k,
+    // so the numerator can only stay put if the new ramp is R + leftAt. That is
+    // this line, it has always been this line, and it is right. Where each page
+    // SETTLES is a separate question, answered by rampOf() in the retreat.
+    //
+    // It is skipped on a fade, because a fade does not cover the sheet: #doc
+    // goes to zero and the print behind it stays in full view, so winding the
+    // weather on there is a visible pan of the whole sky. runFade owns the ramp
+    // on that path and the weather does not move at all.
+    if (carry) deck.setSky(deck.sky + leftAt, deck.skyRamp + leftAt);
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 
     deck.setInk(inkA, ink);
+    // nothing on the new page is under the pointer yet
+    deck.setMaskHole(null);
     deck.bind();
     world?.emit("recollect");
     onPage?.(route);
@@ -120,7 +205,17 @@ export function createRouter({ scope, deck, world, onPage }) {
   // animating on a shader that was going to run anyway.
   // ── CROSSING, TUNING ─────────────────────────────────────────────────────
   // Everything adjustable about the transition is these four numbers.
-  const CROSS_MS   = 4000;   // total length. The slowest thing on the site.
+  const CROSS_MS   = 1600;   // total length. Still the slowest thing on the
+                             // site, and it used to be 4000 - which was right
+                             // when the crossing WAS the site and wrong now that
+                             // it is the punctuation between four cards someone
+                             // is skimming. Four seconds is a thing you sit
+                             // through; 1.6 is a thing you go through.
+  const FADE_OUT   = 300;    // a page turn, not a journey: Roy's numbers, and
+  const FADE_IN    = 500;    // they are good numbers. Out is quicker than in
+                             // because leaving should feel decided and arriving
+                             // should feel like it settles.
+  const FADE_DX    = 30;     // px, on X only. No Y, no scale.
   const START_FRAC = 0.22;   // where the eating begins, as a fraction of the
                              // clicked hole's SHORT side. It used to start at
                              // the hole's circumradius, which is bigger than
@@ -131,7 +226,7 @@ export function createRouter({ scope, deck, world, onPage }) {
   const EDGE_MESS  = 150;    // how ragged the boundary is, in px
   const SKY_SETTLE = true;   // unwind the TIME OF NIGHT after a crossing. The
                              // weather is never unwound — see uSky in pressgl.js
-  const RETURN_MS  = 2000;   // the whole trip home. Quicker than the way in:
+  const RETURN_MS  = 1000;   // the whole trip home. Quicker than the way in:
                              // you already know where you are going.
   const MIN_OUT    = 0.55;   // never swap before this much of the outward half
                              // has run, even if the opening covers early
@@ -142,16 +237,58 @@ export function createRouter({ scope, deck, world, onPage }) {
                              // window is fully enveloped and nothing of the
                              // change can be glimpsed at the edges.
 
+  // ── WHICH MOVE IS THIS ───────────────────────────────────────────────────
+  // There used to be one boolean here - "am I going home from a project" - and
+  // one boolean is exactly enough when there are two kinds of page. There are
+  // now two kinds of MOVE, and they mean different things:
+  //
+  //   a FADE is turning a page. You are in the same place, reading the next
+  //   thing. Nothing about the sheet changes except the words on it.
+  //
+  //   a CROSSING is going somewhere. The paper opens and you go through it.
+  //
+  // So: stepping off the deck into a project crosses, and coming back crosses.
+  // The first step of the deck, home -> experience, also crosses - once - because
+  // that is where the reader is taught what the window in the middle of the
+  // summary is FOR. Every later step is a page turn, because by then they know,
+  // and a four-second event between two lists of text is a toll booth.
+  //
+  // Moving between two project sheets fades: they are siblings, and an opening
+  // that eats the screen to show you the next of the same kind is a lie about
+  // the distance travelled.
+  function transitionFor(from, to) {
+    const f = from?.name, t = to.name;
+    if (f === "projects" && t === "project") return "cross";
+    if (f === "project" && t === "projects") return "return";
+    if (f === "project" && t === "project") return "fade";
+    if (t === "project") return "cross";           // a deep link from anywhere
+    if (f === "project") return "return";
+    const fi = DECK.indexOf(f), ti = DECK.indexOf(t);
+    if (fi < 0 || ti < 0 || fi === ti) return "fade";
+    if (fi === 0 && ti === 1) return "cross";      // out through the summary window
+    if (fi === 1 && ti === 0) return "return";     // and back into it
+    return "fade";
+  }
+
   /** the VIEWPORT centre and radius of the hole a link belongs to */
   function holeOf(a) {
-    const el = a?.closest("[data-gate]") || a?.closest(".plate")?.querySelector("[data-ap]");
+    // THE CARD NAMES ITS OWN STARTING POINT. A project card is a picture with
+    // that project's icon cut through the middle of it, and the icon is the
+    // thing the reader was actually looking at when they clicked - so that is
+    // where the paper opens. Falling back to "the first aperture in this plate"
+    // would start the crossing at whatever hole happened to be declared first,
+    // which on a card sheet is a different card.
+    const el = a?.querySelector?.("[data-cross-from]")
+            || a?.closest("[data-cross-from]")
+            || a?.closest(".plate")?.querySelector("[data-ap]");
     if (!el) return null;
     const r = el.getBoundingClientRect();
     if (r.width < 8 || r.height < 8) return null;
     return {
       x: r.left + r.width / 2,
       y: r.top + r.height / 2 + window.scrollY,     // DOCUMENT space
-      r: Math.min(r.width, r.height) * START_FRAC
+      r: Math.min(r.width, r.height) * START_FRAC,
+      fixed: el.hasAttribute("data-fixed")
     };
   }
 
@@ -175,6 +312,25 @@ export function createRouter({ scope, deck, world, onPage }) {
   }
 
   function firstHole() {
+    // AN EXPLICIT TARGET IS NOT A CANDIDATE, IT IS THE ANSWER. The back arrow on
+    // a project sheet is small, so the largest-area search below would never
+    // pick it - and the whole point of the arrow is that the paper closes back
+    // into the thing you are about to press. It also does not scroll, so the
+    // flag has to travel with it: the deck subtracts the scroll from a document
+    // centre every frame, which would slide a fixed target off its own arrow the
+    // moment the reader moved.
+    const t = document.querySelector("[data-cross-target]");
+    if (t) {
+      const r = t.getBoundingClientRect();
+      if (r.width >= 8 && r.height >= 8) {
+        return {
+          x: r.left + r.width / 2,
+          y: r.top + r.height / 2 + window.scrollY,
+          r: Math.min(r.width, r.height) * END_FRAC,
+          fixed: t.hasAttribute("data-fixed")
+        };
+      }
+    }
     let best = null, bestArea = 0;
     for (const el of document.querySelectorAll("[data-ap]")) {
       const r = el.getBoundingClientRect();
@@ -218,12 +374,12 @@ export function createRouter({ scope, deck, world, onPage }) {
    * centred on the window of the sheet being LEFT: you leave by the way you
    * came in.
    */
-  function runReturn(onSwap, onDone) {
-    const half = RETURN_MS / 2;
+  function runReturn(ms, rampTarget, onSwap, onDone) {
+    const half = ms / 2;
     const here = firstHole()
       || { x: window.innerWidth / 2, y: window.scrollY + window.innerHeight / 2, r: 40 };
     let phaseStart = performance.now(), swapped = false, rampAtSwap = 0;
-    const state = { out: true, dir: 1, t: 0, cx: here.x, cy: here.y,
+    const state = { out: true, dir: 1, t: 0, cx: here.x, cy: here.y, fixed: !!here.fixed,
                     r0: 0, rFull: 0, rEnd: 0, second: null, mess: EDGE_MESS };
 
     const tick = (now) => {
@@ -243,6 +399,7 @@ export function createRouter({ scope, deck, world, onPage }) {
           state.cx = dest ? dest.x : window.innerWidth / 2;
           state.cy = dest ? dest.y : window.scrollY + window.innerHeight / 2;
           state.rEnd = dest ? dest.r : 0;
+          state.fixed = !!(dest && dest.fixed);
           const foot = footerHole();
           state.second = foot ? { cx: foot.x, cy: foot.y, rEnd: foot.r } : null;
           state.rFull = coverRadius(state.cx, state.cy) * 1.25;
@@ -255,10 +412,102 @@ export function createRouter({ scope, deck, world, onPage }) {
         // crossing eased that back across its retreat and the dissolve never
         // did, so every trip home left the sheet further into the night and a
         // few of them ran it to 01:00 for good.
-        if (SKY_SETTLE) deck.setSkyRamp(rampAtSwap * (1 - Math.min(1, state.t)));
+        // ...AND IT SETTLES ON THE PAGE'S OWN TIME, NOT ON ZERO.
+        // Zero was never a time. It was the top of the only long sheet there
+        // used to be, and with four one-screen cards there is no scroll left to
+        // walk the night down, so each card carries an hour of its own and the
+        // retreat eases onto it. Nothing accumulates - the target is absolute -
+        // which is the property the uSkyRamp comment defends.
+        if (SKY_SETTLE) {
+          const e = Math.min(1, state.t);
+          deck.setSkyRamp(rampTarget + (rampAtSwap - rampTarget) * (1 - e));
+        }
         if (state.t >= 1) {
           deck.setCrossing(null);
-          if (SKY_SETTLE) deck.setSkyRamp(0);
+          if (SKY_SETTLE) deck.setSkyRamp(rampTarget);
+          onDone?.();
+          return;
+        }
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  // ── A PAGE TURN ──────────────────────────────────────────────────────────
+  // No shader, no opening, nothing eaten: the words leave, the words arrive, and
+  // the sheet they sit on never moves. That is the correct picture of stepping
+  // from one card of the deck to the next, and it is the reason the crossing
+  // still means something when it does happen.
+  //
+  // Driven on rAF rather than on setTimeout, for two reasons. It has to be able
+  // to tween the sky ramp per frame, and the router harness stubs setTimeout out
+  // entirely so the watchdogs cannot fire inside a check - a timer-driven fade
+  // would simply never run under test, and this is the one path where the night
+  // moves with nothing covering it.
+  function runFade(rampTarget, onSwap, onDone) {
+    const t0 = performance.now();
+    const ramp0 = deck.skyRamp;
+    let swapped = false;
+    // easeOutExpo, near enough to cubic-bezier(0.16, 1, 0.3, 1) to be the same
+    // move: almost all of the distance in the first third, then a long settle
+    const ease = (t) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
+    // THE NIGHT GETS A DIFFERENT CURVE, and it has to. easeOutExpo is violently
+    // front-loaded -- 17% of the whole distance in its first frame -- which is
+    // exactly what you want for something ARRIVING and exactly wrong for a
+    // change of brightness happening in full view: measured, the first frame of
+    // a fade moved the sky by 228 px of ramp, a visible flinch. Smoothstep eases
+    // at both ends, so the largest single frame is about a sixth of that.
+    const glide = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+    // ...and it runs across the WHOLE fade rather than per half, so the swap in
+    // the middle is not a seam in it
+    const TOTAL = FADE_OUT + FADE_IN;
+
+    const setDoc = (o, dx) => {
+      // inline, and with the transition explicitly off: #doc carries a 900 ms
+      // opacity transition in the stylesheet, which would otherwise fight a
+      // 300 ms tween and win
+      doc.style.transition = "none";
+      doc.style.opacity = String(o);
+      doc.style.transform = dx ? `translate3d(${dx}px,0,0)` : "";
+      // ── AND THE HOLES GO WITH IT ─────────────────────────────────────
+      // A die-cut is a rectangle of the DOCUMENT held in a shader uniform, so
+      // it does not know the page is moving. Left alone it sits perfectly
+      // still and perfectly opaque while the type slides thirty pixels out
+      // from under it and dissolves -- the aperture hanging in the air with
+      // nothing around it, which is the one thing about a page turn that
+      // looked wrong. The same two numbers, handed to the sheet.
+      deck.setDocShift(dx, o);
+    };
+
+    const tick = (now) => {
+      const e = now - t0;
+      if (!swapped) {
+        const t = Math.min(1, e / FADE_OUT);
+        const k = ease(t);
+        setDoc(1 - t, -FADE_DX * k);
+        // THE NIGHT MOVES ACROSS THE WHOLE FADE, not at the swap. A fade does
+        // not cover the sheet, so a step in the ramp would be plainly seen -
+        // but it is a change of BRIGHTNESS with no motion in it, so spread over
+        // 800 ms it is invisible. The weather does not move at all here; that
+        // one is a pan, and a pan across a fade is the rubber-band glide.
+        if (SKY_SETTLE) deck.setSkyRamp(ramp0 + (rampTarget - ramp0) * glide(e / TOTAL));
+        if (t >= 1) {
+          swapped = true;
+          onSwap();
+          setDoc(0, FADE_DX);
+        }
+      } else {
+        const t = Math.min(1, (e - FADE_OUT) / FADE_IN);
+        const k = ease(t);
+        setDoc(k, FADE_DX * (1 - k));
+        if (SKY_SETTLE) deck.setSkyRamp(ramp0 + (rampTarget - ramp0) * glide(e / TOTAL));
+        if (t >= 1) {
+          doc.style.transition = "";
+          doc.style.opacity = "";
+          doc.style.transform = "";
+          deck.setDocShift(0, 1);
+          if (SKY_SETTLE) deck.setSkyRamp(rampTarget);
           onDone?.();
           return;
         }
@@ -288,11 +537,11 @@ export function createRouter({ scope, deck, world, onPage }) {
    * edge included, and the swap waits for that. If the reader has scrolled far
    * enough that it takes longer, it takes longer, and the growth accelerates.
    */
-  function runCrossing(from, onSwap, onDone) {
+  function runCrossing(from, ms, rampTarget, onSwap, onDone) {
     const t0 = performance.now();
-    const half = CROSS_MS / 2;
+    const half = ms / 2;
     let dir = 1, phaseStart = t0, rFull = from.r, swapped = false, rampAtSwap = 0;
-    const state = { dir: 1, t: 0, cx: from.x, cy: from.y, r0: from.r,
+    const state = { dir: 1, t: 0, cx: from.x, cy: from.y, r0: from.r, fixed: !!from.fixed,
                     rFull: from.r, rEnd: from.r, second: null, mess: EDGE_MESS };
 
     const tick = (now) => {
@@ -318,6 +567,7 @@ export function createRouter({ scope, deck, world, onPage }) {
           state.cx = dest ? dest.x : window.innerWidth / 2;
           state.cy = dest ? dest.y : window.scrollY + window.innerHeight / 2;
           state.rEnd = dest ? dest.r : 0;
+          state.fixed = !!(dest && dest.fixed);
           const foot = footerHole();
           state.second = foot ? { cx: foot.x, cy: foot.y, rEnd: foot.r } : null;
           rFull = coverRadius(state.cx, state.cy) * 1.25;
@@ -336,10 +586,14 @@ export function createRouter({ scope, deck, world, onPage }) {
         // Only the TIME unwinds. The weather stays where it was wound to —
         // returning it is a pan of the whole sky, and that pan was the
         // rubber-band glide.
-        if (SKY_SETTLE) deck.setSkyRamp(rampAtSwap * (1 - Math.min(1, state.t)));
+        // eases onto the DESTINATION's own hour - see the same note in runReturn
+        if (SKY_SETTLE) {
+          const e = Math.min(1, state.t);
+          deck.setSkyRamp(rampTarget + (rampAtSwap - rampTarget) * (1 - e));
+        }
         if (state.t >= 1) {
           deck.setCrossing(null);
-          if (SKY_SETTLE) deck.setSkyRamp(0);
+          if (SKY_SETTLE) deck.setSkyRamp(rampTarget);
           onDone?.();
           return;
         }
@@ -356,9 +610,25 @@ export function createRouter({ scope, deck, world, onPage }) {
     const route = routeOf(path);
     if (push) history.pushState({ path }, "", path);
 
-    if (reduced) { commit(route); return; }
+    // WHICH MOVE, AND WHERE IT SETTLES, decided once and read from here down.
+    const mode = transitionFor(current, route);
+    const rampTarget = rampOf(route);
+
+    if (reduced) {
+      // no tween to carry the ramp, so it is set outright - and no carry either,
+      // because there is no covered moment to hide a wound-on plate behind
+      deck.setDocShift(0, 1);
+      commit(route, { carry: false });
+      deck.setSkyRamp(rampTarget);
+      return;
+    }
 
     busy = true;
+    const gen = ++nav;
+    let wd = 0;
+    // whatever ended the last move -- its own last frame, or a watchdog --
+    // this one starts on a page that is where it says it is
+    deck.setDocShift(0, 1);
     document.body.classList.add("crossing");   // the type goes first
 
     // THE PAGE MUST COME BACK. `crossing` holds #doc at opacity 0, so anything
@@ -368,11 +638,11 @@ export function createRouter({ scope, deck, world, onPage }) {
     // finally is the difference, and the watchdog covers the case where the
     // rAF never runs at all (a tab backgrounded mid-crossing).
     let landed = false;
-    const land = () => {
+    const land = (opts) => {
       if (landed) return;
       landed = true;
       try {
-        commit(route);
+        commit(route, opts);
       } catch (err) {
         console.error("[router] page failed to commit", err);
       } finally {
@@ -381,44 +651,101 @@ export function createRouter({ scope, deck, world, onPage }) {
       }
     };
 
+    /** the drive finished on its own, so its watchdog has nothing left to say */
+    const settle = () => { if (wd) { clearTimeout(wd); wd = 0; } };
+    /** ...and if it fires anyway, it may only speak for its own navigation */
+    const guard = (fn) => () => { if (gen === nav) fn(); };
+
     // ── GOING BACK IS NOT GOING IN ───────────────────────────────────────
     // Leaving for the home sheet dissolves rather than opens: four groups of
     // cloud, each covering more of the window than the last. It needs no click
     // point, so every "back" link works the same wherever it sits, and it needs
     // no colour match at the far end because the screen is full when the page
     // changes underneath it.
-    const leaving = route.name === "home" && current?.name === "project";
-    if (leaving) {
+    // IT EATS IN THE COLOURS OF THE SHEET IT IS OPENING ONTO, both directions.
+    // That used to be two branches saying it two different ways; it is one rule.
+    // A deck card has no pair of its own, and null is what the press reads as
+    // its own defaults.
+    const destProject = route.name === "project" ? route.project : null;
+    deck.setEatInk(destProject?.inkA || null, destProject?.ink || null);
+
+    // ── A PAGE TURN ──────────────────────────────────────────────────────
+    // No opening, and NO "crossing" on the bus: she is not being displaced, the
+    // words are. A startle here would have her fleeing every arrow key.
+    if (mode === "fade") {
+      const turn = () => { settle(); land({ carry: false }); };
+      runFade(rampTarget, turn, turn);
+      wd = setTimeout(guard(turn), (FADE_OUT + FADE_IN) * 4);   // watchdog
+      return;
+    }
+
+    if (mode === "return") {
       // IT EATS IN THE COLOURS OF THE SHEET IT IS OPENING ONTO, which coming
       // home means the home sheet's own pair — null, which the press reads as
       // its defaults. It used to eat in the colours of the page being LEFT,
       // which is the wrong end of the journey: the whole second half of this is
       // the opening retreating into the home window, and it was arriving there
       // still wearing the project's ink.
-      deck.setEatInk(null, null);
       // SHE SEES IT COMING. Closing in from the rim, so there is no one place
-      // it comes from: `from: null` sends her at the middle of the room, which
+      // it comes from: from: null sends her at the middle of the room, which
       // is the same rule (go where it is furthest away) applied to an edge.
       world?.emit("crossing", { ms: RETURN_MS, from: null });
-      runReturn(land, () => { land(); });
-      setTimeout(() => { land(); deck.setCrossing(null); }, RETURN_MS * 4);  // watchdog
+      runReturn(RETURN_MS, rampTarget, land, () => { settle(); land(); });
+      wd = setTimeout(guard(() => { land(); deck.setCrossing(null); }), RETURN_MS * 4);
       return;
     }
 
     // THE EATING IS ALREADY THE PROJECT'S COLOUR. Its inks are set before the
     // first frame of it, so the opening spreads in the pair of the sheet it is
     // opening onto and the midpoint has no colour change in it at all.
-    const dest = route.name === "project" ? route.project : null;
-    deck.setEatInk(dest?.inkA || null, dest?.ink || null);
-
     const from = source || firstHole()
       || { x: window.innerWidth / 2, y: window.innerHeight / 2 + window.scrollY, r: 40 };
     // she is on the sheet, so a plate change happens TO her — and this one has
     // a definite source, so she leaves on the line straight out of it
     world?.emit("crossing", { ms: CROSS_MS, from: { x: from.x, y: from.y } });
-    runCrossing(from, land, () => { land(); });
-    setTimeout(() => { land(); deck.setCrossing(null); }, CROSS_MS * 3);  // watchdog
+    runCrossing(from, CROSS_MS, rampTarget, land, () => { settle(); land(); });
+    wd = setTimeout(guard(() => { land(); deck.setCrossing(null); }), CROSS_MS * 3);
   }
+
+  // ── THE ARROW KEYS ───────────────────────────────────────────────────────
+  // The deck is a deck, so it reads like one. No wrap: an end is an end, and
+  // silently looping from the last card back to the first is how a reader loses
+  // track of whether they have seen everything. On a project sheet the same two
+  // keys step between projects instead, because that is the list you are in.
+  //
+  // Down/Right and Up/Left both work, and so do Space and Enter going forward -
+  // whichever key someone reaches for on a thing that looks like slides.
+  function step(d) {
+    if (current?.name === "project") {
+      const j = PROJECTS.indexOf(current.project) + d;
+      if (j < 0 || j >= PROJECTS.length) return false;
+      go(`/projects/${PROJECTS[j].slug}`);
+      return true;
+    }
+    const i = DECK.indexOf(current?.name);
+    if (i < 0) return false;
+    const j = i + d;
+    if (j < 0 || j >= DECK.length) return false;
+    go(PATH[DECK[j]]);
+    return true;
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target;
+    // never steal a key from something being typed into
+    if (t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName || "")) return;
+    let d = 0;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " " || e.key === "Enter") d = 1;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") d = -1;
+    else if (e.key === "Escape" && current?.name === "project") {
+      e.preventDefault(); go("/projects"); return;
+    }
+    if (!d) return;
+    // Enter and Space belong to a focused link or button first
+    if ((e.key === " " || e.key === "Enter") && t?.closest?.("a,button")) return;
+    if (step(d)) e.preventDefault();
+  }, { signal: scope?.signal });
 
   // The crossing starts AT the thing you clicked, so a link inside a hole opens
   // from that hole. Anything else opens from whatever hole the sheet has.
@@ -443,7 +770,10 @@ export function createRouter({ scope, deck, world, onPage }) {
   // page immediately rather than showing the home sheet for a frame
   const first = routeOf(location.pathname);
   history.replaceState({ path: location.pathname }, "", location.pathname + location.hash);
-  if (first.name !== "home") commit(first);
+  // the hour is a property of the page, so it is set on arrival too - a deep
+  // link to /contact should open at a quarter past midnight, not at last light
+  deck.setSkyRamp(rampOf(first));
+  if (first.name !== "home") commit(first, { carry: false });
   else onPage?.(first);
 
   return { go, get route() { return routeOf(location.pathname); } };

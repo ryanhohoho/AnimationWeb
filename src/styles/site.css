@@ -209,60 +209,342 @@ a { color:inherit; }
 .bl { bottom:var(--pad); left:var(--pad); max-width:52vw; }
 .br { bottom:var(--pad); right:var(--pad); text-align:right; justify-items:end; }
 
-/* ── 01 · THE GATE ────────────────────────────────────────────────────────
-   One hole. The plates run behind it. The hole never moves, which is the whole
-   difference between a projector and a carousel — and it is why the composition
-   of this section is fixed while its content changes. */
-/* The gate is an .ap by class but not a die-cut: it is a hole that holds its
-   OWN plates, three JS stills in three different second inks, so it keeps the
-   clipping and the pointer that a plain aperture no longer needs. */
-.gate { display:block; text-decoration:none; cursor:pointer;
-        overflow:hidden; pointer-events:auto;
+/* ══ THE DECK ════════════════════════════════════════════════════════════
+   Four cards, one screen each, read with the arrow keys. The projector gate
+   that used to live here is gone: a gate shows one thing and moves on its own,
+   which is right for a thing you are meant to look at and wrong for a thing
+   someone is skimming to decide whether to keep reading.
+
+   A card is TOP-ALIGNED, not centred. Cards of different heights all start at
+   the same y, so the eyebrow and the heading do not jump between pages -- which
+   is the difference between turning a page and being shown a new one. */
+.deckpage { display:flex; flex-direction:column; min-height:100lvh;
+            padding:var(--pad); }
+.deck-in { width:100%; max-width:60rem; margin:0 auto;
+           padding-top:clamp(3rem, 11vh, 8rem); flex:1;
+           display:flex; flex-direction:column; gap:1.6rem; align-items:flex-start; }
+.deck-hour { text-align:right; }
+
+/* ── THE LENS ──────────────────────────────────────────────────────────────
+   The one round die-cut on the site. It flows in the column rather than being
+   pinned like every other aperture, because it belongs to the reading order --
+   it is the first thing above the section's own name.
+
+   It takes its height from aspect-ratio, NOT from a second copy of the width:
+   --dh is a clamp with a vw term in it, and a percentage or viewport unit
+   resolves against different bases on the two axes, which is what turned the
+   project icons into 92x69 ovals.
+
+   The ring is drawn here, in the DOM, over the cut in #sheet -- so it survives
+   the cards where the sky is at its palest, for the same reason every other
+   aperture carries registration ticks. The ticks themselves are suppressed:
+   four corner marks on a circle describe a square that is not there. */
+/* BOTH AXES NAMED, from one token -- and that is the opposite of the rule for
+   the project icons, on purpose. The trap there is that a PERCENTAGE resolves
+   against the box's width horizontally and its height vertically, so naming it
+   twice makes an oblong; the answer there is aspect-ratio. Here the token holds
+   only px and vw, and a viewport unit is the SAME length on both axes, so
+   naming it twice is exact -- while aspect-ratio is not available, because this
+   is a flex item in a column and its main size is the one being derived.
+   Measured with height:auto + aspect-ratio:1: a 2px dot. */
+.deck-hole {
+  --dh:clamp(30px, 3.4vw, 46px);
+  position:relative; left:auto; top:auto;
+  width:var(--dh); height:var(--dh);
+  border-radius:50%; border:1px solid var(--n4);
+  flex:none;
 }
-/* the only hover state a hole can honestly have: its registration marks light
-   up in the ink everything here is printed in */
-.gate:hover::before, .gate:focus-visible::before,
-.gate:hover::after, .gate:focus-visible::after { border-color:var(--blue); }
+.deck-hole::before, .deck-hole::after { content:none; }
 
-/* the advance. A hairline that fills over the dwell, because the gate moves on
-   its own and a thing that moves on its own without warning has taken the page
-   away from you. One scaleX, on the compositor. */
-.advance { position:absolute; left:var(--x); top:var(--y); width:var(--w);
-           height:1px; background:var(--n4); z-index:2; overflow:hidden; }
-.advance i { display:block; width:100%; height:100%; background:var(--n3);
-             transform-origin:0 50%; transform:scaleX(0); }
+/* the eyebrow. Small, heavy, spaced -- the annotation register the whole sheet
+   is written in, used here to name the section rather than to label a part. */
+.eye { color:var(--n4); }
+.deck-h { margin-top:-.4rem; }
+.greet { text-transform:none; letter-spacing:.02em; font-weight:400;
+         font-size:13px; color:var(--n3); margin-bottom:-1rem; }
+.name { text-transform:none; letter-spacing:-.05em; max-width:none; }
+/* .t.body carries max-width:30ch and TWO classes, so a single-class override
+   here silently loses to it and every paragraph on the deck came out as a 30ch
+   ribbon. Measured: the experience rows wrapped at ~30 characters into columns
+   taller than the card. Matching the specificity is the fix; widening .t.body
+   itself is not, because 30ch is right for the annotation column on a project
+   sheet, which is what it was set for. */
+.t.body.bio { max-width:46ch; font-size:13px; color:var(--n3); }
+.bio em { font-style:normal; color:var(--ink); font-weight:600; }
+.hint { margin-top:.6rem; }
+.hint .link { text-transform:none; letter-spacing:.02em; }
 
-/* the caption. Everything about the frame that is words lives here, on paper —
-   the frame itself is never printed over. */
-/* A NUMBER, A NAME, AND A WAY IN. Nothing else — the argument is on the sheet
-   this opens. With four lines instead of six the caption can sit on the gate's
-   own optical centre rather than starting level with its top edge. */
-.reel { position:absolute; left:var(--pad); top:32%; width:min(30ch,30vw);
-        display:grid; gap:1.05rem; justify-items:start; z-index:2; }
-.reel .d.sm { font-size:clamp(28px,3.1vw,48px); max-width:none; line-height:.98; }
-.reel .d.sm a { text-decoration:none; transition:color var(--t2) var(--e); }
-.reel .d.sm a:hover, .reel .d.sm a:focus-visible { color:var(--blue); }
-/* the way in, stated once. An arrow rather than a sentence. */
-.link.open { text-decoration:none; letter-spacing:.2em;
-             border-bottom:1px solid var(--blue); padding-bottom:.35rem;
-             transition:letter-spacing var(--t2) var(--e); }
-.link.open:hover, .link.open:focus-visible { letter-spacing:.3em; }
+/* ── THE STAGGER ───────────────────────────────────────────────────────────
+   Every element that should arrive in sequence carries style="--i:n" and this
+   is the only rule that reads it. Replacing #doc re-inserts the nodes, and a
+   CSS animation on a freshly inserted node runs by itself -- so the entrance
+   replays on every navigation with nothing in JavaScript driving it and no
+   per-element bookkeeping to fall out of step with the markup.
 
-/* the frame counter, directly under the advance bar. Together the two are the
-   gate's transport: how long until it moves, and which frame it is on. They
-   belong to the hole, not to the caption. */
-.stops { position:absolute; left:var(--x); top:var(--y);
-         display:flex; gap:.85rem; list-style:none; z-index:2; }
-.stops a { display:block; width:36px; padding-top:.32rem; text-decoration:none;
-           border-top:1px solid var(--n4);
-           transition:border-color var(--t2) var(--e); }
-.stops i { font-style:normal; font-weight:600; font-size:9px; letter-spacing:.15em;
-           color:var(--n4); font-variant-numeric:tabular-nums;
-           transition:color var(--t2) var(--e); }
-.stops a.on { border-top-color:var(--ink); }
-.stops a.on i { color:var(--ink); }
-.stops a:hover { border-top-color:var(--blue); }
-.stops a:hover i { color:var(--blue); }
+   100 ms a step, 30 px on X only, no Y and no scale. easeOutExpo: almost all of
+   the distance in the first third and then a long settle, which is what makes a
+   fast move read as arriving rather than as being flung. */
+@keyframes deck-in {
+  from { opacity:0; transform:translate3d(-30px,0,0); }
+  to   { opacity:1; transform:none; }
+}
+@keyframes deck-fade { from { opacity:0; } to { opacity:1; } }
+.deck-in > *, .rows > li, .cards > li, .socks > li {
+  animation:deck-in .5s cubic-bezier(0.16,1,0.3,1) both;
+  animation-delay:calc(var(--i, 0) * 100ms);
+}
+/* A LIST IS NOT AN ITEM. ul.cards matches `.deck-in > *` and each li matches
+   `.cards > li`, and the two transforms COMPOSE -- so every card was arriving
+   from sixty pixels out, not thirty, and so was everything measured inside it.
+   The container carries the layout; the items carry the entrance. */
+.rows, .cards, .socks { animation:none; }
+
+/* ── NOTHING THAT CARRIES A HOLE MAY MOVE WHILE IT ARRIVES ─────────────────
+   A die-cut is a rectangle of the DOCUMENT, measured once by deck.js and held
+   in a shader uniform. deck.bind() measures inside the router's commit, which
+   is the same frame the markup is inserted -- so a card still sitting at its
+   `from` keyframe was measured THERE, and its hole was cut sixty pixels to the
+   left of the icon for the rest of the page's life. Measured live: holes at
+   x=223 against icons at x=283, and nothing on a deck card ever remeasures.
+
+   Fading is free of that, because opacity is not geometry. So anything with an
+   aperture inside it fades in and stays put, and the slide is left to the type,
+   which has no holes in it. */
+.cards > li, .deck-hole { animation-name:deck-fade; }
+
+/* ── 02 · EXPERIENCE ────────────────────────────────────────────────────── */
+/* A thin left rule and nothing else. No dots, no timeline, no connecting line:
+   those imply a shape to the career that a list of four jobs does not have. */
+.rows { list-style:none; display:grid; gap:2rem; width:100%; }
+.row { border-left:1px solid var(--n4); padding-left:1.4rem; }
+.row-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:.35rem .9rem; }
+.row-org { font-size:17px; font-weight:600; letter-spacing:-.01em; }
+.row-role { text-transform:none; letter-spacing:.02em; font-weight:400; }
+.row-loc { margin-left:auto; color:var(--n4); }
+.row-when { color:var(--n4); font-size:10px; margin-top:.15rem; }
+.t.body.row-what { max-width:68ch; margin-top:.5rem; }
+
+/* ── 03 · PROJECTS ──────────────────────────────────────────────────────── */
+.cards { list-style:none; display:grid; gap:1.5rem; width:100%; }
+.pcard { display:grid; grid-template-columns:minmax(0,22rem) minmax(0,1fr);
+         gap:1.6rem; align-items:start; text-decoration:none;
+         padding:1rem; margin:-1rem; border-radius:2px;
+         transition:background var(--t2) var(--e); }
+.pcard:hover, .pcard:focus-visible { background:rgba(0,0,0,.025); outline:none; }
+
+/* THE CARD IS A PIECE OF PAPER WITH A HOLE IN IT, like everything else here.
+   .pcard-media is the frame and it NEVER MOVES: it was measured once, and the
+   shader is cutting a hole at exactly those coordinates. */
+.pcard-media { position:relative; display:block; aspect-ratio:4/3; width:100%;
+               --icon:clamp(64px, 26%, 116px); }
+
+/* ── THE PUNCH ─────────────────────────────────────────────────────────────
+   Two mask layers composited with `exclude`, which is A + B - 2AB: the gradient
+   is opaque everywhere, the glyph is opaque where the icon is, and excluding one
+   from the other leaves the picture with the icon's exact shape REMOVED from it.
+   So the sheet -- the paper, the print, the sky -- shows through the card in the
+   shape of that project's own icon. The card is another die-cut.
+
+   The punch is sized in the same `--icon` the aperture span uses and centred the
+   same way, so the CSS hole and the shader hole are one rectangle by
+   construction rather than two numbers somebody has to keep in step. */
+.pcard-cut { position:absolute; inset:0; overflow:hidden; display:block;
+             background:var(--paper); }
+@supports (mask-composite:exclude) or (-webkit-mask-composite:xor) {
+  .pcard-cut {
+    -webkit-mask-image:linear-gradient(#000,#000), var(--glyph);
+            mask-image:linear-gradient(#000,#000), var(--glyph);
+    /* `var(--icon) auto` and NOT `var(--icon) var(--icon)`. --icon is a
+       percentage, and a percentage resolves against the box's WIDTH in a
+       horizontal position and against its HEIGHT in a vertical one -- so
+       naming it twice made a 4:3 box punch a 92x69 hole out of a square
+       drawing. `auto` takes the plate's own 1:1 instead. Measured: 92x69
+       before, 92x92 after. */
+    -webkit-mask-size:100% 100%, var(--icon) auto;
+            mask-size:100% 100%, var(--icon) auto;
+    -webkit-mask-position:0 0, center;   mask-position:0 0, center;
+    -webkit-mask-repeat:no-repeat, no-repeat;
+            mask-repeat:no-repeat, no-repeat;
+    -webkit-mask-composite:xor;          mask-composite:exclude;
+  }
+}
+
+/* THE PICTURE IS THE ONLY THING THAT SCALES, and that is not a stylistic
+   preference. If the card or the cut carried the transform, the icon's real
+   on-screen rectangle would stop matching the one the deck measured, and
+   re-registering it would mean a getBoundingClientRect on a hover path -- which
+   is the one thing this whole build refuses to do. Scaling inside a fixed frame
+   gives the same "it comes forward" reading with the hole nailed down.
+
+   It is also the gate's own thesis restated: the hole does not move, the plate
+   behind it advances. */
+.pcard-zoom { position:absolute; inset:0; display:block;
+              transform:scale(1); transform-origin:50% 50%;
+              transition:transform 620ms cubic-bezier(0.16,1,0.3,1); }
+.pcard:hover .pcard-zoom, .pcard:focus-visible .pcard-zoom { transform:scale(1.055); }
+.pcard-still, .pcard-vid { position:absolute; inset:0;
+                           width:100%; height:100%; object-fit:cover; display:block; }
+/* the video sits ON the still and is invisible until it has something to show.
+   preload="none" means it is not even fetched until the first hover, so three
+   cards cost three images on load and no video at all. */
+.pcard-vid { opacity:0; transition:opacity var(--t2) var(--e); }
+.pcard:hover .pcard-vid, .pcard:focus-visible .pcard-vid { opacity:1; }
+
+/* the white icon at rest, sitting ON the punch and filling it exactly. Its
+   opacity is driven from cards.js by the same tween that opens the hole, so the
+   plate and the sky can never both be showing. */
+.pcard-glyph { position:absolute; left:50%; top:50%;
+               width:var(--icon); height:auto; aspect-ratio:1;
+               transform:translate(-50%,-50%);
+               pointer-events:none; z-index:2;
+               filter:drop-shadow(0 1px 2px rgba(0,0,0,.28)); }
+/* the aperture the deck measures. Empty, unpainted, and exactly coincident with
+   the glyph above it -- the hole, the punch, the white plate and the origin of
+   the crossing are all this one rectangle. */
+/* the aperture the deck measures. Empty, unpainted, and exactly coincident with
+   the glyph above it and with the punch below it -- the hole, the cut, the white
+   plate and the origin of the crossing are all this one square. It takes its
+   height from aspect-ratio for the same reason the mask does: a percentage means
+   two different lengths on two different axes. */
+.pcard-ap { position:absolute; left:50%; top:50%;
+            width:var(--icon); height:auto; aspect-ratio:1;
+            transform:translate(-50%,-50%); pointer-events:none; z-index:0; }
+
+.pcard-meta { display:grid; gap:.5rem; align-content:start; padding-top:.2rem; }
+.pcard-title { font-size:19px; font-weight:600; letter-spacing:-.015em;
+               text-transform:lowercase; }
+.pcard:hover .pcard-title, .pcard:focus-visible .pcard-title {
+  text-decoration:underline; text-underline-offset:.24em;
+  text-decoration-thickness:1px; }
+.pcard-kind { font-size:9px; color:var(--n4); }
+.t.body.pcard-line { max-width:46ch; }
+
+/* ── 04 · CONTACT ───────────────────────────────────────────────────────── */
+.socks { list-style:none; display:grid; gap:.2rem; width:100%; max-width:40rem; }
+.sock-a { display:flex; align-items:baseline; gap:1.2rem; text-decoration:none;
+          padding:.75rem 0 .75rem 0;
+          border-bottom:1px solid var(--n4);
+          transition:padding-left var(--t2) var(--e); }
+.sock-a:hover, .sock-a:focus-visible { padding-left:.6rem; outline:none; }
+.sock-k { width:6rem; flex:none; color:var(--n4); }
+.sock-v { font-size:16px; }
+.sock-a:hover .sock-v, .sock-a:focus-visible .sock-v {
+  text-decoration:underline; text-underline-offset:.24em;
+  text-decoration-thickness:1px; }
+.sock-arrow { margin-left:auto; color:var(--blue); opacity:0;
+              transform:translateX(-6px);
+              transition:opacity var(--t2) var(--e), transform var(--t2) var(--e); }
+.sock-a:hover .sock-arrow, .sock-a:focus-visible .sock-arrow {
+  opacity:1; transform:none; }
+/* AN UNSET LINK SAYS SO. A portfolio that links a wrong GitHub is worse than one
+   that links none, so a placeholder is drawn as a placeholder until the real
+   handle goes into content.js. */
+.sock.unset .sock-v { color:var(--n4); font-style:italic; }
+.sock.unset .sock-a { border-bottom-style:dashed; }
+.back-hint { margin-top:1.4rem; }
+.back-hint .link { text-transform:none; letter-spacing:.02em; }
+
+/* ══ THE CHROME ══════════════════════════════════════════════════════════
+   Fixed furniture, outside #doc, so the page swap cannot flicker it. */
+#chrome { position:fixed; inset:0; z-index:25; pointer-events:none; }
+#chrome > * { pointer-events:auto; }
+/* THE CHROME NEEDS ITS OWN MARGIN. It is fixed, so on a long project sheet any
+   scroll position can put a display headline directly underneath the counter --
+   measured, on the closet sheet, where "02 / 03" landed inside the word "it".
+   Reserving space is not an option (the sheet's corners are absolutely placed by
+   the composition), so the paper comes back up instead: a short fade to the
+   stock's own colour, under the controls and over nothing else. It is the same
+   sheet, so it reads as margin rather than as a bar. */
+#chrome::after {
+  content:""; position:absolute; left:0; right:0; bottom:0; height:88px;
+  background:linear-gradient(to top, var(--paper) 34%, transparent);
+  pointer-events:none; z-index:-1;
+}
+
+.prog { position:absolute; top:0; left:0; right:0; height:2px;
+        background:var(--n4); opacity:.35; pointer-events:none; }
+.prog i { display:block; height:100%; width:25%; background:var(--ink);
+          transition:width 420ms cubic-bezier(0.16,1,0.3,1); }
+
+.nav { position:absolute; left:var(--pad); bottom:calc(var(--pad) * .8);
+       display:flex; align-items:center; gap:1rem; }
+.nav [data-count] { font-variant-numeric:tabular-nums; color:var(--n4); }
+.dots { display:flex; gap:.4rem; align-items:center; }
+.dots a { display:block; padding:.5rem .1rem; }
+/* a pill that STRETCHES rather than a dot that fills: the current position is
+   legible from the shape at a glance, without needing the colour */
+.dots i { display:block; height:3px; width:3px; border-radius:2px;
+          background:var(--n4);
+          transition:width var(--t2) var(--e), background var(--t2) var(--e); }
+.dots a:hover i { background:var(--n3); }
+.dots a.on i { width:22px; background:var(--ink); }
+.dots a.under i { width:22px; background:var(--n3); }
+
+.keys { position:absolute; right:var(--pad); bottom:calc(var(--pad) * .8);
+        color:var(--n4); display:flex; align-items:center; gap:.3rem; }
+.keys kbd { font:inherit; font-size:9px; border:1px solid var(--n4);
+            border-radius:2px; padding:.1rem .3rem; }
+
+/* the phone's arrow keys. Hidden on anything with a keyboard. */
+.mob { position:absolute; right:var(--pad); top:50%; transform:translateY(-50%);
+       display:none; flex-direction:column; gap:.6rem; }
+.mob-b { display:grid; place-items:center; width:40px; height:40px;
+         border:1px solid var(--n4); border-radius:50%;
+         text-decoration:none; font-size:15px; background:var(--paper); }
+.mob-b[aria-disabled="true"] { opacity:.2; pointer-events:none; }
+
+/* ── THE BACK ARROW ────────────────────────────────────────────────────────
+   Not a picture of an arrow: an arrow-shaped HOLE, cut in the paper by the same
+   shader that cuts every other hole, showing the home sheet's own sky. A window
+   onto where you are going.
+
+   Which means there is nothing here to draw. The <a> is a hit target and the
+   span inside it is an empty rectangle the deck measures; everything visible is
+   behind them, on #sheet. If the glyph atlas never lands there would be a
+   clickable rectangle containing nothing at all, so .no-glyphs -- set on <html>
+   by deck.js in exactly that case -- puts a plain arrow there instead. */
+/* ── THE BACK ARROW ────────────────────────────────────────────────────────
+   TOP LEFT, where a back control belongs, and always on top. It was at the
+   middle of the left edge because that was the one band free of the project
+   sheets' own four-corner compositions -- a workaround for the real problem,
+   which was that the control was a HOLE and holes live under the type. Now that
+   it paints its own sky above the page it can go where it should be, and the
+   sheets make room for it instead (body.on-project, below).
+
+   The disc is opaque, so it needs no registration ticks: a tick says "there is
+   a cut here" for a hole that might be nearly the colour of the paper, and this
+   one can never be. */
+.backarrow {
+  --ba:clamp(42px, 4.4vw, 56px);
+  position:fixed; left:var(--pad); top:var(--pad);
+  width:var(--ba); height:var(--ba); z-index:26;
+  display:block; text-decoration:none; color:#fff;
+  transition:transform var(--t2) var(--e);
+}
+.backarrow[hidden] { display:none; }
+.backarrow:hover, .backarrow:focus-visible { transform:translateX(-3px); outline:none; }
+
+/* the die is CSS: the canvas is square and border-radius cuts the circle out of
+   it, so the shader never has to know the control is round */
+.backarrow-sky {
+  position:absolute; inset:0; border-radius:50%; overflow:hidden;
+  background:var(--ink);                 /* until the first paint lands */
+  box-shadow:0 0 0 1px rgba(0,0,0,.14);
+  pointer-events:none;
+}
+.backarrow-sky canvas { display:block; width:100%; height:100%; }
+.backarrow-ico {
+  position:absolute; inset:22%; width:56%; height:56%;
+  pointer-events:none;
+  filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45));
+}
+
+/* THE SHEET MAKES ROOM. A project sheet puts its own name in the top-left
+   corner, which is now where the control is. Indenting that one cluster is
+   cheaper and more honest than moving the control somewhere it does not
+   belong. */
+body.on-project .plate .corner.tl { padding-left:calc(clamp(42px, 4.4vw, 56px) + 1.1rem); }
+
 
 /* ── the annotated column. Used by the project sheets (site/pages.js). ──── */
 .spec { position:absolute; left:var(--pad); top:28%; width:min(32ch,33vw);
@@ -433,28 +715,57 @@ a { color:inherit; }
 
   .ap:not(.icon) { position:relative; left:auto; top:auto;
                    width:100%; height:auto; }
-  .ap.tall, .ap.wide, .gate { aspect-ratio:4/3; }
+  .ap.tall, .ap.wide { aspect-ratio:4/3; }
   .ap.band { aspect-ratio:5/1; margin-inline:calc(var(--pad) * -1);
              width:calc(100% + var(--pad) * 2); }
   .cap { position:static; }
 
-  .advance { position:relative; left:auto; top:auto; width:100%; margin-top:-.9rem; }
-  .reel,.spec,.cols,.checks,.side { position:static; width:auto; right:auto; max-width:none; }
+  .spec,.cols,.checks,.side { position:static; width:auto; right:auto; max-width:none; }
   .spec.wide-col { width:auto; }
   .fig.set { position:static; width:auto; }
   /* 88 columns will not fit a phone at any legible size, so the transcript
      does what a terminal on a phone does: it scrolls sideways. */
   .term { width:100%; font-size:11px; overflow-x:auto; }
-  .stops { position:static; }
   .dialog,.dialog.set { position:static; width:auto; bottom:auto; }
   .dlg-body { grid-template-columns:auto 1fr; }
+
+  /* ── THE DECK ON A PHONE ─────────────────────────────────────────────── */
+  .deck-in { padding-top:clamp(1.4rem,4vh,2.4rem); gap:1.2rem; }
+  .deck-hour { position:absolute; top:var(--pad); right:var(--pad);
+               text-align:right; width:auto; }
+  /* the generic .ap rule above turns every aperture into a full-width flowing
+     block, which is right for a die-cut inside a composition and wrong for a
+     lens: a circle that fills the column is a porthole */
+  .deck-hole { --dh:clamp(28px, 8.5vw, 40px); }
+
+  .pcard { grid-template-columns:1fr; gap:1rem; }
+  .pcard-media { --icon:clamp(58px, 22%, 96px); }
+  .row-loc { margin-left:0; width:100%; }
+
+  /* the phone has no arrow keys, so the only way through the deck appears */
+  .mob { display:flex; }
+  .keys { display:none; }
+  .nav { bottom:calc(var(--pad) * .55); }
+  .backarrow { left:calc(var(--pad) * .55); }
 }
 @media (max-width:560px){
   .d { font-size:clamp(32px,9vw,46px); }
   .t.body { max-width:none; }
 }
 
+/* ══ REDUCED MOTION ══════════════════════════════════════════════════════
+   The router already commits instantly rather than crossing when this is set
+   (see `reduced` in site/router.js), so what is left here is everything CSS
+   owns: the stagger, the card's zoom, and the video that starts on hover. The
+   entrance must land at its END state rather than simply not running, or every
+   staggered element would stay at opacity 0 forever. */
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto;}
-  #doc,#sheet,.advance i{transition:none;}
+  #doc,#sheet{transition:none;}
+  .deck-in > *, .rows > li, .cards > li, .socks > li {
+    animation:none; opacity:1; transform:none;
+  }
+  .pcard-zoom { transition:none; }
+  .pcard:hover .pcard-zoom, .pcard:focus-visible .pcard-zoom { transform:none; }
+  .prog i { transition:none; }
 }

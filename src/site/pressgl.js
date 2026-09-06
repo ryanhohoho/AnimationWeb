@@ -11,9 +11,9 @@
 // The previous build gave each hole its own canvas and its own WebGL context,
 // and cut the still print out of a document-tall offscreen plate. That worked
 // and it was a pile of machinery: a 300 ms CPU press, N contexts, a separate
-// canvas for Mew's halo that could only ever show a STILL print because it
-// followed her to arbitrary positions, and a reprint every time the second ink
-// changed.
+// canvas per moving hole that could only ever show a STILL print because it
+// followed its subject to arbitrary positions, and a reprint every time the
+// second ink changed.
 //
 // Painting the paper in the shader collapses all of it. The paper is not a DOM
 // layer with holes masked out of it — masks with many rectangles are a
@@ -21,9 +21,8 @@
 // what this shader outputs where the fragment is not inside a hole. So:
 //
 //   · one context instead of N, and no offscreen plate at all
-//   · Mew's halo is just another hole, at her viewport position, and therefore
-//     carries MOVING weather like every other hole — which the old build
-//     could not do at any price
+//   · every hole carries MOVING weather, because they are all cut from the same
+//     field in the same pass — which the old build could not do at any price
 //   · changing the second ink is a uniform, not a 300 ms reprint, so moving
 //     between project sheets is instant
 //   · type still never sits on tone: outside a hole the output is flat paper,
@@ -105,12 +104,37 @@ uniform vec3  uInkB;
 uniform vec3  uInkA2;
 uniform vec3  uInkB2;
 uniform int   uAltHole;    // index of the hole using the alternate pair, or -1
+// AND THE ALTERNATE PAIR HAS ITS OWN IDENTITY, for exactly the reason the
+// EATING does (see uEatIdn). Identity is how much second ink lands on the lit
+// cloud tops, which is what makes a pair read as a COLOUR rather than as a
+// darkness -- so it is a property of the PAIR, not of the page. This was hard
+// coded to 1.0, which is right for a project window and wrong for the back arrow
+// on a project sheet: that one is deliberately pulled in the HOME sheet's pair,
+// and the home sheet runs identity at zero. Hard coded, it laid rose the sheet
+// it is quoting does not lay.
+uniform float uAltIdn;
 uniform float uIdentity;
 uniform float uRuling;
 
 uniform vec4  uHoles[${HOLES_MAX}];   // x, y, w, h — in DOCUMENT pixels
 uniform int   uHoleCount;
-uniform vec3  uHalo;        // x, y, radius — VIEWPORT px. r = 0 is off.
+// ── ONE APERTURE MAY BE ROUND ────────────────────────────────────────────────
+// An index and not an array, for the same reason uAltHole is an index: exactly
+// one hole on any sheet is a circle -- the small die-cut above the header on a
+// deck card -- and a per-hole float array would cost one whole uniform ROW per
+// entry. GLSL ES 1.00 never packs array elements together (spec appendix A), so
+// uniform float uHoleR[12] is twelve vec4 rows, the same as a vec4 array. The
+// radius is min(w,h)/2, so a square aperture is a circle and an oblong one is a
+// stadium; nothing on the sheet has ever wanted a part-rounded corner.
+uniform int   uRoundHole;
+// ── AND EVERY DIE-CUT CAN BE FADED OUT AS A GROUP ────────────────────────────
+// A page turn slides #doc thirty pixels and fades it, but a hole is a rectangle
+// of the DOCUMENT held in a uniform, so it used to sit perfectly still and
+// perfectly opaque while the type it belongs to moved out from under it. This
+// is what lets the apertures leave with the rest of the page. It multiplies the
+// DIE-CUTS only, and is applied before the crossing is folded in, because the
+// crossing has to be able to cover a window that is halfway through fading.
+uniform float uHoleFade;
 // THE CROSSING, as a place rather than a level: xy = where the opening is
 // centred (VIEWPORT px), z = its radius, w = how ragged the edge is. z <= 0 is
 // off. The paper is EATEN OUTWARD from the hole you clicked, and on the far
@@ -149,6 +173,32 @@ uniform vec3  uEatB;
 uniform float uEatIdn;
 uniform float uOverlay;    // 1 = draw ONLY the eating, with alpha, for the
                            //     layer that sits above the type
+
+// ── A HOLE THAT IS A SHAPE RATHER THAN A RECTANGLE ───────────────────────────
+// Every other die-cut on this sheet is an axis-aligned rectangle, because that
+// is what a die-cut is. This one is a project's own ICON, cut through the card
+// that advertises it, so what shows through is that project's sky in the shape
+// of the thing it is.
+//
+// THERE IS ONLY EVER ONE, and that is not a limitation being tolerated -- it is
+// the same rule that makes uAltHole a single int. Four projects on a sheet whose
+// whole discipline is one or two inks can only work if you see one second ink at
+// a time, so only the icon under the pointer is open and the rest are solid
+// white. One masked hole is therefore all the site can ever ask for.
+//
+// AND IT IS NOT IN uHoles. Keeping it out of that array buys three things at
+// once: it can never eat one of the twelve die-cut slots, it can never shift the
+// flattened index uAltHole is holding, and -- the one that actually forced this
+// -- the hole loop can keep breaking on its first hit. A masked fragment inside
+// the rectangle but at zero alpha must NOT end the search, and a loop that both
+// breaks early and evaluates a mask cannot do both. Its own rectangle sidesteps
+// the question. (Indexing uHoles by a uniform int is also illegal in GLSL ES
+// 1.00 -- only constant-index-expressions may subscript a uniform array -- so
+// the WebGL1 path would not have compiled anyway.)
+uniform sampler2D uMask;   // the glyph atlas, one cell per icon, on unit 1
+uniform vec4  uMaskBox;    // x, y, w, h in DOCUMENT px. z <= 0 is off
+uniform vec4  uMaskUV;     // u0, v0, du, dv -- this glyph's cell in the atlas
+uniform float uMaskAmt;    // 0..1, the hover crossfade
 
 // bone. Must match --paper in styles/site.css and PAPER in site/sky.js — the
 // shader paints the stock, so a mismatch is a visible seam between the page
@@ -313,17 +363,60 @@ void main() {
     if (i >= uHoleCount) break;
     vec4 h = uHoles[i];
     vec2 q = doc - h.xy;
-    if (q.x >= 0.0 && q.y >= 0.0 && q.x < h.z && q.y < h.w) { open = 1.0; hit = i; break; }
+    float rad = (i == uRoundHole) ? min(h.z, h.w) * 0.5 : 0.0;
+    // THE CHEAP REJECT FIRST. Nearly every fragment on the screen is outside
+    // every hole, and this keeps the distance solve on the handful that are
+    // near an edge rather than paying a length() per hole per pixel.
+    if (q.x < -rad || q.y < -rad || q.x > h.z + rad || q.y > h.w + rad) continue;
+    float o;
+    if (rad <= 0.0) {
+      o = (q.x >= 0.0 && q.y >= 0.0 && q.x < h.z && q.y < h.w) ? 1.0 : 0.0;
+    } else {
+      // rounded box, exact. doc is one-to-one with the fragment grid -- the
+      // canvas is sized in CSS pixels and doc is just vp plus the scroll -- so
+      // one pixel of feather is exactly this constant. fwidth would be the
+      // usual answer and it is NOT core in GLSL ES 1.00 (it needs
+      // OES_standard_derivatives), and this file already has a
+      // derivatives-in-branching hazard forty lines down. A constant is both
+      // correct here and free.
+      vec2 b = h.zw * 0.5;
+      vec2 dd = abs(q - b) - b + rad;
+      float sd = length(max(dd, 0.0)) + min(max(dd.x, dd.y), 0.0) - rad;
+      o = smoothstep(0.5, -0.5, sd);
+    }
+    // NO EARLY BREAK ON THE FIRST HIT ANY MORE. It was safe while every hole
+    // was a hard rectangle and coverage was 0 or 1; with a rounded edge a
+    // fragment in one hole's cut-off corner can still be fully inside the next
+    // one, and breaking would have taken the partial value and never looked.
+    // The alt-ink index only follows a hole that actually owns the fragment,
+    // or the pair would flip across a one-pixel fringe.
+    if (o > open) { open = o; if (o > 0.5) hit = i; }
+    if (open >= 1.0) break;
   }
 
-  // MEW'S HOLE. She is the one thing that can open the sheet without a die, so
-  // she carries a soft-edged hole with her — and because it is cut by the same
-  // shader from the same field, it shows the same MOVING weather as every other
-  // hole, registered to the same document position.
-  if (uHalo.z > 0.0) {
-    float soft = 1.0 - smoothstep(uHalo.z * 0.42, uHalo.z, distance(vp, uHalo.xy));
-    open = max(open, soft);
+  // THE ICON, CUT THROUGH THE CARD. Same document-anchored registration as every
+  // other hole -- the rectangle is in document pixels, so it stays on the card
+  // while the card scrolls under the window -- but what is open inside that
+  // rectangle is the glyph rather than the whole of it.
+  //
+  // The rectangle test is ARITHMETIC, not a branch. An if around a texture fetch
+  // puts the fetch in non-uniform control flow, where derivatives are undefined
+  // in GLSL ES 1.00 and real drivers disagree about what to do; step() gives the
+  // same answer with the fetch unconditional. The outer if is on a uniform, so
+  // it is uniform for every fragment in the draw and costs nothing.
+  float maskOpen = 0.0;
+  if (uMaskBox.z > 0.0) {
+    vec2 m = (doc - uMaskBox.xy) / max(uMaskBox.zw, vec2(1.0));
+    vec2 inb = step(vec2(0.0), m) * step(m, vec2(1.0));
+    vec2 auv = uMaskUV.xy + clamp(m, 0.0, 1.0) * uMaskUV.zw;
+    maskOpen = TEX(uMask, auv).r * uMaskAmt * inb.x * inb.y;
+    open = max(open, maskOpen);
   }
+
+  // the die-cuts leave with the page they are cut in. The crossing below is
+  // deliberately outside this: it has to be able to cover a window mid-fade.
+  open *= uHoleFade;
+  maskOpen *= uHoleFade;
 
   // THE CROSSING. Not a rectangle that grows and not a level that fades: an
   // opening that spreads. Its edge is chewed by the WEATHER ITSELF — the same
@@ -381,11 +474,15 @@ void main() {
   // sheet's own pink and blue and only become the project's colours at the
   // swap, which put a colour change right in the middle of the one moment that
   // is supposed to have nothing visible happening in it.
-  bool gate = (hit == uAltHole && uAltHole >= 0);
+  // The masked hole is a window onto a PROJECT, exactly as the gate was, so it
+  // prints in that project's pair at full identity. As uMaskAmt eases to zero
+  // the output tends to PAPER on its own, so the boolean flipping back has
+  // nothing left to be seen doing.
+  bool gate = maskOpen > 0.0 || (hit == uAltHole && uAltHole >= 0);
   bool eat = eaten > 0.02;
   vec3 iA = eat ? uEatA : (gate ? uInkA2 : uInkA);
   vec3 iB = eat ? uEatB : (gate ? uInkB2 : uInkB);
-  float idn = eat ? uEatIdn : (gate ? 1.0 : uIdentity);
+  float idn = eat ? uEatIdn : (gate ? uAltIdn : uIdentity);
   OUT = vec4(mix(PAPER, printAt(doc, iA, iB, idn), open), 1.0);
 }`;
 
@@ -457,7 +554,9 @@ export function createSheetPress(canvas, sheet, frames) {
 
   const U = {};
   for (const n of ["uDens", "uTex", "uFrames", "uF", "uRes", "uScroll", "uPlate", "uRefH", "uSky", "uSkyRamp", "uBand",
-                   "uInkA", "uInkB", "uInkA2", "uInkB2", "uAltHole", "uOverlay", "uIdentity", "uRuling", "uHoles", "uHoleCount", "uHalo", "uCross", "uCross2", "uEatOut", "uEatA", "uEatB", "uEatIdn"]) {
+                   "uInkA", "uInkB", "uInkA2", "uInkB2", "uAltHole", "uAltIdn", "uOverlay", "uIdentity", "uRuling", "uHoles", "uHoleCount", "uCross", "uCross2", "uEatOut", "uEatA", "uEatB", "uEatIdn",
+                   "uRoundHole", "uHoleFade",
+                   "uMask", "uMaskBox", "uMaskUV", "uMaskAmt"]) {
     U[n] = gl.getUniformLocation(prog, n);
   }
 
@@ -477,6 +576,30 @@ export function createSheetPress(canvas, sheet, frames) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, sheet.width, sheet.height, 0,
                   gl.LUMINANCE, gl.UNSIGNED_BYTE, sheet.data);
   }
+  // ── THE GLYPH ATLAS, ON UNIT 1 ─────────────────────────────────────────
+  // It arrives asynchronously like the sky does, so a 1x1 black texel goes in
+  // first: a sampler bound to an INCOMPLETE texture makes some drivers reject
+  // the entire draw call, which would mean no sheet at all until the atlas
+  // landed. Black is also the correct placeholder -- zero alpha, no hole.
+  //
+  // The density sheet above is bound on unit 0 and this file has never called
+  // activeTexture, relying on the default. The moment a second unit exists that
+  // assumption has to be paid for, so every path that touches unit 1 restores
+  // unit 0 before it returns.
+  const MFMT_I = two ? gl.R8 : gl.LUMINANCE;
+  const MFMT = two ? gl.RED : gl.LUMINANCE;
+  const mtex = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, mtex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, MFMT_I, 1, 1, 0, MFMT, gl.UNSIGNED_BYTE, new Uint8Array([0]));
+  gl.uniform1i(U.uMask, 1);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+
   gl.uniform1i(U.uDens, 0);
   gl.uniform2f(U.uTex, sheet.width, sheet.height);
   gl.uniform1f(U.uFrames, frames);
@@ -487,10 +610,20 @@ export function createSheetPress(canvas, sheet, frames) {
 
   /**
    * @param holes  [{x,y,w,h}] in DOCUMENT pixels
-   * @param halo   {x,y,r} in VIEWPORT pixels, or null
    * @param f      position in the cloud loop, fractional
    */
-  function draw({ w, h, scrollY, plate, bandPx, inkA, inkB, alt, holes, halo, f, ruling, cross, eat, overlay, sky, skyRamp }) {
+  /**
+   * @param holeDX   px to slide every die-cut by, so the holes travel with the
+   *                 page during a turn. Added at fill time -- it needs no
+   *                 uniform of its own because the rectangles are rewritten
+   *                 every draw anyway.
+   * @param holeFade 0..1 on the die-cuts as a group. The crossing ignores it.
+   * @param roundHole index of the one aperture drawn as a circle, or -1.
+   * @param scissor  {x,y,w,h} in DEVICE px, origin BOTTOM-left, limiting both
+   *                 the clear and the draw. Used to paint one small control's
+   *                 worth of sky without paying for a second full pass.
+   */
+  function draw({ w, h, scrollY, plate, bandPx, inkA, inkB, alt, holes, f, ruling, cross, eat, overlay, sky, skyRamp, mask, holeDX, holeFade, roundHole, scissor }) {
     if (w < 2 || h < 2) return false;
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w; canvas.height = h;
@@ -502,13 +635,16 @@ export function createSheetPress(canvas, sheet, frames) {
     }
 
     const n = Math.min(holes.length, HOLES_MAX);
+    const dx = holeDX || 0;
     for (let i = 0; i < n; i++) {
       const b = holes[i];
-      rects[i * 4] = b.x; rects[i * 4 + 1] = b.y;
+      rects[i * 4] = b.x + dx; rects[i * 4 + 1] = b.y;
       rects[i * 4 + 2] = b.w; rects[i * 4 + 3] = b.h;
     }
     gl.uniform4fv(U.uHoles, rects);
     gl.uniform1i(U.uHoleCount, n);
+    gl.uniform1i(U.uRoundHole, roundHole === undefined || roundHole === null ? -1 : roundHole);
+    gl.uniform1f(U.uHoleFade, holeFade === undefined ? 1 : holeFade);
     gl.uniform2f(U.uRes, w, h);
     gl.uniform1f(U.uScroll, scrollY);
     gl.uniform2f(U.uPlate, plate.w, plate.h);
@@ -550,13 +686,41 @@ export function createSheetPress(canvas, sheet, frames) {
     gl.uniform3f(U.uInkA2, a2[0], a2[1], a2[2]);
     gl.uniform3f(U.uInkB2, b2[0], b2[1], b2[2]);
     gl.uniform1i(U.uAltHole, alt && alt.index >= 0 ? alt.index : -1);
-    if (halo) gl.uniform3f(U.uHalo, halo.x, halo.y, halo.r);
-    else gl.uniform3f(U.uHalo, 0, 0, 0);
+    // matched to the pair, the same way the page's and the eating's are
+    gl.uniform1f(U.uAltIdn, alt?.inkB ? 1 : 0);
+    // the one masked hole. Off is a zero box AND a zero amount, because either
+    // alone would leave the other reading as live in the shader.
+    if (mask && mask.w > 0 && mask.amt > 0) {
+      gl.uniform4f(U.uMaskBox, mask.x + dx, mask.y, mask.w, mask.h);
+      gl.uniform4f(U.uMaskUV, mask.u0, mask.v0, mask.du, mask.dv);
+      gl.uniform1f(U.uMaskAmt, mask.amt);
+    } else {
+      gl.uniform4f(U.uMaskBox, 0, 0, 0, 0);
+      gl.uniform1f(U.uMaskAmt, 0);
+    }
 
     gl.uniform1f(U.uOverlay, overlay ? 1 : 0);
+
+    // ── A SCISSORED PASS PAINTS ONE SMALL THING ──────────────────────────
+    // The back arrow on a project sheet is a hole, and a hole lives on the
+    // sheet at z1 where the page's own type is drawn over the top of it. So its
+    // pixels are taken here, in a pass limited to its own rectangle, and blitted
+    // to a layer above the words. Scissoring costs almost nothing -- a 56 px
+    // button is three thousand fragments against a million -- and gl.clear
+    // honours the scissor too, so the rest of the buffer is left alone.
+    //
+    // THE CALLER MUST DRAW THE SCISSORED PASS FIRST AND THE FULL ONE LAST.
+    // This writes into the same drawing buffer the sheet itself is displayed
+    // from, so a scissored pass left as the final state of the buffer would put
+    // a wrongly-coloured patch on the page. The full pass overwrites it.
+    if (scissor) {
+      gl.enable(gl.SCISSOR_TEST);
+      gl.scissor(scissor.x, scissor.y, scissor.w, scissor.h);
+    }
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (scissor) gl.disable(gl.SCISSOR_TEST);
     return true;
   }
 
@@ -564,7 +728,22 @@ export function createSheetPress(canvas, sheet, frames) {
     draw,
     webgl2: two,
     maxHoles: HOLES_MAX,
+    /** Upload the glyph atlas. Takes the same {width,height,data} shape
+        loadSkyClip returns, so iconatlas.js could copy that loader outright
+        instead of inventing a second decode path. */
+    setMaskTex(atlas) {
+      if (!atlas || !atlas.width || !atlas.height) return false;
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, mtex);
+      gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+      gl.texImage2D(gl.TEXTURE_2D, 0, MFMT_I, atlas.width, atlas.height, 0,
+                    MFMT, gl.UNSIGNED_BYTE, atlas.data);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      return true;
+    },
     dispose() {
+      gl.deleteTexture(mtex);
       gl.deleteTexture(tex);
       gl.deleteProgram(prog);
       gl.getExtension("WEBGL_lose_context")?.loseContext();

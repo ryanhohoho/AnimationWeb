@@ -122,11 +122,11 @@ export function html(p) {
       <p class="t">2025</p>
     </div>
 
-    <div class="ap tall" data-ap data-collider style="--x:57%; --y:12%; --w:25%; --h:64%"></div>
+    <div class="ap tall" data-ap style="--x:57%; --y:12%; --w:25%; --h:64%"></div>
     <p class="t dim cap" style="--x:57%; --y:78%">PL.&nbsp;01&nbsp;—&nbsp;CERULEAN&nbsp;+&nbsp;${inkName}</p>
 
     <div class="corner bl">
-      <h1 class="d" data-collider style="max-width:18ch">batch usb engraving<br />and encryption,<br /><em>from the command line</em></h1>
+      <h1 class="d" style="max-width:18ch">batch usb engraving<br />and encryption,<br /><em>from the command line</em></h1>
     </div>
     <div class="corner br">
       <p class="t dim">TWO&nbsp;TOOLS.&nbsp;NO&nbsp;ASSET&nbsp;NUMBERS&nbsp;ON&nbsp;THIS&nbsp;SHEET.</p>
@@ -144,7 +144,7 @@ export function html(p) {
     </div>
     <div class="corner tr"><p class="t dim"><span data-at>—</span></p></div>
 
-    <div class="checks" data-collider>
+    <div class="checks">
       <div class="check">
         <dt>ENGRAVING</dt><dd class="claim">an operator typed the asset number into every pocket of the jig, by hand, for every tray</dd>
         <dt>PER&nbsp;TRAY</dt><dd>75&nbsp;POCKETS&nbsp;·&nbsp;225&nbsp;TEXT&nbsp;OBJECTS</dd>
@@ -185,7 +185,7 @@ export function html(p) {
     </div>
     <div class="corner tr"><p class="t dim"><span data-at>—</span></p></div>
 
-    <div class="spec term-col" data-collider>
+    <div class="spec term-col">
       <div class="term" data-term><div data-lines></div></div>
       <p class="t dim">FIG.&nbsp;2&nbsp;—&nbsp;FOUR&nbsp;DRIVES,&nbsp;ONE&nbsp;OPERATOR,&nbsp;NINETY&nbsp;SECONDS.</p>
     </div>
@@ -234,7 +234,7 @@ export function html(p) {
     </div>
     <div class="corner tr"><p class="t dim"><span data-at>—</span></p></div>
 
-    <div class="spec wide-col" data-collider>
+    <div class="spec wide-col">
       <p class="t dim body wide">A template is not a list, it is a jig. Seventy-five
         physical pockets, and inside the file 75 serial placeholders
         (<em style="font-style:normal">EXXXXXXX</em>) plus 75 copies of each fixed
@@ -274,7 +274,7 @@ export function html(p) {
     <div class="corner tl"><p class="t">04&nbsp;—&nbsp;COLOPHON</p></div>
     <div class="corner tr"><p class="t dim"><span data-at>—</span></p></div>
 
-    <div class="cols" data-collider>
+    <div class="cols">
       <div><p class="t dim">FOR</p><p class="t body">Royal Canadian Mounted
         Police. Commissioned, delivered, in use.</p></div>
       <div><p class="t dim">DELIVERED</p><p class="t body">~2,500 lines of

@@ -72,163 +72,102 @@
 
   <main id="doc">
 
-    <!-- ══ 00 · SHEET ═══════════════════════════════════════════════════════
-         One tall slot, right of centre, because the sun is off the top-RIGHT of
-         the print and this is the aperture that has to hold the last warm
-         light. Type in three corner clusters; the middle-left is left open for
-         Mew, who spawns at 72% width and drifts. -->
-    <section class="plate" id="s0" data-node="00">
-      <div class="corner tl">
-        <p class="t">RYAN&nbsp;HO</p>
-        <p class="t dim">INTERACTIVE&nbsp;SYSTEMS<br />PROCEDURAL&nbsp;ANIMATION</p>
-      </div>
-      <div class="corner tr">
-        <p class="t dim">ONE&nbsp;SHEET&nbsp;·&nbsp;<span data-at>—</span></p>
+    <!-- ══ 01 · SUMMARY ══════════════════════════════════════════════════════
+         THE ONE CARD THAT KEEPS ITS WINDOW.
+
+         Every other card on the deck is paper with a horizon band at its foot.
+         This one keeps the tall slot right of centre, because it is where the
+         reader is taught what a hole in this sheet IS: the sun is off the
+         top-right of the print, so this aperture holds the last warm light, and
+         pressing on to the next card opens it and takes them through it. After
+         that they know, and the rest of the deck can turn like pages.
+
+         Type in two corner clusters with the middle-left open, because Mew
+         spawns at 72% width and drifts. NOTHING HERE IS A COLLIDER any more --
+         she passes through the words now, which is why the composition can be
+         this tight without ever trapping her. -->
+    <section class="plate deckpage" id="s0" data-node="01">
+      <div class="corner tr deck-hour">
+        <p class="t dim">01</p>
         <p class="t">19:00</p>
       </div>
 
-      <div class="ap tall" data-ap style="--x:57%; --y:9%; --w:25%; --h:74%"></div>
-      <p class="t dim cap" style="--x:57%; --y:85%">AP.&nbsp;00&nbsp;—&nbsp;LAST&nbsp;LIGHT</p>
-
-      <div class="corner bl">
-        <h1 class="d" data-collider>two inks,<br />one animal,<br /><em>and the light going out</em></h1>
-      </div>
-      <div class="corner br">
-        <p class="t dim">THE&nbsp;PRINT&nbsp;GETS&nbsp;DARKER&nbsp;ON&nbsp;THE&nbsp;WAY&nbsp;DOWN</p>
-        <p class="t">SCROLL&nbsp;↓</p>
-      </div>
-    </section>
-
-    <!-- ══ 01 · WORK ════════════════════════════════════════════════════════
-         THE GATE. One hole, fixed, with the project plates advancing behind it
-         one at a time. A grid would give every project the same weight and ask
-         you to compare them; a gate gives you one and asks you to look at it.
-
-         It also keeps the sheet's one-or-two-ink rule: each project owns a
-         different SECOND ink (site/projects.js), and you only ever see one of
-         them at once. The colour is the thing that changes.
-
-         Clicking OPENS the hole: it grows until the paper is gone, the screen
-         coarsens until the halftone is countable marks, and the next sheet's
-         paper closes back in around its own holes (site/router.js). That is
-         RYAN.txt III, the idea under every reference he keeps.
-
-         THE CAPTION SAYS ALMOST NOTHING, on purpose. A paragraph here is a
-         paragraph read standing in the doorway; the argument belongs on the
-         sheet it opens. A number, a name, and what kind of thing it is. -->
-    <section class="plate work" id="s1" data-node="01">
-      <div class="corner tl">
-        <p class="t">01&nbsp;—&nbsp;WORK</p>
-        <p class="t dim">THREE&nbsp;PLATES,&nbsp;ONE&nbsp;GATE</p>
-      </div>
-      <div class="corner tr">
-        <p class="t dim"><span data-at>—</span></p>
-        <p class="t">20:40</p>
+      <div class="deck-in">
+        <p class="t dim eye" style="--i:0">RYAN&nbsp;HO&nbsp;·&nbsp;PORTFOLIO</p>
+        <p class="t dim greet" style="--i:1">hey, i'm</p>
+        <h1 class="d name" style="--i:2">Ryan Ho</h1>
+        <p class="t body bio" style="--i:3">Systems developer. I reverse-engineer undocumented file formats and automate the hardware nobody wants to do by hand &mdash; right now for the <em>RCMP</em>.</p>
+        <p class="t body bio" style="--i:4">I study Computer Science and Biology at <em>UBC</em>. The Mew wandering around this page is procedurally animated &mdash; no keyframes anywhere, just springs and a small brain.</p>
+        <p class="t dim hint" style="--i:6"><a class="link" href="/experience" data-route>press &rarr; to continue</a></p>
       </div>
 
-      <!-- THE GATE IS A HOLE. It used to hold three offscreen presses — three
-           still bitmaps in three inks, which by the time the sheet itself was
-           live had become the only dead thing on the page. It is now cut by the
-           sheet's own shader like every other aperture, and simply pulled in
-           the project's pair rather than the sheet's: same weather, same
-           lattice, same clock, and it cannot fall out of step with the page it
-           is a window onto. -->
-      <a class="gate ap" data-gate data-ap data-route data-collider
-         href="/projects/usb-provisioning"
-         style="--x:47%; --y:20%; --w:41%; --h:46%"></a>
-      <!-- the advance bar. The gate moves on its own, and a thing that moves on
-           its own without warning is a thing that took the page away from you. -->
-      <span class="advance" style="--x:47%; --y:67.4%; --w:41%"><i data-advance></i></span>
-
-      <div class="reel" data-collider>
-        <p class="t dim"><span data-fr-n>01</span>&nbsp;/&nbsp;03</p>
-        <h2 class="d sm"><a href="/projects/usb-provisioning" data-route data-fr-open><span data-fr-title>—</span></a></h2>
-        <p class="t dim" data-fr-kind>—</p>
-        <p class="t"><a class="link open" href="/projects/usb-provisioning" data-route data-fr-open2>OPEN&nbsp;→</a></p>
-      </div>
-
-      <ol class="stops" data-collider style="--x:47%; --y:69.6%">
-        <li><a href="#s1" data-stop><i>01</i></a></li>
-        <li><a href="#s1" data-stop><i>02</i></a></li>
-        <li><a href="#s1" data-stop><i>03</i></a></li>
-      </ol>
-    </section>
-
-    <!-- ══ 02 · STATEMENT ═══════════════════════════════════════════════════
-         The one earnest thing, said inside system chrome -- which is his actual
-         register (RYAN.txt IV), not a joke about it. The dialog's icon slot is a
-         hole: where an alert would put a warning triangle, this one puts the
-         sky. That 44 px square is the most important element on the page. -->
-    <section class="plate" id="s2" data-node="02">
-      <div class="corner tl">
-        <p class="t">02&nbsp;—&nbsp;STATEMENT</p>
-      </div>
-      <div class="corner tr">
-        <p class="t dim"><span data-at>—</span></p>
-        <p class="t">23:00</p>
-      </div>
-
-      <div class="dialog" data-collider>
-        <p class="dlg-bar">SYSTEM</p>
-        <div class="dlg-body">
-          <span class="ap icon" data-ap></span>
-          <div class="dlg-text">
-            <p class="d sm">i make things that<br /><em>show their working</em></p>
-            <p class="t dim body wide">Grain, halftone, visible dots, a creature
-              moved by springs instead of keyframes. Nothing on this sheet is
-              smoothed over and nothing is hiding how it was done.</p>
-            <p class="t body wide">If you can see how a thing was made, it was
-              made by someone.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="corner br">
-        <p class="t dim">ver.&nbsp;1.0&nbsp;//&nbsp;not&nbsp;updated</p>
-      </div>
-    </section>
-
-    <!-- ══ 03 · COLOPHON ════════════════════════════════════════════════════
-         01:00, and the aperture is a full-bleed band: the horizon, where both
-         plates run solid and their overprint is night. The sheet ends on a
-         line. Two numbers here are measured off the render at runtime. -->
-    <section class="plate" id="s3" data-node="03">
-      <div class="corner tl">
-        <p class="t">03&nbsp;—&nbsp;COLOPHON</p>
-      </div>
-      <div class="corner tr">
-        <p class="t dim"><span data-at>—</span></p>
-        <p class="t">01:00</p>
-      </div>
-
-      <div class="cols" data-collider>
-        <div><p class="t dim">PLATE</p><p class="t body">One two-ink riso of a
-          sky, screened at 5.2 px and printed once. It does not move. Its
-          steady-state cost is zero, so it cannot drop a frame on any machine.</p></div>
-        <div><p class="t dim">MASK</p><p class="t body">One continuous bone
-          sheet, die-cut. <span data-open>—</span> of it is still paper. Type
-          never sits on the print.</p></div>
-        <div><p class="t dim">SUBJECT</p><p class="t body">One live specimen.
-          Procedurally animated, no keyframes anywhere. One load in three is
-          shiny. She is the only thing here that is not printed.</p></div>
-        <div><p class="t dim">INK</p><p class="t body">Two inks on bone,
-          covering <span data-ink>—</span> of the print, and they are both
-          <em style="font-style:normal">hers</em>: the sky is the blue she turns
-          when she comes up shiny, and the last warm light is the pink she
-          usually is. The blue is the constant; the second ink is what a project
-          owns.</p></div>
-      </div>
-
-      <div class="ap band" data-ap style="--x:0%; --y:69%; --w:100%; --h:14%"></div>
-      <p class="t dim cap pad" style="--y:84.5%">AP.&nbsp;03&nbsp;—&nbsp;HORIZON.&nbsp;FULL&nbsp;BLEED.&nbsp;THE&nbsp;LAST&nbsp;WEATHER.</p>
-
-      <div class="corner br">
-        <p class="t"><a class="link" href="mailto:ryanho333@gmail.com">ryanho333@gmail.com</a></p>
-        <p class="t dim">serial&nbsp;no.&nbsp;000</p>
-      </div>
+      <!-- THE WINDOW. The crossing to the next card opens out of exactly this
+           rectangle, because holeOf() falls back to the first aperture in the
+           plate and this is it. -->
+      <div class="ap tall" data-ap style="--x:63%; --y:14%; --w:23%; --h:62%"></div>
+      <p class="t dim cap" style="--x:63%; --y:78%">AP.&nbsp;01&nbsp;&mdash;&nbsp;LAST&nbsp;LIGHT</p>
     </section>
 
   </main>
+
+  <!-- ══ THE CHROME ══════════════════════════════════════════════════════════
+       Everything that does NOT turn when the page does, which is why it lives
+       out here: #doc is replaced wholesale on every navigation, and navigation
+       furniture that is destroyed and rebuilt once per move flickers once per
+       move.
+
+       Every control is a real <a href>. The router already delegates clicks on
+       a[data-route], so this needs no JavaScript to work, survives a middle
+       click, and is a correct page before a single module has loaded. -->
+  <div id="chrome">
+    <div class="prog"><i data-prog></i></div>
+
+    <nav class="nav" aria-label="Sections">
+      <span class="t dim" data-count>01&nbsp;/&nbsp;04</span>
+      <span class="dots">
+        <a href="/"            data-route data-dot="home"       aria-label="Summary"><i></i></a>
+        <a href="/experience"  data-route data-dot="experience" aria-label="Experience"><i></i></a>
+        <a href="/projects"    data-route data-dot="projects"   aria-label="Projects"><i></i></a>
+        <a href="/contact"     data-route data-dot="contact"    aria-label="Contact"><i></i></a>
+      </span>
+    </nav>
+
+    <p class="t dim keys"><kbd>&larr;</kbd><kbd>&rarr;</kbd>&nbsp;navigate</p>
+
+    <!-- there are no arrow keys on a phone, so on narrow screens these are the
+         only way through the deck. On a project sheet they step between
+         projects and the back arrow is what leaves -- the same shape the
+         keyboard has. -->
+    <div class="mob" aria-hidden="false">
+      <a class="mob-b" data-route data-prev href="/" aria-label="Previous">&#8593;</a>
+      <a class="mob-b" data-route data-next href="/experience" aria-label="Next">&#8595;</a>
+    </div>
+
+    <!-- THE BACK ARROW. Only on a project sheet, pinned to the top-left corner
+         of the WINDOW, and it is a disc of sky with a white arrow on it.
+
+         It used to be an arrow-shaped HOLE, which was the more beautiful idea
+         and the wrong one: a hole is cut in #sheet at z1, under the type, so
+         every figure and paragraph the project sheet happened to lay over it
+         went straight on top of the control. No z-index can fix that -- the
+         pixels are in a layer that is beneath the words by construction. So the
+         sky is drawn into a small canvas up here instead (deck.js, the
+         scissored pass), and the arrow is drawn ON it rather than cut out of
+         it.
+
+         data-fixed says measure it in the viewport and mount it to the document
+         every frame; data-cross-target says the paper closes back into THIS,
+         not into whatever aperture happens to be largest. -->
+    <a class="backarrow" href="/projects" data-route data-back hidden aria-label="Back to projects">
+      <span class="backarrow-sky" data-sky data-fixed data-cross-target data-cross-from><canvas aria-hidden="true"></canvas></span>
+      <svg class="backarrow-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M10 8.5 H14.5 A5.5 5.5 0 1 1 14.5 19.5 H10.5"
+              fill="none" stroke="currentColor" stroke-width="3.1"
+              stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M2.6 8.5 L10.4 3.6 V13.4 Z" fill="currentColor" />
+      </svg>
+    </a>
+  </div>
 
   <canvas id="stage" aria-hidden="true"></canvas>
   <script type="module" src="/src/main.js"></script>
