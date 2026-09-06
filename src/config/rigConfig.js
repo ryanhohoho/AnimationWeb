@@ -133,73 +133,94 @@ export const rigConfig = {
   // fountain straight up regardless, and neither of those is a startled animal.
   // ------------------------------------------------------------------
   sweat: {
-    // TWO CLUSTERS, TAKING TURNS. Four waves of three, alternating temples, so
-    // you see a group leap off one side, then the other, then back. The first
-    // build threw them on a radial fan out of a ring round the head — which is
-    // how the annoyance stars are thrown, and that is precisely the problem: a
-    // radial burst is the vocabulary of IMPACT. Sweat is drawn as little groups
-    // leaping off the sides of a head, and the grouping is the whole read.
-    waves: 4,
+    // ── THREE WAVES, THREE DROPS, AND NEVER TWO WAVES IN THE AIR ──────────
+    // The old build ran four waves 0.12 s apart against a life three times
+    // longer, so all twelve were up together: a cloud coming off her rather
+    // than three throws. Boom, boom, boom is three separate events, and an
+    // event needs the stage clear before the next one starts.
+    waves: 3,
     perWave: 3,
-    waveGapS: 0.12,         // FAST. the stars' waves are 0.36 s apart because a
-                            // tantrum lasts a second and a half; a flinch is
-                            // over in half of that and the spray must keep up
-    waveDecay: 0.82,        // each wave a little weaker than the last
-                            // (no jitter INSIDE a cluster — the three of them
-                            // leave on the same frame or it is a trickle,
-                            // not a spray)
+    waveGapS: 0.05,         // the breath BETWEEN waves, from the last drop of
+                            // one to the first of the next. NOT a period
 
-    spawnRadiusPx: 30,      // they start out already ON a ring around her, each
-                            // travelling straight down its own radius. That is
-                            // what makes the cluster read as coming OUT OF her
-                            // rather than appearing beside her
-    originYPx: 46,          // where the ring is centred, above the body
+    // ── THE LAUNCH, AND IT IS THE SAME EVERY TIME ─────────────────────────
+    // One speed, one elevation, no jitter: the arc is a designed constant, not
+    // a scatter. The three of a wave are separated in SPACE (below), because
+    // separating them in ANGLE separates their arcs, and then they are no
+    // longer carrying the same arch.
+    templeXPx: 22,          // the two spawn points, off her centre...
+    templeYPx: 44,          // ...at the upper temples of a 150 px character
+    elevDeg: 58,            // from horizontal, mirrored per side
+    speedPx: 430,
+    gravityPx: 1250,        // steep, because the arc has to finish in about a
+                            // third of a second for three of them to fit inside
+                            // face.overlay.durS
+    apexOvershoot: 1.22,    // culled a shade past the top, so nothing is ever
+                            // seen coming down -- and so the hook, which is
+                            // widest as it goes over, is the last thing you see
+    lifeMaxS: 0.45,         // A GUARD, NOT A KNOB. The schedule is derived from
+                            // the apex; if this ever binds, the waves silently
+                            // start overlapping. There is a check.
+    escapeCarryPx: 60,      // her flight carries them sideways. A CARRY and not
+                            // a lean: leaning rotates the launch, which changes
+                            // vy, which changes the apex, which desynchronises
+                            // the waves and costs the closed-form schedule.
+                            // 120 was the first value and it was half the launch's
+                            // own horizontal component, so the upwind temple threw
+                            // its drops almost straight up while the downwind one
+                            // threw them wide -- the two sides stopped reading as
+                            // the same spray. At 60 the lean is 25 degrees one way
+                            // and 38 the other: she is visibly moving, and both
+                            // sides are still visibly throwing outward.
+    sideStepPx: 9,          // the pair of a wave, across the launch line...
+    sideOutPx: 7,           // ...and along it, so they read as one arc at two
+                            // phases rather than as two copies of one drop
 
-    sideSpreadDeg: 34,      // how far off vertical a cluster throws, outward
-    fanDeg: 26,             // and how much the three of them open up
-    jitterDeg: 7,
-    escapeLeanDeg: 26,      // the whole spray leans with the escape, so it is
-                            // carried by the flight rather than ignoring it
-    minElevDeg: 14,         // ...but never below the horizontal. A drop thrown
-                            // downward is a drip, the calm end of this glyph
+    // ── THE GLYPH, SIZED IN TEXELS ────────────────────────────────────────
+    // Presentation runs through fx/pixelate.js at pixelSize 4, so one texel is
+    // four screen pixels. The old drop was about 20 px end to end -- FIVE
+    // texels -- with two specular dots of one texel each inside it. None of
+    // that shape was ever resolvable: it was solved exactly and then thrown
+    // away by the pass that draws it.
+    bulbPx: 9,              // head RADIUS. 18 px across is 4.5 texels, the
+                            // least a disc can be and still read as round once
+                            // the outline pass rings it
+    tailPx: 26,             // the DRAWN length of the tail at any speed. A glyph
+                            // has fixed proportions, so this is what is fixed;
+                            // how far back in time it reaches follows from it
+    tailSegs: 8,            // tapered segments the sweep is solved as. The error
+                            // is the bezier's chordal error, under 0.1 px at 8,
+                            // a fortieth of a texel. A union of DISCS was tried
+                            // first: it scallops, and near the tip, where the
+                            // radius falls below the spacing, it comes apart
+                            // into a dotted line
+    taperExp: 1.35,         // r = bulb * (1-t)^this. Above 1 the tail pinches
+                            // quickly and ends in a needle, which is the manga
+                            // mark. Below 1 it is a wedge with a blunt flare --
+                            // tried, and it reads as a chilli
+    hookGain: 2.5,          // the gravity term of the trailing path, exaggerated.
+                            // At 1.0 the tail IS the flown path exactly and the
+                            // bend peaks at 3.1 px, which is 0.78 of a texel and
+                            // invisible. This is the one place the drawing lies,
+                            // and it lies the way the physics already points
+    tailMinS: 0.035,        // how far back in time the tail may reach. Without
+    tailMaxS: 0.16,         // the cap, a nearly-stopped drop grows a tail out of
+                            // the whole first half of its own flight
 
-    speedLoPx: 300,         // they SHOOT. the annoyance stars amble by
-    speedHiPx: 560,         // comparison, because those are a slow burn
-    gravityPx: 1150,        // steep, so the arc is short and tight
-    apexOvershoot: 1.18,    // culled just past the top — see sweatDrops.js
-    lifeMaxS: 0.5,
+    // the specular, in bulb radii. ONE, not two: the old build drew two dots at
+    // about one texel each, which is a sub-pixel detail on a sprite
+    hiOffset: 0.34,         // pushed toward the LEADING edge, the side with no
+                            // tail on it
+    hiAlong: 0.5,           // ~4.5 px by ~3 px: about two texels by one, the
+    hiAcross: 0.32,         // smallest ellipse that still reads as an ellipse
+    hiTiltDeg: -30,         // off-axis, and mirrored by the drop's handedness
 
-    popInFrac: 0.08,        // in fast...
-    growFrom: 0.74,         // ...and GROWS the whole way out. Popping to full
-    growTo: 1.22,           // size and shrinking reads as receding; a drop that
-                            // grows reads as gaining, and it is what the drawn
-                            // version does so the eye can follow it
-    holdFrac: 0.88,         // and the vanish is the last tenth, so it goes
-                            // rather than dwindles
-    stretchPerPx: 620,      // speed at which a drop is twice as long
-    stretchMax: 1.5,
-    sizePx: 15,
-
-    // A COMMA, NOT A RAINDROP. A straight teardrop is what falls off a tap; the
-    // one drawn on a panicking face has its point hooked right over. All of the
-    // bend gathers in the last third, where the taper is — which is where a
-    // real flung droplet's tail whips round.
-    //
-    // 0.46 was far too timid, and worse, it was being flattened: the old fit
-    // fudge squeezed the shape back in proportion to the bend, so turning this
-    // up past about a half stopped changing anything. The quad is mapped to the
-    // shape's measured bounding box now (sweatDrops.js), so this is honest —
-    // 1.30 throws the point more than half the drop's own width sideways.
-    curve: 1.30,
-
-    // the reference palette: cyan body, a dark keyline, two white speculars.
-    // the keyline is the EYES' own darkest ink, so the glyph belongs to this
-    // character rather than sitting on top of it — the same choice the >.<
-    // overlay makes (face.overlay.inkColor).
-    bodyColor: "#6FD4F2",
-    lineColor: "#123049",
-    hiColor: "#FFFFFF",
-    keyline: 0.30,          // border weight, as a fraction of the drop
+    popInFrac: 0.08,
+    growFrom: 0.74,         // grows through the flight: a shrinking sprite reads
+    growTo: 1.22,           // as receding, and these are coming at the viewer
+    holdFrac: 0.88,
+    bodyColor: "#5FA6DC",
+    hiColor: "#C3E1F8",
     zOffset: 0.02
   },
 

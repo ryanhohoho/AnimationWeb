@@ -10,6 +10,7 @@ import { createBody } from "../src/engine/physics/body2d.js";
 import { resolveCircleRect, resolveEdges, resolveAll, avoidColliders } from "../src/engine/physics/colliders.js";
 import { createBrain } from "../src/engine/behavior/brain.js";
 import { createSweatDrops } from "../src/engine/fx/sweatDrops.js";
+import * as sweatGeom from "../src/engine/fx/sweatGeometry.js";
 import { createPathfinder } from "../src/engine/behavior/pathfinder.js";
 import { buildRig } from "../src/engine/pose/rig.js";
 import { createTailChain } from "../src/engine/pose/tailChain.js";
@@ -621,6 +622,12 @@ section("modules: every shader-carrying module actually parses");
     // resolve. Its own shape is covered by the config-shape section below.
     "../src/engine/fx/spriteShade.js",
     "../src/engine/fx/starBurst.js",
+    // the sweat carries a fragment shader with a dozen lines of comment in it
+    // now -- the tapered-segment sweep and the specular's argument both live
+    // inside the template literal, which is exactly the hazard this section is
+    // here for. It was not on this list while its shader was three lines long.
+    "../src/engine/fx/sweatDrops.js",
+    "../src/engine/fx/sweatGeometry.js",
     "../src/engine/fx/faceOverlay.js",
     "../src/engine/fx/beam.js",
     "../src/engine/fx/beamGeometry.js",
@@ -1977,7 +1984,7 @@ section("panic: she looks, she turns, she goes — and she goes straight out");
   ok(brain.panic.phase === "bolt", "beat three is the bolt");
   ok(brain.gazeFront === false, "she is no longer facing us; she is facing away");
   ok(panics === 1, "the limbs windmill on the bolt");
-  ok(flails === 0, "...on their OWN event: no >.< face, no annoyance stars");
+  ok(flails === 0, "...on their OWN event, so no annoyance stars in a flight");
   const sp1 = Math.hypot(body.vel.x, body.vel.y);
   ok(sp1 > 400, `and she is moving (${Math.round(sp1)} px/s)`);
   const vdot = (body.vel.x * brain.panic.esc.x + body.vel.y * brain.panic.esc.y) / sp1;
@@ -2031,117 +2038,363 @@ section("a frightened flail is not an annoyed one");
 }
 
 // ---------------------------------------------------------------------------
-section("panic sweat: flung, arced, and never seen coming down");
+// ---------------------------------------------------------------------------
+section("startled by what: a tantrum is not a fright");
+// A cursor barging into her and a press eating the page out from under her are
+// both "startle", and they used to be indistinguishable at the FX layer -- the
+// same event, so the same shower of sweat for both. Being shoved by a pointer
+// is RUDE, and the honest answer to rude is a tantrum. Being chased by a
+// transition is not. The body language is the same either way; the face is not.
 {
-  const cfg = rigConfig.sweat;
-  const view = { worldPerPx: 1 };
-  const parent = { add() {}, remove() {} };
-  const sweat = createSweatDrops({ parent, config: cfg, view });
+  const w = createWorld({ seed: 31, headless: true });
+  const b = createBody({ x: 700, y: 400, radius: 75, config: rigConfig.physics });
+  const br = createBrain({ body: b, world: w, config: rigConfig.behavior,
+    pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+  w.viewport.w = 1400; w.viewport.h = 900;
+  w.docSize.w = 1400; w.docSize.h = 3000;
 
-  ok(cfg.waves >= 2, "several waves, not one burst");
-  sweat.burst(1, 0, 1, 7);            // fleeing to the right
-  ok(sweat.running, "a burst runs");
+  const seen = [];
+  w.on("startle", (e) => seen.push(e));
 
-  const P = sweat.particles.slice(0, cfg.waves * cfg.perWave);
+  // a pointer running into her
+  w.pointer.active = true;
+  w.pointer.pos.x = b.pos.x - 120; w.pointer.pos.y = b.pos.y;
+  w.pointer.vel.x = 2200; w.pointer.vel.y = 0;
+  w.pointer.speed = 2200;
+  br.step(1 / 120);
+  ok(seen.length === 1, "a pointer charging her startles her");
+  ok(seen[0].source === "cursor", `...and the event says what did it (${seen[0].source})`);
+  ok(!seen[0].panic, "...and it is not a panic");
 
-  // EVERY drop rises. anime sweat goes up and back whatever direction she runs
-  ok(P.every((d) => d.vy > 0), "every drop is thrown upward");
-  // ...and the escape still shows through: fleeing right carries them rightward
-  const meanVx = P.reduce((a, d) => a + d.vx, 0) / P.length;
-  ok(meanVx > 0, `the spray is carried by the escape (mean vx ${Math.round(meanVx)})`);
+  // ── THE CONTROL ────────────────────────────────────────────────────────
+  // Same event, different cause, and it must NOT come out labelled the same or
+  // the branch in main.js is deciding on nothing.
+  seen.length = 0;
+  const w2 = createWorld({ seed: 32, headless: true });
+  const b2 = createBody({ x: 700, y: 400, radius: 75, config: rigConfig.physics });
+  const br2 = createBrain({ body: b2, world: w2, config: rigConfig.behavior,
+    pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+  w2.viewport.w = 1400; w2.viewport.h = 900;
+  w2.docSize.w = 1400; w2.docSize.h = 3000;
+  w2.on("startle", (e) => seen.push(e));
+  br2.panicFrom({ x: 200, y: 200 }, 1);
+  ok(seen.length === 1, "the press startles her too");
+  ok(seen[0].source === "press", `...but it says something else (${seen[0].source})`);
+  ok(seen[0].panic === true, "...and it IS a panic, so it keeps the sweat");
 
-  // CLUSTERS, ALTERNATING TEMPLES — not one radial burst
-  const cl0 = P.slice(0, cfg.perWave), cl1 = P.slice(cfg.perWave, cfg.perWave * 2);
-  const sideOf = (a) => Math.sign(a.reduce((t, d) => t + d.x0, 0));
-  ok(sideOf(cl0) !== 0 && sideOf(cl0) === -sideOf(cl1),
-    "successive waves leave from opposite sides of the head");
-  const spread0 = Math.max(...cl0.map(d => d.x0)) - Math.min(...cl0.map(d => d.x0));
-  ok(spread0 > 4, `and the three in a cluster do not leave from one point (${spread0.toFixed(0)} px apart)`);
-  ok(cl0.every(d => Math.sign(d.x0) === sideOf(cl0)), "a cluster stays on its own side");
-  // the cluster splays: its outer two hook opposite ways
-  ok(cl0[0].curl === -cl0[cl0.length - 1].curl,
-    "and the outer drops of a cluster curl opposite ways, so it opens like a hand");
-
-  // NONE OF THEM IS EVER SEEN FALLING: life ends at or just past the apex
-  for (const d of P) {
-    const apex = d.vy / cfg.gravityPx;
-    ok(d.life <= apex * cfg.apexOvershoot + 1e-6,
-      "a drop is culled by the top of its own arc");
-  }
-  ok(cfg.apexOvershoot > 1 && cfg.apexOvershoot < 1.5,
-    "just past the top, so it is still travelling when it goes");
-
-  // the waves are staggered, and fast enough to keep up with a flinch
-  const w0 = P.slice(0, cfg.perWave).reduce((a, d) => a + d.delay, 0) / cfg.perWave;
-  const wN = P.slice(-cfg.perWave).reduce((a, d) => a + d.delay, 0) / cfg.perWave;
-  ok(wN > w0, "later waves leave later");
-  ok(cfg.waveGapS < rigConfig.shiny.sparkle.annoy.waveGapS,
-    "and they come faster than the annoyance stars: a flinch is not a tantrum");
-
-  // each wave weaker than the last
-  const spd = (a) => a.reduce((s, d) => s + Math.hypot(d.vx, d.vy), 0) / a.length;
-  ok(spd(P.slice(-cfg.perWave)) < spd(P.slice(0, cfg.perWave)),
-    "and each wave is weaker than the one before");
-
-  // the fan is spread by INDEX, so it cannot clump into one fat drop
-  const angs = P.slice(0, cfg.perWave).map((d) => Math.atan2(d.vy, d.vx)).sort((a, b) => a - b);
-  const gaps = angs.slice(1).map((a, i) => a - angs[i]);
-  ok(Math.min(...gaps) > 0.02, "the fan is spread, not clumped");
-
-  // FIRED LIKE A SHOTGUN: the three of a cluster leave on the same frame...
-  ok(cl0.every(d => d.delay === cl0[0].delay),
-    "the three of a cluster leave at the exact same instant");
-  ok(cl1[0].delay > cl0[0].delay, "and the next cluster is a beat behind it");
-
-  // ...from points already spread around a ring centred on her...
-  const radii = cl0.map(d => Math.hypot(d.x0, d.y0 - cfg.originYPx));
-  ok(Math.min(...radii) > cfg.spawnRadiusPx * 0.8
-     && Math.max(...radii) < cfg.spawnRadiusPx * 1.2,
-    `they start out on a ring around her (${radii.map(r => r.toFixed(0)).join(", ")} px)`);
-
-  // ...and each one travels straight down its own radius, so the bulbous end
-  // leads and points away from her
-  for (const d of cl0) {
-    const rx = d.x0, ry = d.y0 - cfg.originYPx;
-    const rl = Math.hypot(rx, ry), vl = Math.hypot(d.vx, d.vy);
-    const radial = (rx / rl) * (d.vx / vl) + (ry / rl) * (d.vy / vl);
-    ok(radial > 0.999, `and flies straight out along it (dot ${radial.toFixed(4)})`);
-  }
-
-  // and it GROWS on the way out rather than shrinking away
-  ok(cfg.growTo > cfg.growFrom * 1.2,
-    `a drop grows through its flight (${cfg.growFrom} -> ${cfg.growTo})`);
-  ok(cfg.holdFrac > 0.8, "and vanishes in the last tenth rather than dwindling");
-
-  // it runs out on its own
-  let n = 0;
-  while (sweat.running && n < 2000) { sweat.update(1 / 120); n++; }
-  ok(!sweat.running, "and the spray finishes");
-  ok(n / 120 < 1.5, `the whole spray is over in ${(n / 120).toFixed(2)} s`);
+  // a wall she clipped is a third thing, and also not a tantrum
+  seen.length = 0;
+  const w3 = createWorld({ seed: 33, headless: true });
+  const b3 = createBody({ x: 700, y: 400, radius: 75, config: rigConfig.physics });
+  const br3 = createBrain({ body: b3, world: w3, config: rigConfig.behavior,
+    pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+  w3.on("startle", (e) => seen.push(e));
+  w3.emit("bump", { normal: { x: 1, y: 0 }, speed: rigConfig.behavior.startleBumpSpeed + 200 });
+  ok(seen.length === 1 && seen[0].source === "wall",
+    `a hard wall bump is its own cause (${seen[0] && seen[0].source})`);
 }
 
 // ---------------------------------------------------------------------------
-section("sweat drop: the teardrop profile is a teardrop");
+section("panic sweat: three waves, both temples, and the same arc every time");
+// THE OLD CHECKS DESCRIBED A SCATTER, and the scatter is the thing that was
+// replaced. What went, and why:
+//
+//   "a cluster stays on its own side"        -- every wave uses BOTH temples now
+//   "successive waves leave from opposite sides" -- same
+//   "the outer drops curl opposite ways"     -- curl was an attribute, and an
+//                                               attribute is what made them spin
+//   "each wave is weaker than the one before" -- waveDecay is gone; all nine
+//                                               carry the same arch by design
+//   "the fan is spread, not clumped"         -- there is no angular fan; the
+//                                               three of a wave are separated in
+//                                               SPACE, because separating them
+//                                               in angle separates their arcs
+//   "they start out on a ring around her"    -- there is no ring; two temples
+//
+// Everything below is the replacement, and the properties are stronger: they are
+// equalities, not ranges.
 {
-  // the same half-width function the fragment shader solves
-  const halfW = (y) => {
-    const yy = Math.min(Math.max(y, -1), 1);
-    return Math.sqrt(Math.max(0, 1 - yy * yy))
-      * Math.sqrt(Math.max(0, (1 - yy) * 0.5)) / 0.7698;
+  const cfg = rigConfig.sweat;
+  const sch = sweatGeom.waveSchedule(cfg);
+  const L = sweatGeom.layout(cfg, 1, 1);
+
+  ok(L.length === cfg.waves * cfg.perWave,
+    `${cfg.waves} waves of ${cfg.perWave} is ${L.length} drops`);
+  ok(cfg.waves === 3 && cfg.perWave === 3, "three and three, as asked");
+
+  // ── THE SAME ARCH, and it is an equality ─────────────────────────────
+  const vys = new Set(L.map((d) => d.vy.toFixed(9)));
+  const lifes = new Set(L.map((d) => d.life.toFixed(9)));
+  ok(vys.size === 1, `every drop is thrown at the same vertical speed (${[...vys][0]})`);
+  ok(lifes.size === 1, `so every drop lives exactly as long (${[...lifes][0]}s)`);
+  ok(L.every((d) => d.vy > 0), "and every one of them is thrown UPWARD");
+
+  // ── STRICT NON-OVERLAP: wave n+1 starts when wave n is GONE ──────────
+  let minGap = Infinity;
+  for (let w = 0; w + 1 < cfg.waves; w++) {
+    minGap = Math.min(minGap, sch.delays[w + 1] - (sch.delays[w] + sch.life));
+  }
+  ok(Math.abs(minGap - cfg.waveGapS) < 1e-9,
+    `each wave starts exactly ${cfg.waveGapS}s after the last one ended (${minGap.toFixed(4)})`);
+  ok(minGap > 0, "...which is to say they never overlap");
+  // THE PAIRED CONTROL. The old schedule ran four waves 0.12s apart against
+  // this same life, so it fails this by a wide margin -- which is what makes
+  // the check above mean something.
+  ok(0.12 < sch.life,
+    `control: the old 0.12s cadence is shorter than one life (${sch.life.toFixed(3)}s), ` +
+    "so four waves were all in the air together");
+
+  // ── lifeMaxS IS A GUARD AND MUST NOT BIND ────────────────────────────
+  // If it ever does, the schedule stops being derived from the arc and the
+  // waves silently start overlapping again.
+  ok(sch.life < cfg.lifeMaxS - 1e-9,
+    `lifeMaxS does not bind (${sch.life.toFixed(4)} < ${cfg.lifeMaxS})`);
+
+  // ── IT HAS TO FINISH INSIDE THE FACE IT IS DRAWN ON ──────────────────
+  // This replaces "faster than the annoyance stars", which stopped being a
+  // comparable quantity: annoy.waveGapS is a PERIOD between overlapping waves,
+  // and sweat.waveGapS is now a GAP between disjoint ones.
+  ok(sch.total < rigConfig.face.overlay.durS,
+    `the whole spray (${sch.total.toFixed(2)}s) finishes inside the >.< it wears ` +
+    `(${rigConfig.face.overlay.durS}s)`);
+  ok(sch.total < rigConfig.limbs.panicDurS,
+    `...and inside the panic itself (${rigConfig.limbs.panicDurS}s)`);
+
+  // ── BOTH TEMPLES, EVERY WAVE, majority alternating ───────────────────
+  const sides = [];
+  for (let w = 0; w < cfg.waves; w++) {
+    const ws = L.filter((d) => d.wave === w);
+    ok(new Set(ws.map((d) => Math.sign(d.side))).size === 2,
+      `wave ${w} leaves from BOTH temples`);
+    ok(Math.min(...ws.map((d) => d.x0)) < 0 && Math.max(...ws.map((d) => d.x0)) > 0,
+      `wave ${w} straddles her centre line`);
+    let l = 0, r = 0;
+    for (const d of ws) (d.side > 0 ? r++ : l++);
+    sides.push(r > l ? 1 : -1);
+  }
+  ok(sides[0] === -sides[1] && sides[1] === -sides[2],
+    "and which temple gets the majority flips wave to wave");
+
+  // the three of a wave leave at the same instant, and are not on one spot
+  const w0 = L.filter((d) => d.wave === 0);
+  ok(new Set(w0.map((d) => d.delay)).size === 1,
+    "the three of a wave leave at the exact same instant");
+  let widest = 0;
+  for (const a of w0) for (const b of w0) {
+    widest = Math.max(widest, Math.hypot(a.x0 - b.x0, a.y0 - b.y0));
+  }
+  ok(widest > 20, `and they are spread across her head, not stacked (${widest.toFixed(0)} px)`);
+
+  // ── THE CLUSTER MIRRORS ──────────────────────────────────────────────
+  // The perpendicular of the launch line does not itself flip when the side
+  // does, so built the obvious way one pair came out 8 px apart and the other
+  // 22 px. Same separation on both temples or one side reads as sloppier.
+  const sep = (w) => {
+    const a = L.filter((d) => d.wave === w);
+    const g = a.filter((d) => d.side === a[0].side);
+    return Math.hypot(g[0].x0 - g[1].x0, g[0].y0 - g[1].y0);
   };
-  ok(Math.abs(halfW(1)) < 1e-9, "it comes to a POINT at the tip");
-  ok(Math.abs(halfW(-1)) < 1e-9, "and closes at the base");
-  // the widest part is BELOW the middle: that is what makes it a drop and not a lens
-  let best = -1, bestY = 0;
-  for (let y = -1; y <= 1; y += 0.001) { const w = halfW(y); if (w > best) { best = w; bestY = y; } }
-  ok(bestY < -0.2, `the bulge sits low (widest at y ${bestY.toFixed(2)})`);
-  ok(Math.abs(best - 1) < 0.01, `and the profile fills its quad (max ${best.toFixed(3)})`);
-  // base is CIRCULAR (width ~ sqrt of the distance up from it)...
-  const r1 = halfW(-1 + 0.0004) / halfW(-1 + 0.0001);
-  ok(r1 > 1.7 && r1 < 2.3, `the base is round (4x the height gives ${r1.toFixed(2)}x the width)`);
-  // ...and the tip is a straight-sided CONE (width ~ distance down from it)
-  const r2 = halfW(1 - 0.0004) / halfW(1 - 0.0001);
-  ok(r2 > 3.4 && r2 < 4.6, `the tip is a cone (4x the depth gives ${r2.toFixed(2)}x the width)`);
+  ok(Math.abs(sep(0) - sep(1)) < 1e-9,
+    `the pair is the same width on both temples (${sep(0).toFixed(2)} px)`);
+
+  // ── AND THE ESCAPE ONLY CARRIES, IT DOES NOT LEAN ────────────────────
+  // A lean would rotate the launch, change vy, change the apex, change the
+  // life, and cost the closed-form schedule above. This is that property,
+  // stated as a test: run either way, the clock is identical.
+  const Lr = sweatGeom.layout(cfg, 1, 1);
+  const Ll = sweatGeom.layout(cfg, -1, 1);
+  ok(Lr.every((d, i) => Math.abs(d.vy - Ll[i].vy) < 1e-9),
+    "fleeing left or right throws them at the same vertical speed");
+  ok(Lr.every((d, i) => Math.abs(d.life - Ll[i].life) < 1e-9),
+    "...so the whole schedule is identical either way");
+  const meanR = Lr.reduce((a, d) => a + d.vx, 0) / Lr.length;
+  const meanL = Ll.reduce((a, d) => a + d.vx, 0) / Ll.length;
+  ok(meanR > 0 && meanL < 0, "and the spray is still carried by the escape");
+
+  // ── AND NOTHING IS EVER SEEN COMING DOWN ─────────────────────────────
+  const d0 = L[0];
+  const apex = d0.vy / cfg.gravityPx;
+  ok(d0.life > apex, "a drop does turn over the top of its arc...");
+  ok(d0.life < apex * 1.5, "...but it is culled before it can fall");
+  const fEnd = sweatGeom.dropFrame(d0, d0.life * 0.999, cfg);
+  const vyEnd = d0.vy - cfg.gravityPx * d0.life * 0.999;
+  ok(vyEnd < 0 && Math.abs(vyEnd) < d0.vy * 0.3,
+    `it is barely descending when it goes (${vyEnd.toFixed(0)} px/s against ${d0.vy.toFixed(0)} up)`);
+  ok(fEnd.alive, "and it is still alive on its last frame");
+}
+
+// ---------------------------------------------------------------------------
+section("sweat drop: a comma, not a teardrop");
+// THE OLD SECTION IS GONE ENTIRELY, and it has to be: it asserted properties of
+// halfW(y), a symmetric profile function of height, and the shape is not a
+// profile any more. It is a disc swept along the path the drop has just flown,
+// which is deliberately NOT symmetric -- the whole point is that it hooks.
+{
+  const cfg = rigConfig.sweat;
+  const L = sweatGeom.layout(cfg, 1, 1);
+  const d = L[0];
+  const f = sweatGeom.dropFrame(d, d.life * 0.72, cfg);
+  const sd = (x, y) => sweatGeom.sdDrop(x, y, f.cx, f.cy, f.ex, f.ey, f.r0,
+    cfg.taperExp, cfg.tailSegs);
+
+  // the head is a disc of the stated radius
+  ok(Math.abs(sd(0, 0) + f.r0) < 1e-6, `the head is a disc of ${f.r0.toFixed(1)} px`);
+  ok(Math.abs(sd(f.r0, 0)) < 1e-6, "...and its edge is exactly there");
+
+  // it comes to a POINT: the tip is on the boundary and has no width
+  ok(Math.abs(sd(f.ex, f.ey)) < 1e-3, "the tail ends exactly on the boundary");
+  const nx = -f.ey / Math.hypot(f.ex, f.ey), ny = f.ex / Math.hypot(f.ex, f.ey);
+  ok(sd(f.ex + nx * 0.6, f.ey + ny * 0.6) > 0, "and it has no width there: a point");
+
+  // ── IT IS CONNECTED ALL THE WAY DOWN ─────────────────────────────────
+  // This is the check that would have caught a union of discs, which comes
+  // apart into dots wherever the radius falls below the sample spacing.
+  let worstOnSpine = -Infinity;
+  for (let i = 0; i <= 60; i++) {
+    const t = i / 60, s = 1 - t;
+    const qx = 2 * s * t * f.cx + t * t * f.ex;
+    const qy = 2 * s * t * f.cy + t * t * f.ey;
+    worstOnSpine = Math.max(worstOnSpine, sd(qx, qy));
+  }
+  ok(worstOnSpine <= 1e-6,
+    `every point of the spine is inside the drop (worst ${worstOnSpine.toExponential(1)})`);
+
+  // ── IT HOOKS, AND THE OLD SHAPE IS THE CONTROL ───────────────────────
+  // Deviation of the spine from the straight chord head-to-tip. A symmetric
+  // teardrop, or any straight taper, scores zero here by construction.
+  const chord = Math.hypot(f.ex, f.ey);
+  let bend = 0;
+  for (let i = 1; i < 40; i++) {
+    const t = i / 40, s = 1 - t;
+    const qx = 2 * s * t * f.cx + t * t * f.ex;
+    const qy = 2 * s * t * f.cy + t * t * f.ey;
+    bend = Math.max(bend, Math.abs(qx * (f.ey / chord) - qy * (f.ex / chord)));
+  }
+  ok(bend > 0.04 * chord,
+    `the tail bends off its own chord (${bend.toFixed(2)} px over ${chord.toFixed(0)})`);
+  const straight = sweatGeom.dropFrame(d, d.life * 0.72, { ...cfg, hookGain: 0, gravityPx: cfg.gravityPx });
+  ok(true, "control: with the gravity term removed the tail is a straight line");
+  const chord2 = Math.hypot(straight.ex, straight.ey);
+  let bend2 = 0;
+  for (let i = 1; i < 40; i++) {
+    const t = i / 40, s = 1 - t;
+    const qx = 2 * s * t * straight.cx + t * t * straight.ex;
+    const qy = 2 * s * t * straight.cy + t * t * straight.ey;
+    bend2 = Math.max(bend2, Math.abs(qx * (straight.ey / chord2) - qy * (straight.ex / chord2)));
+  }
+  ok(bend2 < 1e-9, `...and it measures ${bend2.toExponential(1)} px of bend, as it must`);
+
+  // the radius falls monotonically from the head to the tip
+  let mono = true, prev = Infinity;
+  for (let i = 0; i <= 20; i++) {
+    const r = f.r0 * Math.pow(Math.max(1 - i / 20, 1e-4), cfg.taperExp);
+    if (r > prev + 1e-9) mono = false;
+    prev = r;
+  }
+  ok(mono, "and it tapers monotonically: bulbous head, needle tip");
+
+  // the specular sits inside the head, on the LEADING side
+  const lead = Math.hypot(f.cx, f.cy) > 0
+    ? { x: -f.cx / Math.hypot(f.cx, f.cy), y: -f.cy / Math.hypot(f.cx, f.cy) }
+    : { x: 1, y: 0 };
+  const hx = lead.x * cfg.hiOffset * f.r0, hy = lead.y * cfg.hiOffset * f.r0;
+  ok(Math.hypot(hx, hy) < f.r0, "the specular is inside the head");
+  ok(sd(hx, hy) < 0, "...and on the drop, not off the edge of it");
+}
+
+// ---------------------------------------------------------------------------
+section("the tail is the path it flew, and gravity bends it");
+{
+  const cfg = rigConfig.sweat;
+  const exact = { ...cfg, hookGain: 1 };
+  const d = sweatGeom.layout(exact, 1, 1)[0];
+
+  // ── THE EXACTNESS CHECK, with a paired control ───────────────────────
+  // p(s - tau) = p(s) - v(s)tau + a tau^2 / 2 is EXACTLY quadratic in tau, so
+  // the trailing path is not approximated by a quadratic bezier, it IS one.
+  const truePos = (s) => ({
+    x: d.x0 + d.vx * s,
+    y: d.y0 + d.vy * s - 0.5 * cfg.gravityPx * s * s
+  });
+  let worst = 0, worstStraight = 0;
+  for (const frac of [0.2, 0.4, 0.6, 0.8, 0.99]) {
+    const ts = d.life * frac;
+    const f = sweatGeom.dropFrame(d, ts, exact);
+    const vy = d.vy - cfg.gravityPx * ts;
+    const sp = Math.hypot(d.vx, vy);
+    let dt = Math.min(Math.max(cfg.tailPx / sp, cfg.tailMinS), cfg.tailMaxS);
+    if (dt > ts) dt = ts;
+    for (const t of [0.25, 0.5, 0.75, 1]) {
+      const q = sweatGeom.tailAt(f, t);
+      const p = truePos(ts - t * dt);
+      worst = Math.max(worst, Math.hypot(q.x - (p.x - f.ax), q.y - (p.y - f.ay)));
+      // the control: a straight line back along the velocity, which is what a
+      // stretched sprite draws, and what this replaces
+      const sx = -d.vx * t * dt, sy = -vy * t * dt;
+      worstStraight = Math.max(worstStraight,
+        Math.hypot(sx - (p.x - f.ax), sy - (p.y - f.ay)));
+    }
+  }
+  ok(worst < 1e-9,
+    `the tail IS the flown path, to ${worst.toExponential(1)} px`);
+  ok(worstStraight > 1,
+    `control: a straight streak misses it by ${worstStraight.toFixed(1)} px`);
+
+  // ── AND THE HOOK GROWS AS SHE GOES OVER THE TOP ──────────────────────
+  const bendAt = (frac, c) => {
+    const f = sweatGeom.dropFrame(d, d.life * frac, c);
+    const chord = Math.hypot(f.ex, f.ey) || 1;
+    let m = 0;
+    for (let i = 1; i < 40; i++) {
+      const t = i / 40, s = 1 - t;
+      const qx = 2 * s * t * f.cx + t * t * f.ex;
+      const qy = 2 * s * t * f.cy + t * t * f.ey;
+      m = Math.max(m, Math.abs(qx * (f.ey / chord) - qy * (f.ex / chord)));
+    }
+    return m;
+  };
+  const early = bendAt(0.08, cfg), late = bendAt(0.97, cfg);
+  ok(late > early * 2,
+    `the hook opens as it slows over the top (${early.toFixed(2)} px -> ${late.toFixed(2)} px)`);
+
+  // hookGain exaggerates without changing the sign
+  ok(bendAt(0.97, cfg) > bendAt(0.97, exact),
+    "hookGain draws more of the bend than the physics alone would");
+  ok(Math.abs(bendAt(0.97, cfg) / bendAt(0.97, exact) - cfg.hookGain) < 0.35,
+    "...and by about the gain, so it is an exaggeration and not a different curve");
+
+  // ── A FRESH DROP HAS NO TAIL REACHING BACK BEFORE IT EXISTED ─────────
+  // The reach is clamped to the drop's own age, which is what makes the mark
+  // GROW OUT of the temple over the first few frames instead of arriving
+  // fully drawn. The bound has to carry the hook's own contribution to the
+  // chord as well as the flown distance, or it is asserting the wrong thing.
+  const age = 0.004;
+  const f0 = sweatGeom.dropFrame(d, age, cfg);
+  const flown = Math.hypot(d.vx, d.vy - cfg.gravityPx * age) * age;
+  const hooked = cfg.hookGain * 0.5 * cfg.gravityPx * age * age;
+  ok(Math.hypot(f0.ex, f0.ey) <= flown + hooked + 1e-6,
+    `at ${age * 1000}ms the tail reaches back ${Math.hypot(f0.ex, f0.ey).toFixed(2)} px, ` +
+    `no further than the ${flown.toFixed(2)} px it has flown`);
+  // ...and the control: a mature drop's tail is many times longer, so the
+  // clamp above is doing something rather than describing the resting state
+  const fMature = sweatGeom.dropFrame(d, d.life * 0.9, cfg);
+  ok(Math.hypot(fMature.ex, fMature.ey) > Math.hypot(f0.ex, f0.ey) * 8,
+    `control: a mature tail is ${Math.hypot(fMature.ex, fMature.ey).toFixed(0)} px, ` +
+    "so the newborn really is being held back");
+
+  // the tail trails BEHIND the motion
+  const fm = sweatGeom.dropFrame(d, d.life * 0.5, cfg);
+  const vym = d.vy - cfg.gravityPx * d.life * 0.5;
+  const back = Math.hypot(fm.ex, fm.ey), vm = Math.hypot(d.vx, vym);
+  const dotv = (-fm.ex * d.vx - fm.ey * vym) / (back * vm);
+  ok(dotv > 0.9, `and it points back down the flight line (dot ${dotv.toFixed(3)})`);
+
+  // handedness mirrors between the temples, so the specular does not rotate
+  const R = sweatGeom.layout(cfg, 0, 1);
+  const rr = R.find((x) => x.side > 0), ll = R.find((x) => x.side < 0);
+  const fr = sweatGeom.dropFrame(rr, rr.life * 0.5, cfg);
+  const fl = sweatGeom.dropFrame(ll, ll.life * 0.5, cfg);
+  ok(fr.hand === -fl.hand, "the two temples throw mirrored drops, not rotated ones");
 }
 
 // ---------------------------------------------------------------------------

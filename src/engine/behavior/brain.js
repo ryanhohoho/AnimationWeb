@@ -121,7 +121,7 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
 
   world.on("bump", (e) => {
     if (e.speed > cfg.startleBumpSpeed) {
-      triggerStartle({ x: e.normal.x, y: e.normal.y }, 0.8);
+      triggerStartle({ x: e.normal.x, y: e.normal.y }, 0.8, "wall");
     } else {
       brain.agitation = clamp(brain.agitation + e.speed / 2500, 0, 1);
     }
@@ -194,7 +194,15 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     return closing > cfg.startleClosingSpeed;
   }
 
-  function triggerStartle(awayDir, intensity) {
+  /**
+   * @param source WHAT STARTLED HER, and it is on the event because the answer
+   *   changes what she does about it. A cursor that runs into her is a rude
+   *   thing she can be cross with: the >.< face and a shower of gold. A wall she
+   *   clipped, or a press eating the page out from under her, is not something
+   *   to be cross AT -- that gets the sweat. Same three-beat body language
+   *   either way; the difference is entirely in the face.
+   */
+  function triggerStartle(awayDir, intensity, source = "cursor") {
     if (brain.state === "startle") return;
     brain.state = "startle";
     brain.stateTime = 0;
@@ -207,7 +215,7 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
       awayDir.y * 0.75 + awayDir.x * 0.25 * lateral
     ));
     body.addImpulse(v2.scale(v2.make(), esc, cfg.startleImpulse * (0.6 + 0.4 * intensity)));
-    world.emit("startle", { dir: esc, intensity });
+    world.emit("startle", { dir: esc, intensity, source });
   }
 
   // ------------------------------------------------------------------
@@ -275,7 +283,7 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     brain.gazeFront = true;
     brain.gazeWhip = true;
     world.panicking = true;
-    world.emit("startle", { dir: esc, intensity, panic: true });
+    world.emit("startle", { dir: esc, intensity, panic: true, source: "press" });
   }
 
   // ------------------------------------------------------------------

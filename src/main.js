@@ -358,7 +358,25 @@ new GLTFLoader().load(mewUrl, (gltf) => {
 
   // PANIC SWEAT, off the same root for the same reason
   sweat = createSweatDrops({ parent: characterRoot, config: cfg.sweat, view });
+
+  // ── TWO WAYS TO BE STARTLED, AND THEY DO NOT LOOK THE SAME ──────────────
+  // A cursor barging into her is RUDE, and the honest response to rude is a
+  // tantrum: gold annoyance stars and the >.< face, which is exactly what a
+  // hard collision already gets. A press eating the page out from under her, or
+  // a wall she clipped at speed, is not something to be cross AT -- that is
+  // fright, and fright sweats.
+  //
+  // The stars are fired directly rather than by emitting `flail`, and that is
+  // deliberate: colliders.js suppresses `flail` while world.panicking precisely
+  // so a panicking mew clipping the furniture does not throw a tantrum in the
+  // middle of a flight that is supposed to read as fear. Borrowing the event
+  // would walk straight around that guard. The >.< comes from the overlay's own
+  // subscription to `startle`, so it lands on both.
   world.on("startle", (e) => {
+    if (e.source === "cursor") {
+      sparkle.annoy((Math.random() * 0xffffffff) >>> 0);
+      return;
+    }
     // the drops go off around the ESCAPE, and screen y runs down while this
     // spray is built in maths coordinates, so the sign flips on the way in
     sweat.burst(e.dir.x, -e.dir.y, e.intensity ?? 1,

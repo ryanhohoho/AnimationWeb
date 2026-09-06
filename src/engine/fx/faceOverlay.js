@@ -180,9 +180,20 @@ export function createFaceOverlay({ rig, eyes, config, world, view, mesh }) {
   let t = -1;
   let hit = 0;
   if (world) {
+    // A HARD KNOCK. The strength is an impact speed, because that is what a
+    // collision has to offer.
     world.on("flail", (e) => {
       t = 0;
       hit = Math.max(hit, Math.min(1, e.speed / cfg.fullSpeed));
+    });
+    // AND A FRIGHT, which has no impact speed at all -- a startle carries an
+    // intensity already normalised to 0..1, so it is used as it stands rather
+    // than run back through fullSpeed. This is what puts the face on the panic:
+    // she screws her eyes up while she runs, which is the difference between
+    // fleeing and merely travelling fast.
+    world.on("startle", (e) => {
+      t = 0;
+      hit = Math.max(hit, Math.min(1, Math.max(0, e.intensity ?? 1)));
     });
   }
 
