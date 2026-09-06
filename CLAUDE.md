@@ -78,11 +78,19 @@ Read in this order when picking it up cold:
 | `DESIGN.md` | what was built and why each part is there | when the question is "why is it like this" |
 | `CLAUDE.md` | this file | how to work |
 
+Three files carry more than their name suggests. `src/site/pages/sheet.js` is the
+two-plate trim every project sheet is cut to — the three project files are only
+the WORDS. `src/site/chrome.js` is everything that does not turn when the page
+does (the stitch chart, the phone bar, the back control), and it lives outside
+`#doc` so a page swap cannot flicker it. `src/engine/fx/sweatGeometry.js` is the
+sweat's maths, pure and headless; its `sdDrop` is a twin of the shader's, and the
+two are checked against each other on the GPU.
+
 ## Commands
 
 ```bash
 npm run dev            # localhost:5173 — the owner tests here, in his own browser
-npm test               # 826 checks: the headless sim + the router harness
+npm test               # 842 checks: the headless sim + the router harness
 npm run test:sim       # just the engine/behaviour suite
 npm run test:router    # just the router + page-swap harness (needs a fake DOM)
 npm run build          # production bundle
@@ -182,6 +190,24 @@ when only the numbers were.
 - **Never hold a deck icon RECORD across a `measure()`.** It rebuilds every one
   of them, so anything keyed on record identity is silently dropped on the next
   resize or font load. Key on the ELEMENT.
+- **An entrance animation is geometry.** `measure()` runs inside `commit()`, in
+  the frame the markup is inserted, so anything still at its `from` keyframe is
+  measured THERE. Nothing carrying an aperture may translate as it arrives.
+- **`:not()` takes its argument's specificity**, so `.ap:not(.icon)` is (0,2,0)
+  and beats a bare class. Same family as `.t.body` (two classes) beating every
+  single-class `max-width` override, and `.d.sm` beating the small-screen `.d`.
+- **`gl.scissor` counts from the BOTTOM; `drawImage` counts from the TOP.** A
+  scissored pass must also run BEFORE the full one, because they share the
+  drawing buffer the sheet is displayed from.
+- **Anything pinned to Mew converts with `view.fxPerPx`, not `worldPerPx`.** She
+  is sized for the screen she is on (`characterPx()` in main.js), and an effect
+  using the page's scale keeps the proportions of a character twice as big.
+- **The sweat's alpha is a CLASSIFIER, not a coverage** (`fx/alphaFlags.js`).
+  Antialiasing its edge puts the fringe on `FX_ALPHA` and the pixelate pass rims
+  every drop in the hyper beam's hot outline. Hard `discard`, always.
+- **A watchdog may only speak for its own navigation.** They outlive the move
+  that armed them by seconds; an unguarded one clears a LATER crossing's eating
+  for one frame, which is the intermittent mid-transition flicker.
 - **A hidden element has no rectangle and is never measured.** Reveal it,
   remeasure, then ask the deck for a hole in it — in that order.
 - **A CSS percentage in a custom property is two different lengths.**
