@@ -90,6 +90,7 @@ globalThis.setTimeout = () => 0;   // the watchdogs must not fire inside a check
 globalThis.clearTimeout = () => {};
 
 let sky = 0, skyRamp = 0, frameNo = 0, coverAfter = 0;
+let shifts = [];
 // WHICH DRIVE RAN, observed rather than inferred. Timing would be a proxy and a
 // bad one; setCrossing is only ever called by the opening, so a move that never
 // touches it is a fade and a move that does is a crossing. That is the whole
@@ -103,7 +104,10 @@ const deck = {
   setInk() {}, setEatInk() {}, bind() {}, setCrossing() { crossCalls++; },
   // added when the icons became holes. Both are no-ops here: this file is about
   // what the ROUTER does to the sky across a swap, and neither call touches it.
-  setMaskHole() { return false; }, setAltInk() {}, setDocShift() {},
+  setMaskHole() { return false; }, setAltInk() {},
+  // recorded, because "the die-cuts leave with the page" is a claim about a
+  // sequence of numbers and not about a final state
+  setDocShift(dx, fade) { shifts.push({ dx: dx || 0, fade: fade === undefined ? 1 : fade }); },
   get crossCovered() { return frameNo >= coverAfter; }
 };
 
@@ -398,6 +402,59 @@ console.log("\n== a finished navigation cannot clear a running one's crossing");
   deck.setCrossing = realSetCrossing;
   globalThis.setTimeout = realSetTimeout;
   globalThis.clearTimeout = realClearTimeout;
+}
+
+// ---------------------------------------------------------------------------
+// THE DIE-CUTS LEAVE WITH THE PAGE THEY ARE CUT IN.
+//
+// A hole is a rectangle of the DOCUMENT held in a shader uniform, which is what
+// keeps it registered while the page scrolls under it -- and is exactly why it
+// used to sit perfectly still and perfectly opaque while a turn slid the type
+// thirty pixels out from under it and dissolved it. The aperture hung in the
+// air with nothing around it, which was the one thing about a page turn that
+// looked wrong.
+//
+// The router hands the deck the same two numbers #doc is carrying. This checks
+// the SEQUENCE, because the resting state is the same either way: a router that
+// never called it at all would still finish at (0, 1).
+console.log("\n== an aperture travels with the type it is cut around");
+{
+  location.pathname = "/experience"; history.state = { path: "/experience" };
+  router.go("/experience", { push: false });
+  coverAfter = frameNo + 20; pump(160);
+
+  shifts.length = 0;
+  router.go("/projects");           // a FADE
+  pump(160);
+
+  const dxs = shifts.map((s) => s.dx);
+  const fades = shifts.map((s) => s.fade);
+  const minDx = Math.min(...dxs), maxDx = Math.max(...dxs), minFade = Math.min(...fades);
+  const last = shifts[shifts.length - 1];
+
+  ok(shifts.length > 20, `the turn drives the holes every frame (${shifts.length} writes)`);
+  ok(minDx < -20, `they slide out with the page (${minDx.toFixed(1)} px)`);
+  ok(maxDx > 20, `...and back in from the other side (+${maxDx.toFixed(1)} px)`);
+  ok(minFade < 0.05, `and they fade with it (down to ${minFade.toFixed(3)})`);
+  ok(last.dx === 0 && last.fade === 1,
+    `and the page is left where it says it is (${last.dx}, ${last.fade})`);
+
+  // ── THE PAIRED CONTROL ────────────────────────────────────────────────
+  // A CROSSING must NOT do any of that. The opening has to be able to cover a
+  // window that is halfway through fading, so the die-cuts stay put and stay
+  // solid while it eats -- and #doc is not moved at all on that path. If this
+  // ever starts shifting, the check above has stopped discriminating.
+  location.pathname = "/"; history.state = { path: "/" };
+  router.go("/", { push: false });
+  coverAfter = frameNo + 20; pump(200);
+
+  shifts.length = 0;
+  router.go("/experience");         // a CROSSING
+  coverAfter = frameNo + 20;
+  pump(220);
+  const moved = shifts.filter((s) => s.dx !== 0 || s.fade !== 1);
+  ok(moved.length === 0,
+    `control: a crossing never moves or fades a die-cut (${moved.length} of ${shifts.length})`);
 }
 
 // ---------------------------------------------------------------------------

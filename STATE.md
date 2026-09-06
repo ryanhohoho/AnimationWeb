@@ -794,9 +794,15 @@ Capture slots still empty: `usb-hub`, `usb-engraver`, `closet-app`,
   worse than one that links none.
 - **The card media is placeholder** too, from `aesthetic-images/`. Names are the
   whole interface: `card-<slug>.webp` and `card-<slug>.mp4`.
-- **The project sheets are still the old long-form documents.** They work, they
-  have the back arrow and their colliders are gone, but they were written for a
-  reader who had just come through a gate rather than one skimming a deck.
+- **The project sheets are two plates of placeholder prose.** The trim is shared
+  (`pages/sheet.js`) and each project file is only the words, so they are cheap
+  to replace — which is the point, because the owner is rewriting all three in
+  his own format. `usb-provisioning` keeps its terminal and both disclosures.
+- **The project-sheet PALETTE is unused but kept.** The annotated column, the
+  claim grid, the data table, the margin note and the quoted document are all
+  still in `site.css`, labelled, because the rewrite should reach for them
+  rather than invent a second vocabulary. If it does not want them, delete the
+  block.
 - **The spacing/positioning design sweep.** Contrast, weights and typeface were
   done; spacing and positioning were never finished. This is the oldest
   outstanding item.

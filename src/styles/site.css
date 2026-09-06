@@ -189,6 +189,17 @@ body.pre #doc { opacity:0; }
 .t.body.sm { font-size:11px; color:var(--n3); }
 
 a { color:inherit; -webkit-tap-highlight-color:rgba(0,90,125,.14); }
+
+/* said, not shown. The clip-path form rather than display:none or
+   visibility:hidden, because both of those take the text out of the
+   accessibility tree along with the layout -- which is the opposite of the
+   point. */
+.sr {
+  position:absolute; width:1px; height:1px; overflow:hidden;
+  clip-path:inset(50%); white-space:nowrap; border:0; padding:0; margin:-1px;
+}
+/* it is a target for focus, not a control: it should never draw a ring */
+#doc:focus { outline:none; }
 .link { color:var(--blue); text-decoration:underline; text-underline-offset:.24em;
         text-decoration-thickness:1px; }
 
@@ -205,7 +216,7 @@ a { color:inherit; -webkit-tap-highlight-color:rgba(0,90,125,.14); }
    rather than discovered by its type running off the foot into the next plate,
    which is what happens when absolutely positioned columns outgrow their
    sheet. */
-.plate.deep { min-height:140lvh; }
+.plate.deep { min-height:140lvh; }   /* palette: see the project-sheet block */
 
 .corner { position:absolute; display:grid; gap:.9rem; max-width:min(44ch,40vw); z-index:2; }
 .tl { top:var(--pad); left:var(--pad); }
@@ -601,7 +612,23 @@ body.on-project .plate .corner.bl,
 body.on-project .plate .corner.br { bottom:calc(var(--pad) + 2.9rem); }
 
 
-/* ── the annotated column. Used by the project sheets (site/pages.js). ──── */
+/* ══ THE PROJECT-SHEET PALETTE ═══════════════════════════════════════════
+   Everything from here to the CAPTURES block is the component vocabulary the
+   project sheets are built out of: an annotated column, a claim-and-answer
+   grid, a data table, a margin note, a quoted document with a highlight in it.
+
+   NONE OF IT IS ON THE SITE RIGHT NOW, and that is deliberate rather than rot.
+   The three project sheets were cut to two plates of placeholder prose because
+   their real writing has not happened yet (pages/sheet.js), and when it does it
+   should reach for these rather than invent a second vocabulary beside them.
+   They are typographic components, not one-off styling: the trim, the measures
+   and the two type sizes are all the sheet's own.
+
+   If a rewrite lands and still does not want them, delete the block. Leaving
+   them named and explained is the difference between a palette and dead code;
+   leaving them unexplained would be neither.
+
+   ── the annotated column. ──────────────────────────────────────────────── */
 .spec { position:absolute; left:var(--pad); top:28%; width:min(32ch,33vw);
         display:grid; gap:1.1rem; z-index:2; }
 .spec dl { display:grid; grid-template-columns:auto 1fr; gap:.28rem 1.4rem; }

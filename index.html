@@ -74,7 +74,11 @@
        spreads OVER it. Transparent and idle except during a crossing. -->
   <canvas id="eat" aria-hidden="true"></canvas>
 
-  <main id="doc">
+  <!-- tabindex="-1" so the router can move focus here after a swap. It is not in
+       the tab order; it is a place to PUT focus. Without it, replacing #doc
+       detaches whatever was focused and a keyboard reader is dropped back at the
+       top of the browser chrome on every navigation. -->
+  <main id="doc" tabindex="-1">
 
     <!-- ══ 01 · SUMMARY ══════════════════════════════════════════════════════
          THE ONE CARD THAT KEEPS ITS WINDOW.
@@ -123,6 +127,12 @@
        Every control is a real <a href>. The router already delegates clicks on
        a[data-route], so this needs no JavaScript to work, survives a middle
        click, and is a correct page before a single module has loaded. -->
+  <!-- WHAT CHANGED, SAID OUT LOUD. This is one document that swaps its own
+       contents, so nothing about a navigation is announced: the URL changes, the
+       title changes, and a screen reader is told neither. A polite live region
+       is the whole fix. -->
+  <p id="say" class="sr" aria-live="polite" aria-atomic="true"></p>
+
   <div id="chrome">
     <!-- ══ THE CHART ═══════════════════════════════════════════════════════
          A cross-stitch pattern chart: four cells on a grid, the one you are on

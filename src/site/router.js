@@ -186,6 +186,32 @@ export function createRouter({ scope, deck, world, onPage }) {
     deck.bind();
     world?.emit("recollect");
     onPage?.(route);
+
+    // ── AND SAY SO ────────────────────────────────────────────────────────
+    // This is one document that swaps its own contents, so a navigation is
+    // silent: the URL changes, the title changes, and a screen reader is told
+    // neither because no page load happened. A polite live region says what
+    // arrived, and focus moves onto the new page so the next Tab starts there
+    // instead of back at the browser chrome.
+    //
+    // preventScroll, because the commit has just put the reader at the top of
+    // the sheet on purpose and a focus scroll would fight it. It happens while
+    // the crossing still covers the window, so nothing of it is seen.
+    announce(route);
+    try { doc.focus({ preventScroll: true }); } catch { doc.focus?.(); }
+  }
+
+  const sayEl = typeof document.getElementById === "function"
+    ? document.getElementById("say") : null;
+  function announce(route) {
+    if (!sayEl) return;
+    const name = route?.name === "project"
+      ? route.project.title
+      : route?.name === "home" ? "summary" : route?.name || "page";
+    // the region is re-read only when its text CHANGES, and two visits to the
+    // same card would otherwise be silent the second time
+    sayEl.textContent = "";
+    sayEl.textContent = `${name} — page loaded`;
   }
 
   // ── THE CROSSING ─────────────────────────────────────────────────────────
