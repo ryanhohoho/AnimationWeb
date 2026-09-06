@@ -76,10 +76,19 @@ export function mountCards({ scope, deck }) {
 
   const paint = () => {
     if (!active) { deck.setMaskHole(null); return; }
+    // THE PLATE ONLY LEAVES IF THERE IS SOMETHING BEHIND IT.
+    // setMaskHole returns false when the glyph atlas has not landed -- a slow
+    // network, a failed fetch, the three-second race in deck.js giving up. The
+    // white icon used to fade anyway, so a hover on a card whose sky could never
+    // arrive emptied the punch and left a hole showing bare paper. The return
+    // value is the only thing that knows, so it is the only thing that decides.
+    const took = deck.setMaskHole(amt > 0 ? active.ap : null, amt,
+      active.p.inkA, active.p.ink);
     // the plate clears slightly AHEAD of the sky arriving (the 1.15), so there
     // is never a frame with a white icon sitting on top of open sky
-    if (active.glyph) active.glyph.style.opacity = String(Math.max(0, 1 - amt * 1.15));
-    deck.setMaskHole(amt > 0 ? active.ap : null, amt, active.p.inkA, active.p.ink);
+    if (active.glyph) {
+      active.glyph.style.opacity = took ? String(Math.max(0, 1 - amt * 1.15)) : "";
+    }
   };
 
   const tick = (now) => {

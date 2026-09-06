@@ -80,14 +80,30 @@ the next before the current one is finished and polished.
 
 # 2 · Architecture
 
+### Two chunks, and why
+
+`main.js` is **the site** — the world, the press, the routing, the chrome — and
+it touches three.js nowhere. `src/mew.js` is **the animal**, and it is a dynamic
+import. Verified against the built artefacts: three.js and GLTFLoader are
+entirely absent from the 91 KB site chunk.
+
+The old file said the sheet went up before the model was requested, which was
+true of the ORDER and false of the download: 900 KB had to arrive and parse
+before any of it ran. It is 92 KB now (41 gzipped) and the engine's 791 KB
+follows without blocking. If that chunk never lands the site is unchanged except
+that there is no mew on it — a correct page, not a broken one.
+
 ```
-index.html            the home sheet's markup + the canvas layers, in z order:
+index.html            the summary card's markup + the canvas layers, in z order:
                         #sheet z1    the paper and every hole, one shader pass
                         #doc   z10   the type
                         #eat   z20   the transition, above the words
                         #stage z30   Mew (three.js)
 
-src/main.js           boot: renderer, model load, rig build, wiring, the loop
+src/main.js           boot: THE SITE. world, press, routing, chrome. No three.
+src/mew.js            boot: THE ANIMAL. Dynamic import, so the site never waits
+                      on it. bootMew({ world, deck, scope }) -- one world, one
+                      deck and one scope on the page, shared through the call
 src/config/rigConfig.js   EVERY tuning constant and the bone role map
 
 src/engine/

@@ -535,18 +535,18 @@ export function createDeck({ scope }) {
       loadIconAtlas().catch(() => null),
       new Promise((r) => setTimeout(() => r(null), 3000))
     ]).then((a) => {
-      // A GLYPH HOLE THAT NEVER ARRIVES IS AN INVISIBLE CONTROL. The back arrow
-      // on a project sheet IS its shader hole and has no picture of its own, so
-      // if the atlas does not land there is a clickable rectangle with nothing
-      // in it. Saying so on the root element lets the stylesheet put a plain
-      // arrow there instead: a degraded page rather than a broken one.
-      if (!a) { document.documentElement.classList.add("no-glyphs"); return; }
+      // NOT LANDING IS A REAL STATE AND IT IS ALREADY HANDLED, by the one thing
+      // that can know: setMaskHole returns false, cards.js leaves its white
+      // plate up, and the card is an ordinary picture with a white icon on it.
+      // There used to be a class on <html> here as well, for a back control
+      // that WAS its own hole and had nothing to show without one -- that
+      // control paints its own sky now and does not need the atlas at all, so
+      // the class had no consumer left.
+      if (!a) return;
       atlas = a;
       if (sheet && !atlasUp) atlasUp = !!sheet.setMaskTex(atlas);
       dirty = true; kick();
     });
-  } else {
-    document.documentElement.classList.add("no-glyphs");
   }
 
   // ── nothing runs while the page is not on screen ─────────────────────────

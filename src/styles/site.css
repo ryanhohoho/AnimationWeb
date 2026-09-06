@@ -554,16 +554,6 @@ a { color:inherit; -webkit-tap-highlight-color:rgba(0,90,125,.14); }
 .mob-b[aria-disabled="true"] { opacity:.2; pointer-events:none; }
 
 /* ── THE BACK ARROW ────────────────────────────────────────────────────────
-   Not a picture of an arrow: an arrow-shaped HOLE, cut in the paper by the same
-   shader that cuts every other hole, showing the home sheet's own sky. A window
-   onto where you are going.
-
-   Which means there is nothing here to draw. The <a> is a hit target and the
-   span inside it is an empty rectangle the deck measures; everything visible is
-   behind them, on #sheet. If the glyph atlas never lands there would be a
-   clickable rectangle containing nothing at all, so .no-glyphs -- set on <html>
-   by deck.js in exactly that case -- puts a plain arrow there instead. */
-/* ── THE BACK ARROW ────────────────────────────────────────────────────────
    TOP LEFT, where a back control belongs, and always on top. It was at the
    middle of the left edge because that was the one band free of the project
    sheets' own four-corner compositions -- a workaround for the real problem,
@@ -573,7 +563,8 @@ a { color:inherit; -webkit-tap-highlight-color:rgba(0,90,125,.14); }
 
    The disc is opaque, so it needs no registration ticks: a tick says "there is
    a cut here" for a hole that might be nearly the colour of the paper, and this
-   one can never be. */
+   one can never be -- and for the same reason it needs no glyph-atlas fallback:
+   it paints its own sky and does not read the atlas at all. */
 .backarrow {
   --ba:clamp(42px, 4.4vw, 56px);
   position:fixed; left:var(--pad); top:var(--pad);
