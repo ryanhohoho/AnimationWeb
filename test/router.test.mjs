@@ -92,6 +92,9 @@ globalThis.window = {
 globalThis.location = { pathname: "/", hash: "" };
 globalThis.history = {
   state: null,
+  // the real default, so the check at the foot is checking a CHANGE and not a
+  // value that was already there
+  scrollRestoration: "auto",
   pushState(s, _t, p) { this.state = s; location.pathname = p; },
   replaceState(s) { this.state = s; }
 };
@@ -520,6 +523,22 @@ console.log("\n== the swap puts her back at a SIDE of the new window");
 
   check("home -> project", 1200, "/projects/iclicker");
   check("project -> home", 4800, "/");
+}
+
+console.log("\n== the browser is not also scrolling");
+// scrollRestoration defaults to "auto": the browser records an offset per
+// history entry and puts it back on a traversal, same-document navigation
+// included. This router already owns the scroll -- commit() reads where the
+// reader was, puts them at the top of the new sheet, and winds the plate on by
+// that offset so the sky is continuous across the swap. A restore landing after
+// that is not a race for the scroll position; it is a race the SKY loses.
+{
+  ok(history.scrollRestoration === "manual",
+    `the router takes the scroll off the browser (${history.scrollRestoration})`);
+  // THE CONTROL. The fixture is built with the real default, so this is a check
+  // that something CHANGED it rather than a check that reads its own setup.
+  ok("auto" !== history.scrollRestoration,
+    "control: the fixture starts at the browser's own default, so that is a change");
 }
 
 console.log("\n== what a shared link says it is");

@@ -90,7 +90,7 @@ two are checked against each other on the GPU.
 
 ```bash
 npm run dev            # localhost:5173 — the owner tests here, in his own browser
-npm test               # 842 checks: the headless sim + the router harness
+npm test               # 876 checks: the headless sim + the router harness
 npm run test:sim       # just the engine/behaviour suite
 npm run test:router    # just the router + page-swap harness (needs a fake DOM)
 npm run build          # production bundle
@@ -162,17 +162,31 @@ is the thing most likely to change.
 10. **Character aesthetics are his call.** Do not redesign the silhouette or
     repaint the face unasked.
 
-## Verification, and its one real limitation
+## Verification, and what this environment will not do
 
-**The Browser pane in this environment reports `innerWidth: 0` and
-`document.hidden: true`.** The deck's rAF never runs, so live screenshots of
-transitions are impossible and always have been. Every visual claim in `STATE.md`
-was measured instead by:
+A new Browser-pane tab reports **`innerWidth: 0`** and **`document.hidden: true`**.
+Four consequences, and each one has cost a wrong conclusion at least once:
 
-- cache-busted module imports compiling the real shaders into a scratch canvas,
-  then `readPixels` and comparing;
-- the node sim harness driving the real engine;
-- `window.__DECK__.debug.paint(t, scrollY)` to draw a frame by hand.
+- **The deck's rAF never runs**, so live screenshots of transitions are
+  impossible and always have been. `window.__DECK__.debug.paint(t, scrollY)`
+  draws a frame by hand; that is how every visual claim in `STATE.md` was made.
+- **`paint()` bails on its first line at `innerWidth: 0`**, so `debug.gpu` reads
+  false with nothing wrong at all. **Resize the tab before reading any probe.**
+- **CSS transitions and animations are suspended.** `getComputedStyle` on a
+  transitioning property returns the FROM value, forever — a focus rule that was
+  applying perfectly well read back as `opacity: 0`, and an entrance that had
+  long since landed reads as `opacity: 0` too. To find out whether a rule
+  actually matched, append `transition:none !important` for that element, read,
+  and remove it.
+- **The pane does not scroll**, and timers are throttled hard. A debounced
+  handler can take seconds; end the tool call and read again rather than
+  awaiting inside one. WebGL readback also lags several draws behind, so a pixel
+  probe of anything on a clock does not survive contact with it.
+
+The other tools that do work: cache-busted module imports compiling the real
+shaders into a scratch canvas, then `readPixels` and comparing; the node sim
+harness driving the real engine; and `.claude/launch.json`'s **`mew-dist`**,
+which serves the real bundle — hashed URLs, `public/`, `404.html` — on 5274.
 
 **Say so when you have not seen something.** Never describe motion as verified
 when only the numbers were.
@@ -231,6 +245,22 @@ when only the numbers were.
 - **`data-collider` appears nowhere in the site markup**, by instruction — Mew
   passes through everything now. The collision engine is intact and still tested;
   putting the attribute back on an element turns it on again.
+- **`--n4` may never carry a word.** It is 2.61:1 on bone — under half the 4.5:1
+  floor — and it is for hairlines, ticks and inactive marks. Eight rules were
+  painting text in it. There is a check, and it reads the real stylesheet.
+- **The router owns the scroll, so the browser must not.**
+  `history.scrollRestoration` is set to `manual`: `commit()` reads where the
+  reader was, puts them at the top of the new sheet, and winds the plate on by
+  exactly that offset. An async restore landing afterwards is a race the SKY
+  loses, not just the scroll position.
+- **`public/` is copied verbatim to the dist root**, which is why the favicon and
+  card paths in `index.html` are absolute — and why `dist/404.html` has to be
+  written by the build rather than dropped in `public/`: it carries the hashed
+  script tags.
+- **A scanner strict enough to be useful catches documentation about itself.**
+  The redaction check failed on `STATE.md` for spelling out a volume path while
+  explaining the rule. Prose about those patterns must name them, not spell
+  them.
 
 The full catalogue, with the failures that produced each one, is in `STATE.md`
 under **Traps already paid for**. Read it before debugging anything that smells

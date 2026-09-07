@@ -871,6 +871,27 @@ export function createRouter({ scope, deck, world, onPage }) {
     go(href, { source: sourceFor(a) });
   }, { signal: scope?.signal });
 
+  // ── THE BROWSER MUST NOT ALSO BE SCROLLING ───────────────────────────────
+  // scrollRestoration defaults to "auto", which means the browser records a
+  // scroll offset per history entry and puts it back on a traversal -- for
+  // same-document History API navigation too. This router already owns the
+  // scroll: commit() reads where the reader WAS, puts them at the top of the
+  // new sheet, and winds the plate on by exactly that offset so the sky is
+  // continuous across the swap (see the long note in commit()). An async
+  // restore landing after that is not a race for the scroll position, it is a
+  // race the SKY loses -- the plate is wound for a place the reader is no
+  // longer standing, which is the same visible step in the weather this file
+  // already has three separate defences against.
+  //
+  // "manual" changes no behaviour that was ever intended: the router scrolls to
+  // the top on every commit either way. It only stops the browser undoing it.
+  //
+  // NOT VERIFIED IN THIS ENVIRONMENT, and said out loud because that matters:
+  // the preview pane refuses to scroll at all (window.scrollTo is a no-op
+  // there), so the failure cannot be reproduced here -- only the mechanism and
+  // the default can be, and both were. There is a check that this line ran.
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+
   window.addEventListener("popstate", () => {
     go(location.pathname, { push: false });
   }, { signal: scope?.signal });
