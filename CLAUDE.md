@@ -73,6 +73,7 @@ Read in this order when picking it up cold:
 
 | file | what it is | when |
 |---|---|---|
+| `README.md` | the front door, for somebody who arrived from the site's own GitHub link | if you are changing what this project IS, it changes too |
 | `RYAN.txt` | the owner's taste, distilled from ~200 reference images and the whole collaboration | **first, always.** Never regenerate it. Do NOT re-analyse the image folders — that work is done |
 | `STATE.md` | what exists, how it works, the numbers, and every trap already paid for | before touching anything |
 | `DESIGN.md` | what was built and why each part is there | when the question is "why is it like this" |
