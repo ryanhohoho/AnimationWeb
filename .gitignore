@@ -30,6 +30,9 @@ __pycache__/
 # carries its own .git. Both are inputs to decisions, not inputs to the build.
 aesthetic-images/
 roy/
+# ...and loose reference frames dropped in the root while working (the 3 MB
+# surprised-face gif the squint was built from). They are inputs to a decision.
+/*.gif
 
 # personal details. The resume is where content.js's copy came from and it
 # carries a phone number and a home address; the site needs neither.
