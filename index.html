@@ -170,50 +170,13 @@
   <p id="say" class="sr" aria-live="polite" aria-atomic="true"></p>
 
   <div id="chrome">
-    <!-- ══ THE CHART ═══════════════════════════════════════════════════════
-         A cross-stitch pattern chart: four cells on a grid, the one you are on
-         WORKED with an X, the ones behind you worked and faded, the ones ahead
-         left as bare canvas. A legend names the thread.
-
-         It replaces a row of stretching pills, which was somebody else's idea
-         and looked like it. This one is the sheet's own: RYAN.txt III is a
-         continuous thing made visible by many small discrete identical marks --
-         which is what the halftone this whole site is printed in IS, and a
-         stitch chart is the same object with the marks counted instead of
-         resolved. A chart is also the right shape for the job, because it
-         already means "here is the whole of it, and here is how far you have
-         got", which a dot cannot say.
-
-         The thread is CERULEAN, the one ink no project may own -- so the
-         counter is worked in the site's constant while the cards around it
-         change colour. -->
-    <nav class="nav" aria-label="Sections">
-      <span class="chart">
-        <a class="stitch" href="/"           data-route data-dot="home"       aria-label="Summary"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
-        <a class="stitch" href="/experience" data-route data-dot="experience" aria-label="Experience"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
-        <a class="stitch" href="/projects"   data-route data-dot="projects"   aria-label="Projects"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
-        <a class="stitch" href="/contact"    data-route data-dot="contact"    aria-label="Contact"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
-      </span>
-      <span class="t dim legend"><i class="legend-key" aria-hidden="true"></i><span data-count>01&nbsp;/&nbsp;04</span></span>
-
-      <!-- ON A PHONE THESE LIVE IN THE BAR, and on a desktop they do not exist.
-           They used to float at the right edge, vertically centred, which put
-           them on top of every project card's artwork and let the container
-           swallow taps meant for the card underneath. A control that sits on
-           the content is a control that competes with it.
-
-           A swipe does the same job (site/router.js) and is what a thumb
-           reaches for first, but a gesture nobody is told about is a gesture
-           some visitors never find -- so the buttons stay, out of the way. -->
-      <span class="mob">
-        <a class="mob-b" data-route data-prev href="/" aria-label="Previous">&#8249;</a>
-        <a class="mob-b" data-route data-next href="/experience" aria-label="Next">&#8250;</a>
-      </span>
-    </nav>
-
-    <p class="t dim keys"><kbd>&larr;</kbd><kbd>&rarr;</kbd>&nbsp;navigate</p>
-
     <!-- ══ THE TWO DISCS ═══════════════════════════════════════════════════
+         FIRST IN THE CHROME, because they are first on the screen. Everything
+         in here is fixed furniture, so DOM order IS tab order, and a reader on
+         a keyboard leaves the page and arrives at the top-left corner before
+         the bar at the foot. They used to be last: the sheet, then the chart in
+         the bottom-left, then back up to the discs.
+
          Both are the same object: a small circle of sky, painted into its own
          canvas by the scissored pass in deck.js, with a white mark drawn ON it.
 
@@ -276,6 +239,50 @@
       </svg>
       <span class="t disc-tag" aria-hidden="true">03&nbsp;·&nbsp;PROJECTS</span>
     </a>
+
+    <!-- ══ THE CHART ═══════════════════════════════════════════════════════
+         A cross-stitch pattern chart: four cells on a grid, the one you are on
+         WORKED with an X, the ones behind you worked and faded, the ones ahead
+         left as bare canvas. A legend names the thread.
+
+         It replaces a row of stretching pills, which was somebody else's idea
+         and looked like it. This one is the sheet's own: RYAN.txt III is a
+         continuous thing made visible by many small discrete identical marks --
+         which is what the halftone this whole site is printed in IS, and a
+         stitch chart is the same object with the marks counted instead of
+         resolved. A chart is also the right shape for the job, because it
+         already means "here is the whole of it, and here is how far you have
+         got", which a dot cannot say.
+
+         The thread is CERULEAN, the one ink no project may own -- so the
+         counter is worked in the site's constant while the cards around it
+         change colour. -->
+    <nav class="nav" aria-label="Sections">
+      <span class="chart">
+        <a class="stitch" href="/"           data-route data-dot="home"       aria-label="Summary"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
+        <a class="stitch" href="/experience" data-route data-dot="experience" aria-label="Experience"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
+        <a class="stitch" href="/projects"   data-route data-dot="projects"   aria-label="Projects"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
+        <a class="stitch" href="/contact"    data-route data-dot="contact"    aria-label="Contact"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
+      </span>
+      <span class="t dim legend"><i class="legend-key" aria-hidden="true"></i><span data-count>01&nbsp;/&nbsp;04</span></span>
+
+      <!-- ON A PHONE THESE LIVE IN THE BAR, and on a desktop they do not exist.
+           They used to float at the right edge, vertically centred, which put
+           them on top of every project card's artwork and let the container
+           swallow taps meant for the card underneath. A control that sits on
+           the content is a control that competes with it.
+
+           A swipe does the same job (site/router.js) and is what a thumb
+           reaches for first, but a gesture nobody is told about is a gesture
+           some visitors never find -- so the buttons stay, out of the way. -->
+      <span class="mob">
+        <a class="mob-b" data-route data-prev href="/" aria-label="Previous">&#8249;</a>
+        <a class="mob-b" data-route data-next href="/experience" aria-label="Next">&#8250;</a>
+      </span>
+    </nav>
+
+    <p class="t dim keys"><kbd>&larr;</kbd><kbd>&rarr;</kbd>&nbsp;navigate</p>
+
   </div>
 
   <canvas id="stage" aria-hidden="true"></canvas>

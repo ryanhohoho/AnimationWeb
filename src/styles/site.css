@@ -598,7 +598,12 @@ body.off-deck .keys { display:none; }
 }
 .disc[hidden] { display:none; }
 @media (hover:hover) { .disc:hover { transform:translateX(-3px); } }
-.disc:focus-visible { transform:translateX(-3px); outline:none; }
+/* THE DISC KEEPS THE RING. It used to drop it for the same 3 px nudge the
+   hover has, plus the label -- and the label is `display:none` on a narrow
+   screen, so on a small window with a keyboard the entire focus indicator was a
+   three-pixel shift. The ring sits at 5 px of offset, which is out on the paper
+   and clear of the sky, so it costs the disc nothing. */
+.disc:focus-visible { transform:translateX(-3px); }
 
 /* HOME STANDS ASIDE WHEN THERE IS A BACK ARROW, and only then. It is a pure
    `left`, which is a layout property -- but it changes on a ROUTE, not on a
@@ -733,7 +738,21 @@ body.on-project .plate .corner.tl {
         grid-template-columns:repeat(auto-fit,minmax(172px,1fr));
         max-width:min(100%,1120px); z-index:2; }
 
+/* ── THE FOCUS RING ────────────────────────────────────────────────────────
+   Cerulean at 5 px of air, which reads on bone at 6.6:1 and never lands ON the
+   thing it is ringing. Several controls replace it with an affordance of their
+   own -- a card underlines its title, a contact row slides and shows its arrow
+   -- and every one of those replacements is a change a reader can NAME. A 3 px
+   nudge is not one, which is the fix below. */
 :focus-visible { outline:2px solid var(--blue); outline-offset:5px; }
+
+/* THE CHART IS EIGHTEEN PIXELS PER CELL and its cells abut by design (their
+   borders overlap by a pixel so the rule between two of them is ONE line). A
+   ring at 5 px of offset is 10 px wider than the cell it belongs to, so it
+   would cross both neighbours and the reader could not tell which cell had the
+   focus -- which is the whole job of the ring. Tight to the cell instead: the
+   chart is a grid, so a ring on the grid line IS the cell. */
+.stitch:focus-visible { outline-offset:0; outline-width:2px; }
 
 
 /* ══ PROJECT SHEETS ══════════════════════════════════════════════════════

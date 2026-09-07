@@ -200,6 +200,44 @@ three thousand fragments against a million. Three rules that were each a bug:
   its own white mark where 2,640 is 4.26:1, and the pale hour is the shallow end
   of exactly the range `SKY_BTN_DEPTH` exists to avoid.
 
+### The keyboard, and where the ring goes
+
+Tab order in the chrome is now top-of-screen first: the sheet, then the two
+discs in the top-left corner, then the chart and the bar at the foot. Everything
+in `#chrome` is fixed furniture, so DOM order **is** tab order, and the discs
+used to be last — a reader left the page, went to the bottom-left corner, and
+then back up.
+
+Two rings were wrong:
+
+- **The disc dropped its outline** for the same 3 px nudge the hover has, plus
+  the label. The label is `display:none` on a narrow screen, so on a small
+  window with a keyboard the entire focus indicator was a three-pixel shift. It
+  keeps the ring now; at 5 px of offset the ring is out on the paper and clear
+  of the sky, so it costs the disc nothing.
+- **The chart's ring crossed its neighbours.** A cell is 19 px and the cells
+  abut by design (their borders overlap by a pixel so the rule between two of
+  them is one line), so a ring at 5 px of offset is 10 px wider than its own
+  cell and covers both sides of it. Tight to the cell instead — the chart is a
+  grid, so a ring on the grid line IS the cell.
+
+`.pcard` and `.sock-a` keep `outline:none` on purpose: each replaces the ring
+with an affordance a reader can NAME — a card underlines its title, a contact
+row slides and shows its arrow. A 3 px nudge is not one, which is what separates
+those two from the disc.
+
+### One more thing the preview pane does not do
+
+`STATE.md` already says the pane reports `document.hidden: true` and never runs
+the deck's rAF. It also **suspends CSS transitions and animations**, which is a
+separate trap: `getComputedStyle` on a transitioning property returns the FROM
+value, forever. A focus rule that was applying perfectly well read back as
+`opacity: 0`, and a staggered entrance reads as `opacity: 0` long after it
+should have landed. To check whether a rule actually matched, append
+`transition:none !important` for that element, read, and remove it. Its WebGL
+readback also lags several draws behind, so a pixel probe of anything on a clock
+does not survive contact with it.
+
 ### The two compilations agree, byte for byte
 
 `pressgl.js` compiles ONE `BODY` template into both GLSL ES 300 es and GLSL ES
