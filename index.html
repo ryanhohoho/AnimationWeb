@@ -46,6 +46,25 @@
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Bone paper with a rectangle cut out of it, and Mew standing in the hole in cerulean." />
   <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- THE ONE RULE THAT NEEDS TO NOT BE IN THE STYLESHEET. `body class="pre"`
+       below holds #doc at opacity 0 until main.js has built the deck, so the
+       type fades up with the print rather than flashing ahead of it — and with
+       scripting off nothing ever removes it, so this whole summary card sits in
+       the source and renders as blank paper. It is a <noscript> and not a media
+       query because "has JavaScript" is not a thing CSS can ask.
+
+       The other half of the answer — a script that loads and then throws — is a
+       timed animation in site.css, because that case still runs CSS.
+
+       !important, AND IT HAS TO BE. This block and the stylesheet rule it is
+       overriding have the SAME specificity, so the winner is whichever comes
+       last — and the bundler decides that, not this file: Vite injects its
+       <link rel="stylesheet"> at the foot of <head>, forty lines below here.
+       Measured in dist/index.html, where the noscript lands on line 59 and the
+       stylesheet on 104. Raising the selector instead would be a specificity
+       trick that reads like an accident; this says what it is doing. -->
+  <noscript><style>body.pre #doc { opacity:1 !important; animation:none !important; }</style></noscript>
   <!--
     Read RYAN.txt first, then DESIGN.md.
 

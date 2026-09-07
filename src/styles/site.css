@@ -162,7 +162,31 @@ body::before {
 }
 #sheet.on { opacity:1; }
 
-body.pre #doc { opacity:0; }
+/* ── THE PAGE HAS TO ARRIVE EVEN IF THE SCRIPT DOES NOT ────────────────────
+   `pre` hides the document for the few milliseconds before main.js has built
+   the deck, so the type fades up with the print instead of flashing ahead of
+   it. main.js removes it. Which means: if main.js never runs, it is never
+   removed, and a page whose entire summary card is sitting right there in
+   index.html renders as blank bone paper. Both of that file's comments claim
+   the first paint needs no JavaScript, and until this rule they were wrong.
+
+   Two layers, because there are two ways to lose the script and they are not
+   the same failure:
+
+     scripting DISABLED   the <noscript> block in index.html, immediately
+     script BROKEN        this animation, which a working boot always beats
+
+   4 s is long enough that nothing normal reaches it (the class is gone in
+   about a hundred milliseconds) and short enough to be a hiccup rather than an
+   outage. `forwards` holds the end state, and when `pre` does come off the rule
+   stops matching entirely, so it can never fight the real fade.
+
+   What that reader gets is the summary card, the chart and the discs -- all
+   real <a href>s, so they navigate -- and no print, because the press is a
+   canvas. Every die-cut reads as an empty cut with its registration ticks,
+   which is what a die-cut with nothing behind it should look like. */
+body.pre #doc { opacity:0; animation:doc-rescue 0s linear 4s forwards; }
+@keyframes doc-rescue { to { opacity:1; } }
 #doc { position:relative; z-index:10; transition:opacity var(--t3) var(--e); }
 
 /* THE PAGE DOES NOT LEAVE ANY MORE. It used to fade out the moment you clicked,

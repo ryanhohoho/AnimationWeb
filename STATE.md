@@ -371,6 +371,38 @@ should have landed. To check whether a rule actually matched, append
 readback also lags several draws behind, so a pixel probe of anything on a clock
 does not survive contact with it.
 
+### The page arrives even if the script does not
+
+`index.html` ships the whole summary card as markup, and both its own comment and
+`main.js`'s say the first paint needs no JavaScript. **They were wrong.** `<body
+class="pre">` holds `#doc` at opacity 0 until `main.js` removes it, so with
+scripting off every word of that card sat in the source and the page rendered as
+blank bone paper.
+
+Two layers, because losing the script has two different shapes:
+
+| | what covers it |
+|---|---|
+| scripting **disabled** | a `<noscript><style>` in `index.html`, immediately |
+| script **broken or never arrives** | a 4 s `doc-rescue` animation in `site.css` — that case still runs CSS |
+
+Nothing normal reaches the animation: `pre` comes off in about a hundred
+milliseconds, and once it does the rule stops matching entirely, so it can never
+fight the real fade. A slow boot that does reach it lands on opacity 1 and stays
+there, so there is no flash when the class finally goes.
+
+**The noscript rule needs `!important`, and that is a fact about the bundler.**
+It and the stylesheet rule have identical specificity, so the winner is document
+order — and Vite injects its `<link rel="stylesheet">` at the foot of `<head>`,
+below the noscript block. Measured in `dist/index.html`: noscript on line 59,
+stylesheet on 104. Verified the `!important` version wins from the *earliest*
+position in head, which is the worst case.
+
+What that reader gets: the summary card, the chart and the two discs — all real
+`<a href>`s, so they navigate — and no print, because the press is a canvas.
+Every die-cut reads as an empty cut with its registration ticks, which is what a
+die-cut with nothing behind it should look like.
+
 ### The production build, checked as a production build
 
 Everything above was verified against `npm run dev`. The bundle is a different
