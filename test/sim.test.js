@@ -2595,6 +2595,13 @@ section("the USB sheet carries a real run and nothing real in it");
 // IT EXCLUDES ITS OWN FILE, and it has to: the patterns below are the shapes it
 // is hunting for, so a scanner that scanned itself would fail on its own
 // regexes and on the control fixture at the foot of the section.
+//
+// AND IT IS STRICT ENOUGH TO CATCH A DESCRIPTION OF ITSELF, which is worth
+// knowing before it happens to you: writing the literal shape of a volume path
+// into STATE.md while documenting this check failed the check. That is correct
+// behaviour -- a scanner that could tell "a real one" from "an example of one"
+// would be a scanner with an opinion -- so prose about these patterns has to
+// name them rather than spell them.
 {
   const { readFileSync, readdirSync, statSync } = await import("node:fs");
   const { join, relative } = await import("node:path");

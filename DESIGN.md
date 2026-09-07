@@ -33,7 +33,7 @@ The page is **two sheets of paper and one animal.**
 
 | | what it is | where |
 |---|---|---|
-| **SHEET 1 · THE PLATE** | a two-ink riso print of a sky, running from last light at the top of the document to full night at the bottom | `src/site/sky.js` |
+| **SHEET 1 · THE PLATE** | a two-ink riso print of a sky, running from last light at the top of the document to full night at the bottom | `src/site/pressgl.js` |
 | **SHEET 2 · THE MASK** | bone paper, die-cut. Everything you read is on it. | `index.html`, `src/styles/site.css` |
 | **THE ANIMAL** | Mew. The one thing on the page that is not printed. | `src/engine/**` — untouched |
 
@@ -71,8 +71,13 @@ It also fixes all three complaints at once, structurally:
 
 ## 2. The print, step by step
 
-`sky.js` does what a two-colour press does, in order. Each step is a decision,
+The press does what a two-colour press does, in order. Each step is a decision,
 and that is where the craft is.
+
+It exists twice and that is deliberate: `sky.js` is the CPU implementation and
+is still the reference — readable, steppable, testable — and `pressgl.js` is the
+one that actually runs, the same sequence as a fragment shader that also cuts
+every hole in the same pass. The two are checked against each other.
 
 **1 · FORM.** An atmosphere ramp, a warm bloom where the sun has just gone down
 off the top-right, and a deck of cloud with real lighting — lit on the side that
@@ -97,18 +102,23 @@ Three numbers in here were fought for and are worth protecting:
 
 **2 · SEPARATE.** One grey image, two ink densities.
 
-- **Ultramarine** (`#2242E8`, the site's own `--blue`) is the absence of light.
-  It is the air.
-- **Orange** (`#FF6C2F`) does two jobs, which is what a second plate is for.
+- **Cerulean** (`#005A7D`, the site's own `--ink-a`) is the absence of light.
+  It is the air. It replaced an ultramarine at `#2242E8`, and the reason is in
+  §4: this one is shiny Mew's own hue, and the old one was 24° off her — far
+  enough to be a different blue and close enough to read as hers rendered wrong.
+- **Her rose** (`#CF69AB`) does two jobs, which is what a second plate is for.
   Sparse at the top it is the last warm light on the cloud tops; solid at the
-  bottom it is the shadow. **Overprinted, the two make night** — `#201A26`, a
-  deep plum-black. Two inks is his poster rule; night falling out of their
-  overprint is the reason the rule was worth keeping rather than working around.
-- **Pink is not available as an ink.** It is Mew's, and nothing else may use it.
+  bottom it is the shadow. **Overprinted, the two make night.** Two inks is his
+  poster rule; night falling out of their overprint is the reason the rule was
+  worth keeping rather than working around. It was an orange (`#FF6C2F`) for the
+  same reason the blue was an ultramarine, and it moved for the same one: 56°
+  off her pink is a second near-miss, and two near-misses are not a palette.
+- **`--mew` itself is not available as an ink.** The rose above is her colour as
+  the press pulls it; the flat `--mew` is her, and nothing else may use it.
 
 **3 · SCREEN.** Each separation is halftoned on its own rotated grid — 45° for
-ultramarine, 15° for orange, one ruling (5.2 px) for both, 30° apart so they
-form rosettes instead of moiré.
+the first ink, 15° for the second, one ruling (5.2 px) for both, 30° apart so
+they form rosettes instead of moiré.
 
 The dot radius is the one number in the file with a right answer:
 `sqrt(d/π) = 0.5642·sqrt(d)`, ramping to the cell's half-diagonal `0.7071` as
@@ -124,35 +134,43 @@ colophon reads those off the render at runtime rather than asserting them.
 
 ---
 
-## 3. Why it is a still image
+## 3. It stopped being a still image, and here is the deal that made that safe
 
-The steady-state cost of the ground is **zero**. Not "cheap" — zero. It cannot
-stutter, cannot heat a phone, and cannot degrade on an old machine. The only
-thing a slow machine changes is how long the print takes to come out.
+**This section used to be called "Why it is a still image", and every number in
+it was about the CPU press.** That build printed the whole document once into an
+offscreen canvas, progressively, on a 5 ms per-frame budget — ~300 ms of pixel
+work at 1400×4400 spread over about fifty frames — and then cost literally zero
+per frame forever after. Nine blits for the life of the page. `sky.js` still
+does exactly that and is still the reference implementation.
 
-It comes out progressively, top to bottom, on a 5 ms per-frame budget: ~300 ms
-of pixel work at 1400×4400, ~190 ms at 390×4228, spread over roughly 50 frames.
-That is not a loading trick bolted on — it is the cheapest correct way to spend
-that work without dropping a frame, and it happens to look like a print
-developing, which is the honest picture of what it is.
+What ships is `pressgl.js`, which draws the entire sheet — paper, print, and
+every hole — in **one fragment shader pass**, from a 120 KB density sheet. That
+buys the thing the still image could not have: the clouds MOVE. Weather, at
+20 fps on a 16-second loop, which is about 0.6× the speed of the source clip
+because a printed animation is shot on twos or fours and 60 fps of halftone
+boils.
 
-Each aperture is cut the moment the screen has printed past its bottom edge, so
-the sheet opens top-to-bottom as the ink lands. **Nine blits for the life of the
-page.**
+The rule that made it safe to give up "zero" is that the cost is **bounded and
+gated**, not that it is small:
 
-Measured steady state, after the print is finished:
+- **The lattice does not move.** The halftone is a property of the PAPER and is
+  computed from document position, so the dots stay put and the weather moves
+  behind them. A moving screen is what makes generated texture look generated.
+- **The deck repaints only for a reason** (`deck.js`): a scroll, a hover, a
+  navigation, or a tick of the cloud clock — and it holds a `dirty` flag rather
+  than assuming. Off screen, the rAF stops entirely.
+- **A reader who asked for less motion gets the still image back**, exactly:
+  the cloud frame is held, so there is no tick, so the deck repaints for real
+  changes only. That is not a degraded mode — it is this section's original
+  argument, still available, for the people it was really for.
+- **The scissored passes are three thousand fragments against a million.** The
+  two discs are drawn by the same shader into their own small canvases, which is
+  what lets a control be a window without being a hole.
 
-| | cost per frame |
-|---|---|
-| the ground | 0 |
-| scrolling | 0 — no listener, no parallax, no mask to move |
-| Mew moving | 0 — she no longer carries a hole, so she no longer dirties the sheet |
-
-Registration is a property of the geometry, not something a handler maintains:
-the print is one offscreen canvas at document size, and each aperture holds
-document-positioned pixels at a document position. `background-attachment:fixed`
-would have been the obvious way and is both broken on iOS and a repaint on every
-scroll tick.
+Registration is still a property of the geometry rather than something a handler
+maintains: everything is positioned in document pixels and the shader is handed
+the scroll offset as a uniform. `background-attachment:fixed` would have been
+the obvious way and is both broken on iOS and a repaint on every scroll tick.
 
 ---
 
@@ -166,8 +184,12 @@ same move, kept honest.
 
 ### THE IDENTITY SYSTEM
 
-Ultramarine is the **constant**. It is the site's ink, it is the air in every
-plate this press ever pulls, and no project may own it. What a project owns is
+Cerulean (`#005A7D`) is the **constant**. It is the site's ink, it is the air in
+every plate this press ever pulls, and no project may own it. It is also **shiny
+Mew's own hue** — she renders at OKLCh h 241 through the real light rig and this
+is h 233.7, measured on screen — which is why it replaced an earlier blue at
+h 267: 24° off her is far enough to be a different blue and close enough to read
+as hers rendered wrong. What a project owns is
 the **second ink** — one variable in a fixed process, which is a system rather
 than a palette.
 
@@ -196,18 +218,37 @@ Two mechanical notes that took real tuning:
   overprinted make grey, not identity. A project plate therefore also puts its
   ink **on the lit cloud tops** (`identity: 1`), the one place a second ink can
   be seen as a colour rather than as a darkness. Second-ink coverage goes 17% →
-  25%, and yellow/green/graphite/orange become unmistakable.
+  25%, and navy, two greys and teal become unmistakable as three different
+  skies rather than three shades of one.
 - Each frame is pulled with its own **seed**. Four frames from one field with one
   seed is not a system, it is one photograph recoloured four times.
 
-### 00 · SHEET — 19:00
+### 01 · SUMMARY — 19:00
 - **One tall slot, right of centre.** The sun is off the top-right of the print;
-  this is the aperture that has to hold the last warm light.
-- **Type in three corner clusters, middle-left open.** Mew spawns at 72% width.
-- **`two inks, / one animal, / and the light going out`** — the whole site
-  described, and every noun in it is literally true.
+  this is the aperture that has to hold the last warm light, and it is the one
+  card that keeps a whole window. It is also where the reader is TAUGHT what a
+  hole in this sheet is, because pressing on opens exactly this rectangle and
+  takes them through it. After that the rest of the deck can turn like pages.
+- **Type in one column**, left-aligned, centred in the page, with the hour alone
+  in the top-right corner. Mew spawns at 72% width and nothing here is a
+  collider, so the composition can be this tight without ever trapping her.
+- **The headline is the name.** An earlier version set `two inks, / one animal,
+  / and the light going out` here — true of the object and the wrong first line
+  for a portfolio, which has about four seconds to say whose it is.
 - **The headline is capped at 14ch of its own face**, so the line breaks land
   the same way at every viewport and it can never reach the aperture at 57%.
+
+### 02 · EXPERIENCE — 20:50 · 04 · CONTACT — 00:15
+Two lists, one shell (`pages/deck.js`), because a one-screen card whose renderer
+is a dozen lines does not earn a file of its own — three files would be three
+headers explaining the same thing. What they share with the summary is the lens:
+**one small round cut above the section's own name**, and the only circle on a
+sheet whose every other die-cut is a rectangle. You look through it first and
+then you read, which is what a lens is for.
+
+Without a hole a card is all paper, and the night walking across the deck —
+19:00 on the summary to a quarter past midnight on contact — would be something
+the code does that nobody can ever see.
 
 ### 03 · PROJECTS — 22:45 · THE CARDS
 
@@ -239,19 +280,19 @@ moving. Click, and the crossing opens out of that icon.
   emits both from one buffer, so agreement is structural rather than a thing to
   keep checking.
 
-### 02 · STATEMENT — 23:00
-- **The dialog box.** He says soft things inside system chrome (`RYAN.txt` IV) —
-  this is that, built rather than quoted.
-- **The icon slot is a hole.** Where an alert puts a warning triangle, this puts
-  the sky. That 44 px square is the most important element on the page.
-- The last line — *"If you can see how a thing was made, it was made by
-  someone"* — is the bridge between his two boards, and it is the reason the
-  rest of the sheet insists on showing its process.
+### The statement and the colophon — folded away
 
-### 03 · COLOPHON — 01:00
-- **A full-bleed horizontal band: the horizon.** The site ends on a line.
-- Four columns of real metadata. Two numbers in them are measured at runtime:
-  the paper percentage and the ink coverages.
+The one tall sheet had two more plates: a STATEMENT built as a dialog box (he
+says soft things inside system chrome, `RYAN.txt` IV — built rather than quoted,
+with the alert's warning-triangle slot replaced by a hole onto the sky), and a
+COLOPHON of four metadata columns closing on a full-bleed horizon band.
+
+Neither survives as a PLACE, because the deck has four cards and neither of them
+is one. Both survive as **components**: `.dialog`, `.dlg-bar`, `.fig`, `.cols`,
+`.check` and the rest are still in `site.css`, named and explained, waiting for
+the project sheets' real writing. That block says so at its head, and
+`site/media.js` says the same thing about captures. Leaving them named and
+explained is the difference between a palette and dead code.
 
 ### Mew's aperture — removed
 
@@ -269,8 +310,35 @@ on **every pixel of her movement**, so the deck now genuinely idles when nothing
 is happening.
 
 The sentence survives elsewhere. The lens above each card's name, the icon cut
-through each project card, and the disc the back control is made of are all the
+through each project card, and the two discs in the top-left corner are all the
 same idea — the field showing through where something opens onto it.
+
+### The two discs — the nearest exit is always at the corner
+
+Top-left, both of them: a small circle of sky with a white mark on it, painted
+into its own canvas by a scissored pass of the same press. **Not holes.** A hole
+is cut in `#sheet` at z1, under the type, so every figure and paragraph a sheet
+happened to lay over the control went straight on top of it — and no z-index can
+fix that, because the pixels are in a layer beneath the words by construction.
+Painting the sky up here keeps the material argument (it is still a window onto
+somewhere else) and puts the control where a control has to be.
+
+**The corner is always the nearest exit.** On a project sheet that is the back
+arrow with home one place inward; on a deck card there is nothing to go back to,
+so home takes the corner. One rule, and it is why home is never in the same
+absolute place twice and never has to be — it is always the last disc in the row.
+
+The chart in the opposite corner has always linked to `/`, and that was the
+answer to a different question: a stitch chart is read as a POSITION, not as an
+exit. Three of the four cards had no visible way back to the start.
+
+Two things were measured and thrown away on the way. Giving home a **paler sky**
+— it is a window onto the summary, which is printed at 19:00 — puts it at 2.7:1
+against its own white mark where the back arrow is 4.2:1, and that pale hour is
+the shallow end of exactly the range a sky disc stops being readable in. And
+**"01" as the mark** — the deck numbers its own cards, so it is the site's own
+language — was mush at 56 px, because two small figures need about twice the
+contrast a chunky glyph does. The number moved into the hover label.
 
 ### The crossing — going through the hole
 You do not slide to another page. **You go through the hole you clicked.**
@@ -315,8 +383,17 @@ event between two lists of text is a toll booth.
   between two pages of the same ink **reuses the print** instead of spending
   300 ms on an identical one.
 - `crossing` holds `#doc` at opacity 0, so the commit runs in a `try/finally`
-  with a 2.5 s watchdog. A page that renders one project's markup badly is a bug;
-  a page that renders nothing at all is a dead site.
+  with a watchdog behind it. A page that renders one project's markup badly is a
+  bug; a page that renders nothing at all is a dead site.
+- **A watchdog may only speak for its own navigation.** They outlive the move
+  that armed them by seconds, and an unguarded one cleared a LATER crossing for
+  one frame — which is the whole of the intermittent mid-transition flicker.
+  Every move takes a generation number and a watchdog checks it before it acts.
+- **A shared link has to land.** These are real URLs and people send them, and a
+  static host asked for `/projects/closet` has no file there. The build copies
+  the finished `index.html` to `dist/404.html`, which is what GitHub Pages,
+  Netlify, Cloudflare Pages and Render all serve for an unknown path, with the
+  URL left intact for the router to read.
 
 ### Colliders — there are none
 
@@ -328,7 +405,7 @@ she flies straight through everything.
 
 Worth knowing that this is markup, not engine. The whole collision system —
 `physics/colliders.js`, the cost grid, the squeeze surcharge, the push ramp, and
-the 826 checks that hold them — is untouched and still correct. Putting
+the checks that hold them — is untouched and still correct. Putting
 `data-collider` back on an element turns it back on with nothing else to change.
 
 ---
@@ -336,14 +413,31 @@ the 826 checks that hold them — is untouched and still correct. Putting
 ## 5. Narrow
 
 Below 860 px a plate stops being a four-corner composition and becomes a column,
-in the order the sheet is meant to be read: header, hole, caption, statement,
-footer. The apertures keep existing and keep meaning the same thing; they turn
-from a slot into a band, because a 98 px-wide slot on a phone is a stripe, not a
-window.
+in the order the sheet is meant to be read. The apertures keep existing and keep
+meaning the same thing; they turn from a slot into a band, because a 98 px-wide
+slot on a phone is a stripe, not a window. The lens is the exception and has to
+be written as one — `.ap:not(.icon)` is (0,2,0) and beats a bare class, so the
+one circle on the site inherited `width:100%` and became a porthole.
 
-The only thing dropped is plate 02's two callouts, whose whole job is to point
-across a wide composition. Their words move into the caption underneath, so no
-information is lost.
+**The navigation stops floating and becomes a bar.** The two arrow circles used
+to hang at the right edge, vertically centred, which put them on top of every
+project card's artwork; a control that sits on the content is a control that
+competes with it. Everything moves into one band at the foot, on its own ground,
+and the page reserves room for it rather than being overlaid — "scroll a bit
+further" is not an answer when the last line is a link.
+
+A **swipe** drives the same `step()` the arrow keys do, and never calls
+`preventDefault`: setting `touch-action` would take vertical scrolling away from
+a page that genuinely scrolls, so the gesture is only WATCHED and a drag that
+turns out to be mostly sideways is read as an intent afterwards. The buttons
+stay anyway, because a gesture nobody is told about is a gesture some visitors
+never find.
+
+And the card is sized to the **visible** window: `100svh`, not `100lvh`. `lvh` is
+the height with the toolbars retracted, so on an iPhone with them showing every
+card was about 140 px taller than the screen and the deck's "one card, one
+screen" premise quietly stopped being true. `dvh` tracks the toolbar and would
+fire a resize, and a resize remeasures every aperture on the page.
 
 ---
 
@@ -355,32 +449,91 @@ information is lost.
 - **Every label stays true.** If you change the ruling, change the caption.
 - **The ground stays still.** The moment it animates, it is a running function
   again and the whole argument collapses.
-- **`src/engine/**`, `rigConfig.js`, the Python tooling and the 661 checks are
-  Mew's and are not to be touched.**
+- **`src/engine/**`, `rigConfig.js` and the Python tooling are Mew's.** Change
+  them only when the change is about her.
+- **Every rule in this file that can be checked, is.** No real identifier on the
+  USB sheet, no stale icon atlas, no word printed under 4.5:1 — all three were
+  paragraphs before they were tests (`test/sim.test.js`).
 
 ## 7. Files
 
 ```
-src/site/sky.js       the press. form -> separate -> screen -> register.
-src/site/deck.js      the mask. pulls the print, cuts the holes, runs any other
-                      press the page needs off the same 5 ms budget, tracks Mew's.
-src/site/projects.js  the work, and the second-ink identity system.
-src/site/content.js   the words: bio, roles, socials, card media.
-src/site/chrome.js    the furniture that does not turn. Outside #doc.
-src/site/cards.js     the card hover: one tween, one masked hole.
-src/site/iconatlas.js GENERATED by tools/bake_icons.mjs.
-src/site/router.js    going through the hole. History API, page scopes, watchdog.
-src/site/pages.js     sheets other than the home sheet.
-src/styles/site.css   the sheet. two type sizes, one chroma, layer order at top.
-index.html            the four sections. every block carries its reason.
+src/main.js            boot: the world, the press, the routing, the chrome. No
+                       three.js in it at all — see the note at its head.
+src/mew.js             the engine, behind a dynamic import. 809 KB that the
+                       sheet does not need in order to be a finished page.
+src/utils/motion.js    does this reader want less of it? One expression, five
+                       files, and one of them declines to boot the animal.
+
+src/site/pressgl.js    THE PRESS. The whole sheet — paper, print and every hole
+                       — in one fragment shader pass. Compiled twice, once per
+                       GLSL dialect, from one template.
+src/site/sky.js        the same press on the CPU. The reference implementation.
+src/site/skyclip.js    the density sheet the clouds are read out of.
+src/site/deck.js       the mask. Pulls the print, cuts the holes, runs any other
+                       press the page needs off the same 5 ms budget.
+src/site/router.js     going through the hole. History API, page scopes,
+                       generation-guarded watchdogs, the swipe, the live region.
+src/site/chrome.js     the furniture that does not turn. Outside #doc.
+src/site/cards.js      the card hover: one tween, one masked hole.
+src/site/projects.js   the work, and the second-ink identity system.
+src/site/content.js    the words: bio, roles, socials, card media.
+src/site/iconatlas.js  GENERATED by tools/bake_icons.mjs.
+src/site/media.js      captures. No importer yet, and its head says why.
+src/site/term.js       a recorded session, played back.
+src/site/pages.js      routing to a renderer.
+src/site/pages/deck.js the three cards that are not the summary.
+src/site/pages/sheet.js the two-plate trim EVERY project sheet is cut to. The
+                       three project files are only the WORDS.
+src/styles/site.css    the sheet. Two type sizes, one chroma, layer order at the
+                       top, the print stylesheet at the foot.
+index.html             the summary card, and the chrome. Every block carries its
+                       reason.
+
+tools/mewMark.mjs      the 32x32 Mew, as text. The tab mark and the link card
+                       are both cut from it.
+tools/bake_favicon.mjs -> public/favicon.svg + the two pngs
+tools/bake_og.mjs      -> public/og.png, set rather than captured
+tools/bake_icons.mjs   -> the atlas, the glyph plates, and iconatlas.js
 ```
 
-## 8. Still to come
+## 8. Outside the window
 
-Each project page gets **its own concept**, developed one at a time and none of
-them brainstormed before the previous one is finished. Until a project's own
-sheet is set it renders the shared chrome plus a dialog that says plainly that
-the page is set but not printed — an honest empty state, in the register the
-statement plate already uses.
+Three things about this site are only ever seen by somebody who is not looking
+at it, and all three were nothing until recently.
 
-`window.__DECK__.debug` exposes `{ press, aps, pw, ph, raf }` for devtools.
+- **A shared link.** The card is SET, not captured (`tools/bake_og.mjs`): at the
+  ~500 px a preview is seen at, a screenshot of this sheet is a grey rectangle,
+  because the halftone dissolves and the animal is 40 px of pink. So the card
+  draws the thesis instead — bone paper, a rectangle cut out of it, the one
+  unprinted thing standing in the hole. The description travels with the route,
+  or a shared `/projects/closet` advertises the front page.
+- **A reader who asked for less motion.** The crossings commit outright, the
+  entrances land at their end state, the weather holds on one frame, the hover
+  video never starts — and the engine is never imported. She wanders, flees the
+  pointer, flails and sprays, which is the canonical thing that preference
+  exists to spare someone. The argument, and the still-mew alternative that was
+  rejected, are in `utils/motion.js`.
+- **Paper.** This whole site is a picture of a printed sheet, so it had better
+  print. The press comes off, the fixed furniture goes, the absolute
+  compositions unpin into a column, and the transcript swaps places with its own
+  player — a recording cannot play on paper, and the complete text is exactly
+  what a printed case study should carry.
+
+## 9. Still to come
+
+Each project sheet gets **its own writing**, developed one at a time. All three
+are currently two plates of placeholder prose on the shared trim
+(`pages/sheet.js`), which is the honest empty state: the plate is set and the
+words have not had their turn. The component palette in `site.css` and
+`site/media.js` are what that writing should reach for rather than inventing a
+second vocabulary beside them.
+
+The GitHub and LinkedIn handles in `content.js` are marked `placeholder`, and
+render dashed and italic so the page never claims a link it does not have.
+
+`window.__DECK__.debug` exposes the measured state — `aps`, `holes`, `icons`,
+`mask`, `skyBtns`, `pw`, `ph`, `raf`, `gpu`, `webgl2`, `cross` — plus
+`paint(t, scrollY)`, which draws one frame by hand. That last one is how every
+visual claim in `STATE.md` was measured, because the preview pane in this
+environment never runs the deck's rAF.

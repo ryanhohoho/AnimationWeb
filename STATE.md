@@ -209,7 +209,7 @@ each is now a check with a paired control.
 **No real identifiers on the USB sheet** (CLAUDE.md states it as a hard
 constraint). The check walks every committed text file for shapes that cannot
 occur by accident — a BitLocker recovery key, a GUID or volume identifier, a
-`\\?\Volume` path, PowerShell credential handling, an assigned secret — and then
+a Windows volume path, PowerShell credential handling, an assigned secret — and then
 renders the page and asserts that every `#`-prefixed identifier on it is one of
 the four sequential stand-ins, that no seven-figure number is anything else, and
 that **both** disclosures are still on it. It excludes its own file, because the
