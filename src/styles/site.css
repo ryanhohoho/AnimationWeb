@@ -1041,3 +1041,119 @@ body.on-project .plate .corner.tl {
   .pcard-zoom { transition:none; }
   .pcard:hover .pcard-zoom, .pcard:focus-visible .pcard-zoom { transform:none; }
 }
+
+
+/* ══ ON PAPER ════════════════════════════════════════════════════════════
+   This whole site is a picture of a printed sheet, so it had better survive
+   being printed. Before this it did not, and every fault was a fixed layer:
+
+     #sheet   a canvas, and a canvas is not reliably printed at all
+     #stage   ditto, plus she would be a still of a moving thing
+     #chrome  fixed, so it stamps itself onto page ONE and sits on the words
+     ::before the grain, which prints as a grey wash over every line of type
+
+   What is left when those go is the document -- type on paper -- which is what
+   the screen was always a picture of. Nothing here is a fallback for a broken
+   page; it is the same page with the press taken off it.
+
+   A NOTE ON `.ap { display:none }`. An aperture is a hole onto a picture that
+   is not being printed, so on paper it is nothing rather than an empty box, and
+   its caption goes with it (a caption naming a plate that is not there is the
+   one kind of label this sheet does not carry). The deck measures those boxes,
+   and while the print stylesheet is live they measure zero -- but the press is
+   not painting during a print, and the resize that ends one puts the real
+   numbers back through measure()'s own debounce. */
+@page { margin:16mm; }
+
+@media print {
+  #sheet, #stage, #chrome, #say { display:none !important; }
+  body::before { display:none !important; }
+  body { background:#fff; color:#000; }
+  html { scroll-behavior:auto; }
+
+  /* A CROSSING TAKES 1.6 SECONDS AND Cmd+P TAKES NONE. `body.crossing` holds
+     #doc at opacity 0 so the transition plays over the print rather than over
+     an empty screen -- and printing inside that window printed a blank page.
+     The paper does not know about the crossing, so on paper there is not one. */
+  #doc { opacity:1 !important; transform:none !important; }
+
+  /* a plate is a screen tall ON PURPOSE, and on paper that is a page of white
+     under every card */
+  .plate, .deckpage { min-height:0; padding:0 0 1.5rem; }
+  .deck-in { padding-top:0; max-width:none; gap:1rem; }
+  .plate.deep { min-height:0; }
+
+  /* THE SCREEN COMPOSITION IS ABSOLUTE AND PAPER IS A COLUMN. Not just the
+     four corners: a project sheet also places its lead, its colophon and its
+     figure by percentage, and leaving those out is what turned the first print
+     of one into six paragraphs stacked on the same inch. Same list the narrow
+     media query unpins, for the same reason -- a phone is a column too. */
+  .corner { position:static; max-width:none; text-align:left; justify-items:start; }
+  .spec, .cols, .checks, .side, .fig, .dialog, .term-col {
+    position:static; left:auto; right:auto; top:auto; bottom:auto;
+    width:auto; max-width:none;
+  }
+  .cols { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem 2rem; }
+  .ap, .cap, .deck-hole { display:none; }
+
+  /* ...and the two plates of a sheet are two pages, which is what a plate is */
+  .plate + .plate { break-before:page; }
+
+  /* NAVIGATION IS NOT CONTENT, AND ON PAPER IT IS NOT EVEN TRUE. "press → to
+     continue", "SCROLL ↓" and "← back to the work" all name a gesture the
+     reader cannot make, and the live scroll readout in the top-right corner is
+     a number about a window that is not there. Every internal link on this site
+     carries data-route, so one :has() catches the lot of them; a browser
+     without :has() simply prints a few dead links, which is the failure this
+     rule is an improvement on rather than a regression from. */
+  p:has(> a[data-route]), p:has(> [data-at]), .scrollcue { display:none; }
+
+  /* THE TRANSCRIPT SWAPS PLACES WITH ITS OWN PLAYER. On screen the played
+     session is the thing and the full text is the alternative; on paper it is
+     the other way round, because a recording cannot play on paper and the
+     complete transcript is exactly what a printed case study should carry.
+     Both come from the same SESSION array (pages/usb-provisioning.js), so
+     there is no second copy to keep true. */
+  .term { display:none; }
+  pre.sr {
+    position:static; width:auto; height:auto; margin:0; overflow:visible;
+    clip-path:none; white-space:pre-wrap;
+    font-family:"PlexMono", ui-monospace, Menlo, monospace;
+    font-size:6.6pt; line-height:1.45;
+  }
+
+  /* THE ARTWORK STAYS. The card's picture is a real image and worth printing --
+     it is only the PUNCH that has to go, because the mask removes the icon's
+     shape from the picture so the sheet can show through, and the sheet is not
+     being printed. Un-punched, with the white plate that sits over the hole
+     removed, it is simply the still. */
+  .pcard-cut { -webkit-mask-image:none; mask-image:none; }
+  .pcard-glyph, .pcard-ap, .pcard-vid { display:none; }
+  .pcard { grid-template-columns:minmax(0,14rem) minmax(0,1fr); padding:0; margin:0; }
+  .pcard-zoom { transform:none; }
+
+  /* type: ink is ink on paper, and a display size set for a 1400 px window is
+     not a display size on A4 */
+  a, .link, .sock-v { color:#000; }
+  .d { font-size:26pt; max-width:none; }
+  .d.sm { font-size:19pt; }
+  /* A MEASURE, NOT NO MEASURE. The screen's 30ch is set against a column that
+     shares the page with a picture; paper has the whole width and `none` gave
+     the lead a 100-character line. 74ch at this size is about 150 mm, which is
+     what is left of A4 inside the 16 mm page margin. */
+  .t.body, .t.body.bio, .t.body.wide { max-width:74ch; }
+  .rows > li, .cards > li, .socks > li, .deck-in > * { animation:none; opacity:1; transform:none; }
+  .row, .sock, .cards > li { break-inside:avoid; }
+
+  /* WHERE A LINK ACTUALLY GOES, for the one page where that is the point. On
+     screen a contact row shows a handle and hides the URL behind it; on paper
+     a handle nobody can click is only useful if it says where it went. */
+  .sock-a[href^="http"]::after,
+  .sock-a[href^="mailto"]::after { content:" — " attr(href); font-size:9pt; color:#000; }
+  /* ...except where the handle is a visibly-marked placeholder. Printing
+     "— https://github.com/" is worse than printing nothing: on screen the
+     dashed underline says it is unset, and on paper a bare domain reads as a
+     real link that does not go anywhere. */
+  .sock.unset .sock-a::after { content:none; }
+  .sock-arrow { display:none; }
+}

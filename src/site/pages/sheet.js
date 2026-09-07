@@ -67,7 +67,7 @@ export function renderSheet(p, { headline, lead, notes, body = "" }) {
     </div>
     <div class="corner br">
       <p class="t dim">TWO&nbsp;PLATES.</p>
-      <p class="t">SCROLL&nbsp;↓</p>
+      <p class="t scrollcue">SCROLL&nbsp;↓</p>
     </div>
   </section>
 

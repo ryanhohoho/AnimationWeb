@@ -70,6 +70,20 @@ createRouter({
 });
 document.body.classList.remove("pre");
 
+// ── ON PAPER ───────────────────────────────────────────────────────────────
+// The print stylesheet (styles/site.css, the last block) takes the press off
+// the page and leaves the document. One thing CSS cannot do for it: the project
+// cards' stills are loading="lazy", so a card below the fold has no image yet
+// when the print starts. Every current browser does force lazy images to load
+// before printing, and "every current browser" is not a guarantee -- this is
+// four lines that runs only when somebody actually prints, and then never
+// matters again because the attribute is gone.
+window.addEventListener("beforeprint", () => {
+  for (const img of document.querySelectorAll('img[loading="lazy"]')) {
+    img.loading = "eager";
+  }
+}, { signal: siteScope?.signal });
+
 // ── AND THE ANIMAL ARRIVES SECOND, which it now genuinely does ─────────────
 // Not awaited, not blocking, and its failure is caught: the sheet does not need
 // her to be a finished page.

@@ -17,6 +17,20 @@
 // register the rest of the sheet uses: this plate is set, the capture has not
 // been supplied yet, and here is the filename it is waiting for. Drop a file
 // with that basename into src/assets/media/ and it appears on the next build.
+//
+// NOTHING IMPORTS THIS RIGHT NOW, and that is deliberate rather than rot -- the
+// same argument the .fig / .spec / .check block in site.css is kept under. The
+// three project sheets were cut to two plates of placeholder prose because
+// their real writing has not happened yet (pages/sheet.js), and captures are
+// the first thing that writing will want. Being unimported costs nothing at
+// all: Rollup never reaches a module no entry point names, so this is zero
+// bytes in the bundle rather than dead weight in it, and the glob above is not
+// even evaluated.
+//
+// If a rewrite lands and still does not want captures, delete this file AND the
+// two comments in site.css that point at it. Leaving it named and explained is
+// the difference between a facility and an orphan; leaving it unexplained would
+// be neither.
 
 const FILES = import.meta.glob(
   "../assets/media/*.{png,jpg,jpeg,gif,webp,avif,mp4,webm,mov}",

@@ -200,6 +200,49 @@ three thousand fragments against a million. Three rules that were each a bug:
   its own white mark where 2,640 is 4.26:1, and the pale hour is the shallow end
   of exactly the range `SKY_BTN_DEPTH` exists to avoid.
 
+### On paper
+
+This whole site is a picture of a printed sheet, so it had better survive being
+printed. It did not. Every fault was a fixed layer: `#sheet` and `#stage` are
+canvases (a canvas is not reliably printed at all), `#chrome` is fixed so it
+stamps itself onto page one and sits on the words, and the grain printed as a
+grey wash over every line of type. What is left when those go is the document —
+type on paper — which is what the screen was always a picture of.
+
+Then the first print of a project SHEET came out as six paragraphs stacked on
+the same inch: the corners were unpinned but `.spec`, `.cols` and `.term-col`
+place themselves by percentage too. Print unpins the same list the narrow media
+query does, for the same reason — a phone is a column and so is a page.
+
+Four decisions worth keeping:
+
+- **The transcript swaps places with its own player.** On screen the played
+  session is the thing and the full text is the alternative; on paper it is the
+  other way round, because a recording cannot play on paper and the complete
+  transcript is exactly what a printed case study should carry. `pre.sr` comes
+  out of hiding and `.term` goes. One `SESSION` array, both directions.
+- **Navigation is not content, and on paper it is not even true.** "press → to
+  continue", "SCROLL ↓" and "← back to the work" all name a gesture the reader
+  cannot make, and the top-right readout is a live number about a window that is
+  not there. Every internal link carries `data-route`, so one `:has()` catches
+  all of them.
+- **A crossing takes 1.6 s and Cmd+P takes none.** `body.crossing` holds `#doc`
+  at opacity 0, so printing inside that window printed a **blank page**. The
+  paper does not know about the crossing, so on paper there is not one.
+- **`loading="lazy"` and printing.** Every current browser forces lazy images to
+  load before a print, and "every current browser" is not a guarantee — a
+  `beforeprint` listener in `main.js` sets them eager. Four lines that run only
+  when somebody prints.
+
+The artwork stays: it is only the PUNCH that has to go, because the mask removes
+the icon's shape from the picture so the sheet can show through, and the sheet is
+not being printed. And a placeholder social prints no URL — on screen the dashed
+underline says it is unset; on paper a bare `https://github.com/` reads as a real
+link that goes nowhere.
+
+Checked by promoting the block to `@media screen` and looking at all five kinds
+of page. That is the only way to see it in this environment.
+
 ### The transcript, for somebody who cannot watch it
 
 The played session on the USB sheet is **content, not decoration** — a tool
