@@ -371,6 +371,82 @@ should have landed. To check whether a rule actually matched, append
 readback also lags several draws behind, so a pixel probe of anything on a clock
 does not survive contact with it.
 
+### The die-cut and its own ring, 30 px apart
+
+Two faults, one visible symptom: the lens and the project icons sat left of the
+hairline ring drawn around them, badly after a page turn and slightly on a cold
+load.
+
+**The 30 px.** A page turn slides `#doc` sideways with an inline transform and
+hands the deck the same offset, so the holes travel with the type. Both halves
+are right. What was wrong is where they MEET: `runFade` calls `commit()` — and
+therefore `bind()` — at the swap, while that transform is still on the element
+at its full −30 px. `getBoundingClientRect` includes a transform, so every hole
+was measured 30 px left of where it lives, the shader added `docDX` on top, and
+when the turn ended and `docDX` returned to zero **the baked −30 stayed** —
+permanently, on every aperture and every project icon, for the life of the page.
+
+Reproduced exactly, with no animation involved: set the transform, call
+`remeasure()`, clear it. The lens read `x: 130` against an element at `160`.
+`measure()` takes the transform off for the length of the measurement now — one
+forced recalc, only when there is one to remove, which is only ever mid-turn.
+Confirmed through a real fade: `hole.x 160.00` against `element 160.00`.
+
+**The half-pixel.** Aperture boxes were rounded. The shader takes floats and
+every hole is a hard in/out test, so a fractional edge lands on the nearest
+pixel either way — rounding buys nothing there. It costs something on the ROUND
+one: the lens is a circle *inscribed* in the box, so half a pixel of rounding
+moves its centre and changes its radius, under a 1 px ring drawn from the
+element's own real rectangle. Measured at 1280: an element at `131.52 / 43.52`
+became a hole at `132 / 44`, and the painted disc's centroid sat **0.24, 0.72 px**
+off the ring's. Unrounded it is **0.03, 0.12 px** — centroid quantisation.
+
+The icons get the same treatment for the same reason: their hole is a mask
+sampled across that rectangle and the white plate over it is drawn by CSS from
+the true one. `skyBtns` stay rounded, and have to: that box is a scissor
+rectangle and a `drawImage` source rect, both integer device operations.
+
+### A teleport is only free while nobody can see it
+
+The `recollect` handler in `brain.js` opens by saying the swap is "the one
+moment in the whole transition when the window is completely covered". For a
+CROSSING that is nearly true — except she is drawn at z30, above the spreading
+print at z20, so she is the one thing on the page it does not cover. For a page
+TURN it is not true at all: a fade dissolves the type and leaves the sheet in
+full view, so the placement happened in the open and she vanished from where she
+was standing and flew back in from the edge, **on every arrow key**.
+
+So the test is no longer which kind of transition it was. It is whether she can
+be seen:
+
+- **On screen** — left exactly where she is, and carries on. Mid-flight through
+  the hole on a crossing, mid-wander on a turn, which is the truthful picture of
+  both.
+- **Off screen** — the placement is free, so she gets the deliberate entrance it
+  was written for.
+
+**And the document jumps under her.** `commit()` puts the reader at the top of
+the new sheet and winds the plate on by however far down the old one they were,
+so the sky does not step. She is in document pixels too and nothing was doing
+the same for her, so on a long sheet she was left thousands of pixels below a
+page nobody had scrolled to. Same offset, same reason, one line — and `prevPos`
+comes with it, or the render loop draws one frame of a streak.
+
+**The paper waits for her, and only as long as it was open anyway.** The swap
+used to land at `MIN_OUT` of the outward half — 440 ms on a 1,600 ms crossing —
+and her fright is a 0.50 s braked double-take before she has moved at all, so
+the sheet changed under an animal standing still in the middle of the window.
+The swap now also needs `world.mewClear`, published by `brain.step()`, and may
+hold for the rest of the outward half and not one frame more: at `t >= 1` the
+paper is fully closed and waiting longer would be a pause rather than a
+transition. 440 ms becomes 440–800.
+
+`!== false`, not `=== true`: the property does not exist until the engine boots,
+so a reduced-motion reader, a machine with no WebGL and a chunk that failed to
+load all cross at exactly the speed they always did. The deck already handles
+`cross.t > 1` — it stops easing and accelerates — so the extra frames were
+anticipated by the one part of this that did not change.
+
 ### 320 px, where the sheet was 447 px wide
 
 Checked every route at the narrowest phone still in use. One route failed, and

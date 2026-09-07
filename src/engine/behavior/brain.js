@@ -79,7 +79,7 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
   // across a SIDE. Which side is whichever she is nearer, so the entrance
   // continues the way she went rather than contradicting it — and none of this
   // constrains the exit, which is still free to leave over the top.
-  world.on("recollect", () => {
+  world.on("recollect", (e) => {
     // world.js re-measures the viewport and the scroll offset on this same
     // event, and it is subscribed before this one so it has already run. Both
     // are stale at the moment the router fires it — the swap, the scroll to the
@@ -87,6 +87,50 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     // y measured against the old offset lands her off the bottom of the new
     // sheet, which is what stopped her entering from the side.
     const vp = world.viewport;
+
+    // ── THE DOCUMENT JUMPED UNDER HER, SO SHE COMES WITH IT ──────────────
+    // commit() puts the reader at the top of the new sheet and winds the plate
+    // on by however far down the old one they were, so the SKY does not step.
+    // Her position is in document pixels as well, and nothing was doing the
+    // same for her — so on a long sheet she was left thousands of pixels below
+    // a page nobody had scrolled to. Same offset, same reason, one line.
+    const dy = e && e.scrolledBy ? e.scrolledBy : 0;
+    if (dy) {
+      body.pos.y -= dy;
+      body.prevPos.y -= dy;
+    }
+
+    // a different page: anything the old one taught her about getting around is
+    // void, whichever branch below runs
+    brain.path = null;
+    brain.blocked.length = 0;
+
+    // ── AND A TELEPORT IS ONLY FREE WHILE NOBODY CAN SEE IT ──────────────
+    // The paragraph above this handler says the swap is "the one moment in the
+    // whole transition when the window is completely covered", and for a
+    // CROSSING that is nearly true — except she is drawn at z30, above the
+    // spreading print at z20, so she is the one thing on the page that is NOT
+    // covered by it. For a page TURN it is not true at all: a fade dissolves
+    // the type and leaves the sheet in full view, so the teleport happened in
+    // the open. She vanished from where she was standing and flew back in from
+    // the edge, on every arrow key.
+    //
+    // So the test is not which kind of transition it was. It is whether she can
+    // be seen. On screen, she is left exactly where she is and carries on —
+    // mid-flight through the hole on a crossing, mid-wander on a turn, which is
+    // the truthful picture of both. Off screen, the placement below is free and
+    // she gets the deliberate entrance it was written for.
+    const r = body.radius || 0;
+    const top = world.scroll.y;
+    if (body.pos.x > -r && body.pos.x < vp.w + r
+        && body.pos.y > top - r && body.pos.y < top + vp.h + r) {
+      // ...and she must not be left waiting in the wings while standing in the
+      // middle of the page: enterAt freezes her until it lifts
+      brain.enterAt = -Infinity;
+      brain.entrySide = 0;
+      return;
+    }
+
     const side = body.pos.x < vp.w * 0.5 ? -1 : 1;
     body.pos.x = side < 0 ? -cfg.entryOffsetPx : vp.w + cfg.entryOffsetPx;
     body.pos.y = world.scroll.y + vp.h * (0.3 + world.random() * 0.4);
@@ -118,6 +162,14 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     brain.stateTime = 0;
     brain.offscreenSince = null;
   });
+
+  /** is no part of her inside the window? Published on the world every step so
+      the router can hold the paper open until she is gone — see step(). */
+  function clearOfWindow() {
+    const vp = world.viewport, r = body.radius, sy = world.scroll.y;
+    return body.pos.x + r < 0 || body.pos.x - r > vp.w
+        || body.pos.y + r < sy || body.pos.y - r > sy + vp.h;
+  }
 
   world.on("bump", (e) => {
     if (e.speed > cfg.startleBumpSpeed) {
@@ -635,6 +687,15 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
   }
 
   function step(dt) {
+    // ── HOW THE PAPER KNOWS TO WAIT ──────────────────────────────────────
+    // The crossing may not swap the sheet before she has left the frame, or the
+    // reader watches her stop existing. It is a property of HER, so it is
+    // published here rather than asked for: the router reads `!== false`, so a
+    // page whose engine never booted — a reduced-motion reader, a machine with
+    // no WebGL, a chunk that failed — never waits for an animal it does not
+    // have.
+    world.mewClear = clearOfWindow();
+
     // ANY exit from the startle state clears the flag, not just the tidy one.
     // She can be grabbed mid-flight, and if that stole the state while
     // `panicking` was still set, every hard bump for the rest of the session

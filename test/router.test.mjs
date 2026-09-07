@@ -485,7 +485,7 @@ console.log("\n== an aperture travels with the type it is cut around");
 // instant. Her entry y is measured against it: `oldScroll + a bit` puts her
 // hundreds of pixels down the new sheet, off the bottom of the window, and she
 // wanders up from below instead of in from an edge.
-console.log("\n== the swap puts her back at a SIDE of the new window");
+console.log("\n== the swap carries her, and only places her when it is free to");
 {
   const { createWorld } = await import("../src/engine/world.js");
   const { createBody } = await import("../src/engine/physics/body2d.js");
@@ -498,10 +498,17 @@ console.log("\n== the swap puts her back at a SIDE of the new window");
     pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
   const r2 = createRouter({ deck, world: w, onPage() {} });
 
-  const check = (label, atScroll, go) => {
+  // THE THIRD ASSERTION HERE USED TO BE "...and outside a SIDE of it, so she
+  // enters across one", unconditionally. That is now half of the rule. The
+  // owner asked for the other half: she is drawn above the spreading print, so
+  // a crossing does not hide a teleport either, and a page TURN covers nothing
+  // at all -- she vanished from where she stood on every arrow key. She is only
+  // placed when the placement cannot be seen. What both cases still share, and
+  // what this section was written for, is the stale-scroll bug underneath.
+  const check = (label, atScroll, startAt, go, expect) => {
     scrollY = atScroll;
     w.scroll.y = atScroll;                     // as the async listener left it
-    b.pos.x = 700; b.pos.y = atScroll + 400;
+    b.pos.x = 700; b.pos.y = atScroll + startAt;
     coverAfter = frameNo + 40;
     r2.go(go);
     pump(200);
@@ -513,16 +520,30 @@ console.log("\n== the swap puts her back at a SIDE of the new window");
     ok(w.scroll.y === scrollY,
       `${label}: the world knows where the page actually is ` +
       `(world ${w.scroll.y}, browser ${scrollY})`);
-    ok(b.pos.y > top && b.pos.y < bottom,
-      `${label}: she is inside the window she lands in ` +
-      `(y ${Math.round(b.pos.y)}, window ${top}..${bottom})`);
-    ok(b.pos.x < 0 || b.pos.x > VW,
-      `${label}: ...and outside a SIDE of it, so she enters across one ` +
-      `(x ${Math.round(b.pos.x)} of 0..${VW})`);
+    if (expect === "carried") {
+      // ON SCREEN when the sheet changed: the document moved under her by the
+      // whole of the old offset, and she came with it. Nothing else moved her.
+      ok(Math.abs(b.pos.y - (scrollY + startAt)) < 1,
+        `${label}: she is where she was on screen, not where the old page put ` +
+        `her (y ${Math.round(b.pos.y)}, wanted ${scrollY + startAt})`);
+      ok(b.pos.x === 700,
+        `${label}: ...and the swap did not throw her sideways (x ${b.pos.x})`);
+    } else {
+      ok(b.pos.y > top && b.pos.y < bottom,
+        `${label}: she is inside the window she lands in ` +
+        `(y ${Math.round(b.pos.y)}, window ${top}..${bottom})`);
+      ok(b.pos.x < 0 || b.pos.x > VW,
+        `${label}: ...and outside a SIDE of it, so she enters across one ` +
+        `(x ${Math.round(b.pos.x)} of 0..${VW})`);
+    }
   };
 
-  check("home -> project", 1200, "/projects/iclicker");
-  check("project -> home", 4800, "/");
+  // watching it happen: she stays put
+  check("home -> project", 1200, 400, "/projects/iclicker", "carried");
+  check("project -> home", 4800, 400, "/", "carried");
+  // and off the foot of the old sheet, where nobody can see the placement
+  check("home -> project, lost below", 1200, VH + 600, "/projects/iclicker", "placed");
+  check("project -> home, lost below", 4800, VH + 600, "/", "placed");
 }
 
 console.log("\n== the browser is not also scrolling");

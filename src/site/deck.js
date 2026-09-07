@@ -132,13 +132,50 @@ export function createDeck({ scope }) {
   // Measured once per layout, never per frame. A hole's document rectangle does
   // not change when you scroll — that is the entire reason this is cheap.
   function measure() {
+    // ── MEASURE THE PAGE WHERE IT LIVES, NOT WHERE IT IS STANDING ────────
+    // A page turn slides #doc sideways with an inline transform and tells the
+    // deck the same offset (setDocShift), so the holes travel with the type.
+    // Both of those are right. What was wrong is that the two MEET: runFade
+    // calls commit() -- and therefore bind() -- at the swap, while that
+    // transform is still on the element at its full -30 px. getBoundingClientRect
+    // includes a transform, so every hole was measured 30 px left of where it
+    // lives, the shader then added docDX on top of it, and when the turn ended
+    // and docDX went back to zero the baked -30 stayed. Permanently, on every
+    // aperture and every project icon, for the life of the page.
+    //
+    // Measured: the lens on the projects card sat at x 130 against an element
+    // at 160. The die-cut and its own hairline ring were a third of a diameter
+    // apart, which is exactly what it looked like.
+    //
+    // So the transform comes off for the length of the measurement. One forced
+    // style recalc, on a path that already reflows several times, and only when
+    // there is a transform to remove -- which is only ever mid-turn.
+    const docEl = document.getElementById("doc");
+    const heldTf = docEl?.style.transform || "";
+    if (heldTf) docEl.style.transform = "";
+    try {
+      measureNow();
+    } finally {
+      if (heldTf) docEl.style.transform = heldTf;
+    }
+  }
+
+  function measureNow() {
     const sy = window.scrollY;
     holes = [];
     for (const a of aps) {
       const r = a.el.getBoundingClientRect();
-      const w = Math.round(r.width), h = Math.round(r.height);
+      const w = r.width, h = r.height;
       if (w < 2 || h < 2) { a.box = null; continue; }
-      a.box = { x: Math.round(r.left), y: Math.round(r.top + sy), w, h };
+      // ── AND IT IS NOT ROUNDED ────────────────────────────────────────
+      // The shader takes floats and every hole is a hard in/out test, so a
+      // fractional edge lands on the nearest pixel either way -- rounding buys
+      // nothing there. It costs something on the ROUND one: the lens is a
+      // circle inscribed in this box, so half a pixel of rounding moves its
+      // centre and changes its radius, and it is sitting under a 1 px hairline
+      // ring drawn from the element's own real rectangle. Measured at 1280: an
+      // element at 131.52 became a hole at 132, and the ring showed a crescent.
+      a.box = { x: r.left, y: r.top + sy, w, h };
       a.index = holes.length;
       holes.push(a.box);
     }
@@ -171,6 +208,8 @@ export function createDeck({ scope }) {
       if (r.width < 4 || r.height < 4) continue;
       const cv = el.querySelector("canvas");
       if (!cv) continue;
+      // these ARE rounded, and have to be: the box is a scissor rectangle and a
+      // drawImage source rect, both of which are integer device operations
       skyBtns.push({
         el, cv, ctx: cv.getContext("2d"),
         box: { x: Math.round(r.left), y: Math.round(r.top),
@@ -186,10 +225,14 @@ export function createDeck({ scope }) {
       icons.push({
         el, fixed,
         cell: el.getAttribute("data-icon-ap"),
+        // unrounded for the same reason as the apertures: the icon's hole is a
+        // MASK sampled across this rectangle, so half a pixel of rounding
+        // shifts the sampled cell against the white plate drawn over it by CSS,
+        // and the two edges are supposed to agree to within a pixel
         box: {
-          x: Math.round(r.left),
-          y: Math.round(r.top + (fixed ? 0 : sy)),
-          w: Math.round(r.width), h: Math.round(r.height)
+          x: r.left,
+          y: r.top + (fixed ? 0 : sy),
+          w: r.width, h: r.height
         }
       });
     }

@@ -225,7 +225,12 @@ export function createRouter({ scope, deck, world, onPage }) {
     // nothing on the new page is under the pointer yet
     deck.setMaskHole(null);
     deck.bind();
-    world?.emit("recollect");
+    // THE SAME OFFSET THE PLATE GETS. The reader has just been put at the top
+    // of the new sheet, so the document moved under everything that is
+    // positioned in it -- the sky is wound on by exactly this above, and she is
+    // in document pixels too (engine/behavior/brain.js). Read from the real
+    // scroll rather than assumed to be `leftAt`, because a shorter page clamps.
+    world?.emit("recollect", { scrolledBy: leftAt - window.scrollY });
     onPage?.(route);
 
     // ── AND SAY SO ────────────────────────────────────────────────────────
@@ -296,6 +301,27 @@ export function createRouter({ scope, deck, world, onPage }) {
   const RETURN_MS  = 1000;   // the whole trip home. Quicker than the way in:
                              // you already know where you are going.
   const MIN_OUT    = 0.55;   // never swap before this much of the outward half
+
+  /**
+   * ── THE PAPER WAITS FOR HER, AND ONLY AS LONG AS IT WAS OPEN ANYWAY ──────
+   * The press opening is a thing the size of the page and she runs from it
+   * (brain.panicFrom). But she is drawn ABOVE the spreading print, so unlike
+   * every other thing on the sheet she is not covered by it -- and the swap
+   * used to land at 0.55 of the outward half, which on a 1,600 ms crossing is
+   * 440 ms. Her fright is a half-second double-take before she has moved at
+   * all, so the sheet changed under an animal standing still in the middle of
+   * the window, and she jumped.
+   *
+   * So the swap holds until she is gone. The window it may hold for is the rest
+   * of the outward half and not one frame more -- at t >= 1 the paper is fully
+   * closed and waiting longer would be a pause rather than a transition. In
+   * practice this buys her 440 ms to 800 ms instead of 440 flat.
+   *
+   * `!== false` and not `=== true`: the property does not exist until the
+   * engine boots, so a reduced-motion reader, a machine with no WebGL and a
+   * chunk that failed to load all cross at exactly the speed they always did.
+   */
+  const mewIsClear = (t) => t >= 1 || world?.mewClear !== false;
                              // has run, even if the opening covers early
   const SWAP_AT    = 0.56;   // WHEN the sheet underneath is replaced. The
                              // opening reaches the corners at 0.50, so swapping
@@ -455,7 +481,7 @@ export function createRouter({ scope, deck, world, onPage }) {
 
       if (!swapped) {
         // the island of page is gone, so there is nothing to see change
-        if (deck.crossCovered && state.t >= MIN_OUT) {
+        if (deck.crossCovered && state.t >= MIN_OUT && mewIsClear(state.t)) {
           swapped = true;
           onSwap();
           rampAtSwap = deck.skyRamp;
@@ -618,7 +644,7 @@ export function createRouter({ scope, deck, world, onPage }) {
 
       if (dir > 0) {
         // only when the window is actually full
-        if (!swapped && deck.crossCovered && state.t >= MIN_OUT) {
+        if (!swapped && deck.crossCovered && state.t >= MIN_OUT && mewIsClear(state.t)) {
           swapped = true;
           onSwap();
           rampAtSwap = deck.skyRamp;

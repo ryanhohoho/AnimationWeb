@@ -1739,30 +1739,96 @@ section("navigation: she stays on the screen");
       `the sideways leash is off while she is running, because leaving is the ` +
       `whole shape of it`);
   }
+  // ── A TELEPORT IS ONLY FREE WHILE NOBODY CAN SEE IT ────────────────────
+  // THIS SECTION USED TO SAY "a page swap still places her off the side", full
+  // stop, and that assertion is now half of the truth rather than all of it.
+  // The owner asked for the other half: on a page TURN nothing covers the sheet
+  // at all -- the type dissolves and the print stays in full view -- so the
+  // placement happened in the open, and she vanished from where she was
+  // standing and flew back in from the edge on every arrow key. She is drawn at
+  // z30, above the spreading print at z20, so a CROSSING does not hide it
+  // either.
+  //
+  // The rule is not which kind of transition it was. It is whether she can be
+  // seen. Both halves are checked below, and the second is the one that was
+  // there before.
   {
     const w3 = createWorld({ headless: true, seed: 7 });
     w3.docSize = { w: 1400, h: 2400 };
     w3.viewport = { w: 1400, h: 900 };
     w3.poseState = { leanIn: 1 };
-    const b3 = createBody({ x: 700, y: 450, radius: 75, config: P });
-    const br3 = createBrain({ body: b3, world: w3, config: B,
+
+    // ON SCREEN: she is left exactly where she is
+    const seen = createBody({ x: 700, y: 450, radius: 75, config: P });
+    createBrain({ body: seen, world: w3, config: B,
       pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
     w3.emit("recollect");
-    ok(b3.pos.x < 0 || b3.pos.x > w3.docSize.w,
-      `a page swap still places her off the side (x ${Math.round(b3.pos.x)})`);
+    ok(seen.pos.x === 700 && seen.pos.y === 450,
+      `a swap she can watch does not move her at all (${seen.pos.x}, ${seen.pos.y})`);
+
+    // ...AND THE DOCUMENT JUMPED UNDER HER, so she comes with it. The reader is
+    // put at the top of the new sheet and the plate is wound on by exactly this
+    // much; she is in document pixels too, and nothing was doing it for her.
+    w3.scroll.y = 0;
+    const carried = createBody({ x: 700, y: 1650, radius: 75, config: P });
+    createBrain({ body: carried, world: w3, config: B,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    w3.emit("recollect", { scrolledBy: 1200 });
+    ok(carried.pos.y === 450,
+      `and 1,200 px of scroll comes off her with it, so she stays where she ` +
+      `was ON SCREEN (y ${carried.pos.y})`);
+    ok(carried.prevPos.y === 450,
+      "...prevPos too, or the render loop draws one frame of a streak");
+  }
+  {
+    // OFF SCREEN: the placement is free, so she gets the deliberate entrance
+    const w4 = createWorld({ headless: true, seed: 7 });
+    w4.docSize = { w: 1400, h: 2400 };
+    w4.viewport = { w: 1400, h: 900 };
+    w4.poseState = { leanIn: 1 };
+    const b3 = createBody({ x: 700, y: 2100, radius: 75, config: P });   // far below
+    const br3 = createBrain({ body: b3, world: w4, config: B,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    w4.emit("recollect");
+    ok(b3.pos.x < 0 || b3.pos.x > w4.docSize.w,
+      `a page swap she cannot see still places her off the side (x ${Math.round(b3.pos.x)})`);
     let inAt = null;
     for (let i = 0; i < 120 * 8 && inAt === null; i++) {
-      w3.time += 1 / 120;
+      w4.time += 1 / 120;
       br3.step(1 / 120);
-      resolveAll(b3, w3, P);
+      resolveAll(b3, w4, P);
       b3.step(1 / 120);
-      if (b3.pos.x > 150 && b3.pos.x < w3.docSize.w - 150) inAt = (i + 1) / 120;
+      if (b3.pos.x > 150 && b3.pos.x < w4.docSize.w - 150) inAt = (i + 1) / 120;
     }
     ok(inAt !== null && inAt < B.entryDelayS + 2,
       `...and she flies in once the beat is up (${inAt?.toFixed(1)}s, after a ` +
       `${B.entryDelayS}s hold)`);
     ok(inAt > B.entryDelayS,
       `not before it (${inAt?.toFixed(1)}s)`);
+  }
+
+  // ── AND THE PAPER KNOWS WHETHER IT MAY SWAP YET ────────────────────────
+  // The router holds the crossing open until she is gone rather than changing
+  // the sheet under an animal standing still in the middle of it. It reads one
+  // property, and the property is hers.
+  {
+    const w5 = createWorld({ headless: true, seed: 3 });
+    w5.docSize = { w: 1400, h: 2400 };
+    w5.viewport = { w: 1400, h: 900 };
+    w5.poseState = { leanIn: 1 };
+    const b5 = createBody({ x: 700, y: 450, radius: 75, config: P });
+    const br5 = createBrain({ body: b5, world: w5, config: B,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    ok(w5.mewClear === undefined,
+      "before the engine has stepped, nothing claims to know where she is");
+    br5.step(1 / 120);
+    ok(w5.mewClear === false, "standing in the middle of the window: not clear");
+    b5.pos.x = -300;
+    br5.step(1 / 120);
+    ok(w5.mewClear === true, "...and gone off the side: clear");
+    // the control the router actually applies, and the reason it is `!== false`
+    ok((undefined !== false) === true,
+      "control: a page with no engine on it reads as clear and never waits");
   }
 }
 

@@ -246,6 +246,19 @@ when only the numbers were.
 - **`data-collider` appears nowhere in the site markup**, by instruction — Mew
   passes through everything now. The collision engine is intact and still tested;
   putting the attribute back on an element turns it on again.
+- **A hole is measured where the document LIVES, not where it is standing.**
+  `getBoundingClientRect` includes a transform, and a page turn has one on
+  `#doc` at the exact moment `commit()` calls `bind()`. `measure()` takes it off
+  for the length of the measurement; without that, every aperture and every icon
+  is baked 30 px left for the life of the page.
+- **Never round an aperture box.** The lens is a circle INSCRIBED in it, so half
+  a pixel moves its centre and changes its radius under a 1 px ring drawn from
+  the element's own rectangle. `skyBtns` are the exception and must stay
+  rounded: that box is a scissor rect and a `drawImage` source rect.
+- **A teleport is only free while nobody can see it.** She is drawn above the
+  spreading print, so a crossing does not hide one either, and a fade covers
+  nothing at all. `recollect` places her only when she is off screen; on screen
+  she is left where she is, carried by the same scroll offset the plate gets.
 - **`--n4` may never carry a word.** It is 2.61:1 on bone — under half the 4.5:1
   floor — and it is for hairlines, ticks and inactive marks. Eight rules were
   painting text in it. There is a check, and it reads the real stylesheet.
