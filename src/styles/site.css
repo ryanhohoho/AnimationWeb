@@ -61,8 +61,31 @@
      printed page does it; nothing has to be faded out to sit below something
      else. So the greys that carry words are now near-black (11.7:1) and only
      the greys that carry LINES stayed grey. */
-  --n3:   #3D392F;   /* labels, captions, annotation — text, so it is nearly ink */
-  --n4:   #9A9384;   /* hairlines, ticks, inactive marks — never a word */
+  --n3:   #3D392F;   /* labels, captions, annotation — text, so it is nearly ink.
+                        9.8:1 on bone. */
+  --n4:   #9A9384;   /* hairlines, ticks, inactive marks — NEVER A WORD.
+                        2.6:1 on bone, which is the whole reason for the rule. */
+  /* ...AND THE RULE ABOVE WAS ONLY HALF TRUE UNTIL IT WAS MEASURED.
+     The paragraph before this describes a refactor that moved the greys
+     carrying words up to near-black, and it was done for --n3 and then not
+     finished: --n4 was still the colour of the section eyebrow, the dates and
+     locations on every experience row, a project card's kind line, the contact
+     labels, the chart's counter and the key legend. Eight places, all of them
+     WORDS, all of them at 9–11px, all of them at 2.61:1 — which is not a near
+     miss on 4.5:1, it is a bit over half of it, and it is exactly the small
+     metadata a reader skims a portfolio for.
+
+     They are --n3 now. The hierarchy did not need them faded: this face does it
+     with SIZE, WEIGHT and CASE, which is how a printed page does it, and that
+     is the sentence the paragraph above already ends on.
+
+     TWO KEEP --n4 ON PURPOSE, and both are exemptions a checker has to be told
+     about rather than talked out of:
+       .sock.unset .sock-v   a handle that is NOT SET. The faded italic is the
+                             signal; reading it is not the point, and making it
+                             legible would make it look supplied.
+       .term.done::after     a cursor block. Not a word — a mark.
+     test/sim.test.js enforces the rule and carries that list. */
   /* THE INK, and the constant of the identity system. It is SHINY MEW'S OWN
      HUE — she renders at OKLCh h 241 through the real light rig, and this is
      h 233.7, measured on screen. No project may own it; links, focus
@@ -294,7 +317,7 @@ pre.sr { white-space:pre; }
 
 /* the eyebrow. Small, heavy, spaced -- the annotation register the whole sheet
    is written in, used here to name the section rather than to label a part. */
-.eye { color:var(--n4); }
+.eye { color:var(--n3); }
 .deck-h { margin-top:-.4rem; }
 .greet { text-transform:none; letter-spacing:.02em; font-weight:400;
          font-size:13px; color:var(--n3); margin-bottom:-1rem; }
@@ -356,8 +379,8 @@ pre.sr { white-space:pre; }
 .row-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:.35rem .9rem; }
 .row-org { font-size:17px; font-weight:600; letter-spacing:-.01em; }
 .row-role { text-transform:none; letter-spacing:.02em; font-weight:400; }
-.row-loc { margin-left:auto; color:var(--n4); }
-.row-when { color:var(--n4); font-size:10px; margin-top:.15rem; }
+.row-loc { margin-left:auto; color:var(--n3); }
+.row-when { color:var(--n3); font-size:10px; margin-top:.15rem; }
 .t.body.row-what { max-width:68ch; margin-top:.5rem; }
 
 /* ── 03 · PROJECTS ──────────────────────────────────────────────────────── */
@@ -464,7 +487,7 @@ pre.sr { white-space:pre; }
 }
 .pcard:focus-visible .pcard-title { text-decoration:underline; text-underline-offset:.24em;
                                     text-decoration-thickness:1px; }
-.pcard-kind { font-size:9px; color:var(--n4); }
+.pcard-kind { font-size:9px; color:var(--n3); }
 .t.body.pcard-line { max-width:46ch; }
 
 /* ── 04 · CONTACT ───────────────────────────────────────────────────────── */
@@ -475,7 +498,7 @@ pre.sr { white-space:pre; }
           transition:padding-left var(--t2) var(--e); }
 @media (hover:hover) { .sock-a:hover { padding-left:.6rem; } }
 .sock-a:focus-visible { padding-left:.6rem; outline:none; }
-.sock-k { width:6rem; flex:none; color:var(--n4); }
+.sock-k { width:6rem; flex:none; color:var(--n3); }
 .sock-v { font-size:16px; }
 @media (hover:hover) { .sock-a:hover .sock-v { text-decoration:underline;
   text-underline-offset:.24em; text-decoration-thickness:1px; } }
@@ -552,7 +575,7 @@ pre.sr { white-space:pre; }
 .stitch.deep path { opacity:1; }
 
 .legend { display:flex; align-items:center; gap:.45rem;
-          font-variant-numeric:tabular-nums; color:var(--n4); }
+          font-variant-numeric:tabular-nums; color:var(--n3); }
 /* the legend's own key mark, drawn the same way the worked cell is */
 .legend-key {
   display:block; width:9px; height:9px; flex:none;
@@ -562,7 +585,7 @@ pre.sr { white-space:pre; }
 }
 
 .keys { position:absolute; right:var(--pad); bottom:calc(var(--pad) * .8);
-        color:var(--n4); display:flex; align-items:center; gap:.3rem; }
+        color:var(--n3); display:flex; align-items:center; gap:.3rem; }
 /* step() returns false for a route that is not in the deck, so on a 404 the
    arrow keys do nothing -- and a label naming a key that does nothing is the
    one kind of label this sheet does not carry. */

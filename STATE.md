@@ -200,6 +200,49 @@ three thousand fragments against a million. Three rules that were each a bug:
   its own white mark where 2,640 is 4.26:1, and the pale hour is the shallow end
   of exactly the range `SKY_BTN_DEPTH` exists to avoid.
 
+### Three written rules that nothing was checking
+
+A rule a person has to remember is a rule that lasts as long as that person's
+attention. Each of these was already written down somewhere in the repo, and
+each is now a check with a paired control.
+
+**No real identifiers on the USB sheet** (CLAUDE.md states it as a hard
+constraint). The check walks every committed text file for shapes that cannot
+occur by accident — a BitLocker recovery key, a GUID or volume identifier, a
+`\\?\Volume` path, PowerShell credential handling, an assigned secret — and then
+renders the page and asserts that every `#`-prefixed identifier on it is one of
+the four sequential stand-ins, that no seven-figure number is anything else, and
+that **both** disclosures are still on it. It excludes its own file, because the
+patterns it hunts for are written in it. Verified against three planted
+violations.
+
+**The icon atlas is generated, so it can go stale.** `iconatlas.js` says
+GENERATED — DO NOT EDIT, and the failure when it drifts is quiet in the worst
+way: the card renders, the hover runs, and the hole is simply never cut. The
+check compares the tool's `CELLS`, the baked row list and `projects.js`'s slugs
+— **in order**, because `deck.js` turns a slug into a row INDEX and two cells
+swapped would cut each card the other one's shape. The failure message carries
+the command to fix it.
+
+**No word is printed under the floor.** `site.css` says it in a comment above
+the palette: the greys that carry WORDS are near-ink and only the greys that
+carry LINES stay grey. It was true of `--n3` and **not true of `--n4`**, which
+is 2.61:1 on bone — not a near miss on 4.5:1, a bit over half of it. It was the
+colour of the section eyebrow, every experience row's date and location, a
+card's kind line, the contact labels, the chart's counter and the key legend:
+eight places, all words, all at 9–11px. They are `--n3` (9.8:1) now, and the
+hierarchy did not need them faded — size, weight and case do it, which is the
+sentence that comment already ended on.
+
+Two keep `--n4` and the checker is TOLD about them rather than talked out of
+them: `.sock.unset .sock-v` (a handle that is not set — the faded italic is the
+signal) and `.term.done::after` (a cursor block, not a word). The check also
+asserts both exemptions still name rules that exist.
+
+One thing the checker had to learn: **a rule that sets its own ground is
+measured against it.** Assuming bone everywhere failed `.dlg-bar`, which is
+paper type on ink — 15.6:1, read as 1.00:1 until that line existed.
+
 ### On paper
 
 This whole site is a picture of a printed sheet, so it had better survive being

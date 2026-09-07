@@ -2422,6 +2422,270 @@ section("the tail is the path it flew, and gravity bends it");
 }
 
 // ---------------------------------------------------------------------------
+section("no word on this sheet is printed under the floor");
+// site.css says it in a comment above the palette: the greys that carry WORDS
+// are near-ink and only the greys that carry LINES stay grey. It was true of
+// --n3 and it was not true of --n4, which is 2.61:1 on bone -- not a near miss
+// on 4.5:1, a bit over half of it -- and which was the colour of the section
+// eyebrow, every experience row's date and location, a card's kind line, the
+// contact labels, the chart's counter and the key legend. Eight places, all
+// words, all at 9-11px.
+//
+// A comment is not a check. This reads the real stylesheet, finds every rule
+// that paints TEXT with a palette token, and measures it.
+{
+  const { readFileSync } = await import("node:fs");
+  const css = readFileSync(new URL("../src/styles/site.css", import.meta.url), "utf8");
+
+  const srgb = (v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const lum = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => srgb(parseInt(hex.slice(i, i + 2), 16) / 255));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const ratio = (a, b) => {
+    const [x, y] = [lum(a), lum(b)];
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+
+  // the palette, read out of the file rather than copied into this one
+  const tokens = {};
+  for (const m of css.matchAll(/(--[a-z0-9-]+):\s*(#[0-9A-Fa-f]{6})\s*;/g)) tokens[m[1]] = m[2];
+  ok(tokens["--paper"] && tokens["--ink"] && tokens["--n3"] && tokens["--n4"],
+    `read the palette off the stylesheet (${Object.keys(tokens).length} tokens)`);
+
+  const paper = tokens["--paper"];
+  ok(ratio(tokens["--ink"], paper) > 12, `ink on bone is ${ratio(tokens["--ink"], paper).toFixed(1)}:1`);
+  ok(ratio(tokens["--n3"], paper) >= 4.5,
+    `--n3 clears the floor for text (${ratio(tokens["--n3"], paper).toFixed(2)}:1)`);
+  ok(ratio(tokens["--ink-a"], paper) >= 4.5,
+    `--ink-a does too, and it is what every link is set in (${ratio(tokens["--ink-a"], paper).toFixed(2)}:1)`);
+
+  // THE CONTROL FOR THE THREE ABOVE, and it is the reason this section exists:
+  // --n4 does NOT clear the floor, which is why nothing may read in it.
+  ok(ratio(tokens["--n4"], paper) < 3,
+    `control: --n4 is under even the large-text floor (${ratio(tokens["--n4"], paper).toFixed(2)}:1), ` +
+    "so a word in it is a word nobody has to be able to read");
+
+  // ── AND NOW EVERY RULE THAT PAINTS TEXT ──────────────────────────────
+  // Two exemptions, and both are marks rather than words. A checker has to be
+  // TOLD about an exemption; talking it out of one is how a floor stops being
+  // a floor.
+  const EXEMPT = [
+    // a handle that is NOT SET. The faded italic is the signal, reading it is
+    // not the point, and making it legible would make it look supplied.
+    ".sock.unset .sock-v",
+    // a cursor block. Not a word -- a mark.
+    ".term.done::after"
+  ];
+  const offenders = [];
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const sel = m[1].split("\n").pop().trim();
+    if (!sel || sel.startsWith("@") || sel.startsWith("/*")) continue;
+    const col = m[2].match(/(?:^|[;{\s])color:\s*var\((--[a-z0-9-]+)\)/);
+    if (!col) continue;
+    const hex = tokens[col[1]];
+    if (!hex) continue;
+    if (EXEMPT.some((e) => sel.includes(e))) continue;
+    // A RULE THAT SETS ITS OWN GROUND IS MEASURED AGAINST IT. Assuming bone
+    // everywhere fails a reversed bar -- .dlg-bar is paper type on ink, which
+    // is 15.6:1 and read as 1.00:1 until this line existed. Anything else on
+    // this sheet sits on the stock, which is what the paper default is for.
+    const bgm = m[2].match(/(?:^|[;{\s])background(?:-color)?:\s*var\((--[a-z0-9-]+)\)/);
+    const ground = (bgm && tokens[bgm[1]]) || paper;
+    const r = ratio(hex, ground);
+    if (r < 4.5) offenders.push(`${sel} paints text in ${col[1]} on ${ground} at ${r.toFixed(2)}:1`);
+  }
+  ok(offenders.length === 0,
+    offenders.length ? `${offenders.length} under the floor — first: ${offenders[0]}`
+                     : "every rule that paints text uses a token that clears 4.5:1");
+
+  // and the exemptions are real rules, not a list that has outlived the code
+  for (const e of EXEMPT) {
+    ok(css.includes(e), `the exemption for ${e} still names a rule that exists`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+section("the icon atlas is generated, so it can go stale");
+// site/iconatlas.js says GENERATED -- DO NOT EDIT at the top, and a generated
+// file is a file that is right until somebody changes its source and does not
+// re-run the tool. The failure is quiet in the worst way: the card still
+// renders, the hover still runs, and the hole is simply never cut, so the white
+// plate sits there forever. cards.js already refuses to fade a plate with
+// nothing behind it, which turns a wrong picture into a missing effect -- and
+// that is a good failure mode, not a reason to leave the drift unnoticed.
+//
+// Read rather than imported: iconatlas.js is generated around `?url` imports,
+// which are Vite's and not Node's. It has a fixed shape because a tool writes
+// it, so a regex over that shape is reading the artefact, not guessing at it.
+{
+  const { readFileSync, existsSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const ROOT = new URL("..", import.meta.url).pathname;
+  const read = (rel) => readFileSync(join(ROOT, rel), "utf8");
+
+  const tool = read("tools/bake_icons.mjs");
+  const baked = read("src/site/iconatlas.js");
+  const projects = read("src/site/projects.js");
+
+  // what the tool lays out, in the order it lays it out
+  const toolCells = [...tool.matchAll(/\{\s*slug:\s*"([^"]+)",\s*src:\s*"([^"]+)"/g)]
+    .map((m) => ({ slug: m[1], src: m[2] }));
+  // what the generated file says the atlas rows are
+  const bakedCells = JSON.parse(
+    (baked.match(/export const CELLS = (\[[^\]]*\]);/) || [])[1] || "[]");
+  // ...and what the site actually has work for
+  const slugs = [...projects.matchAll(/slug:\s*"([^"]+)"/g)].map((m) => m[1]);
+
+  ok(toolCells.length > 0 && bakedCells.length > 0 && slugs.length > 0,
+    `found ${toolCells.length} cells, ${bakedCells.length} atlas rows, ${slugs.length} projects`);
+
+  // ORDER MATTERS AND NOT JUST MEMBERSHIP. deck.js turns a slug into a row
+  // INDEX, so two cells swapped would cut each card the other one's shape --
+  // a wrong picture rather than a missing one, which is the harder bug.
+  ok(JSON.stringify(bakedCells) === JSON.stringify(toolCells.map((c) => c.slug)),
+    "the baked row order is the tool's cell order, exactly");
+
+  const missing = slugs.filter((sl) => !bakedCells.includes(sl));
+  ok(missing.length === 0,
+    missing.length
+      ? `${missing.join(", ")} has no atlas row — drop an icon in tools/icons/, add a cell to CELLS, and run: node tools/bake_icons.mjs`
+      : `every project on the site has a row in the atlas (${slugs.join(", ")})`);
+
+  const orphans = bakedCells.filter((c) => !slugs.includes(c));
+  ok(orphans.length === 0,
+    orphans.length ? `${orphans.join(", ")} is baked but is not a project any more`
+                   : "and nothing is baked that is not a project");
+
+  // the sources the tool reads, and the artefacts it writes
+  const gone = toolCells.filter((c) => !existsSync(join(ROOT, c.src))).map((c) => c.src);
+  ok(gone.length === 0, gone.length ? `missing icon source: ${gone.join(", ")}`
+                                    : "every cell's icon source is still on disk");
+
+  const outputs = ["src/assets/media/icon-atlas.png",
+    ...bakedCells.map((c) => `src/assets/media/glyph-${c}.png`)];
+  const unbaked = outputs.filter((f) => !existsSync(join(ROOT, f)));
+  ok(unbaked.length === 0,
+    unbaked.length ? `not baked: ${unbaked.join(", ")} — run: node tools/bake_icons.mjs`
+                   : `the atlas and all ${bakedCells.length} glyph plates are on disk`);
+
+  // THE PAIRED CONTROL. Every check above is a comparison between three lists,
+  // and three empty lists compare equal. This is the shape of the drift the
+  // section exists for, run through the same comparison.
+  const fakeBaked = ["usb-provisioning", "closet"];
+  const fakeSlugs = ["usb-provisioning", "closet", "iclicker"];
+  ok(fakeSlugs.filter((sl) => !fakeBaked.includes(sl)).length === 1,
+    "control: a project added without re-baking is caught");
+  ok(JSON.stringify(["closet", "usb-provisioning"]) !== JSON.stringify(fakeBaked),
+    "control: ...and so is the same set in the wrong order");
+}
+
+// ---------------------------------------------------------------------------
+section("the USB sheet carries a real run and nothing real in it");
+// CLAUDE.md states this as a hard constraint and nothing enforced it. The rule:
+// no credentials or key material, no real asset numbers, no drive serials, no
+// volume identifiers -- anywhere in this repository, on any page, in any
+// committed file. The transcript on that sheet IS a real run, with every device
+// identifier swapped for a stand-in of the same width, and the page carries two
+// disclosures saying so.
+//
+// A written rule that nothing checks is a rule that survives exactly as long as
+// the person who remembers it. This is the check.
+//
+// IT EXCLUDES ITS OWN FILE, and it has to: the patterns below are the shapes it
+// is hunting for, so a scanner that scanned itself would fail on its own
+// regexes and on the control fixture at the foot of the section.
+{
+  const { readFileSync, readdirSync, statSync } = await import("node:fs");
+  const { join, relative } = await import("node:path");
+  const ROOT = new URL("..", import.meta.url).pathname;
+
+  // The four stand-ins, and they are the ONLY identifiers allowed to appear.
+  // Sequential on purpose: nobody mistakes 1234567 for an asset number.
+  const STANDINS = ["1234567", "2345678", "3456789", "4567890"];
+
+  // ── the shapes, and why each one is here ─────────────────────────────
+  // Every one of these is unmistakable: none of them can occur by accident in
+  // prose, a hex colour, a file size or a timestamp, which is what lets this
+  // run over the whole tree instead of over one file.
+  const SHAPES = [
+    [/\b\d{6}-\d{6}-\d{6}-\d{6}-\d{6}-\d{6}-\d{6}-\d{6}\b/, "a BitLocker recovery key"],
+    [/\{?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\}?/, "a GUID or volume identifier"],
+    [/\\\\\?\\Volume/, "a volume path"],
+    [/ConvertTo-SecureString|AsPlainText|-Credential\b/, "PowerShell credential handling"],
+    [/\b(?:password|passwd|secret|api[_-]?key|token)\s*[:=]\s*["'][^"']{4,}/i, "an assigned credential"]
+  ];
+
+  const SKIP = new Set(["node_modules", "dist", ".git", "assets-source",
+                        "aesthetic-images", "roy", "public"]);
+  const TEXT = /\.(js|mjs|ts|css|html|md|json|txt|py|ps1)$/;
+  const SELF = "test/sim.test.js";
+
+  const files = [];
+  (function walk(dir) {
+    for (const name of readdirSync(dir)) {
+      if (SKIP.has(name)) continue;
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (TEXT.test(name)) files.push(full);
+    }
+  })(ROOT);
+
+  const scan = (text, where) => {
+    const hits = [];
+    for (const [re, what] of SHAPES) if (re.test(text)) hits.push(`${what} in ${where}`);
+    return hits;
+  };
+
+  let hits = [];
+  for (const f of files) {
+    const rel = relative(ROOT, f);
+    if (rel === SELF) continue;
+    hits = hits.concat(scan(readFileSync(f, "utf8"), rel));
+  }
+  ok(hits.length === 0,
+    hits[0] || `nothing key-shaped or serial-shaped in ${files.length} committed text files`);
+
+  // ── AND THE PAGE ITSELF, WHICH IS WHERE THE REAL RUN LIVES ───────────
+  const usb = await import("../src/site/pages/usb-provisioning.js");
+  const html = usb.html({ n: "01", title: "usb provisioning cli", sub: "s", kind: "k",
+                          year: "2025", inkName: "NAVY", inkWhy: "w", slug: "usb-provisioning" });
+
+  // every identifier printed on that page is one of the four stand-ins
+  const ids = [...html.matchAll(/#(\d+)/g)].map((m) => m[1]);
+  ok(ids.length > 0, `the transcript prints ${ids.length} device identifiers`);
+  ok(ids.every((d) => STANDINS.includes(d)),
+    `...and every one of them is a stand-in (${[...new Set(ids)].join(", ")})`);
+
+  // ...and there is no long digit run anywhere on the page that is not one.
+  // 10,000 / 57.3 / 09:41:07 / 2025 are all short, so the floor is seven.
+  const runs = [...html.matchAll(/\d{7,}/g)].map((m) => m[0]);
+  ok(runs.every((d) => STANDINS.includes(d)),
+    `no seven-figure number on the sheet is anything but a stand-in (${runs.length} found)`);
+
+  // BOTH DISCLOSURES, and the page must never carry the transcript without
+  // them: one in the colophon, one beside the figure where it is actually read.
+  ok(/DISCLOSURE/.test(html), "the colophon still declares the substitution");
+  ok(/DEVICE&nbsp;IDENTIFIERS&nbsp;SUBSTITUTED/.test(html),
+    "...and so does the subtitle beside the transcript");
+
+  // ── THE PAIRED CONTROL ───────────────────────────────────────────────
+  // Every check above passes on a page with nothing wrong with it, which is
+  // also what it would do if the scanner were broken. These are the same
+  // functions run over text that IS a violation.
+  const FAKE_KEY = ["111111", "222222", "333333", "444444",
+                    "555555", "666666", "777777", "888888"].join("-");
+  ok(scan(FAKE_KEY, "control").length === 1, "control: a recovery key is caught");
+  ok(scan("\\\\?\\Volume{" + "0123abcd-4567-89ef-0123-456789abcdef" + "}", "control").length === 2,
+    "control: a volume path and its GUID are both caught");
+  ok(scan('$p = "hunter2"; secret = "abcdef"', "control").length === 1,
+    "control: an assigned credential is caught");
+  ok(!STANDINS.includes("8675309") && [..."#8675309".matchAll(/#(\d+)/g)]
+      .some((m) => !STANDINS.includes(m[1])),
+    "control: an identifier that is not a stand-in does not pass for one");
+}
+
+// ---------------------------------------------------------------------------
 section("less motion means less motion, and it means the animal too");
 // utils/motion.js is one expression and five files trust it. The expression is
 // the thing tested here; what each file does with the answer is documented in
