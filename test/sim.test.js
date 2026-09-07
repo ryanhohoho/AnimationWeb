@@ -2422,6 +2422,43 @@ section("the tail is the path it flew, and gravity bends it");
 }
 
 // ---------------------------------------------------------------------------
+section("a label never leaves its last word alone — and never becomes one word");
+// The sheet's labels bind their spaces with &nbsp; so a two-word caption cannot
+// orphan its second word. Binding EVERY space is the version this started as,
+// and it is a different thing entirely: a 30-character label becomes one
+// unbreakable 290 px word, the flex column on a phone stretches to fit it, the
+// transcript stretches to the column, and the page grows a horizontal
+// scrollbar. Measured in the browser at 320 px: a 447 px page.
+//
+// So the rule is the FINAL space only, which is what the character is for.
+{
+  const { renderSheet } = await import("../src/site/pages/sheet.js");
+  const html = renderSheet(
+    { n: "01", title: "usb provisioning cli", kind: "SYSTEMS TOOLING · COMMISSIONED",
+      year: "2025", inkName: "NAVY + BLACK" },
+    { headline: "h", lead: "l", notes: [{ k: "A", v: "b" }] });
+
+  // the label that overflowed: PROJECT 01 — usb provisioning cli
+  const label = html.match(/<p class="t">PROJECT[^<]*<\/p>/)[0];
+  ok(/&nbsp;/.test(label), "a label still binds — it has not simply stopped");
+  ok((label.match(/&nbsp;/g) || []).length <= 2,
+    `...but it binds ONE space, not every space (${(label.match(/&nbsp;/g) || []).length})`);
+  ok(/provisioning cli/.test(label.replace(/&nbsp;/g, " ")) &&
+     / cli<\/p>/.test(label) === false && /&nbsp;cli/.test(label),
+    "and the space it binds is the last one, so the final word cannot orphan");
+
+  // the caption, which was the other 35-character run
+  const cap = html.match(/<p class="t dim cap"[^>]*>([^<]*)<\/p>/)[1];
+  ok((cap.match(/&nbsp;/g) || []).length <= 2,
+    `the plate caption breaks too (${(cap.match(/&nbsp;/g) || []).length} bound spaces in "${cap.replace(/&nbsp;/g, "·")}")`);
+
+  // THE PAIRED CONTROL: what the old helper produced, run through the same count.
+  const everySpace = "PROJECT 01 — usb provisioning cli".replace(/ /g, "&nbsp;");
+  ok((everySpace.match(/&nbsp;/g) || []).length === 5,
+    "control: binding every space gives five, and one unbreakable run");
+}
+
+// ---------------------------------------------------------------------------
 section("no word on this sheet is printed under the floor");
 // site.css says it in a comment above the palette: the greys that carry WORDS
 // are near-ink and only the greys that carry LINES stay grey. It was true of
@@ -2673,8 +2710,15 @@ section("the USB sheet carries a real run and nothing real in it");
   // BOTH DISCLOSURES, and the page must never carry the transcript without
   // them: one in the colophon, one beside the figure where it is actually read.
   ok(/DISCLOSURE/.test(html), "the colophon still declares the substitution");
-  ok(/DEVICE&nbsp;IDENTIFIERS&nbsp;SUBSTITUTED/.test(html),
+  // spacing-agnostic ON PURPOSE. The first version of this matched the literal
+  // `&nbsp;` run and failed the moment those captions were allowed to wrap on a
+  // phone -- which is a typographic edit, not a disclosure being removed. What
+  // must survive an edit is the SENTENCE.
+  const words = (t) => html.replace(/&nbsp;|&#160;|\s+/g, " ").includes(t);
+  ok(words("DEVICE IDENTIFIERS SUBSTITUTED"),
     "...and so does the subtitle beside the transcript");
+  ok(words("every device identifier replaced by a stand-in"),
+    "...and the colophon still says what the substitution IS");
 
   // ── THE PAIRED CONTROL ───────────────────────────────────────────────
   // Every check above passes on a page with nothing wrong with it, which is

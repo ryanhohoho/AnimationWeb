@@ -31,7 +31,16 @@ const esc = (v) => String(v ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;")
   .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-const nb = (v) => esc(v).replace(/ /g, "&nbsp;");
+// A LABEL NEVER LEAVES ITS LAST WORD ALONE, and that is the whole job of the
+// character. Joining EVERY space with a non-breaking one is what this started
+// as, and on a 320 px phone it turned a 30-character label into one unbreakable
+// 290 px word -- the flex column stretched to fit it, the transcript stretched
+// to the column, and the page grew a horizontal scrollbar. Measured: a 447 px
+// page on a 320 px screen.
+//
+// Binding only the FINAL space is what nbsp is actually for. Short labels still
+// never break, because there is nothing in them long enough to break.
+const nb = (v) => esc(v).replace(/ (?=[^ ]*$)/, "&nbsp;");
 
 /**
  * @param p        the project record from site/projects.js
@@ -51,7 +60,7 @@ export function renderSheet(p, { headline, lead, notes, body = "" }) {
   return `
   <section class="plate" id="p0">
     <div class="corner tl">
-      <p class="t">PROJECT&nbsp;${n}&nbsp;—&nbsp;${nb(p?.title || "")}</p>
+      <p class="t">PROJECT&nbsp;${n} — ${nb(p?.title || "")}</p>
       <p class="t dim">${nb(p?.kind || "")}</p>
     </div>
     <div class="corner tr">
@@ -60,7 +69,7 @@ export function renderSheet(p, { headline, lead, notes, body = "" }) {
     </div>
 
     <div class="ap tall" data-ap style="--x:57%; --y:12%; --w:25%; --h:64%"></div>
-    <p class="t dim cap" style="--x:57%; --y:78%">PL.&nbsp;${n}&nbsp;—&nbsp;CERULEAN&nbsp;+&nbsp;${inkName}</p>
+    <p class="t dim cap" style="--x:57%; --y:78%">PL.&nbsp;${n} — CERULEAN + ${inkName}</p>
 
     <div class="corner bl">
       <h1 class="d" style="max-width:19ch">${headline}</h1>
@@ -86,7 +95,7 @@ export function renderSheet(p, { headline, lead, notes, body = "" }) {
     </div>
 
     <div class="ap band" data-ap style="--x:0%; --y:70%; --w:100%; --h:13%"></div>
-    <p class="t dim cap pad" style="--y:85%">PL.&nbsp;${n}&nbsp;—&nbsp;CERULEAN&nbsp;+&nbsp;${inkName}.</p>
+    <p class="t dim cap pad" style="--y:85%">PL.&nbsp;${n} — CERULEAN + ${inkName}.</p>
 
     <div class="corner br">
       <p class="t"><a class="link" href="/projects" data-route>←&nbsp;back&nbsp;to&nbsp;the&nbsp;work</a></p>

@@ -371,6 +371,40 @@ should have landed. To check whether a rule actually matched, append
 readback also lags several draws behind, so a pixel probe of anything on a clock
 does not survive contact with it.
 
+### 320 px, where the sheet was 447 px wide
+
+Checked every route at the narrowest phone still in use. One route failed, and
+the cause was three layers down from where it showed.
+
+**The symptom:** a project sheet at 320 px reported `scrollWidth: 447` — a
+horizontal scrollbar on the whole page. The transcript looked guilty (it is the
+one thing on the site with `overflow-x:auto`) and was not.
+
+**The cause was `&nbsp;`.** The sheet's labels bind their spaces so a two-word
+caption cannot orphan its second word — and they were binding EVERY space, which
+is a different thing entirely: `PROJECT 01 — usb provisioning cli` became one
+unbreakable 290 px word. The plate is a flex column on a phone, so the column
+stretched to fit it, the transcript stretched to the column, and the page grew
+by 127 px. Binding only the FINAL space is what the character is actually for,
+and short labels still never break because there is nothing in them to break.
+Desktop is unchanged: every label still sets on one line.
+
+Two smaller ones found in the same pass:
+
+- **The legend broke after its slash.** `03 / 04` on two lines made the bar
+  taller than the page had reserved. `nowrap` fixes the break — and then
+  revealed that the project-sheet legend (`03 / 04 — 01 of 03`) was 168 px of a
+  320 px bar. It was also **saying what the chart already says**: the chart
+  doubles the cell you are standing inside, which is the whole reason the
+  doubled stitch exists. It reads `01 of 03` now, which is the half the chart
+  cannot carry — one sentence about one place, which is what `chrome.js`'s own
+  comment always claimed.
+- **`--bar` under-reserved by one pixel**, having counted the control and its
+  padding but not the 1px rule along the bar's top edge. The page reserved 60
+  and the bar was 61.
+
+After: all six routes report `scrollWidth: 320` with nothing overflowing.
+
 ### The page arrives even if the script does not
 
 `index.html` ships the whole summary card as markup, and both its own comment and

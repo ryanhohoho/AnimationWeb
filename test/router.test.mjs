@@ -638,6 +638,21 @@ console.log("\n== a way home from every page but home");
   ok(sheets.length === 2 && sheets.every((s) => s.back && s.home && s.proj),
     "a project sheet carries BOTH discs: one step out, and all the way out");
 
+  // ── THE LEGEND SAYS WHAT THE CHART CANNOT, AND ONLY THAT ─────────────
+  // The chart doubles the cell you are standing inside, so "03 / 04" beside it
+  // is the same fact twice -- and it was 168 px of a 320 px phone bar, which
+  // overflowed the viewport once the counter was told not to break after its
+  // slash. Measured: a 447 px page on a 320 px screen.
+  chrome.setPage({ name: "project", project: PROJECTS[0] });
+  const sheetLegend = count.textContent;
+  ok(/^\d\d of \d\d$/.test(sheetLegend),
+    `inside a sheet the legend says only which of the three (${sheetLegend})`);
+  ok(!sheetLegend.includes("/"),
+    "...and does not repeat the deck position the doubled cell already carries");
+  chrome.setPage({ name: "projects" });
+  ok(count.textContent === "03 / 04",
+    `on the deck it counts the deck (${count.textContent})`);
+
   // THE PAIRED CONTROL, and it is the whole point of adding a second disc. If
   // home were tied to the same condition the back arrow is, the three middle
   // cards would have exactly what they had before: no visible way to the start.

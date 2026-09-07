@@ -108,9 +108,13 @@
   --t1:140ms; --t2:340ms; --t3:900ms;
   --pad: clamp(18px, 3.4vw, 60px);
   /* the phone bar's height, so pages can reserve room for it in one place.
-     44px of control plus its padding; the safe-area inset is added where it is
-     used, because it is zero on everything that is not a notched phone. */
-  --bar: calc(44px + 1rem + env(safe-area-inset-bottom, 0px));
+     44px of control, plus its padding, plus the 1px rule along its top edge --
+     which the first version left out, so the page reserved 60 and the bar was
+     61 and the last pixel of the last line went under it. The safe-area inset is
+     added here rather than where it is used, because it is zero on everything
+     that is not a notched phone and a token that is sometimes complete is worse
+     than one that always is. */
+  --bar: calc(44px + 1rem + 1px + env(safe-area-inset-bottom, 0px));
   /* the exit discs, top-left. On :root and not on #chrome because the PAGE has
      to know how big they are: a project sheet indents its top-left cluster past
      them and a deck card's column starts below them, and neither is inside the
@@ -598,7 +602,10 @@ pre.sr { white-space:pre; }
 .stitch.deep svg { transform:scale(.78); }
 .stitch.deep path { opacity:1; }
 
-.legend { display:flex; align-items:center; gap:.45rem;
+/* nowrap, because "03 / 04" is one thing. At 320 px the bar's flex row got
+   tight enough to break it after the slash, which put the counter on two lines
+   and made the whole bar taller than the page had reserved for it. */
+.legend { display:flex; align-items:center; gap:.45rem; white-space:nowrap;
           font-variant-numeric:tabular-nums; color:var(--n3); }
 /* the legend's own key mark, drawn the same way the worked cell is */
 .legend-key {

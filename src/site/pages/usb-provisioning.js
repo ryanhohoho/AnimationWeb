@@ -125,7 +125,7 @@ export function html(p) {
     ],
     body: `
     <div class="spec term-col">
-      <p class="t dim">A&nbsp;REAL&nbsp;RUN.&nbsp;DEVICE&nbsp;IDENTIFIERS&nbsp;SUBSTITUTED.</p>
+      <p class="t dim">A REAL RUN. DEVICE IDENTIFIERS&nbsp;SUBSTITUTED.</p>
       <!-- tabindex, because on a narrow screen this is the one thing on the site
            that scrolls sideways (.term gets overflow-x:auto under 860px) and a
            scrollable region a keyboard cannot reach is a region a keyboard
@@ -135,7 +135,7 @@ export function html(p) {
         <div data-lines aria-hidden="true"></div>
       </div>
       <pre class="sr">${PLAIN.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre>
-      <p class="t dim">FIG.&nbsp;1&nbsp;—&nbsp;FOUR&nbsp;DRIVES,&nbsp;ONE&nbsp;OPERATOR,&nbsp;NINETY&nbsp;SECONDS.</p>
+      <p class="t dim">FIG.&nbsp;1 — FOUR DRIVES, ONE OPERATOR, NINETY&nbsp;SECONDS.</p>
     </div>`
   });
 }

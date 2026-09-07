@@ -81,10 +81,21 @@ export function createChrome({ scope, deck }) {
       else d.removeAttribute("aria-current");
     }
     if (count) {
+      // ...AND THE LEGEND SAYS THE PART THE CHART CANNOT.
+      // The paragraph above already describes this: card three is worked and
+      // DOUBLED, and the legend says which of the three you are on. That is one
+      // sentence about one place. The implementation printed both halves --
+      // "03 / 04 — 01 of 03" -- which is two numbers about two places, and the
+      // first of them is the doubled cell three inches to the left.
+      //
+      // It was also 168 px of a 320 px phone bar. Set nowrap on it (the counter
+      // is one thing and should never break after the slash) and that row
+      // overflowed the viewport: measured, a 447 px page on a 320 px screen.
+      // The redundant half was the whole of the excess.
       count.textContent = off
         ? `—— / ${pad(DECK.length)}`
         : isProject
-          ? `${pad(here + 1)} / ${pad(DECK.length)} — ${pad(proj + 1)} of ${pad(PROJECTS.length)}`
+          ? `${pad(proj + 1)} of ${pad(PROJECTS.length)}`
           : `${pad(here + 1)} / ${pad(DECK.length)}`;
     }
 
