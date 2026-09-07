@@ -1,7 +1,7 @@
 // chrome.js — THE PART OF THE PAGE THAT DOES NOT TURN
 //
-// The counter, the dots, the progress rule, the mobile arrows and the back
-// arrow. All of it lives OUTSIDE #doc, which is the whole reason it exists as
+// The counter, the stitch chart, the mobile arrows and the two exit discs --
+// back, and home. All of it lives OUTSIDE #doc, which is the whole reason it exists as
 // its own thing: #doc is replaced wholesale on every navigation, so anything
 // inside it is destroyed and rebuilt, and navigation furniture that flickers
 // once per move is worse than none.
@@ -30,6 +30,7 @@ export function createChrome({ scope, deck }) {
   const prev = root.querySelector("[data-prev]");
   const next = root.querySelector("[data-next]");
   const back = root.querySelector("[data-back]");
+  const home = root.querySelector("[data-home]");
 
   const pad = (v) => String(v).padStart(2, "0");
 
@@ -40,8 +41,9 @@ export function createChrome({ scope, deck }) {
     const isProject = proj >= 0;
 
     root.classList.toggle("on-project", isProject);
-    // the sheets indent their top-left cluster to make room for the back
-    // control, which is why this is on the BODY and not on the chrome
+    // the sheets indent their top-left cluster to make room for the discs, and
+    // home stands aside for the back arrow -- both are rules about the PAGE, so
+    // the flag goes on the body and not on the chrome
     document.body.classList.toggle("on-project", isProject);
 
     // ── THE CHART ALWAYS COUNTS THE DECK ────────────────────────────────
@@ -91,23 +93,42 @@ export function createChrome({ scope, deck }) {
       else { el.removeAttribute("href"); el.setAttribute("aria-disabled", "true"); }
     }
 
-    // ── the back arrow ──────────────────────────────────────────────────
-    // Fixed to the window and cut straight out of the paper: it is the same kind
-    // of object as every other hole on the sheet, and it prints in the HOME
-    // sheet's own pair rather than this project's -- because it is a window onto
-    // where you are going, not onto where you are. Passing no inks is what asks
-    // for that pair; the press reads null as its defaults.
-    // REVEAL IT, THEN MEASURE IT. In that order, and the order is a bug already
-    // paid for once: commit() calls deck.bind() before onPage, so the control is
-    // still hidden when the deck takes its measurements -- and a hidden element
-    // has no rectangle, so it was skipped and its sky was never drawn. One extra
-    // layout read per navigation, on a path that already does several; it is the
-    // hover path that must never measure, not this one.
-    if (back) {
-      const was = back.hidden;
-      back.hidden = !isProject;
-      if (isProject || !was) deck?.remeasure();
+    // ── THE TWO DISCS ───────────────────────────────────────────────────
+    // Both are fixed to the window and both are a small circle of sky, printed
+    // in the HOME sheet's own pair rather than in whichever sheet they happen to
+    // be standing on -- because a disc is a window onto where you are GOING, not
+    // onto where you are, and a control that belongs to the site should not
+    // change colour with the page. Passing no inks is what asks for that pair;
+    // the press reads null as its defaults.
+    //
+    // HOME IS ON EVERY PAGE BUT ITS OWN. The chart in the other corner has
+    // always linked to it, and that was the answer to a different question: a
+    // chart says where you are in a piece, and it is read as a position rather
+    // than as a way out. A visible exit is a different object, and the deck
+    // needed one -- three of the four cards had no way back to the start but the
+    // arrow keys, and a project sheet had one that only went up a level.
+    //
+    // It is hidden on the summary itself rather than shown inert, because a
+    // control that leads where you already are is furniture, not navigation.
+    //
+    // REVEAL, THEN MEASURE, and the order is a bug already paid for once:
+    // commit() calls deck.bind() before onPage, so a control still hidden when
+    // the deck takes its measurements has no rectangle at all -- it is skipped
+    // and its sky is never drawn. One extra layout read per navigation, on a
+    // path that already does several; it is the hover path that must never
+    // measure, not this one.
+    //
+    // AND ONE REMEASURE FOR BOTH. They are both fixed and both change on the
+    // same route, so asking twice would do the same full pass twice.
+    let moved = false;
+    for (const [el, want] of [[back, isProject], [home, name !== "home"]]) {
+      if (!el) continue;
+      if (el.hidden !== !want) { el.hidden = !want; moved = true; }
     }
+    // home also SHIFTS when the back arrow appears beside it (body.on-project),
+    // which is a new rectangle without a hidden flag changing -- so a project
+    // page always remeasures whether or not anything was revealed
+    if (moved || isProject) deck?.remeasure();
   }
 
   return { setPage };

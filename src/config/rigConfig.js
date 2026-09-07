@@ -148,30 +148,52 @@ export const rigConfig = {
     // a scatter. The three of a wave are separated in SPACE (below), because
     // separating them in ANGLE separates their arcs, and then they are no
     // longer carrying the same arch.
+    //
+    // "FASTER" IS A TIME SCALE, NOT A SPEED KNOB — and this is the whole reason
+    // the block below moved together rather than one number moving alone.
+    // Raising speedPx by itself is wrong in both directions at once: against
+    // the same gravity a faster launch throws the drops HIGHER and WIDER, and
+    // it makes each one live LONGER, so the waves would come further apart. The
+    // opposite of what a faster spray should do.
+    //
+    // Under v -> k*v and g -> k*k*g the ballistic is exactly time-scaled: every
+    // drop traces the SAME curve through the SAME points at k times the speed
+    // and in 1/k of the time. The arc's height is vy*vy/2g, invariant. The apex
+    // time is vy/g, which falls by k -- so the life falls by k, and with the
+    // breath between waves held at an absolute 0.05 s the three waves come round
+    // measurably sooner. Even the tail is untouched: its hook is 0.5*g*dt*dt
+    // with dt = tailPx/speed, and the two k's cancel, so the drawn glyph is
+    // identical and only its clock has changed.
+    //
+    // k = 1.3. EVERY velocity in this block carries it — escapeCarryPx included,
+    // or the escape lean would quietly change with the speed — and every
+    // duration carries 1/k.
     templeXPx: 22,          // the two spawn points, off her centre...
     templeYPx: 44,          // ...at the upper temples of a 150 px character
     elevDeg: 58,            // from horizontal, mirrored per side
-    speedPx: 430,
-    gravityPx: 1250,        // steep, because the arc has to finish in about a
-                            // third of a second for three of them to fit inside
-                            // face.overlay.durS
+    speedPx: 559,           // 430 * k
+    gravityPx: 2112,        // 1250 * k*k. Steep, because the arc has to finish
+                            // in about a fifth of a second for three of them to
+                            // fit inside face.overlay.durS
     apexOvershoot: 1.22,    // culled a shade past the top, so nothing is ever
                             // seen coming down -- and so the hook, which is
                             // widest as it goes over, is the last thing you see
-    lifeMaxS: 0.45,         // A GUARD, NOT A KNOB. The schedule is derived from
-                            // the apex; if this ever binds, the waves silently
-                            // start overlapping. There is a check.
-    escapeCarryPx: 60,      // her flight carries them sideways. A CARRY and not
-                            // a lean: leaning rotates the launch, which changes
-                            // vy, which changes the apex, which desynchronises
-                            // the waves and costs the closed-form schedule.
-                            // 120 was the first value and it was half the launch's
-                            // own horizontal component, so the upwind temple threw
-                            // its drops almost straight up while the downwind one
-                            // threw them wide -- the two sides stopped reading as
-                            // the same spray. At 60 the lean is 25 degrees one way
-                            // and 38 the other: she is visibly moving, and both
-                            // sides are still visibly throwing outward.
+    lifeMaxS: 0.346,        // 0.45 / k. A GUARD, NOT A KNOB: the schedule is
+                            // derived from the apex, and if this ever binds the
+                            // waves silently start overlapping. Scaled with the
+                            // rest so it keeps exactly the margin it had.
+    escapeCarryPx: 78,      // 60 * k. Her flight carries them sideways. A CARRY
+                            // and not a lean: leaning rotates the launch, which
+                            // changes vy, which changes the apex, which
+                            // desynchronises the waves and costs the closed-form
+                            // schedule. Before the scale it was 60 against a 430
+                            // launch; 120 was tried first and was half the
+                            // launch's own horizontal component, so the upwind
+                            // temple threw almost straight up while the downwind
+                            // one threw wide and the two sides stopped reading as
+                            // one spray. Scaling it with the speed is what keeps
+                            // that ratio -- and so the lean -- exactly where it
+                            // was tuned.
     sideStepPx: 9,          // the pair of a wave, across the launch line...
     sideOutPx: 7,           // ...and along it, so they read as one arc at two
                             // phases rather than as two copies of one drop
@@ -203,9 +225,14 @@ export const rigConfig = {
                             // bend peaks at 3.1 px, which is 0.78 of a texel and
                             // invisible. This is the one place the drawing lies,
                             // and it lies the way the physics already points
-    tailMinS: 0.035,        // how far back in time the tail may reach. Without
-    tailMaxS: 0.16,         // the cap, a nearly-stopped drop grows a tail out of
-                            // the whole first half of its own flight
+    tailMinS: 0.027,        // how far back in time the tail may reach. Without
+    tailMaxS: 0.123,        // the cap, a nearly-stopped drop grows a tail out of
+                            // the whole first half of its own flight. These are
+                            // 0.035 and 0.16 over k: they are DURATIONS, and the
+                            // fraction of a life they guard has to survive the
+                            // time scale or the cap would start biting where it
+                            // never used to. Neither binds at present -- dt runs
+                            // 0.047 s at launch to 0.067 s at the top.
 
     // the specular, in bulb radii. ONE, not two: the old build drew two dots at
     // about one texel each, which is a sub-pixel detail on a sprite

@@ -3,7 +3,8 @@
 Read `RYAN.txt` first, then this. `CLAUDE.md` is how to work here; `DESIGN.md`
 is the argument for the look. This file is the system.
 
-Last consolidated after the phone pass, the counter and the sweat rewrite.
+Last consolidated after the phone pass, the counter, the sweat rewrite, the
+sweat's time scale and the home disc.
 Suite: **842 sim checks + the router harness** (`npm test`), build clean.
 
 ---
@@ -193,6 +194,40 @@ three thousand fragments against a million. Three rules that were each a bug:
   the plate is brightest — measured at scroll 0: mean 228,224,224 against bone
   paper at 239,237,230, and a white arrow on it is invisible. The die-cut rule
   does not bind because this is not a cut.
+- **BOTH discs print at that same hour**, and they are told apart by the mark on
+  them. Giving home a paler sky (a window onto the summary, which is printed at
+  19:00) was built and measured out: at depth 1,800 the disc is 2.73:1 against
+  its own white mark where 2,640 is 4.26:1, and the pale hour is the shallow end
+  of exactly the range `SKY_BTN_DEPTH` exists to avoid.
+
+### Two discs, and a way home from everywhere
+
+The corner is **always the nearest exit**: on a project sheet that is the back
+arrow with home one place inward, and on a deck card there is nothing to go back
+to, so home takes the corner. Home is hidden on card 01 itself — a control that
+leads where you already are is furniture.
+
+The chart's first cell has always linked to `/`, so "is home reachable" was
+technically true everywhere and useless: a stitch chart is read as a POSITION,
+not as an exit, and it is 19 px of hairline in the opposite corner from where a
+reader looks for a way out. Three of the four cards had no visible way to the
+start.
+
+- The mark is **skip-to-start**, not a house and not a numeral. "01" was tried —
+  the deck numbers its own cards, so it is the site's own language — but two
+  small figures need about twice the contrast a chunky glyph does, and at 56 px
+  it was mush. The number moved into the hover label (`01 · SUMMARY`).
+- The label **hangs below the disc**. Beside it was first and was measured out:
+  on a sheet the back arrow's label ran from x 104 straight under the home disc
+  at 108.
+- `data-cross-target` may only ever be on ONE element — `firstHole()` takes the
+  first in the document — so it stays on the back arrow. Home carries neither it
+  nor `data-cross-from`, because going home DISSOLVES rather than opens and a
+  start point would never be read.
+- A deck card's column now has a **floor** under its top padding (`--deck-top` vs
+  `--disc-clear`) so the lens cannot come up under the disc. `#s0` sets
+  `--disc-clear: 0` — card 01 is the one card the disc is not on, and its
+  composition keeps the air it had.
 
 ### A hole that is a SHAPE
 
@@ -457,9 +492,21 @@ they were **five texels long**.
   in angle separates their arcs, and then they are not carrying the same arch.
 - The escape is a **carry**, not a lean. Leaning rotates the launch, which
   changes `vy`, which changes the apex, which changes the life — and the
-  closed-form schedule is gone. Total 1.168 s, inside `face.overlay.durS` and
-  `limbs.panicDurS`; `lifeMaxS` is a guard that must not bind, and there is a
-  check.
+  closed-form schedule is gone. `lifeMaxS` is a guard that must not bind, and
+  there is a check.
+- **"Faster" is a time scale, not a speed knob.** Asked to make the spray come
+  out quicker, raising `speedPx` alone is wrong in both directions at once:
+  against the same gravity a faster launch throws the drops higher and wider,
+  and each one lives LONGER, so the waves come further apart. Under `v → kv`
+  with `g → k²g` the ballistic is exactly time-scaled — same curve, same points,
+  k times the speed, 1/k of the time. `vy²/2g` (the height of the throw) is
+  invariant; so is the tail's hook, because it is `½g·dt²` with `dt = tailPx/v`
+  and the two k's cancel. **k = 1.3**: every velocity in the block carries it
+  (`escapeCarryPx` included, or the escape lean drifts with the speed) and every
+  duration carries 1/k. Life 0.356 s → 0.274 s, a wave every 0.406 s → 0.324 s,
+  total **1.168 s → 0.921 s**, still inside `face.overlay.durS` (1.5) and
+  `limbs.panicDurS` (1.6). Arc height measured at 53.20 px before and 53.20 px
+  after, which is the check that the scale was exact.
 - The maths lives in `fx/sweatGeometry.js`, pure and headless, following
   `beamGeometry.js`. Its `sdDrop` is a twin of the GLSL, and the two were checked
   against each other on the GPU: **522 pixels, zero disagreement.**

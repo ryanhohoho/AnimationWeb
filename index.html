@@ -177,29 +177,68 @@
 
     <p class="t dim keys"><kbd>&larr;</kbd><kbd>&rarr;</kbd>&nbsp;navigate</p>
 
-    <!-- THE BACK ARROW. Only on a project sheet, pinned to the top-left corner
-         of the WINDOW, and it is a disc of sky with a white arrow on it.
+    <!-- ══ THE TWO DISCS ═══════════════════════════════════════════════════
+         Both are the same object: a small circle of sky, painted into its own
+         canvas by the scissored pass in deck.js, with a white mark drawn ON it.
 
-         It used to be an arrow-shaped HOLE, which was the more beautiful idea
-         and the wrong one: a hole is cut in #sheet at z1, under the type, so
-         every figure and paragraph the project sheet happened to lay over it
-         went straight on top of the control. No z-index can fix that -- the
-         pixels are in a layer that is beneath the words by construction. So the
-         sky is drawn into a small canvas up here instead (deck.js, the
-         scissored pass), and the arrow is drawn ON it rather than cut out of
-         it.
+         WHY THEY ARE NOT HOLES, which was the first design and the wrong one.
+         A hole is cut in #sheet at z1, UNDER the type -- so every figure and
+         paragraph a sheet happened to lay over the control went straight on top
+         of it, and no z-index can fix that: the pixels are in a layer that is
+         beneath the words by construction. Painting the sky up here instead
+         keeps the material argument (it is still a window onto somewhere else)
+         and puts the control where a control has to be.
 
          data-fixed says measure it in the viewport and mount it to the document
-         every frame; data-cross-target says the paper closes back into THIS,
-         not into whatever aperture happens to be largest. -->
-    <a class="backarrow" href="/projects" data-route data-back hidden aria-label="Back to projects">
-      <span class="backarrow-sky" data-sky data-fixed data-cross-target data-cross-from><canvas aria-hidden="true"></canvas></span>
-      <svg class="backarrow-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+         every frame. data-cross-target -- and it may only ever be on ONE
+         element, because firstHole() takes the first in the document -- says
+         the paper closes back into the back arrow when you arrive on a sheet.
+         Neither of those belongs on home: going home DISSOLVES rather than
+         opens (router.js), so a start point would never be read.
+
+         THE CORNER IS ALWAYS THE NEAREST EXIT. On a project sheet that is the
+         back arrow, and home stands one place inward; on a deck card there is
+         nothing to go back to, so home takes the corner itself. One rule, and
+         it is why home is never in the same absolute place twice and never has
+         to be: it is always the last disc in the row.
+
+         BOTH ARE AT THE SAME HOUR, and they are told apart by the mark on them
+         rather than by their colour. The first version gave home a paler sky --
+         it is a window onto the summary, which is printed at 19:00 -- and it
+         was measured and thrown away: at that depth the disc is 2.7:1 against
+         its own white mark, where the back arrow's is 4.2:1. The pale hour is
+         the shallow end of exactly the range where a sky disc stops being
+         readable at all, which is why SKY_BTN_DEPTH exists in the first place.
+         Two circles of the same night with different marks on them is what
+         every transport control in the world already is.
+
+         AND HOME'S MARK IS "SKIP TO THE START", not a house and not a numeral.
+         "01" was tried, because the deck numbers its own cards and the reader
+         has met the numbering by the time they can see this control -- but two
+         small figures need about twice the contrast a chunky glyph does, and at
+         56 px it was mush. The number moved into the label, where it has room.
+         A bar with a triangle against it is also the more precise statement:
+         this is a deck of four in a row, and home is the FIRST of them. -->
+    <a class="disc homedisc" href="/" data-route data-home aria-label="Summary — card 01">
+      <span class="disc-sky" data-sky data-fixed><canvas aria-hidden="true"></canvas></span>
+      <svg class="disc-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M5.1 4.6 V19.4" fill="none" stroke="currentColor" stroke-width="3.1"
+              stroke-linecap="round" />
+        <path d="M20.2 4.6 L9.4 12 L20.2 19.4 Z" fill="currentColor"
+              stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
+      </svg>
+      <span class="t disc-tag" aria-hidden="true">01&nbsp;·&nbsp;SUMMARY</span>
+    </a>
+
+    <a class="disc backarrow" href="/projects" data-route data-back hidden aria-label="Back to projects">
+      <span class="disc-sky" data-sky data-fixed data-cross-target data-cross-from><canvas aria-hidden="true"></canvas></span>
+      <svg class="disc-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M10 8.5 H14.5 A5.5 5.5 0 1 1 14.5 19.5 H10.5"
               fill="none" stroke="currentColor" stroke-width="3.1"
               stroke-linecap="round" stroke-linejoin="round" />
         <path d="M2.6 8.5 L10.4 3.6 V13.4 Z" fill="currentColor" />
       </svg>
+      <span class="t disc-tag" aria-hidden="true">03&nbsp;·&nbsp;PROJECTS</span>
     </a>
   </div>
 

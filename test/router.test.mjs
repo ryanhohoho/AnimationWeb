@@ -507,5 +507,86 @@ console.log("\n== the swap puts her back at a SIDE of the new window");
   check("project -> home", 4800, "/");
 }
 
+console.log("\n== a way home from every page but home");
+// THE CHART WAS ALWAYS A LINK AND THAT WAS NOT THE SAME THING. Its first cell
+// has always pointed at "/", so "is home reachable" was technically true on
+// every page and useless: a stitch chart is read as a POSITION, not as an exit,
+// and it is 19 px of hairline in the opposite corner from where a reader looks
+// for a way out. The disc is the exit. This section is about which pages carry
+// one, and about the one page that must not.
+{
+  const mk = (attrs) => ({
+    attrs, hidden: false, textContent: "",
+    classList: { toggle() {}, add() {}, remove() {} },
+    setAttribute(k, v) { this.attrs[k] = v; },
+    removeAttribute(k) { delete this.attrs[k]; }
+  });
+  const back = mk({ "data-back": "" });
+  const home = mk({ "data-home": "" });
+  const prev = mk({ "data-prev": "" });
+  const next = mk({ "data-next": "" });
+  const count = mk({ "data-count": "" });
+  const dots = [0, 1, 2, 3].map(() => mk({ "data-dot": "" }));
+  const chromeRoot = {
+    classList: { toggle() {} },
+    querySelector: (sel) =>
+      sel.includes("data-back") ? back :
+      sel.includes("data-home") ? home :
+      sel.includes("data-prev") ? prev :
+      sel.includes("data-next") ? next :
+      sel.includes("data-count") ? count : null,
+    querySelectorAll: (sel) => (sel.includes("data-dot") ? dots : [])
+  };
+  const byId = document.getElementById;
+  document.getElementById = (id) => (id === "chrome" ? chromeRoot : byId(id));
+  let onProject = false;
+  document.body.classList.toggle = (c, v) => { if (c === "on-project") onProject = !!v; };
+
+  let remeasures = 0;
+  const { createChrome } = await import("../src/site/chrome.js");
+  const { PROJECTS } = await import("../src/site/projects.js");
+  const chrome = createChrome({ scope: null, deck: { remeasure() { remeasures++; } } });
+
+  const walk = (routes) => routes.map((r) => {
+    chrome.setPage(r);
+    return { n: r.name, home: !home.hidden, back: !back.hidden, proj: onProject };
+  });
+  const seen = walk([
+    { name: "home" }, { name: "experience" }, { name: "projects" }, { name: "contact" },
+    { name: "project", project: PROJECTS[0] }, { name: "project", project: PROJECTS[1] }
+  ]);
+
+  ok(seen[0].home === false,
+    "card 01 carries no control back to itself — that is furniture, not navigation");
+  ok(seen.slice(1).every((s) => s.home),
+    `and every other page carries one (${seen.length - 1} of ${seen.length - 1})`);
+  const sheets = seen.filter((s) => s.n === "project");
+  ok(sheets.length === 2 && sheets.every((s) => s.back && s.home && s.proj),
+    "a project sheet carries BOTH discs: one step out, and all the way out");
+
+  // THE PAIRED CONTROL, and it is the whole point of adding a second disc. If
+  // home were tied to the same condition the back arrow is, the three middle
+  // cards would have exactly what they had before: no visible way to the start.
+  const middle = seen.filter((s) => s.n !== "home" && s.n !== "project");
+  ok(middle.length === 3 && middle.every((s) => s.home && !s.back),
+    "control: the back arrow is still sheets-only, so the three middle cards " +
+    "would have had nothing — they are the gap this closed");
+
+  // REVEAL, THEN MEASURE. A hidden element has no rectangle, so a disc that is
+  // unhidden without a remeasure behind it is a disc whose sky is never drawn.
+  const before = remeasures;
+  chrome.setPage({ name: "home" });          // home disc goes
+  const afterHide = remeasures;
+  chrome.setPage({ name: "experience" });    // ...and comes back
+  ok(afterHide > before && remeasures > afterHide,
+    `every change of visibility is followed by a remeasure (${remeasures - before} for 2 changes)`);
+  const settled = remeasures;
+  chrome.setPage({ name: "projects" });      // nothing about the discs changes
+  ok(remeasures === settled,
+    "control: a move that changes neither disc does not pay for a layout read");
+
+  document.getElementById = byId;
+}
+
 console.log(failures ? `\n${failures} FAILED` : "\nall clear");
 process.exit(failures ? 1 : 0);

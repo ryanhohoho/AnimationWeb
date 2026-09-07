@@ -2150,6 +2150,30 @@ section("panic sweat: three waves, both temples, and the same arc every time");
   ok(sch.life < cfg.lifeMaxS - 1e-9,
     `lifeMaxS does not bind (${sch.life.toFixed(4)} < ${cfg.lifeMaxS})`);
 
+  // ── THE ARCH IS THE DESIGN CONSTANT; THE CLOCK IS THE KNOB ───────────
+  // "Come out faster" was delivered as a TIME SCALE -- v -> k*v with
+  // g -> k*k*g -- which leaves vy*vy/2g, the height of the throw, exactly where
+  // it was tuned. 53 px off the temple of a character drawn at 150 px is about
+  // a third of her height: high enough to read as thrown, low enough to stay
+  // over her head rather than leave the frame.
+  const peakPx = (L[0].vy * L[0].vy) / (2 * cfg.gravityPx);
+  ok(Math.abs(peakPx - 53.2) < 1.5,
+    `the throw still peaks a third of her height above the temple (${peakPx.toFixed(1)} px)`);
+  ok(sch.step < 0.34, `and a wave now comes round every ${sch.step.toFixed(3)}s`);
+  ok(sch.total < 1.0, `so the whole spray is over inside a second (${sch.total.toFixed(2)}s)`);
+
+  // THE PAIRED CONTROL, and it is the reason the scale exists. Raise speedPx
+  // alone -- the obvious reading of "faster" -- and BOTH properties break at
+  // once: the arc gets half again as tall, and every drop lives longer, so the
+  // waves come FURTHER apart rather than closer. Faster in the hand, slower on
+  // the screen.
+  const naive = { ...cfg, speedPx: cfg.speedPx * 1.3 };
+  const nSch = sweatGeom.waveSchedule(naive);
+  const nPeak = Math.pow(sweatGeom.launchVY(naive), 2) / (2 * naive.gravityPx);
+  ok(nPeak > peakPx * 1.5 && nSch.step > sch.step,
+    `control: speed on its own throws them ${(nPeak / peakPx).toFixed(1)}x higher and ` +
+    `SLOWS the cadence to ${nSch.step.toFixed(3)}s`);
+
   // ── IT HAS TO FINISH INSIDE THE FACE IT IS DRAWN ON ──────────────────
   // This replaces "faster than the annoyance stars", which stopped being a
   // comparable quantity: annoy.waveGapS is a PERIOD between overlapping waves,
