@@ -26,10 +26,17 @@
 // picture out rather than by growing its own box.
 
 import { bySlug } from "./projects.js";
+import { reducedMotion } from "../utils/motion.js";
 
 // 220 ms. Long enough to read as a dissolve rather than a switch, short enough
 // that sweeping across three cards does not leave a trail of half-open holes.
-const TWEEN_MS = 220;
+//
+// ZERO for a reader who asked for less motion, and zero rather than "skip the
+// tween": the loop below reads this as a rate, so 0 makes the very first frame
+// land on the target and everything downstream -- the white plate, the mask,
+// the hole -- arrives together, exactly as it does at the end of a dissolve.
+// A separate branch would have been a second way for those three to disagree.
+const TWEEN_MS = reducedMotion ? 0 : 220;
 
 // WHICH CARD THE READER LEFT BY. A project sheet's back arrow sends them to the
 // list, and the paper should close back into the card they opened rather than
@@ -95,7 +102,11 @@ export function mountCards({ scope, deck }) {
     raf = 0;
     const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
     last = now;
-    const d = (TWEEN_MS ? 1000 / TWEEN_MS : 1) * dt;
+    // ZERO MEANS THE WHOLE RANGE IN ONE FRAME, and it has to be written outside
+    // the dt term to mean that. `(... : 1) * dt` was the fallback here and it is
+    // a rate of 1 per SECOND -- 0.016 of the range on a 60 Hz frame, so an
+    // "instant" tween took a second. amt runs 0..1, so 1 is the whole of it.
+    const d = TWEEN_MS ? (1000 / TWEEN_MS) * dt : 1;
     if (want > amt) amt = Math.min(want, amt + d);
     else amt = Math.max(want, amt - d);
     paint();
@@ -116,7 +127,9 @@ export function mountCards({ scope, deck }) {
     }
     active = rec;
     want = 1;
-    rec.vid?.play?.().catch(() => {});   // a blocked autoplay is not an error
+    // a blocked autoplay is not an error -- and neither is a reader who asked
+    // for less motion, who keeps the still that is already on the card
+    if (!reducedMotion) rec.vid?.play?.().catch(() => {});
     kick();
   };
   const close = (rec) => {

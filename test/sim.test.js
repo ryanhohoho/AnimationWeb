@@ -2422,6 +2422,48 @@ section("the tail is the path it flew, and gravity bends it");
 }
 
 // ---------------------------------------------------------------------------
+section("less motion means less motion, and it means the animal too");
+// utils/motion.js is one expression and five files trust it. The expression is
+// the thing tested here; what each file does with the answer is documented in
+// that file, and one of those decisions is big enough to say out loud:
+//
+//   main.js does not import the engine at all when this is true.
+//
+// She wanders, flees the pointer, flails and sprays -- an autonomously moving
+// object crossing the reading, which is the canonical thing that preference
+// exists to spare someone. Verified in a browser: with the flag forced on, the
+// network shows no request for src/mew.js and the page is a complete portfolio
+// without her, which is the same branch as the chunk failing to load.
+{
+  const priorWindow = globalThis.window;
+  const withMedia = async (matches, tag) => {
+    globalThis.window = { matchMedia: (q) => ({ matches: matches && /reduce/.test(q) }) };
+    // a query on the specifier is what gets a FRESH module: the flag is read
+    // once at import, on purpose (see the file), so a cached one would answer
+    // for whichever of these two ran first
+    const m = await import(`../src/utils/motion.js?probe=${tag}`);
+    return m.reducedMotion;
+  };
+
+  ok(await withMedia(true, "on") === true,
+    "a reader who asked for less motion is heard");
+  ok(await withMedia(false, "off") === false,
+    "control: and one who did not is not — the same expression, the other answer");
+
+  // ...and with no window at all -- which is every build step, every test that
+  // imports a site module, and any future prerender
+  globalThis.window = undefined;
+  const noWin = (await import("../src/utils/motion.js?probe=nowindow")).reducedMotion;
+  ok(noWin === false, "and with no window at all it is false rather than a crash");
+
+  // a window that predates matchMedia, which is the other way this line can
+  // throw: `window.matchMedia(...)` with no optional chaining is a TypeError
+  globalThis.window = {};
+  const noMM = (await import("../src/utils/motion.js?probe=nomm")).reducedMotion;
+  ok(noMM === false, "...and so is a window with no matchMedia on it");
+  globalThis.window = priorWindow;
+}
+
 console.log(`\n${checks - failures}/${checks} checks passed`);
 if (failures > 0) process.exit(1);
 console.log("ALL PASS");

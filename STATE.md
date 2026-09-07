@@ -200,6 +200,39 @@ three thousand fragments against a million. Three rules that were each a bug:
   its own white mark where 2,640 is 4.26:1, and the pale hour is the shallow end
   of exactly the range `SKY_BTN_DEPTH` exists to avoid.
 
+### Less motion means less motion, and it means the animal
+
+`utils/motion.js` is one expression that five files trust, read ONCE at import
+(a preference almost nobody flips mid-visit, and reacting to it would mean
+tearing down a WebGL context and a physics sim mid-session; a reload is the
+correct answer and it is what every other site does).
+
+| where | what stops |
+|---|---|
+| `router.js` | commits outright instead of opening the paper |
+| `site.css` | every entrance lands at its END state |
+| `deck.js` | the cloud loop holds on one frame — and with no tick, the deck only ever repaints for a real change |
+| `cards.js` | the hover video never starts, and the hole's crossfade snaps |
+| `main.js` | **the engine is never imported at all** |
+
+The last one is the call worth arguing. Mew wanders, flees the pointer, flails
+and sprays — an autonomously moving object crossing the reading, which is the
+canonical thing that preference exists to spare someone. A STILL mew was the
+alternative and is worse twice: a second behavioural mode threaded through the
+whole brain, and a character standing frozen in the middle of a page is a
+stranger picture than an honest absence. It is also the same branch as the
+engine chunk failing to load, which `main.js` already treats as a correct page.
+**Verified in the browser**: with the flag forced on, the network shows no
+request for `src/mew.js` and the page is a complete portfolio without her. The
+weather hold is verified by inspection only — the preview pane throttles its
+timers and its WebGL readback lags by several draws, so a pixel probe of the
+cloud clock does not survive contact with it.
+
+Found on the way: `cards.js` computed its tween rate as
+`(TWEEN_MS ? 1000/TWEEN_MS : 1) * dt`, so the zero case was a rate of **1 per
+second** — 0.016 of the range on a 60 Hz frame. An "instant" crossfade took a
+second. The zero has to sit outside the `dt` term to mean what it says.
+
 ### What a link to this site looks like
 
 `public/` is copied verbatim to the dist root. Three baked things live in it and

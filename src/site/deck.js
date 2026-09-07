@@ -26,6 +26,7 @@
 // already sitting at its document position, and it now costs one shader pass.
 
 import { createPress } from "./sky.js";
+import { reducedMotion } from "../utils/motion.js";
 import { createSheetPress } from "./pressgl.js";
 import { loadSkyClip, hasSkyClip } from "./skyclip.js";
 import { loadIconAtlas, hasIconAtlas, cellUV } from "./iconatlas.js";
@@ -46,6 +47,14 @@ const BUDGET_MS = 5;
 // the time of day is held. It is also the right meaning -- the control is a
 // window onto where you are GOING, and where you are going is the work.
 const SKY_BTN_DEPTH = 2640;
+// A HELD FRAME FOR A READER WHO ASKED FOR LESS MOTION. The weather is slow and
+// low-contrast, but it is continuous background movement behind every word on
+// the page, which is exactly the thing. Held, the sheet is a PRINT -- which is
+// what it is claiming to be anyway, so nothing about it reads as switched off.
+// Frame 0 rather than a chosen one: every frame of this clip is a sky, and
+// picking a favourite would be a constant nobody could defend.
+const STILL_F = 0;
+
 const LOOP_S = 16;        // seconds for one pass of the clip. The source is
                           // ten, so this is about 0.6x speed: weather, not
                           // time-lapse.
@@ -223,7 +232,8 @@ export function createDeck({ scope }) {
     // tab coming back — restarted the cloud loop from frame zero, and the sky
     // visibly jumped at exactly the moment a crossing was trying to hide that
     // nothing had happened. Wall-clock modulo the loop length cannot restart.
-    const f = (((now / 1000) / LOOP_S) * clip.frames) % clip.frames;
+    const f = reducedMotion ? STILL_F
+      : (((now / 1000) / LOOP_S) * clip.frames) % clip.frames;
     const sy = scrollOverride ?? window.scrollY;
 
     // ── THE CROSSING ─────────────────────────────────────────────────────
@@ -435,7 +445,10 @@ export function createDeck({ scope }) {
     // redraw even when nothing else moved.
     const f = t0 ? ((((now - t0) / 1000) / LOOP_S) * clip?.frames || 0) : 0;
     const moved = window.scrollY !== lastScroll;
-    const ticked = Math.abs(f - lastF) >= (clip ? clip.frames / (LOOP_S * FPS) : 1);
+    // ...and with the weather held there is no tick, so the deck only ever
+    // repaints for a real change: a scroll, a hover, a navigation
+    const ticked = !reducedMotion &&
+      Math.abs(f - lastF) >= (clip ? clip.frames / (LOOP_S * FPS) : 1);
 
     if (onScreen && (dirty || moved || ticked)) {
       if (paint(now)) dirty = false;

@@ -20,6 +20,7 @@
 // there is no mew on it. That is a correct page, not a broken one.
 
 import { createWorld } from "./engine/world.js";
+import { reducedMotion } from "./utils/motion.js";
 import { createScope } from "./utils/lifecycle.js";
 import { createDeck } from "./site/deck.js";
 import { createChrome } from "./site/chrome.js";
@@ -72,6 +73,16 @@ document.body.classList.remove("pre");
 // ── AND THE ANIMAL ARRIVES SECOND, which it now genuinely does ─────────────
 // Not awaited, not blocking, and its failure is caught: the sheet does not need
 // her to be a finished page.
-import("./mew.js")
-  .then((m) => m.bootMew({ world, deck, scope: siteScope }))
-  .catch((err) => console.error("[mew] engine failed to boot:", err));
+//
+// ...AND SHE DOES NOT ARRIVE AT ALL FOR A READER WHO ASKED FOR LESS MOTION.
+// She wanders, flees the pointer, flails and sprays: an autonomously moving
+// object crossing the reading, which is the canonical thing that preference
+// exists to spare someone. The argument, and the still-mew alternative that was
+// rejected, are in utils/motion.js. This is the same path as the chunk failing
+// to load, which the paragraph at the top of this file says is a correct page —
+// so it is a branch that was already tested by construction.
+if (!reducedMotion) {
+  import("./mew.js")
+    .then((m) => m.bootMew({ world, deck, scope: siteScope }))
+    .catch((err) => console.error("[mew] engine failed to boot:", err));
+}

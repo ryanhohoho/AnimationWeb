@@ -26,6 +26,7 @@
 // was going to run this frame regardless.
 
 import { PROJECTS, bySlug } from "./projects.js";
+import { reducedMotion } from "../utils/motion.js";
 import { renderProject, renderNotFound, renderDeckPage } from "./pages.js";
 
 
@@ -96,7 +97,9 @@ export function createRouter({ scope, deck, world, onPage }) {
   const metaDesc = document.querySelector('meta[name="description"]');
   const metaOgDesc = document.querySelector('meta[property="og:description"]');
   const metaOgTitle = document.querySelector('meta[property="og:title"]');
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // kept as a local name because the CSS block that finishes this job refers to
+  // it by name (`reduced` in site/router.js)
+  const reduced = reducedMotion;
 
   // The home markup ships in index.html so the first paint needs no JS. Capture
   // it once and it is the home template forever after -- one copy, no drift.
