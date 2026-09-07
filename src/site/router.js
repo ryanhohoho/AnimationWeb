@@ -69,8 +69,33 @@ export const RAMP = {
   404:        0
 };
 
+// ── AND WHAT EACH CARD IS, FOR THE PAGES NOBODY LANDS ON FIRST ──────────────
+// One document that swaps its own contents has ONE <meta name="description">,
+// written for the summary, and it stays that way through every navigation. That
+// is invisible to a reader and it is the whole of what a link preview and a
+// search result quote -- so a shared /projects/closet advertised the front page.
+//
+// Kept short and kept TRUE, which is the same rule the labels on the sheet
+// follow. A project sheet does not appear here at all: it already has a written
+// one-sentence summary in projects.js, read by anyone deciding which of three to
+// open, and a second one would be a second thing to keep in step.
+const DESC = {
+  home: "Ryan Ho — systems developer. Undocumented file formats, hardware " +
+        "automation, and a procedurally animated Mew loose on the page.",
+  experience: "Where Ryan Ho has worked: systems and tooling for the RCMP, and " +
+        "computer science and biology at UBC.",
+  projects: "Three pieces of work — a commissioned provisioning and engraving " +
+        "pipeline, an outfit engine with a learned judge, and a case study of a " +
+        "standardised attendance system.",
+  contact: "How to reach Ryan Ho.",
+  404: "Nothing was pulled here."
+};
+
 export function createRouter({ scope, deck, world, onPage }) {
   const doc = document.getElementById("doc");
+  const metaDesc = document.querySelector('meta[name="description"]');
+  const metaOgDesc = document.querySelector('meta[property="og:description"]');
+  const metaOgTitle = document.querySelector('meta[property="og:title"]');
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // The home markup ships in index.html so the first paint needs no JS. Capture
@@ -115,19 +140,26 @@ export function createRouter({ scope, deck, world, onPage }) {
   const rampOf = (r) => RAMP[r?.name] ?? 0;
 
   function render(route) {
-    if (route.name === "home") return { html: homeHTML, title: "RYAN HO", ink: null, inkA: null };
+    if (route.name === "home") {
+      return { html: homeHTML, title: "RYAN HO", desc: DESC.home, ink: null, inkA: null };
+    }
     if (DECK.includes(route.name)) {
-      return { html: renderDeckPage(route.name), title: `${route.name} — RYAN HO`, ink: null, inkA: null };
+      return { html: renderDeckPage(route.name), title: `${route.name} — RYAN HO`,
+               desc: DESC[route.name], ink: null, inkA: null };
     }
     if (route.name === "project") {
       return {
         html: renderProject(route.project),
         title: `${route.project.title} — RYAN HO`,
+        // the card's own sentence, already written and already read by anyone
+        // choosing between the three
+        desc: route.project.line,
         ink: route.project.ink,
         inkA: route.project.inkA
       };
     }
-    return { html: renderNotFound(route.path), title: "not printed — RYAN HO", ink: null };
+    return { html: renderNotFound(route.path), title: "not printed — RYAN HO",
+             desc: DESC[404], ink: null };
   }
 
   // which sheet is on screen right now. The return dissolve needs it to know
@@ -138,7 +170,7 @@ export function createRouter({ scope, deck, world, onPage }) {
 
   function commit(route, { carry = true } = {}) {
     current = route;
-    const { html, title, ink, inkA } = render(route);
+    const { html, title, desc, ink, inkA } = render(route);
     // ── READ THE OFFSET BEFORE THE SHEET CHANGES ─────────────────────────
     // How far down the OLD sheet the reader was is the number the plate winds
     // on by, and it is only knowable while the old sheet is still in the
@@ -155,6 +187,12 @@ export function createRouter({ scope, deck, world, onPage }) {
     const leftAt = window.scrollY;
     doc.innerHTML = html;
     document.title = title;
+    // the description travels with the title, or a shared inner page quotes the
+    // front page. og:title too: a scraper that runs JS reads the property, and
+    // one that does not gets the summary's, which is the right default
+    if (metaDesc && desc) metaDesc.setAttribute("content", desc);
+    if (metaOgDesc && desc) metaOgDesc.setAttribute("content", desc);
+    if (metaOgTitle) metaOgTitle.setAttribute("content", title);
     // ── THE READER LANDS AT THE TOP; THE PLATE WINDS ON ──────────────────
     // Keeping the reader's scroll offset made the sky continuous, but it also
     // dropped them into the middle of a sheet they had not read yet. The offset

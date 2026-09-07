@@ -117,6 +117,17 @@ node tools/bake_icons.mjs        # tools/icons/*  ->  icon-atlas.png, glyph-*.pn
                                  #                    src/site/iconatlas.js
 ```
 
+Tab mark and link card (only if the mark, the palette or the pitch changes):
+
+```bash
+node tools/bake_favicon.mjs      # -> public/favicon.svg, favicon-32.png, favicon-192.png
+node tools/bake_og.mjs           # -> public/og.png (1200x630), needs ffmpeg-static
+```
+
+Both cut from the same 32×32 grid in `tools/mewMark.mjs`, which is the drawing
+itself in text — edit it there and re-bake both. `public/` is copied verbatim to
+the dist root, which is why these paths are absolute in `index.html`.
+
 `src/site/iconatlas.js` is **generated — do not edit it.** Add a project by
 dropping its icon in `tools/icons/`, adding a cell to `CELLS` in the tool, and
 re-running it. The words live in `src/site/content.js`, in one file, because copy

@@ -200,6 +200,38 @@ three thousand fragments against a million. Three rules that were each a bug:
   its own white mark where 2,640 is 4.26:1, and the pale hour is the shallow end
   of exactly the range `SKY_BTN_DEPTH` exists to avoid.
 
+### What a link to this site looks like
+
+`public/` is copied verbatim to the dist root. Three baked things live in it and
+all three are cut from **one 32×32 grid in `tools/mewMark.mjs`** — the drawing
+itself, in text, editable with a keyboard and re-bakeable with no image library.
+
+- **The tab mark** (`bake_favicon.mjs`): her in bone on the cerulean, which is
+  the disc idiom and every window on the sheet, at 32 pixels. The `.svg` is the
+  same grid as merged horizontal runs — 213 cells become 71 segments — so it IS
+  the mark rather than a rendering of one. No 16 px cell: her tail is a dashed
+  line at that size, and any retina tab strip draws 32 device px anyway.
+- **The link card** (`bake_og.mjs`, 1200×630, ffmpeg + the site's own two font
+  cuts). **Set, not captured.** A shared link is the only part of this site most
+  people will ever see and it is seen ~500 px wide in somebody else's feed,
+  where a screenshot of the sheet is a grey rectangle: the halftone dissolves,
+  the display type is unreadable and the animal is 40 px of pink. So the card
+  draws the thesis instead — bone paper, a rectangle cut out of it, the one
+  unprinted thing standing in the hole. Order is the order of a print: ground,
+  cut, animal, type. Drawn any other way the window paints over her, which the
+  first bake did, and it looked exactly like a solid blue rectangle.
+- **The description travels with the route** (`DESC` in `router.js`; a project
+  sheet reuses its own written `line` from `projects.js`, so there is one copy
+  of that sentence). One document that swaps its own contents has ONE
+  `<meta description>`, written for the summary — invisible to a reader, and the
+  whole of what a preview or a search result quotes. A shared `/projects/closet`
+  advertised the front page.
+- **og:image is relative and that is a known compromise.** The spec wants
+  absolute; Slack, Discord, iMessage, LinkedIn and Twitter all resolve a
+  relative one. A wrong absolute origin is worse, and this repo has no deploy
+  config in it, so it does not know its own domain. When it does: make them
+  absolute and add a canonical link.
+
 ### Two discs, and a way home from everywhere
 
 The corner is **always the nearest exit**: on a project sheet that is the back

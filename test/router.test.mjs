@@ -21,6 +21,13 @@ const maxScroll = () => Math.max(0, HEIGHT[page] - VH);
 
 const HOME_MARK = "<!--home-->";
 
+const meta = () => ({ content: "", setAttribute(k, v) { if (k === "content") this.content = v; } });
+const META = {
+  'meta[name="description"]': meta(),
+  'meta[property="og:description"]': meta(),
+  'meta[property="og:title"]': meta()
+};
+
 const ap = {
   classList: { add() {}, remove() {} },
   closest: () => null,
@@ -58,7 +65,15 @@ globalThis.document = {
   // the point of the harness is the swap arithmetic, and leaving these empty
   // exercises the fallbacks (paper closes all the way, largest aperture wins)
   // rather than a hand-placed happy path.
-  querySelector: (sel) => (sel.includes("cross-target") ? null : ap),
+  // A HEAD, BECAUSE THE ROUTER WRITES INTO ONE. Every commit sets the page
+  // description and og:title, and the first version of this fixture handed
+  // those the aperture stub -- an object with no setAttribute, which throws
+  // INSIDE the try that keeps the page from going blank. The failure surfaced
+  // as a sky discontinuity two sections down, with nothing in it about a meta
+  // tag. The stubs are also what the description checks at the foot read.
+  querySelector: (sel) =>
+    (sel.startsWith("meta") ? (META[sel] || null)
+      : sel.includes("cross-target") ? null : ap),
   querySelectorAll: (sel) =>
     (sel.includes("band") || sel.includes("icon-ap") || sel.includes("cross-target")
       ? [] : [ap]),
@@ -505,6 +520,46 @@ console.log("\n== the swap puts her back at a SIDE of the new window");
 
   check("home -> project", 1200, "/projects/iclicker");
   check("project -> home", 4800, "/");
+}
+
+console.log("\n== what a shared link says it is");
+// ONE DOCUMENT THAT SWAPS ITS OWN CONTENTS HAS ONE <meta description>, written
+// for the summary, and without this it stays that way through every navigation.
+// Invisible to a reader, and the whole of what a link preview and a search
+// result quote: a shared /projects/closet advertised the front page.
+{
+  const desc = () => META['meta[name="description"]'].content;
+  const ogd = () => META['meta[property="og:description"]'].content;
+  const ogt = () => META['meta[property="og:title"]'].content;
+  const { PROJECTS } = await import("../src/site/projects.js");
+
+  scrollY = 0; coverAfter = frameNo + 20;
+  router.go("/"); pump(240);
+  const atHome = desc();
+  ok(atHome.length > 40, `the summary describes itself (${atHome.length} chars)`);
+
+  coverAfter = frameNo + 20;
+  router.go("/projects/closet"); pump(400);
+  const atSheet = desc();
+  ok(atSheet !== atHome, "a project sheet does not advertise the front page");
+  ok(atSheet === PROJECTS.find((p) => p.slug === "closet").line,
+    "...it quotes the card's own written sentence, so there is one copy of it");
+  ok(ogd() === atSheet && ogt() === document.title,
+    "and og:title / og:description travel with it");
+
+  coverAfter = frameNo + 20;
+  router.go("/experience"); pump(400);
+  ok(desc() !== atSheet && desc() !== atHome,
+    "every card has its own, not just the two ends");
+
+  // THE PAIRED CONTROL. Without the write in commit(), the description is
+  // whatever index.html shipped -- the same string on all four cards and all
+  // three sheets. Three routes producing three different strings is the check;
+  // one route producing one is what it looked like before.
+  coverAfter = frameNo + 20;
+  router.go("/"); pump(400);
+  ok(new Set([atHome, atSheet, desc()]).size === 2 && desc() === atHome,
+    "control: it is the ROUTE that decides, and coming back restores the summary's");
 }
 
 console.log("\n== a way home from every page but home");
