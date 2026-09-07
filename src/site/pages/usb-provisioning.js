@@ -87,6 +87,27 @@ const SESSION = [
   { t: "  - Watching... connected: 4  done: 4  failed: 0   [ESC stop] [R retry skipped]", c: "k", wait: 900 }
 ];
 
+// ── THE SAME RUN, FOR SOMEBODY WHO CANNOT WATCH IT ─────────────────────────
+// The transcript is CONTENT, not decoration: it is the whole evidence for this
+// project, and a tool whose entire surface is the text it leaves behind cannot
+// be shown any other way. But the played version is a moving fragment -- at any
+// instant it holds a few lines mid-type -- so a reader on a screen reader got a
+// meaningless snapshot of it.
+//
+// So the animated body is hidden from the accessibility tree and the COMPLETE
+// transcript is emitted beside it, off screen. One source (SESSION), both
+// forms, and the substitution rule holds in both because it is applied before
+// either is built.
+//
+// Not a live region: this is a recording, and a recording that announces itself
+// line by line for ninety seconds is worse than no recording at all.
+const PLAIN = SESSION
+  .map((l) => `${l.pre || ""}${String(l.t ?? "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ").replace(/&gt;/g, ">").replace(/&lt;/g, "<")
+    .replace(/&quot;/g, '"').replace(/&amp;/g, "&")}`)
+  .join("\n");
+
 export function html(p) {
   return renderSheet(p, {
     headline: "ten thousand drives,<br />and nobody typing<br /><em>a single serial</em>",
@@ -105,7 +126,15 @@ export function html(p) {
     body: `
     <div class="spec term-col">
       <p class="t dim">A&nbsp;REAL&nbsp;RUN.&nbsp;DEVICE&nbsp;IDENTIFIERS&nbsp;SUBSTITUTED.</p>
-      <div class="term" data-term data-noswipe><div data-lines></div></div>
+      <!-- tabindex, because on a narrow screen this is the one thing on the site
+           that scrolls sideways (.term gets overflow-x:auto under 860px) and a
+           scrollable region a keyboard cannot reach is a region a keyboard
+           cannot read. -->
+      <div class="term" data-term data-noswipe tabindex="0" role="group"
+           aria-label="Recorded session, playing. The full transcript follows.">
+        <div data-lines aria-hidden="true"></div>
+      </div>
+      <pre class="sr">${PLAIN.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre>
       <p class="t dim">FIG.&nbsp;1&nbsp;—&nbsp;FOUR&nbsp;DRIVES,&nbsp;ONE&nbsp;OPERATOR,&nbsp;NINETY&nbsp;SECONDS.</p>
     </div>`
   });

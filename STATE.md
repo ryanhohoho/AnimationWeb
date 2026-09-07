@@ -200,6 +200,46 @@ three thousand fragments against a million. Three rules that were each a bug:
   its own white mark where 2,640 is 4.26:1, and the pale hour is the shallow end
   of exactly the range `SKY_BTN_DEPTH` exists to avoid.
 
+### The transcript, for somebody who cannot watch it
+
+The played session on the USB sheet is **content, not decoration** — a tool
+whose whole surface is the text it leaves behind cannot be shown any other way.
+But at any instant the played version is a few lines mid-type, so a reader on a
+screen reader got a meaningless fragment of it.
+
+The animated body is `aria-hidden` now, and the complete 54-line transcript is
+emitted beside it in a `pre.sr`. One source (`SESSION`), both forms, and the
+substitution rule holds in both because it is applied before either is built —
+checked: only the four sequential placeholders appear in the alternative.
+
+Not a live region. This is a recording, and a recording that announces itself
+line by line for ninety seconds is worse than no recording at all.
+
+Two details that are easy to get wrong: `.sr` is written `white-space:nowrap`
+so a live region cannot reflow the page while it announces, and that same rule
+**collapses every newline** of a transcript into a space — `pre.sr` restores it,
+because the shape of a terminal session is half of what it says. And `.term`
+gets `overflow-x:auto` under 860 px, which makes it the one thing on the site
+that scrolls sideways; a scrollable region a keyboard cannot reach is a region a
+keyboard cannot read, so it carries `tabindex="0"` and a group label.
+
+### The engine chunk is three.js, and that was measured
+
+809 KB raw / 222 KB gzip, and none of it is waste worth chasing. Two things were
+tried and are recorded so they are not tried again:
+
+- **`three/src/Three.js` instead of the prebuilt module** (aliased so GLTFLoader
+  resolves to the same copy), on the theory that Rollup shakes hundreds of small
+  modules better than one 1.2 MB one. It came out **829 KB — 20 KB WORSE**.
+- **GLTFLoader is not the problem.** Stubbed out, the chunk is 764 KB: the
+  loader and every glTF extension it carries cost **45 KB raw / 13 KB gzip**.
+
+So the 764 KB is three.js itself, essentially unshaken, and the only lever left
+is not importing it — which is exactly what the reduced-motion path does, and
+what a page with no WebGL gets for free. The site chunk is 95 KB / 42 KB gzip
+and is interactive before the engine is asked for; this is a background
+download, not a blocking one.
+
 ### The keyboard, and where the ring goes
 
 Tab order in the chrome is now top-of-screen first: the sheet, then the two
