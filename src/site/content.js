@@ -56,14 +56,22 @@ export const EXPERIENCE = [
 ];
 
 // ── how to reach him ────────────────────────────────────────────────────────
-// PLACEHOLDER, AND SAID SO. The email is real, off the resume. The two handles
-// are not known to this repository and are marked `placeholder: true` so they
-// render as visibly unset rather than as a plausible guess — a portfolio that
-// links a wrong GitHub is worse than one that links none. Fill in `url` and
-// `shown` and delete the flag.
+// The email is real, off the resume.
+//
+// THE GITHUB IS NOT A GUESS. It is this repository's own `origin` -- the
+// portfolio's source is hosted on that account, which is precisely what a
+// portfolio's GitHub link is for -- and the profile was checked to exist (200)
+// rather than assumed. It was a placeholder while nothing in the repo knew it;
+// now something does. If it is the wrong account, put `placeholder: true` back
+// and the row returns to reading as visibly unset.
+//
+// THE LINKEDIN STILL IS A PLACEHOLDER, and stays one: nothing here knows it, and
+// a portfolio that links a wrong LinkedIn is worse than one that links none.
+// The flag is what makes the row render dashed and italic instead of as a
+// plausible-looking link. Fill in `url` and `shown` and delete it.
 export const SOCIALS = [
   { label: "Email",    shown: "ryanho499@gmail.com",  url: "mailto:ryanho499@gmail.com" },
-  { label: "GitHub",   shown: "github.com/…",         url: "https://github.com/",       placeholder: true },
+  { label: "GitHub",   shown: "github.com/ryanhohoho", url: "https://github.com/ryanhohoho" },
   { label: "LinkedIn", shown: "linkedin.com/in/…",    url: "https://linkedin.com/in/",  placeholder: true }
 ];
 
