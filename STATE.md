@@ -200,6 +200,40 @@ three thousand fragments against a million. Three rules that were each a bug:
   its own white mark where 2,640 is 4.26:1, and the pale hour is the shallow end
   of exactly the range `SKY_BTN_DEPTH` exists to avoid.
 
+### A shared link has to land, and a 404 has to be honest
+
+**The deep link problem.** This site has real routes, and a shared
+`/projects/closet` is a URL a static host has no file for — so every shared link
+and every refresh lands on the host's error page. Vite's dev server hides it
+completely: `appType: "spa"` serves `index.html` for anything it cannot find,
+which is exactly the rule production does not have.
+
+`vite.config.js` copies the built `index.html` to `dist/404.html` after the
+bundle (it cannot be a file in `public/` — it has to carry the built script and
+style tags with their hashes). GitHub Pages, Netlify, Cloudflare Pages and
+Render all serve `404.html` for an unknown path with the URL intact, so the
+router reads the real path and renders the real page. `vercel.json` is there for
+the one host with a real rewrite, and gets a real 200.
+
+What it does not fix: GitHub Pages serves that body with a **404 status**. The
+alternative is the redirect hack (`404.html` bounces to `/?p=…`), which trades a
+wrong status for a visible flash and a second request on every shared link.
+
+**And the 404 page itself was wrong in four ways**, found by looking at it:
+
+- `Math.max(0, onDeck)` clamped every off-deck route onto the first cell, so the
+  chart said the reader was standing on the summary and put `aria-current="page"`
+  on it. Off the deck nothing is worked — bare canvas, which is the correct
+  chart for "you are not in the piece" — and the legend reads `—— / 04`.
+- The mobile arrows sent "next" to `/experience`, a real page picked for no
+  reason. `step()` returns false off the deck, so both go inert.
+- `.keys` still read **← → navigate** for two keys that do nothing there.
+- The corner rules were keyed on `body.on-project`, so the 404 — the other page
+  built out of `.corner` clusters, and the one a reader is most likely to arrive
+  on cold — got none of them: the home disc sat on the words NOT PRINTED and
+  "← back to the sheet" ran through the key legend. They are keyed on `.plate`
+  now, because every `.plate` has the discs over its top-left corner.
+
 ### Less motion means less motion, and it means the animal
 
 `utils/motion.js` is one expression that five files trust, read ONCE at import

@@ -558,6 +558,10 @@ a { color:inherit; -webkit-tap-highlight-color:rgba(0,90,125,.14); }
 
 .keys { position:absolute; right:var(--pad); bottom:calc(var(--pad) * .8);
         color:var(--n4); display:flex; align-items:center; gap:.3rem; }
+/* step() returns false for a route that is not in the deck, so on a 404 the
+   arrow keys do nothing -- and a label naming a key that does nothing is the
+   one kind of label this sheet does not carry. */
+body.off-deck .keys { display:none; }
 .keys kbd { font:inherit; font-size:9px; border:1px solid var(--n4);
             border-radius:2px; padding:.1rem .3rem; }
 
@@ -645,19 +649,27 @@ body.on-project .homedisc { left:calc(var(--pad) + var(--ba) + var(--disc-gap));
 @media (hover:hover) { .disc:hover .disc-tag { opacity:1; transform:translateY(0); } }
 .disc:focus-visible .disc-tag { opacity:1; transform:translateY(0); }
 
-/* THE SHEET MAKES ROOM, TOP AND BOTTOM. A project sheet is a four-corner
-   composition and the chrome lives in two of those corners: the discs
-   top-left, the chart bottom-left. Indenting the sheet's own clusters is
-   cheaper and more honest than moving the controls somewhere they do not
-   belong -- and the bottom lift also gets the headline out from under the
-   paper fade that gives the chart its margin. Measured: the chart was sitting
-   on the word "serial". The top indent is TWO discs wide now, because there
-   are two of them there. */
+/* THE SHEET MAKES ROOM, TOP AND BOTTOM. A set sheet is a four-corner
+   composition and the chrome lives in three of those corners: the discs
+   top-left, the chart bottom-left, the key legend bottom-right. Indenting the
+   sheet's own clusters is cheaper and more honest than moving the controls
+   somewhere they do not belong -- and the bottom lift also gets the headline
+   out from under the paper fade that gives the chart its margin. Measured: the
+   chart was sitting on the word "serial".
+
+   IT IS KEYED ON THE PLATE, NOT ON THE ROUTE, and that is a bug already paid
+   for. These were `body.on-project` rules, so the 404 -- the other page built
+   out of .corner clusters, and the one a reader is most likely to arrive on
+   cold -- got none of it: the home disc sat on top of the words NOT PRINTED,
+   and "← back to the sheet" ran straight through the key legend. Every .plate
+   has the discs over its top-left corner, so every .plate indents. */
+.plate .corner.tl { padding-left:calc(var(--ba) + 1.1rem); }
+/* ...and a project sheet has TWO of them, because it can also go back one */
 body.on-project .plate .corner.tl {
   padding-left:calc(var(--ba) * 2 + var(--disc-gap) + 1.1rem);
 }
-body.on-project .plate .corner.bl,
-body.on-project .plate .corner.br { bottom:calc(var(--pad) + 2.9rem); }
+.plate .corner.bl,
+.plate .corner.br { bottom:calc(var(--pad) + 2.9rem); }
 
 /* ...AND SO DOES A DECK CARD, which never had to before: home is fixed over the
    top-left corner of every card now and the lens is the first thing in the

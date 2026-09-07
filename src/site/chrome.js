@@ -41,6 +41,12 @@ export function createChrome({ scope, deck }) {
     const isProject = proj >= 0;
 
     root.classList.toggle("on-project", isProject);
+    // OFF THE DECK is its own state and the page has to know: the sheet's
+    // bottom corners lift clear of the chrome, and the "← → navigate" legend
+    // goes, because step() returns false for a route that is not in DECK and a
+    // label that names a key which does nothing is the one kind of label this
+    // sheet does not carry.
+    document.body.classList.toggle("off-deck", onDeck < 0 && !isProject);
     // the sheets indent their top-left cluster to make room for the discs, and
     // home stands aside for the back arrow -- both are rules about the PAGE, so
     // the flag goes on the body and not on the chrome
@@ -53,22 +59,33 @@ export function createChrome({ scope, deck }) {
     // INSIDE card three, so card three is worked and doubled and the legend says
     // which of the three you are on. That is one sentence about one place,
     // rather than two numbers about two.
+    //
+    // ...AND A 404 IS NOT CARD 01. `Math.max(0, onDeck)` clamped every route
+    // that is not on the deck onto the first cell, so the chart said the reader
+    // was standing on the summary and put aria-current="page" on it. Every
+    // label on this sheet is true; a chart that names the wrong cell is the
+    // loudest possible exception. Off the deck, NOTHING is worked -- bare
+    // canvas, which is the correct chart for "you are not in the piece" -- and
+    // the legend says so in the same shape the number lives in.
+    const off = onDeck < 0 && !isProject;
     const here = Math.max(0, onDeck < 0 && isProject ? DECK.indexOf("projects") : onDeck);
     for (let k = 0; k < dots.length; k++) {
       const d = dots[k];
-      const cur = isProject ? k === DECK.indexOf("projects") : k === here;
+      const cur = !off && (isProject ? k === DECK.indexOf("projects") : k === here);
       d.classList.toggle("on", cur);
       // stitches behind you stay worked, in a faded thread: a chart fills in
-      d.classList.toggle("done", k < here && !cur);
+      d.classList.toggle("done", !off && k < here && !cur);
       // ...and the one you are standing INSIDE is doubled
       d.classList.toggle("deep", cur && isProject);
       if (cur) d.setAttribute("aria-current", "page");
       else d.removeAttribute("aria-current");
     }
     if (count) {
-      count.textContent = isProject
-        ? `${pad(here + 1)} / ${pad(DECK.length)} — ${pad(proj + 1)} of ${pad(PROJECTS.length)}`
-        : `${pad(here + 1)} / ${pad(DECK.length)}`;
+      count.textContent = off
+        ? `—— / ${pad(DECK.length)}`
+        : isProject
+          ? `${pad(here + 1)} / ${pad(DECK.length)} — ${pad(proj + 1)} of ${pad(PROJECTS.length)}`
+          : `${pad(here + 1)} / ${pad(DECK.length)}`;
     }
 
     // ── the mobile arrows ───────────────────────────────────────────────
@@ -76,6 +93,11 @@ export function createChrome({ scope, deck }) {
     // deck there. On a project sheet they step between projects and the back
     // arrow is what leaves, which is the same shape the keyboard has.
     const stepTo = (d) => {
+      // OFF THE DECK, THE DECK'S ARROWS HAVE NOTHING TO STEP. A 404 used to
+      // send "next" to /experience, which is a real page picked for no reason
+      // -- the reader is not at position zero of anything. Both go inert, and
+      // the way out is the home disc, the chart, and the sheet's own link.
+      if (off) return null;
       if (isProject) {
         const j = proj + d;
         return (j >= 0 && j < PROJECTS.length) ? `/projects/${PROJECTS[j].slug}` : null;

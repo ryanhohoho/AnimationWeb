@@ -640,6 +640,27 @@ console.log("\n== a way home from every page but home");
   ok(remeasures === settled,
     "control: a move that changes neither disc does not pay for a layout read");
 
+
+  // ── A 404 IS NOT CARD 01 ─────────────────────────────────────────────
+  // `Math.max(0, onDeck)` clamped every off-deck route onto the first cell, so
+  // the chart said the reader was standing on the summary and marked it
+  // aria-current="page". A chart that names the wrong cell is the loudest
+  // possible exception to "every label on this sheet is true".
+  chrome.setPage({ name: "404", path: "/nothing/was/pulled/here" });
+  ok(dots.every((d) => !d.attrs["aria-current"]),
+    "off the deck, no cell is the one you are standing on");
+  ok(count.textContent.startsWith("——"),
+    `and the legend says so rather than counting (${count.textContent})`);
+  ok(!home.hidden, "a 404 still carries the way home — it needs it most");
+  ok(!prev.attrs.href && !next.attrs.href,
+    "and the deck's arrows go inert: the reader is not at position zero of anything");
+
+  // THE PAIRED CONTROL. On a real deck card all four of those flip.
+  chrome.setPage({ name: "home" });
+  ok(dots.some((d) => d.attrs["aria-current"] === "page") &&
+     count.textContent.startsWith("01") && next.attrs.href,
+    "control: on card 01 the chart names a cell, the legend counts, and next steps");
+
   document.getElementById = byId;
 }
 
