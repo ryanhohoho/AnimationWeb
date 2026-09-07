@@ -609,7 +609,14 @@ body.on-project .homedisc { left:calc(var(--pad) + var(--ba) + var(--disc-gap));
    it, so the shader never has to know the control is round */
 .disc-sky {
   position:absolute; inset:0; border-radius:50%; overflow:hidden;
-  background:var(--ink);                 /* until the first paint lands */
+  /* UNTIL THE FIRST PAINT LANDS -- and on a machine with no WebGL at all, for
+     good. Verified by forcing both contexts to fail: the site is still a
+     complete portfolio (paper, type, cards, chart, navigation), every die-cut
+     reads as an empty cut with its hairline ring, and these two are the only
+     things that have to stand in for a picture. Cerulean rather than --ink,
+     because a near-black disc on bone is the one element on the page that
+     would not belong to it; this is the colour the disc becomes anyway. */
+  background:var(--ink-a);
   box-shadow:0 0 0 1px rgba(0,0,0,.14);
   pointer-events:none;
 }

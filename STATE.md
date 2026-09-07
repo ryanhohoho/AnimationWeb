@@ -200,6 +200,41 @@ three thousand fragments against a million. Three rules that were each a bug:
   its own white mark where 2,640 is 4.26:1, and the pale hour is the shallow end
   of exactly the range `SKY_BTN_DEPTH` exists to avoid.
 
+### The two compilations agree, byte for byte
+
+`pressgl.js` compiles ONE `BODY` template into both GLSL ES 300 es and GLSL ES
+1.00, and picks whichever context it gets. That dual compilation has always been
+the largest untested risk in the file — the two dialects differ in `in`/`out`
+vs `attribute`/`varying`, in `texture` vs `texture2D`, in whether `fwidth` is
+core, and in how a uniform array packs — and "it looked fine" was the whole of
+the evidence.
+
+**Checked, and they are identical.** Same page, same hand-driven frame
+(`debug.paint(3000, 0)` at 1280×800 on `/projects`), 640×400 of the sheet read
+back and hashed:
+
+| context | FNV-1a of RGB | sum of R | opaque px |
+|---|---|---|---|
+| WebGL 2 (300 es) | 3649933341 | 61125921 | 256000 |
+| WebGL 1 (1.00) | 3649933341 | 61125921 | 256000 |
+
+Not "close" — the same 256,000 pixels. To repeat it: force `let gl = null` at
+`pressgl.js:517` so the WebGL 1 path is taken, reload, and compare.
+
+### And with no WebGL at all it is still a portfolio
+
+Forced both contexts to fail. The site is complete and legible: bone paper, all
+the type, the cards with their artwork, the chart, the navigation, and Mew
+(three.js holds its own context — a machine with no WebGL anywhere loses her
+too, which is the same branch reduced motion takes). Every die-cut reads as an
+empty cut with its hairline ring, which is what a die-cut with nothing behind it
+should look like.
+
+The only things that have to stand in for a picture are the two discs, and their
+CSS fallback is **cerulean, not `--ink`** — a near-black disc on bone is the one
+element on the page that would not belong to it, and cerulean is the colour the
+disc becomes anyway.
+
 ### A shared link has to land, and a 404 has to be honest
 
 **The deep link problem.** This site has real routes, and a shared
