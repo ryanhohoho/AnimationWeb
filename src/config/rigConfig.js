@@ -587,11 +587,19 @@ export const rigConfig = {
     // a second and a half first.
     entryOffsetPx: 170,
     entrySpeed: 620,          // and this is the speed she comes in at
-    entryDelayS: 2.0,         // ...after waiting this long out of frame. She
+    entryDelayS: 0.45,        // ...after waiting this long out of frame. She
                               // used to ride in on the same frame the swap
                               // happened, which is before the paper has even
                               // finished closing; an entrance needs somewhere
-                              // to arrive into, so the sheet settles first
+                              // to arrive into, so the sheet settles first.
+                              // IT WAS 2.0, AND THAT IS A BUDGET, NOT A BEAT.
+                              // The requirement is that she is back in frame
+                              // within two seconds of the new page, and two
+                              // seconds of standing still off-screen spent the
+                              // whole of it before the entrance had started.
+                              // 0.45 is still a beat -- long enough that the
+                              // paper is closed and the sheet is settled -- and
+                              // it puts her first visible pixel at about 0.55 s
 
     // ── SHE PUSHES HARDER THE LONGER IT IS TAKING ──────────────────────
     // There is no stuck DETECTOR any more. A detector has to decide from the

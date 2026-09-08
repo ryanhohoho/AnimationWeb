@@ -105,6 +105,28 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     brain.path = null;
     brain.blocked.length = 0;
 
+    // ── AND THE FRIGHT IS OVER, WHICHEVER BRANCH RUNS ────────────────────
+    // This used to sit in the placement branch below, which is the branch that
+    // almost never runs. The crossing swaps at 0.8 s, she does not start moving
+    // until 0.66 s (a 0.50 s braked double-take, then a 0.16 s whip), so she is
+    // still on screen and the early return below takes it -- and the panic went
+    // on running on a page that had already replaced the one that scared her.
+    //
+    // What that cost, measured: 1.1 s more of panicThrust at 2600 px/s^2 with
+    // the leash off, carrying her ~1626 px out; then 1.2 s of `recover`
+    // coasting another ~450; then hover, which anchors her where she is. Nine
+    // seconds before she was back, and five of them were spent waiting.
+    //
+    // She is not running from anything any more. The press that opened is on a
+    // sheet that does not exist.
+    brain.panic = null;
+    brain.gazeAt = null;
+    brain.gazeFront = false;
+    brain.gazeWhip = false;
+    world.panicking = false;
+    brain.startleUntil = 0;
+    if (brain.state === "startle") { brain.state = "hover"; brain.stateTime = 0; }
+
     // ── AND A TELEPORT IS ONLY FREE WHILE NOBODY CAN SEE IT ──────────────
     // The paragraph above this handler says the swap is "the one moment in the
     // whole transition when the window is completely covered", and for a
@@ -148,15 +170,8 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     // first frame of every arrival.
     v2.copy(body.prevPos, body.pos);
 
-    // and she is arriving, not still fleeing: the sheet she was running from
-    // does not exist any more
-    brain.panic = null;
-    brain.gazeAt = null;
-    brain.gazeFront = false;
-    brain.gazeWhip = false;
-    world.panicking = false;
-    brain.path = null;
-    brain.blocked.length = 0;      // a different page; old failures mean nothing
+    // ...and she is arriving. The fright and the page's own state were cleared
+    // above, for both branches.
     brain.state = "seek";
     brain.seekMode = "offscreen";  // ...which aims at the middle of the window
     brain.stateTime = 0;
@@ -533,10 +548,23 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
   // pressed into the type and pushing at it, and needs something to happen to
   // her before it stops. The anchor is a PLACE, so it has to be a real one.
   //
-  // Off the page is left alone: the grid runs 500 px past the rim and those
-  // cells are open, so being outside is not a thing that needs correcting.
+  // ── AND THE ANCHOR IS INSIDE THE WINDOW, ALWAYS ─────────────────────────
+  // This used to say "off the page is left alone: the grid runs 500 px past the
+  // rim and those cells are open, so being outside is not a thing that needs
+  // correcting." The grid does not run past the rim any more -- path.outsideXPx
+  // and outsideYPx are both 0 -- and nearestOpenPoint hands an off-page point
+  // straight back, so hover orbited an anchor nobody could see and held her
+  // there for the whole four-second grace.
+  //
+  // That is the "sometimes she hovers just outside the window" report, and it
+  // is most of why coming back took so long. Clamping the anchor into the
+  // visible band makes the hover orbit fetch her by itself: no new state, no
+  // new mode, and it uses a force that is already running every frame.
   function settle() {
+    const vp = world.viewport, m = cfg.margin, sy = world.scroll.y;
     v2.copy(brain.anchor, pathfinder.nearestOpenPoint(body.pos, body.radius));
+    brain.anchor.x = clamp(brain.anchor.x, m, Math.max(m, vp.w - m));
+    brain.anchor.y = clamp(brain.anchor.y, sy + m, sy + Math.max(m, vp.h - m));
   }
 
   function steerArrive(point, speed, dt, arrive = true) {

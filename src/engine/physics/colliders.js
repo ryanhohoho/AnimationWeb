@@ -140,7 +140,24 @@ export function resolveCircleRect(body, rect, cfg, colliderVel = { x: 0, y: 0 },
 // `free` is the third case: she is RUNNING. A startled exit is supposed to leave
 // the frame — that is the whole shape of it — so the leash is off while it lasts.
 export function resolveEdges(body, bounds, cfg, free = false) {
-  const slackY = cfg.edgeSlackPx;
+  // ── THE Y BAND IS THE WINDOW, NOT THE DOCUMENT ───────────────────────────
+  // `bounds` is world.docSize, whose h is the full scrollHeight -- so the only
+  // vertical restoring force in the build sat at the top and bottom of the
+  // WHOLE PAGE. On a project sheet that is thousands of pixels away, and she
+  // could hang 1,500 px above or below the window with nothing pulling on her
+  // at all. bounds.w IS innerWidth, which is exactly why a sideways exit always
+  // self-corrected and a vertical one never did.
+  //
+  // The brain has always thought in these terms -- seekGoal aims at
+  // `scroll.y + vp.h * 0.45` and the offscreen test is `scroll.y ± 40` -- so
+  // this is the physics catching up with the behaviour, not a new idea.
+  const y0 = bounds.top || 0;
+  const yh = bounds.viewH || bounds.h;
+  // ...AND IT LETS GO WHEN SHE IS SUPPOSED TO LEAVE. `slackY` was
+  // `cfg.edgeSlackPx` unconditionally while only `slackX` answered to `free`,
+  // which nobody noticed because this band never fired. The moment it can, it
+  // would fight the startled exit that is meant to take her off the page.
+  const slackY = free ? cfg.edgeHardPx : cfg.edgeSlackPx;
   const hardY = cfg.edgeHardPx;
   const hardX = cfg.edgeHardXPx ?? hardY;
   const rampX = cfg.edgeRampXPx ?? Math.max(1, hardX - slackY);
@@ -163,7 +180,7 @@ export function resolveEdges(body, bounds, cfg, free = false) {
     return 0;
   };
   const ox = pull(body.pos.x, -slackX, bounds.w + slackX);   // slackX < 0 = inset
-  const oy = pull(body.pos.y, -slackY, bounds.h + slackY);
+  const oy = pull(body.pos.y, y0 - slackY, y0 + yh + slackY);
   if (ox || oy) {
     // the spring stiffens with distance, so drifting out is gentle and being
     // thrown out is firmly answered. Per axis, because the two no longer agree
@@ -177,7 +194,7 @@ export function resolveEdges(body, bounds, cfg, free = false) {
   // the point of no return
   const clampAxis = (p, lo, hi) => (p < lo ? lo : p > hi ? hi : p);
   const cx = clampAxis(body.pos.x, -hardX, bounds.w + hardX);
-  const cy = clampAxis(body.pos.y, -hardY, bounds.h + hardY);
+  const cy = clampAxis(body.pos.y, y0 - hardY, y0 + yh + hardY);
   if (cx !== body.pos.x) {
     const impact = Math.abs(body.vel.x);
     hit = { nx: Math.sign(cx - body.pos.x), ny: 0, impact };
@@ -317,7 +334,12 @@ export function resolveAll(body, world, cfg) {
   // ...and the sides let go when being off the page is the POINT rather than a
   // failure: a startled exit, and the beat she waits outside the frame before
   // entering a new sheet. The brain owns the flag; see its step().
-  const edgeHit = resolveEdges(body, world.docSize, cfg, !!world.offLeash);
+  // the band she is held in is the WINDOW: as wide as the page, as tall as the
+  // viewport, offset by wherever the reader has scrolled to
+  const edgeHit = resolveEdges(body, {
+    w: world.docSize.w, h: world.docSize.h,
+    top: world.scroll.y, viewH: world.viewport.h
+  }, cfg, !!world.offLeash);
   if (edgeHit && (!strongest || edgeHit.impact > strongest.impact)) strongest = edgeHit;
 
   // A BUMP IS NOW AN EVENT, NOT A CONSEQUENCE.

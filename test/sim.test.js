@@ -1807,6 +1807,68 @@ section("navigation: she stays on the screen");
       `not before it (${inAt?.toFixed(1)}s)`);
   }
 
+  // ── AND SHE IS BACK INSIDE TWO SECONDS, WHICHEVER BRANCH RAN ───────────
+  // The requirement, and it was nowhere near being met: the swap lands at
+  // 0.8 s with her still on screen, so the early return ran -- and it used to
+  // return BEFORE clearing the panic. The fright then went on running on a page
+  // that had already replaced the one that scared her: 1.1 s more of
+  // panicThrust at 2600 px/s^2 with the leash off (~1626 px out), then 1.2 s of
+  // `recover` coasting another ~450, then hover anchoring her exactly where she
+  // was. Nine seconds, five of them spent waiting.
+  const firstSeen = (startAt, panicFirst) => {
+    const w = createWorld({ headless: true, seed: 11 });
+    w.docSize = { w: 1400, h: 9000 };
+    w.viewport = { w: 1400, h: 900 };
+    w.poseState = { leanIn: 1 };
+    w.scroll.y = 0;
+    const b = createBody({ x: startAt.x, y: startAt.y, radius: 75, config: P });
+    const br = createBrain({ body: b, world: w, config: B,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    // the press opens and she bolts, exactly as a crossing does it
+    if (panicFirst) {
+      w.emit("crossing", { ms: 1600, from: { x: 700, y: 450 } });
+      for (let i = 0; i < 120 * 0.8; i++) {   // ...and the swap lands at 0.8 s
+        w.time += 1 / 120; br.step(1 / 120); resolveAll(b, w, P); b.step(1 / 120);
+      }
+    }
+    w.emit("recollect", { scrolledBy: 0 });
+    const seen = () => b.pos.x > -b.radius && b.pos.x < w.viewport.w + b.radius
+      && b.pos.y > w.scroll.y - b.radius
+      && b.pos.y < w.scroll.y + w.viewport.h + b.radius;
+    if (seen()) return 0;
+    for (let i = 0; i < 120 * 6; i++) {
+      w.time += 1 / 120; br.step(1 / 120); resolveAll(b, w, P); b.step(1 / 120);
+      if (seen()) return (i + 1) / 120;
+    }
+    return Infinity;
+  };
+
+  const afterCross = firstSeen({ x: 700, y: 450 }, true);
+  ok(afterCross <= 2.0,
+    `after a real crossing she is in frame in ${afterCross.toFixed(2)}s (budget 2.00)`);
+  const fromOff = firstSeen({ x: 700, y: 2600 }, false);
+  ok(fromOff <= 2.0,
+    `and from off the foot of the old sheet, ${fromOff.toFixed(2)}s`);
+
+  // THE PAIRED CONTROL. It is the panic surviving the swap that used to cost
+  // the seconds, so a panic that is still running has to be the thing that is
+  // measured as gone.
+  {
+    const w = createWorld({ headless: true, seed: 11 });
+    w.docSize = { w: 1400, h: 9000 };
+    w.viewport = { w: 1400, h: 900 };
+    w.poseState = { leanIn: 1 };
+    const b = createBody({ x: 700, y: 450, radius: 75, config: P });
+    const br = createBrain({ body: b, world: w, config: B,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    w.emit("crossing", { ms: 1600, from: { x: 700, y: 450 } });
+    br.step(1 / 120);
+    ok(w.panicking === true, "control: the press really does start a panic...");
+    w.emit("recollect", { scrolledBy: 0 });
+    ok(w.panicking === false && br.panic == null,
+      "...and the swap ends it, so nothing carries the flight onto the new sheet");
+  }
+
   // ── AND THE PAPER KNOWS WHETHER IT MAY SWAP YET ────────────────────────
   // The router holds the crossing open until she is gone rather than changing
   // the sheet under an animal standing still in the middle of it. It reads one
