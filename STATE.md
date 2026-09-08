@@ -447,6 +447,85 @@ load all cross at exactly the speed they always did. The deck already handles
 `cross.t > 1` — it stops easing and accelerates — so the extra frames were
 anticipated by the one part of this that did not change.
 
+### The tail: an episodic idle, and an otter in flight
+
+Two asks: the idle "doesn't sway like an animal's" — it was one sine, always
+running, which is why it read as a held curl — and in flight it should move the
+way a sea otter's tail moves through water.
+
+**Nothing here touches a particle.** That is the rule the file is built on: the
+strand FOLLOWS a posed rest curve, and a driving wave is what made it read as a
+rattlesnake the first time. A gesture poses the curve; the flight change is two
+passive coefficients and a second, slower sine on the same rotation.
+
+**The idle is episodic.** A scheduler picks one of four kinds — flick, sweep,
+curl, twitch — every 2.6–6.5 s, with every parameter drawn from a range so the
+same kind twice is never the same motion. Each modulates amplitude, rate, a
+tip-weighting, and a **rigid** bias angle applied exactly the way the aim is:
+one rotation of a smooth curve is still the same smooth curve, so it cannot
+kink. Measured in the browser over 60 s of real idle: **17 bursts, peak tip
+speed 28.6× the median.** Mostly quiet, then something happens.
+
+**In flight**, `dragNormal` 6.9 → 9.5 (the water) and `poseTipHz` 0.55 → 0.35
+(the freer, heavier end), both blended by `swimAlign`; plus a scull at a **third**
+of the body's undulation rate. The header's warning is about locking to
+`swimPhase` at the spine's own 1.1–2.8 Hz, which is the buzz; a third of that is
+0.37–0.95 Hz, under the sway's own band.
+
+#### Three things worth knowing before touching it again
+
+1. **The tail had its own RNG stream added, and it needed one.** `world.random`
+   is shared, so a draw from it changes what the BRAIN gets next. Caught by the
+   probe: neutralising every new knob should have reproduced the baseline and
+   did not, because the scheduler had shifted the stream and she flew a
+   different path. `world.seed` is exposed now for exactly this.
+2. **A gesture fires only in `hover`.** Speed and agitation alone let one start
+   in the lull between two hard turns — measured, the fast-turn probe's worst
+   joint angle went 54.1° → 68.9° from that alone. A cat plays with its tail
+   when it is doing nothing, and the brain already has a word for doing nothing.
+3. **A flick cannot be faster than the tail.** The tip's muscle runs at 0.55 Hz,
+   a time constant of ~0.29 s, so the original 0.35 s flick was over before the
+   strand answered a third of it. 0.55–0.78 s is the shortest gesture this tail
+   can actually perform.
+
+#### The gate
+
+Baselines re-taken on **today's** body — the ones from the start of the session
+were stale, because the crossing and limb work above changed the path she flies
+and the probes drive the real brain.
+
+| probe | metric | baseline | after | note |
+|---|---|---|---|---|
+| `tail_scroll` | verdict | PASS | **PASS** 6.05e-14 | tol 3.41e-3 |
+| `tail_probe` | folds | 0 | **0** | |
+| | maxBend | 74.0° | 74.0° | |
+| | selfMin | 0.59 | **0.69** | improved |
+| | jitter | 1.155 | 1.112 | |
+| `--calm` | folds | 0 | **0** | |
+| | **jitter** | 0.001 | **0.027** | the rattle number; gate ≤ 0.05 |
+| | maxBend | 22.1° | 22.3° | |
+| | selfMin | 1.95 | 1.95 | |
+| | **swing** | 1.01 | **2.04** | the liveliness, doubled |
+| `tail_turn` | folds | 0 | **0** | |
+| | maxBend | 54.1° | **74.0°** | see below |
+| | selfMin | 1.78 | 1.60 | |
+
+**Neutralise every new knob and the probes reproduce the baseline exactly** —
+turn 54.1/1.78, violent 0.59/1.155. That is the check that the addition is
+cleanly gated rather than entangled.
+
+The one number that got worse is `tail_turn`'s `maxBend`, 54.1° → 74.0°, and
+74.0 is not a coincidence: it is `maxBendTipDeg`, the curvature backstop. So the
+limiter now engages during an 842 °/s whip where it previously did not. It is
+doing its job rather than being defeated — folds stay 0 and `selfMin` is 1.60 —
+but the file's own comment wants that backstop "idle almost all of the time",
+and during a hard turn it no longer is. Backing the flight coefficients most of
+the way off buys 0.8° of it, which is not worth the feel. **Steady flight is
+nowhere near it: held at full speed for six seconds, the worst joint bend is
+23°.**
+
+**Whether it looks like an otter is not a thing these numbers can say.**
+
 ### 320 px, where the sheet was 447 px wide
 
 Checked every route at the narrowest phone still in use. One route failed, and

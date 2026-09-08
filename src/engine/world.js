@@ -29,6 +29,12 @@ export function createWorld({ seed = 1337, headless = false } = {}) {
     poseState: { leanIn: 0 },
     time: 0,
     random: mulberry32(seed),
+    // ...and the seed itself, so a subsystem that needs randomness of its own
+    // can derive a PRIVATE stream instead of drawing from this one. `random` is
+    // shared, so every draw from it changes what the next consumer sees — which
+    // is fine until two of them want to be compared independently. The tail's
+    // gesture scheduler is the first that did (engine/pose/tailChain.js).
+    seed,
 
     // -- event bus -------------------------------------------------------
     // on() RETURNS AN UNSUBSCRIBE, and there is an off(). this used to be

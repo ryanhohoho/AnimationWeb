@@ -57,7 +57,7 @@
 //   - the teleport guard and the persistent bone-quat smoothing
 
 import * as THREE from "three";
-import { clamp } from "../../utils/math.js";
+import { clamp, expDamp, mulberry32 } from "../../utils/math.js";
 
 const D2R = Math.PI / 180;
 
@@ -72,14 +72,39 @@ export function createTailChain({ config, world }) {
   let w = null;           // inverse mass per particle (0 = pinned)
   let restLen = null;     // world-space rest length per segment
   let poseRate = null;    // muscle rate per segment, rad/s
+  let poseRateFlight = null;  // ...and the same profile with the flight tip rate
   let maxBend = null;     // curvature limit per interior joint, radians
   let ramp = null;        // sway amplitude profile along the chain
+  let rampSq = null;      // ...squared, for a tip-weighted gesture
   let restDir = null;     // posed rest direction per segment, world space
   let smoothBuf = null;   // scratch for the target-smoothing pass
   let prevDir = null;     // last frame's target, for the lag
   let lagInit = false;
   let aimAngle = 0;       // how far the rest curve is turned to trail the motion
   let acc = 0;
+  // ── THE GESTURE, AND WHY ITS STATE LIVES HERE ────────────────────────────
+  // The poser calls rig.resetToRest() before every layer, every frame, so a
+  // pose layer may not keep anything on a bone. Same reason `smoothed[]` is a
+  // closure array; same reason this is.
+  let gest = null;          // { k, t, dur, amp, hz, bias, tip, arc }
+  let nextGestAt = 0;
+  let calmFor = 0;      // how long she has been calm, for the dwell above
+  let flightK = 0;          // swimAlign, smoothed — blends the passive coeffs
+  // ── ITS OWN RANDOM STREAM, AND THIS IS NOT FUSSINESS ─────────────────────
+  // `world.random` is one seeded sequence shared by everything that draws from
+  // it, so a tail that pulls a number changes what the BRAIN gets next. Caught
+  // by the probe: neutralising all three flight knobs should have returned the
+  // violent scenario to its exact pre-change numbers and did not -- selfMin
+  // read 0.59 against a 0.95 baseline, because the scheduler had shifted the
+  // stream and she flew a different path. The tail was not making the tail
+  // worse; it was making a different run.
+  //
+  // A private stream, seeded off the world's own, keeps it deterministic AND
+  // keeps every A/B comparison in the probes honest.
+  const rnd = mulberry32(((world.seed ?? 1) * 2654435761) >>> 0);
+  const GK = Object.keys(cfg.gestures || {});
+  const GW = GK.map((k) => cfg.gestures[k].w || 1);
+  const GWSUM = GW.reduce((a, b) => a + b, 0);
   let initialized = false;
   let rootRestInv = null;
   let smoothed = null;
@@ -109,6 +134,7 @@ export function createTailChain({ config, world }) {
   const _tmp = new THREE.Vector3();
   const _sway = new THREE.Quaternion();
   const _aimQ = new THREE.Quaternion();
+  const _biasQ = new THREE.Quaternion();   // the gesture's rigid lean
   const _chord = new THREE.Vector3();
 
   const gx = (a, i) => a[i * 3];
@@ -124,8 +150,10 @@ export function createTailChain({ config, world }) {
     w = new Float64Array(n);
     restLen = new Float64Array(n - 1);
     poseRate = new Float64Array(n - 1);
+    poseRateFlight = new Float64Array(n - 1);
     maxBend = new Float64Array(Math.max(n - 2, 0));
     ramp = new Float64Array(n - 1);
+    rampSq = new Float64Array(n - 1);
     restDir = new Float64Array((n - 1) * 3);
     smoothBuf = new Float64Array((n - 1) * 3);
     prevDir = new Float64Array((n - 1) * 3);
@@ -159,9 +187,18 @@ export function createTailChain({ config, world }) {
       const hz = cfg.poseBaseHz
         + (cfg.poseTipHz - cfg.poseBaseHz) * Math.pow(t, cfg.poseCurve);
       poseRate[i] = 2 * Math.PI * Math.max(hz, 1e-3);
+      // ...and the same profile with the flight tip rate, so `substep` can lerp
+      // between the two by flightK instead of recomputing a pow per segment
+      const hzF = cfg.poseBaseHz + (cfg.poseTipHzFlight - cfg.poseBaseHz) * Math.pow(t, cfg.poseCurve);
+      poseRateFlight[i] = 2 * Math.PI * Math.max(hzF, 1e-3);
       // the sway is a muscle, so it has to start at the root and grow: a flat
       // profile swings the whole tail from the socket like a windscreen wiper
       ramp[i] = Math.pow(t, cfg.swayRamp);
+    // squared, for a tip-weighted gesture. Precomputed rather than powed per
+    // segment per frame, and it is the same profile applied twice — so a flick
+    // moves the last third and leaves the root alone without the ramp exponent
+    // itself having to change, which would mean rebuilding this array.
+    rampSq[i] = ramp[i] * ramp[i];
     }
     for (let i = 0; i < n - 2; i++) {
       const t = n > 3 ? i / (n - 3) : 0;
@@ -227,10 +264,86 @@ export function createTailChain({ config, world }) {
     // travelling wave did) beats the tail at the spine's 1.1-2.8 Hz, which is
     // precisely the buzz all of this exists to remove.
     const speedN = clamp(speed / cfg.swaySpeedFull, 0, 1);
-    swayPhase += (cfg.swayHz + cfg.swayPerSpeed * speedN) * 2 * Math.PI * dt;
+
+    // ── THE GESTURE ────────────────────────────────────────────────────────
+    // A cat at rest is mostly still and then DOES something. The sway on its
+    // own is a metronome, which is why it read as a held curl; this makes some
+    // of the minute an event and leaves the rest of it alone.
+    //
+    // It modulates the sway. It does not add an oscillator and it does not
+    // touch a particle — the whole file rests on the strand FOLLOWING a posed
+    // rest curve, and a forcing term is what made this a rattlesnake once
+    // already.
+    let gAmp = 1, gHz = 0, gBias = 0, gTip = 0;
+    // ── AND SHE HAS TO BE IDLING, NOT MERELY SLOW ────────────────────────
+    // Speed and agitation alone let a gesture fire between two hard turns:
+    // measured on the fast-turn probe, the worst joint angle went 54.1 -> 68.9
+    // degrees, entirely from gestures starting in the moment a manoeuvre passes
+    // through slow. A cat plays with its tail when it is doing nothing, and the
+    // brain already has a word for doing nothing.
+    const calm = brain.state === "hover"
+      && speedN < cfg.gestureCalmSpeed && brain.agitation < cfg.gestureCalmAgit;
+    // AND IT HAS TO HAVE BEEN CALM FOR A WHILE. The instantaneous test fires in
+    // the lull between two hard turns, which is not a cat playing.
+    calmFor = calm ? calmFor + dt : 0;
+    const settled = calmFor >= cfg.gestureCalmDwellS;
+    if (!gest && settled && world.time >= nextGestAt && GK.length) {
+      // weighted pick, then every parameter drawn from its own range: the same
+      // kind twice is never the same motion, which is what keeps it procedural
+      // rather than four clips on a loop
+      let r = rnd() * GWSUM, k = GK[0];
+      for (let i = 0; i < GK.length; i++) { r -= GW[i]; if (r <= 0) { k = GK[i]; break; } }
+      const g = cfg.gestures[k];
+      const pick = (rng) => rng[0] + (rng[1] - rng[0]) * rnd();
+      gest = {
+        k, t: 0, dur: pick(g.dur), amp: pick(g.amp), hz: pick(g.hz),
+        // which way it leans is a coin flip, or every curl on the site curls
+        // the same way
+        bias: pick(g.bias) * D2R * (rnd() < 0.5 ? -1 : 1),
+        tip: g.tip, arc: g.arc
+      };
+    }
+    if (gest) {
+      gest.t += dt;
+      const u = gest.t / gest.dur;
+      if (u >= 1 || !calm) {
+        gest = null;
+        nextGestAt = world.time + cfg.gestureGapMinS
+          + (cfg.gestureGapMaxS - cfg.gestureGapMinS) * rnd();
+      } else {
+        // RAISED COSINE IN, EXPONENTIAL OUT. The target must never step:
+        // targetLagRate and targetSmooth sit downstream of this and would smear
+        // a step into a whip rather than remove it.
+        const fi = cfg.gestureFadeIn, fo = cfg.gestureFadeOut;
+        const env = u < fi ? 0.5 - 0.5 * Math.cos(Math.PI * (u / fi))
+          : u > 1 - fo ? Math.exp(-3.2 * ((u - (1 - fo)) / fo))
+            : 1;
+        gAmp = 1 + (gest.amp - 1) * env;
+        gHz = gest.hz * env;
+        gTip = gest.tip * env;
+        // `arc` traces one slow there-and-back over the gesture; otherwise the
+        // bias is simply held for its length
+        gBias = gest.bias * env * (gest.arc ? Math.sin(Math.PI * u) : 1);
+      }
+    }
+
+    swayPhase += (cfg.swayHz + cfg.swayPerSpeed * speedN + gHz) * 2 * Math.PI * dt;
     const amp = cfg.swayDeg * D2R
       * (cfg.swayIdle + (1 - cfg.swayIdle) * speedN)
-      * (1 + brain.agitation * cfg.swayPerAgitation);
+      * (1 + brain.agitation * cfg.swayPerAgitation)
+      * gAmp;
+
+    // ── THE SCULL ──────────────────────────────────────────────────────────
+    // In flight the tail should go through the air the way an otter's goes
+    // through water: one slow push, not a streamer. A SECOND, SLOWER sine
+    // added to the same rotation the sway already applies — locked to the
+    // body's undulation so it is part of the same animal, at a third of its
+    // rate. The header's warning is about locking to swimPhase at the spine's
+    // own 1.1-2.8 Hz, which is the buzz; a third of that is 0.37-0.95 Hz,
+    // under the sway's own band.
+    flightK = expDamp(flightK, ctx.shared.swimAlign || 0, 6, dt);
+    const scull = cfg.scullDeg * D2R * flightK;
+    const scullPh = (ctx.shared.swimPhase || 0) * cfg.scullRatio;
 
     // ---- 0. AIM THE WHOLE CURVE BEHIND THE MOTION ------------------------
     // the tail has to trail mew in flight instead of sitting off to one side
@@ -275,6 +388,10 @@ export function createTailChain({ config, world }) {
     aimAngle += err * (1 - Math.exp(-cfg.aimRate * Math.max(dt, 1e-6)));
     const aiming = Math.abs(aimAngle) > 1e-4;
     if (aiming) _aimQ.setFromAxisAngle(_zAxis, aimAngle);
+    // the gesture's bias is applied the same way the aim is, and for the same
+    // reason: ONE rigid rotation of a smooth curve is still exactly the same
+    // smooth curve, so there is no mechanism by which it can develop a kink
+    if (gBias !== 0) _biasQ.setFromAxisAngle(_zAxis, gBias);
 
     // ---- 1. the posed rest curve -----------------------------------------
     // SWAY AXES: rotating about a FIXED body axis is wrong -- it tilts a
@@ -288,10 +405,20 @@ export function createTailChain({ config, world }) {
     for (let i = 0; i < n - 1; i++) {
       _d.copy(dirs[i]).applyQuaternion(_rootQ);
       if (aiming) _d.applyQuaternion(_aimQ);
-      if (amp > 1e-4) {
+      if (gBias !== 0) _d.applyQuaternion(_biasQ);
+      if (amp > 1e-4 || scull > 1e-4) {
         const ph = swayPhase - i * cfg.swayLag;
-        const a = amp * ramp[i];
-        _sway.setFromAxisAngle(_zAxis, Math.sin(ph) * a);
+        // the tip weighting is the SAME profile applied twice, blended in — so
+        // a flick moves the last third and leaves the root alone without the
+        // ramp exponent having to change under it
+        const prof = ramp[i] + (rampSq[i] - ramp[i]) * gTip;
+        const a = amp * prof;
+        // THE SCULL IS PLANAR AND THE SWAY IS NOT. Both go on the screen
+        // normal, so they add to one angle; only the sway gets the quarter-
+        // phase depth below, because an otter's push is one plane and a helix
+        // in it would be the swirl reading as a corkscrew.
+        const sc = scull * prof * Math.sin(scullPh - i * cfg.scullLag);
+        _sway.setFromAxisAngle(_zAxis, Math.sin(ph) * a + sc);
         _d.applyQuaternion(_sway);
         _side.crossVectors(_d, _zAxis);
         if (_side.lengthSq() > 1e-8) {
@@ -390,9 +517,14 @@ export function createTailChain({ config, world }) {
       // times its tangential one. this is the only damping in the solver.
       _v.set(vel[j], vel[j + 1], vel[j + 2]);
       const vt = _v.dot(_seg);
-      ax -= cfg.dragTangential * vt * _seg.x + cfg.dragNormal * (_v.x - vt * _seg.x);
-      ay -= cfg.dragTangential * vt * _seg.y + cfg.dragNormal * (_v.y - vt * _seg.y);
-      az -= cfg.dragTangential * vt * _seg.z + cfg.dragNormal * (_v.z - vt * _seg.z);
+      // ...and in flight there is MORE of it across the strand. That is the
+      // water: dragNormal 6.9 -> 9.5, blended by swimAlign. A passive
+      // coefficient, so it changes how the tail answers what is already
+      // happening to it and never pushes on it.
+      const dN = cfg.dragNormal + (cfg.dragNormalFlight - cfg.dragNormal) * flightK;
+      ax -= cfg.dragTangential * vt * _seg.x + dN * (_v.x - vt * _seg.x);
+      ay -= cfg.dragTangential * vt * _seg.y + dN * (_v.y - vt * _seg.y);
+      az -= cfg.dragTangential * vt * _seg.z + dN * (_v.z - vt * _seg.z);
 
       // follow-through against the body's (smoothed) acceleration, stronger
       // toward the tip
@@ -454,7 +586,12 @@ export function createTailChain({ config, world }) {
       // (a) MUSCLE: blend toward the posed rest direction. exponential, so the
       // fraction is exactly timestep independent -- half the substeps gives the
       // same tail, which the fixed "correct 55% per pass" limits never did.
-      const k = 1 - Math.exp(-poseRate[i - 1] * h);
+      // THE MUSCLE LETS GO IN FLIGHT. poseRateFlight is the same profile with a
+      // freer tip (0.55 Hz -> 0.35), so the last third trails instead of
+      // holding a pose — the "density" half of the otter. Lerped per segment
+      // rather than recomputed, because the pow is done once in rebuild().
+      const pr = poseRate[i - 1] + (poseRateFlight[i - 1] - poseRate[i - 1]) * flightK;
+      const k = 1 - Math.exp(-pr * h);
       dx += (restDir[a] - dx) * k;
       dy += (restDir[a + 1] - dy) * k;
       dz += (restDir[a + 2] - dz) * k;

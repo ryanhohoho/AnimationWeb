@@ -1266,6 +1266,78 @@ export const rigConfig = {
     swaySwirl: 0.45,          // vertical component, a quarter phase behind the
                               // lateral one, so the tip traces a shallow ellipse
 
+    // --- and the idle is EPISODIC, which is what makes it an animal --------
+    // The sway above is a metronome: one sine, always running, identical every
+    // second of every minute. That is why the tail read as "held in a curl" --
+    // nothing about it was ever an EVENT. A cat at rest is mostly still and
+    // then does something: a tip flick, a slow sweep, a curl, three fast beats.
+    //
+    // A gesture is not a keyframe and not a second oscillator. It modulates the
+    // sway that is already there -- amplitude, rate, how far toward the tip it
+    // is weighted, and a rigid bias angle applied the way the aim is -- for a
+    // second or two, and then it is gone. Every parameter is drawn from a range
+    // per gesture, so the same kind twice is never the same motion.
+    //
+    // NOTHING HERE TOUCHES A PARTICLE. That is the rule this whole file is
+    // built on: the strand follows a posed rest curve, and a gesture poses the
+    // curve. A forcing term is what made it a rattlesnake the first time.
+    gestureGapMinS: 2.6,      // quiet between gestures...
+    gestureGapMaxS: 6.5,      // ...drawn uniformly in this range
+    gestureCalmSpeed: 0.25,   // only below this fraction of full speed...
+    gestureCalmAgit: 0.35,    // ...and this calm. A frightened tail is not playing
+    gestureCalmDwellS: 1.2,   // ...and it has to have BEEN calm this long. An
+                              // instantaneous test fires in the lull between two
+                              // hard turns, which is not a cat playing, it is a
+                              // cat mid-sprint doing something odd with its
+                              // tail. Measured: without the dwell, the violent
+                              // probe's closest self-approach went 0.95 -> 0.69
+                              // segments, entirely from gestures firing in gaps
+                              // that were never really calm
+    gestureFadeIn: 0.18,      // fraction of the gesture eased in (raised cosine)
+    gestureFadeOut: 0.35,     // ...and out. The target must never STEP:
+                              // targetLagRate and targetSmooth sit downstream
+                              // and would smear a step into a whip rather than
+                              // remove it
+    gestures: {
+      // amp:  multiplier on the sway's amplitude
+      // hz:   added to its rate
+      // bias: rigid extra rotation about the screen normal, degrees. Rigid is
+      //       the point -- one rotation applied to every segment is still the
+      //       same smooth curve, so it cannot develop a kink
+      // tip:  0..1, how far the amplitude profile is squared toward the tip
+      // arc:  1 = the bias traces one slow there-and-back; 0 = it is held
+      // A FLICK CANNOT BE FASTER THAN THE TAIL. The tip's own muscle runs at
+      // poseTipHz 0.55, a time constant of about 0.29 s, so a 0.35 s gesture is
+      // over before the strand has answered a third of it -- measured, the tip
+      // barely moved. A real cat's flick is faster than this; this tail is
+      // deliberately slow at the tip, and that inertia is the whole design.
+      flick:  { w: 3, dur: [0.55, 0.78], amp: [3.0, 3.8],  hz: [1.4, 2.0],    bias: [0, 0],   tip: 0.85, arc: 0 },
+      sweep:  { w: 3, dur: [1.9, 2.6],   amp: [2.2, 2.7],  hz: [-0.12, -0.04], bias: [6, 10],  tip: 0.20, arc: 1 },
+      curl:   { w: 2, dur: [1.4, 1.9],   amp: [0.45, 0.60], hz: [-0.14, -0.06], bias: [11, 16], tip: 0.35, arc: 0 },
+      twitch: { w: 2, dur: [0.45, 0.60], amp: [0.80, 1.00], hz: [2.6, 3.2],    bias: [0, 0],   tip: 0.90, arc: 0 }
+    },
+
+    // --- and in flight it is an OTTER, not a banner ------------------------
+    // Asked for: a tail that goes through the air the way a sea otter's goes
+    // through water -- resistance, density, a slow scull rather than a streamer
+    // snapping along behind her.
+    //
+    // Two of these are PASSIVE COEFFICIENTS blended in by swimAlign, which
+    // bodyPose already computes and shares. More normal drag is literally more
+    // water; a freer tip is a heavier, looser end. Neither adds a force.
+    dragNormalFlight: 9.5,    // up from 6.9 at full flight: the resistance
+    poseTipHzFlight: 0.35,    // down from 0.55: the last third goes freer
+    // ...and the scull is a SECOND, SLOWER sine added to the same rotation the
+    // sway already applies. Locked to the body's undulation, so the tail is
+    // part of the same animal -- at a THIRD of its rate. The warning in this
+    // file's header is about locking to swimPhase at the spine's own 1.1-2.8 Hz,
+    // which is the buzz; a third of that is 0.37-0.95 Hz, below the sway's own
+    // band, which is a scull.
+    scullRatio: 0.34,
+    scullDeg: 7,              // peak bend per joint at the tip, at full flight
+    scullLag: 0.22,           // rad of phase per segment -- a longer wave than
+                              // the sway's 0.15, because a scull is one push
+
     // --- limits (backstops, idle almost all of the time) ------------------
     maxBendBaseDeg: 42,       // hard curvature clamp per joint, applied inside
     maxBendTipDeg: 74,        // the same root-to-tip walk so it can never fight
