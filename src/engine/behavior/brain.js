@@ -44,6 +44,9 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     asideGiveUpUntil: 0,        // ...and nowhere better was found, so stop
                                 // looking for a bit
     asideGlanceUntil: 0,        // she is looking at the words she just vacated
+    orbitCap: 1e9,              // how wide the lap may be at THIS anchor. Set
+                                // with the anchor, not read per frame: it only
+                                // changes when the anchor does.
 
     path: null,          // [{x, y}] doc coords, current route
     pathIndex: 0,
@@ -164,6 +167,9 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
       // the middle of the page — enterAt freezes her until it lifts.
       brain.enterAt = -Infinity;
       brain.entrySide = 0;
+      // the sheet under the anchor is a different sheet now, so what the lap
+      // may be there is a different number
+      sizeTheLap();
       return;
     }
 
@@ -619,6 +625,15 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     return body.radius + cfg.hover.orbitRadiusPx * cfg.aside.roomFactor;
   }
 
+  /** ...AND IF THE SEAT COULD NOT GIVE THAT MUCH, THE LAP GIVES WAY INSTEAD.
+      Sized with the anchor rather than read per frame: it only changes when
+      the anchor does, and the hover path is not a place to ask the grid
+      anything sixty times a second. */
+  function sizeTheLap() {
+    const room = pathfinder.clearanceAt(brain.anchor, body.radius) - body.radius;
+    brain.orbitCap = clamp(room, cfg.hover.orbitMinPx, cfg.hover.orbitRadiusPx);
+  }
+
   function settle() {
     const vp = world.viewport, m = cfg.margin, sy = world.scroll.y;
     // ROOMY, NOT MERELY OPEN. `nearestOpenPoint` asks that a cell be cheap,
@@ -630,6 +645,7 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     v2.copy(brain.anchor, pathfinder.nearestRoomyPoint(body.pos, body.radius, seatRoom()));
     brain.anchor.x = clamp(brain.anchor.x, m, Math.max(m, vp.w - m));
     brain.anchor.y = clamp(brain.anchor.y, sy + m, sy + Math.max(m, vp.h - m));
+    sizeTheLap();
   }
 
   function steerArrive(point, speed, dt, arrive = true) {
@@ -891,7 +907,8 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
         const omega = h.omegaRad * (1 + nx(slow) * h.omegaVar) * o.dir
           * (1 + brain.agitation * 0.7);
         o.theta += omega * dt;
-        const r = h.orbitRadiusPx * (1 + ny(slow + 9.4) * h.radiusVar);
+        const r = Math.min(h.orbitRadiusPx, brain.orbitCap)
+          * (1 + ny(slow + 9.4) * h.radiusVar);
         const e = r * h.epicycle;
         const tx = brain.anchor.x + Math.cos(o.theta) * r + Math.cos(o.theta * 2.3 + 1.2) * e;
         const ty = brain.anchor.y + Math.sin(o.theta) * r * 0.8 + Math.sin(o.theta * 2.3) * e;
@@ -930,6 +947,7 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
               Math.max(cfg.margin, world.viewport.w - cfg.margin));
             brain.anchor.y = clamp(brain.anchor.y, world.scroll.y + cfg.margin,
               world.scroll.y + Math.max(cfg.margin, world.viewport.h - cfg.margin));
+            sizeTheLap();
             // NO NEW STATE, and no thrust either. The hover spring is
             // near-critical and already running; letting it fetch her comes out
             // as an unhurried scoot, which is the body language asked for. A

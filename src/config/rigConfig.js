@@ -574,6 +574,22 @@ export const rigConfig = {
     // character of the motion comes from the path, never from random forces
     hover: {
       orbitRadiusPx: 55,
+      // ── AND IT SHRINKS TO WHAT THE SEAT HAS ────────────────────────────
+      // The orbit is the reason a roomy seat is asked for at all: at 55 px
+      // around a 75 px body, an anchor needs 130 px of clearance before the
+      // whole lap is off the words. On a sheet where the column IS the window
+      // — parked at the terminal, 1056 of 1400 px is transcript — no seat has
+      // that, so she takes the roomiest one going (86 px in the margin, which
+      // clears her body) and the orbit alone carries her back over the type.
+      // Measured there: 5.1% of resting time on the transcript, all of it
+      // orbit.
+      //
+      // So the lap is sized to the seat, which is what an animal on a crowded
+      // desk does — it curls up smaller. Where there is room nothing changes;
+      // where there is not, she tucks in. The floor keeps her alive rather
+      // than parked: at 14 px the epicycle and the radius noise are still
+      // visibly working.
+      orbitMinPx: 14,
       radiusVar: 0.5,           // slow noise on the radius
       omegaRad: 0.55,           // rad/s around the orbit (~11s laps)
       omegaVar: 0.55,           // slow noise on the angular speed

@@ -1766,6 +1766,65 @@ section("she gets out of your light");
       "and somewhere already roomy is returned untouched");
   }
 
+  // ── 3c. AND WHERE NO SEAT IS ROOMY ENOUGH, THE LAP GIVES WAY ──────────
+  // The seat is asked for 130 px because that is her body plus the orbit. On a
+  // sheet where the column IS the window — parked at the terminal, 1056 of
+  // 1400 px is transcript — nothing has that, so she takes the roomiest going
+  // and the ORBIT alone carries her back over the words. An animal on a
+  // crowded desk curls up smaller; so does the lap.
+  {
+    const roomy = () => {
+      const w = mk(true);
+      const b = createBody({ x: 120, y: 450, radius: R, config: P });
+      const br = createBrain({ body: b, world: w, config: B,
+        pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+      br.anchor.x = 120; br.anchor.y = 450;   // deep in the open left margin
+      w.emit("recollect", { scrolledBy: 0 }); // ...which sizes the lap
+      return br.orbitCap;
+    };
+    const tight = () => {
+      const w = createWorld({ headless: true, seed: 3 });
+      w.docSize = { w: 1400, h: 900 };
+      w.viewport = { w: 1400, h: 900 };
+      w.poseState = { leanIn: 1 };
+      // a column the width of the window, with 100 px of margin either side
+      w.colliders = [{ rect: { x: 100, y: 0, w: 1200, h: 900 }, el: null, soft: true }];
+      w.collidersVersion = 1;
+      const b = createBody({ x: 50, y: 450, radius: R, config: P });
+      const br = createBrain({ body: b, world: w, config: B,
+        pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+      br.anchor.x = 50; br.anchor.y = 450;
+      w.emit("recollect", { scrolledBy: 0 });
+      return br.orbitCap;
+    };
+    ok(roomy() === B.hover.orbitRadiusPx,
+      `where there is room the lap is exactly what it always was (${roomy()} px)`);
+    const t = tight();
+    ok(t < B.hover.orbitRadiusPx && t >= B.hover.orbitMinPx,
+      `and in a margin it curls up to ${t.toFixed(0)} px rather than swinging ` +
+      "back over the column");
+    // ...and the case that would go NEGATIVE without the floor: an anchor with
+    // no clearance at all, which is `0 - radius` before the clamp.
+    const buried = () => {
+      const w = createWorld({ headless: true, seed: 3 });
+      w.docSize = { w: 1400, h: 900 };
+      w.viewport = { w: 1400, h: 900 };
+      w.poseState = { leanIn: 1 };
+      w.colliders = [{ rect: { x: -200, y: -200, w: 1800, h: 1300 }, el: null, soft: true }];
+      w.collidersVersion = 1;
+      const b = createBody({ x: 700, y: 450, radius: R, config: P });
+      const br = createBrain({ body: b, world: w, config: B,
+        pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+      br.anchor.x = 700; br.anchor.y = 450;
+      w.emit("recollect", { scrolledBy: 0 });
+      return br.orbitCap;
+    };
+    ok(buried() === B.hover.orbitMinPx,
+      `control: buried in type the room is negative, and the floor catches it ` +
+      `at ${buried()} px — a lap of zero would be a parked animal, and a ` +
+      "negative one would orbit backwards");
+  }
+
   // ── 4. HALF A SECOND ON THE WORDS, AND SHE MOVES ──────────────────────
   // The pair that matters most: the same rect, the same spot, hovering vs
   // travelling. One of them is sitting on the page and one of them is passing

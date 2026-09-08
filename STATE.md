@@ -949,6 +949,16 @@ Three mechanisms, all of them small:
   the rest, so it is a scoot and not an errand. Travelling over type never fires
   it.
 - **A cooldown** (`aside.giveUpForS`) for a page with nowhere to sit.
+- **And the LAP gives way where the seat could not.** A seat is asked for 130 px
+  because that is her body plus the orbit. Parked at the terminal — 1056 of
+  1400 px is transcript — nothing has that, so she takes the roomiest going
+  (86 px in the margin, which clears her body) and the orbit alone carries her
+  back over the words. `orbitCap` is sized with the anchor, never read per
+  frame, and floors at `hover.orbitMinPx` so she curls up rather than parks.
+  Measured there, over six minutes of resting at that scroll: **8.7% → 6.1%**
+  of resting time on type, **5.1% → 4.4%** on the transcript itself, and she
+  still drifts 23 px/s rather than 27. Where there is room the cap is exactly
+  `orbitRadiusPx` and nothing changes at all.
 
 Measured over 60 s on each of the five real page layouts, dumped from the running
 site at 1400×900:
