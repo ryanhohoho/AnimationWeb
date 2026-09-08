@@ -2488,6 +2488,54 @@ section("the tail is the path it flew, and gravity bends it");
 }
 
 // ---------------------------------------------------------------------------
+section("a project sheet is a column, so it cannot print on top of itself");
+// THE BUG THIS REWORK STARTED FROM. `.spec` (the lead) and `.cols` (the
+// colophon) are both `position:absolute; top:28%` in the stylesheet and neither
+// says so in the markup, so plate 1 printed the argument and the colophon on
+// top of each other; on the USB sheet a third block at top:20% landed on both.
+//
+// A column cannot do that. These two checks are what keep it a column.
+{
+  const { readFileSync } = await import("node:fs");
+  const { renderSheet } = await import("../src/site/pages/sheet.js");
+  const html = renderSheet(
+    { n: "01", title: "t", skills: "A · B" },
+    { headline: "h", lead: "l", notes: [{ k: "K", v: "v" }],
+      hero: '<figure class="fig"></figure>', body: '<div class="checks"></div>' });
+
+  // ── ONE · nothing in the trim places itself ──────────────────────────
+  const pinned = [...html.matchAll(/style="([^"]*)"/g)]
+    .map((m) => m[1]).filter((v) => /--x|--y|--w:|--h:/.test(v));
+  ok(pinned.length === 0,
+    pinned.length ? `still placing by percentage: ${pinned[0]}`
+                  : "no element in the sheet trim carries --x/--y/--w/--h");
+
+  // ── TWO · and every pinned palette class is unpinned INSIDE the column ─
+  // This is the check that would have caught the one I actually shipped for a
+  // minute: `.cols` was in the list and `.checks` was not, so the claim table
+  // came out of flow and printed over the aperture and the figure under it.
+  // The palette blocks are absolute by design — they were written for the
+  // four-corner composition and other pages still use them that way — so the
+  // column has to name ALL of them, not most.
+  const css = readFileSync(new URL("../src/styles/site.css", import.meta.url), "utf8");
+  const absolute = [...css.matchAll(/^\.(cols|spec|side|checks|fig\.set)\s*\{[^}]*position\s*:\s*absolute/gm)]
+    .map((m) => m[1]);
+  ok(absolute.length >= 4,
+    `the palette still pins ${absolute.length} kinds of block (${absolute.join(", ")})`);
+
+  const freed = css.match(/\.sheet-in[^{]*\{[^}]*position\s*:\s*static/s);
+  const block = css.slice(css.indexOf(".sheet-in .cols"), css.indexOf(".sheet-in .term"));
+  const missing = absolute.filter((c) => !block.includes(`.sheet-in .${c}`));
+  ok(!!freed && missing.length === 0,
+    missing.length ? `${missing.join(", ")} is pinned but never freed inside .sheet-in`
+                   : `every pinned palette class is made static in the column (${absolute.join(", ")})`);
+
+  // THE PAIRED CONTROL. Drop one from the list and the check has to notice.
+  ok(["cols", "spec", "side", "checks"].filter((c) => !"..sheet-in .cols".includes(`.${c}`)).length === 3,
+    "control: a list missing a class is a list this compares as missing");
+}
+
+// ---------------------------------------------------------------------------
 section("a label never leaves its last word alone — and never becomes one word");
 // The sheet's labels bind their spaces with &nbsp; so a two-word caption cannot
 // orphan its second word. Binding EVERY space is the version this started as,
@@ -2498,25 +2546,26 @@ section("a label never leaves its last word alone — and never becomes one word
 //
 // So the rule is the FINAL space only, which is what the character is for.
 {
+  // THE SPECIMEN MOVED, THE ARGUMENT DID NOT. This used to read the plate
+  // caption and the `PROJECT 01 — …` corner label, and a project sheet has
+  // neither now: it is a column with its corners left empty, and the caption
+  // was labelling the press rather than the page. The colophon keys are the
+  // longest multi-word labels the trim still emits, and they go through the
+  // same nb().
   const { renderSheet } = await import("../src/site/pages/sheet.js");
   const html = renderSheet(
     { n: "01", title: "usb provisioning cli", kind: "SYSTEMS TOOLING · COMMISSIONED",
-      year: "2025", inkName: "NAVY + BLACK" },
-    { headline: "h", lead: "l", notes: [{ k: "A", v: "b" }] });
+      year: "2025", inkName: "NAVY + BLACK", skills: "POWERSHELL · BITLOCKER" },
+    { headline: "h", lead: "l", notes: [{ k: "THE HARD PART", v: "b" }] });
 
-  // the label that overflowed: PROJECT 01 — usb provisioning cli
-  const label = html.match(/<p class="t">PROJECT[^<]*<\/p>/)[0];
+  const label = html.match(/<p class="t dim">THE[^<]*<\/p>/)[0];
   ok(/&nbsp;/.test(label), "a label still binds — it has not simply stopped");
-  ok((label.match(/&nbsp;/g) || []).length <= 2,
+  ok((label.match(/&nbsp;/g) || []).length === 1,
     `...but it binds ONE space, not every space (${(label.match(/&nbsp;/g) || []).length})`);
-  ok(/provisioning cli/.test(label.replace(/&nbsp;/g, " ")) &&
-     / cli<\/p>/.test(label) === false && /&nbsp;cli/.test(label),
+  ok(/&nbsp;PART/.test(label) && !/ PART/.test(label),
     "and the space it binds is the last one, so the final word cannot orphan");
-
-  // the caption, which was the other 35-character run
-  const cap = html.match(/<p class="t dim cap"[^>]*>([^<]*)<\/p>/)[1];
-  ok((cap.match(/&nbsp;/g) || []).length <= 2,
-    `the plate caption breaks too (${(cap.match(/&nbsp;/g) || []).length} bound spaces in "${cap.replace(/&nbsp;/g, "·")}")`);
+  ok(/THE HARD&nbsp;PART/.test(label),
+    `...leaving the earlier spaces breakable ("${label.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "·")}")`);
 
   // THE PAIRED CONTROL: what the old helper produced, run through the same count.
   const everySpace = "PROJECT 01 — usb provisioning cli".replace(/ /g, "&nbsp;");

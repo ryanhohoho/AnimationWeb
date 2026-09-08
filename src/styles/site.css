@@ -270,11 +270,12 @@ pre.sr { white-space:pre; }
 .link { color:var(--blue); text-decoration:underline; text-underline-offset:.24em;
         text-decoration-thickness:1px; }
 
-/* a caption pinned under its aperture, in the print's own coordinates.
-   .cap.pad is for the one aperture that runs full-bleed: the caption returns to
-   the sheet's margin even though the hole it describes does not. */
-.cap { position:absolute; left:var(--x); top:var(--y); }
-.cap.pad { left:var(--pad); }
+/* .cap IS GONE, and so is every producer of one. It pinned a caption under an
+   aperture -- "PL. 01 — CERULEAN + NAVY + BLACK", "AP. 01 — LAST LIGHT" -- and
+   what it was labelling was the PRESS, which is the same cerulean, the same
+   trim and the same two inks on every sheet here. It was the least
+   page-specific thing on any page, wearing the most prominent annotation slot.
+   A figure gets a caption; a hole does not need to be told what it is. */
 
 /* ══ PLATES ══════════════════════════════════════════════════════════════ */
 .plate { position:relative; min-height:100lvh; padding:var(--pad); }
@@ -750,6 +751,84 @@ body.on-project .plate .corner.tl {
    on a 900x400 window, where 11vh is 44 px and the disc reaches 73. */
 
 
+/* ══ A PROJECT SHEET ═════════════════════════════════════════════════════
+   A COLUMN, not a four-corner composition — see pages/sheet.js for why. The
+   short version: `.spec` and `.cols` were both `top:28%`, so the argument and
+   the colophon printed on top of each other, and nothing in the markup said so.
+   A column cannot collide, and reading order is source order.
+
+   It is `.deck-in` with a wider measure. Same centring, same gap rhythm, same
+   flex column — a project sheet is a deck card that had more to say, not a
+   different kind of object. */
+.sheet { display:flex; flex-direction:column; }
+.sheet-in {
+  width:100%; max-width:66rem; margin:0 auto; flex:1;
+  padding-top:max(var(--deck-top), var(--disc-clear));
+  display:flex; flex-direction:column;
+  gap:clamp(1.6rem, 3.4vw, 2.8rem);
+}
+/* NO `align-items:flex-start`. It was there for a paragraph's benefit and it
+   shrink-wrapped everything that did not set its own width: the transcript came
+   out 430 px instead of the column's 1,056, and the measured table 337. Items
+   stretch, and anything that wants to be narrower says so — which is what
+   `max-width` on the prose and the explicit widths on the figures already do. */
+/* FADE, NEVER TRANSLATE. An entrance animation is geometry: measure() runs
+   inside commit(), in the frame the markup is inserted, so anything still at
+   its `from` keyframe is measured THERE. This column carries an aperture, so it
+   gets the same fade-only entrance `.cards > li` and `.deck-hole` get, and for
+   the same reason. */
+.sheet-in > * { animation:deck-fade .5s cubic-bezier(0.16,1,0.3,1) both; }
+.sheet-h { max-width:19ch; }
+/* `.t.body.wide` is two classes plus one, so a bare `.lead` loses to its 42ch
+   and the lead set 310 px wide — the same specificity trap `.t.body.bio` and
+   `.t.body.row-what` are already written around. Match it. */
+.t.body.lead { font-size:13.5px; max-width:54ch; }
+
+/* the sheet's own hole, pulled in this project's pair. Full width of the
+   column, because a column has one axis to give — the 25%-wide slot that used
+   to sit right of centre was a property of the composition that is gone. */
+.sheet-ap {
+  position:relative; left:auto; top:auto;
+  display:block; width:100%; aspect-ratio:16/5;
+}
+/* A FIGURE IS BOUNDED BY HEIGHT, NOT ONLY BY WIDTH. Full column width is
+   1,056 px here, and the first hero came out 1,056 x 792 -- most of a screen for
+   a picture that is meant to sit inside a reading column. `--ratio` is the
+   source's own aspect (bake_captures.mjs prints it), so the width that lands a
+   figure at a given height is one multiply; both bounds apply and the smaller
+   wins.
+
+   `--ratio` therefore has to be a PLAIN NUMBER, not `16 / 10`: `aspect-ratio`
+   accepts either, `calc()` accepts only the first. capture()'s default is a
+   decimal for that reason. */
+.sheet-in .fig { width:min(100%, calc(62vh * var(--ratio, 1.6))); }
+.sheet-in .fig.narrow { width:min(100%, calc(46vh * var(--ratio, 1.6)), 34rem); }
+/* EVERY PINNED PALETTE BLOCK GOES STATIC INSIDE THE COLUMN. `.checks`,
+   `.spec`, `.side` and `.cols` are all `position:absolute` with a percentage
+   top, because they were written for the four-corner composition — and one of
+   them left out of this list is one block taken out of flow, sitting on top of
+   whatever followed it. Measured: `.checks` on the iClicker sheet printed over
+   the aperture and the figure below it, which is the exact bug this rework
+   exists to end. The narrow and print blocks already unpin the same list; this
+   is the third place that has to agree, so it names all of them at once. */
+.sheet-in .cols,
+.sheet-in .spec,
+.sheet-in .side,
+.sheet-in .checks,
+.sheet-in .fig.set {
+  position:static; left:auto; right:auto; top:auto; bottom:auto;
+  width:100%; max-width:none;
+}
+.sheet-in .term { width:100%; }
+.sheet-in .back-hint { margin-top:auto; }
+
+@media (max-width:860px){
+  .sheet-in { max-width:none; gap:1.4rem; }
+  .sheet-ap { aspect-ratio:5/2; }
+  .sheet-in .fig.narrow { width:100%; }
+  .sheet.deep { min-height:100svh; }
+}
+
 /* ══ THE PROJECT-SHEET PALETTE ═══════════════════════════════════════════
    Everything from here to the CAPTURES block is the component vocabulary the
    project sheets are built out of: an annotated column, a claim-and-answer
@@ -952,7 +1031,6 @@ body.on-project .plate .corner.tl {
   .ap.tall, .ap.wide { aspect-ratio:4/3; }
   .ap.band { aspect-ratio:5/1; margin-inline:calc(var(--pad) * -1);
              width:calc(100% + var(--pad) * 2); }
-  .cap { position:static; }
 
   .spec,.cols,.checks,.side { position:static; width:auto; right:auto; max-width:none; }
   .spec.wide-col { width:auto; }
@@ -1054,7 +1132,7 @@ body.on-project .plate .corner.tl {
   .stitch::after { content:""; position:absolute; top:50%; left:0;
                    width:100%; height:44px; transform:translateY(-50%); }
   .mob-b { width:44px; height:44px; font-size:19px; }
-  .hint .link, .back-hint .link, .cap.pad + * .link { padding:.7rem 0; display:inline-block; }
+  .hint .link, .back-hint .link { padding:.7rem 0; display:inline-block; }
 
   /* a fixed 6rem label column is 28% of a 375 px row for a five-letter word */
   .sock-k { width:auto; min-width:4.6rem; }
@@ -1148,7 +1226,7 @@ body.on-project .plate .corner.tl {
     width:auto; max-width:none;
   }
   .cols { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem 2rem; }
-  .ap, .cap, .deck-hole { display:none; }
+  .ap, .deck-hole { display:none; }
 
   /* ...and the two plates of a sheet are two pages, which is what a plate is */
   .plate + .plate { break-before:page; }
@@ -1160,7 +1238,7 @@ body.on-project .plate .corner.tl {
      carries data-route, so one :has() catches the lot of them; a browser
      without :has() simply prints a few dead links, which is the failure this
      rule is an improvement on rather than a regression from. */
-  p:has(> a[data-route]), p:has(> [data-at]), .scrollcue { display:none; }
+  p:has(> a[data-route]), .scrollcue { display:none; }
 
   /* THE TRANSCRIPT SWAPS PLACES WITH ITS OWN PLAYER. On screen the played
      session is the thing and the full text is the alternative; on paper it is

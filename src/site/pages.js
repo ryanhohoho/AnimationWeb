@@ -14,6 +14,7 @@ import * as usbProvisioning from "./pages/usb-provisioning.js";
 import * as closet from "./pages/closet.js";
 import { renderDeckPage } from "./pages/deck.js";
 import { mountCards } from "./cards.js";
+import { mountMedia } from "./media.js";
 
 // the three deck cards that are not the summary. The summary ships as markup in
 // index.html so the first paint needs no JS, and the router captures it once.
@@ -30,6 +31,11 @@ export function mountPage(route, ctx) {
   const sheet = route.name === "project" && sheetFor(route.project.slug);
   // the projects card is the only deck page with anything live on it
   if (route.name === "projects") mountCards(ctx);
+  // ...and every project sheet carries figures. ONE call here rather than an
+  // identical three-line mount() in each of the three sheet files: mountMedia
+  // returns immediately when a page has no <video> in a figure, and it puts its
+  // teardown on the page scope, which is the whole leak story for navigation.
+  if (route.name === "project") mountMedia(ctx.scope);
   sheet?.mount?.(ctx);
 }
 
@@ -53,7 +59,6 @@ export function renderProject(p) {
       <!-- the plate, pulled in this project's own pair. The cerulean is the
            constant; the second ink is what this piece of work owns. -->
       <div class="ap wide" data-ap style="--x:47%; --y:22%; --w:41%; --h:46%"></div>
-      <p class="t dim cap" style="--x:47%; --y:70%">PL.&nbsp;${esc(p.n)}&nbsp;—&nbsp;CERULEAN&nbsp;+&nbsp;${esc(p.inkName).replace(/ /g, "&nbsp;")}</p>
 
       <div class="spec">
         <h1 class="d sm">${esc(p.title)}</h1>

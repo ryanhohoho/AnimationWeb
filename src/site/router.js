@@ -390,9 +390,14 @@ export function createRouter({ scope, deck, world, onPage }) {
       happened to be declared first, which on these pages is a small one near
       the top — so the opening converged well above the window it should have
       landed in. */
-  /** the full-bleed band at the foot of a sheet, if this one has one */
+  /** the SECOND window the closing paper also retreats into, if the sheet
+      declares one. It used to select `.ap.band` -- the full-bleed footer every
+      project sheet ended on -- and that footer is gone: the sheets are columns
+      now and a band across the foot of one is a footer, which is furniture.
+      The mechanism is right and stays; the sheet marks its own second window
+      with `data-second` instead of the selector guessing from a shape. */
   function footerHole() {
-    const els = [...document.querySelectorAll("[data-ap].band")];
+    const els = [...document.querySelectorAll("[data-ap][data-second]")];
     const el = els[els.length - 1];
     if (!el) return null;
     const r = el.getBoundingClientRect();

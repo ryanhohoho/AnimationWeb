@@ -6,13 +6,20 @@
 //   import.meta.glob(...)   a directory read, resolved at build time
 //   import x from "./y?url" an asset URL
 //
-// media.js is replaced outright because it is nothing BUT those. Everything
-// else under src/ gets the glob call rewritten to an empty object instead, so
+// EVERY module under src/ gets the glob call rewritten to an empty object, so
 // the module still loads and its own logic is still the real logic. A module
 // whose glob comes back empty behaves exactly as it does when the asset has not
-// been baked yet — hasSkyClip false, hasIconAtlas false — which is a state the
-// site is already designed to handle, so this is not a fiction invented for the
-// harness. It is the un-baked case.
+// been baked yet — hasSkyClip false, hasIconAtlas false, every capture slot
+// printing its honest "not supplied" state — which the site is already designed
+// to handle, so this is not a fiction invented for the harness. It is the
+// un-baked case.
+//
+// media.js used to be REPLACED outright here, with a three-line copy exporting
+// a capture() that returned "". That was fine while it was nothing but a glob;
+// it stopped being fine when it grew a poster lookup and a class argument,
+// because a stub that replaces a module is a stub that can silently diverge
+// from it — which is the argument two paragraphs down, applied to itself. It
+// takes the same glob rewrite as everything else now.
 //
 // Why this matters: the checks are supposed to drive the REAL modules. A stub
 // that replaces a module is a stub that can silently diverge from it, and the
@@ -46,18 +53,6 @@ export async function load(url, context, next) {
     const p = url.slice(ASSET.length).replace(/\?url$/, "");
     return { format: "module", shortCircuit: true,
              source: `export default ${JSON.stringify(p)};` };
-  }
-
-  if (url.endsWith("/src/site/media.js")) {
-    return {
-      format: "module",
-      shortCircuit: true,
-      source: `
-        export function capture() { return ""; }
-        export function mountMedia() {}
-        export function mediaFiles() { return {}; }
-      `
-    };
   }
 
   if (url.startsWith("file:") && url.includes("/src/") && url.endsWith(".js")) {

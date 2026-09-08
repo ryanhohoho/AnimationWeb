@@ -17,6 +17,7 @@
 
 import { renderSheet } from "./sheet.js";
 import { createTerm } from "../term.js";
+import { capture } from "../media.js";
 
 // A substituted device identifier. Same width as the real thing so every
 // column downstream of it lands where it really lands.
@@ -123,8 +124,13 @@ export function html(p) {
       // the page must never carry the transcript without both of them.
       { k: "DISCLOSURE", v: "No asset numbers, serials, volume identifiers, key material or credentials appear anywhere on this sheet. The transcript is a real run with every device identifier replaced by a stand-in of the same width." }
     ],
+    // THE TRANSCRIPT IS THE ONE FIGURE ON ANY OF THESE THREE SHEETS THAT IS
+    // REAL, which is why this page keeps a second element the others do not.
+    // It carried a `.spec.term-col` wrapper, absolutely positioned at top:20% —
+    // landing on the lead at 28% and the colophon at 28%, which is the
+    // collision that started this rework. In a column it needs no wrapper.
     body: `
-    <div class="spec term-col">
+    <div class="term-col">
       <p class="t dim">A REAL RUN. DEVICE IDENTIFIERS&nbsp;SUBSTITUTED.</p>
       <!-- tabindex, because on a narrow screen this is the one thing on the site
            that scrolls sideways (.term gets overflow-x:auto under 860px) and a
@@ -136,7 +142,30 @@ export function html(p) {
       </div>
       <pre class="sr">${PLAIN.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre>
       <p class="t dim">FIG.&nbsp;1 — FOUR DRIVES, ONE OPERATOR, NINETY&nbsp;SECONDS.</p>
-    </div>`
+    </div>
+
+    <!-- the numbers that run underneath it. Every one came off the session
+         above, which is what a measured table on this sheet is for: the ink
+         goes on the figure that IS the finding, and one operator is it. -->
+    <dl class="tab">
+      <dt>Drives provisioned in the run</dt><dd>4</dd>
+      <dt>Operators</dt><dd class="key">1</dd>
+      <dt>Wall clock, first insert to last DONE</dt><dd>90s</dd>
+      <span class="rule"></span>
+      <dt>E: encrypted in</dt><dd>46s</dd>
+      <dt>F:</dt><dd>44s</dd>
+      <dt>G:</dt><dd>41s</dd>
+      <dt>H: — inserted mid-run</dt><dd>43s</dd>
+    </dl>`,
+
+    // deep, because a transcript is taller than a figure and the plate has to
+    // be told: a screen and a half rather than a screen
+    deep: true,
+
+    hero: capture({ id: "stand-usb-hero", ratio: "1.3333",
+      alt: "Reference artwork standing in for a capture of the hub." }),
+    figure: capture({ id: "stand-usb-side", ratio: "0.7069", cls: "narrow",
+      alt: "Reference artwork standing in for a capture of the engraver tray." })
   });
 }
 

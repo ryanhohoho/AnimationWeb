@@ -74,9 +74,14 @@ globalThis.document = {
   querySelector: (sel) =>
     (sel.startsWith("meta") ? (META[sel] || null)
       : sel.includes("cross-target") ? null : ap),
+  // `second` joins this list because footerHole() stopped selecting `.ap.band`
+  // and now asks for `[data-ap][data-second]`. Without it the fixture starts
+  // handing that query its generic aperture stub, which silently gives every
+  // crossing a second retreat target it is not supposed to have here -- and
+  // this harness exists to measure exactly that arithmetic.
   querySelectorAll: (sel) =>
-    (sel.includes("band") || sel.includes("icon-ap") || sel.includes("cross-target")
-      ? [] : [ap]),
+    (sel.includes("band") || sel.includes("second") || sel.includes("icon-ap")
+      || sel.includes("cross-target") ? [] : [ap]),
   addEventListener: () => {}
 };
 // NOTHING FIRES `scroll` HERE, and that is the point: the browser dispatches it

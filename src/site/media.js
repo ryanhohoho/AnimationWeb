@@ -60,9 +60,13 @@ const nb = (s) => esc(s).replace(/ /g, "&nbsp;");
  * @param cap   the caption, printed under the cut
  * @param alt   what the capture shows, for anyone who cannot see it
  * @param pos   `--x/--y/--w/--h` for the absolute composition (omit to flow)
- * @param ratio fallback box shape while there is no file, and on narrow screens
+ * @param ratio the box shape. Pass the SOURCE's own ratio: `.fig-in` fills with
+ *              `object-fit:cover`, so a box that disagrees with the file crops
+ *              it. bake_captures.mjs prints the number for each asset.
+ * @param cls   extra classes. `narrow` is the one the sheet column uses, so two
+ *              figures on one sheet are not two identical rectangles.
  */
-export function capture({ id, cap = "", alt = "", pos = "", ratio = "16 / 10" }) {
+export function capture({ id, cap = "", alt = "", pos = "", ratio = "1.6", cls = "" }) {
   const hit = BY_ID.get(id);
   const style = `${pos ? pos + "; " : ""}--ratio:${ratio}`;
   let inner;
@@ -75,16 +79,24 @@ export function capture({ id, cap = "", alt = "", pos = "", ratio = "16 / 10" })
   } else if (VIDEO.has(hit.ext)) {
     // A recording of a tool is not a film: no sound, no controls, no decision
     // for the reader to make. It loops because the thing it shows is a loop.
+    //
+    // A POSTER IF THERE IS ONE -- `<id>-still.webp`, which bake_captures.mjs
+    // emits beside every clip. It covers two different things: the flash of
+    // nothing before `preload="metadata"` resolves, and PAPER, because a
+    // <video> with no poster prints blank and the print stylesheet on this site
+    // is a load-bearing feature rather than an afterthought.
+    const post = BY_ID.get(`${id}-still`);
     inner = `<video src="${esc(hit.url)}" autoplay muted loop playsinline
-                    preload="metadata" aria-label="${esc(alt || cap)}"></video>`;
+                    preload="metadata"${post ? ` poster="${esc(post.url)}"` : ""}
+                    aria-label="${esc(alt || cap)}"></video>`;
   } else {
     inner = `<img src="${esc(hit.url)}" alt="${esc(alt || cap)}" loading="lazy" decoding="async" />`;
   }
 
   // `set` is what makes the slot part of the plate's four-corner composition;
   // without a position it simply flows, which is what the narrow layout wants.
-  const cls = `fig${pos ? " set" : ""}${hit ? " has" : ""}`;
-  return `<figure class="${cls}" style="${style}">
+  const klass = `fig${pos ? " set" : ""}${hit ? " has" : ""}${cls ? ` ${cls}` : ""}`;
+  return `<figure class="${klass}" style="${style}">
       <div class="fig-in">${inner}</div>
       ${cap ? `<figcaption class="t dim">${nb(cap)}</figcaption>` : ""}
     </figure>`;
