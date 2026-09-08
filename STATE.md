@@ -1292,6 +1292,20 @@ The reason is **not** "no generative grounds". Verbatim:
   sideways dodge.
 - Headless scenarios must keep the scripted cursor inside the scripted viewport —
   real ones always are, and violating it manufactures fake behaviour bugs.
+- **The biggest block of type on the site was invisible to the collector.**
+  The transcript types itself into a child of `.term` a character at a time, so
+  the text walk found nothing at load — and `collect()` only runs on a route
+  swap and a resize, so it found nothing 54 lines later either. 1056x504 of
+  words, and she was free to sit in the middle of them. `[data-term]` joins the
+  list of boxes that PAINT their own content, beside `<canvas>` and `<video>`,
+  which is the same idea rather than a class list creeping in: the container is
+  there from the first frame, at its final size, and outermost-wins keeps every
+  typed line out of the list. Verified live — one rect before the tape runs and
+  the same one rect after all 54 lines, with `collidersVersion` never moving.
+- **`term.debugRun()` had no handle.** term.js carries it precisely because rAF
+  and timers are throttled in a hidden pane and the tape has to be runnable by
+  hand; nothing held the object, so it could not be called. `window.__TERM__`
+  now, beside `__DECK__` and `__AW__`, and it goes away with the page.
 - **A remeasure must be a reaction, not a poll.** The collider tracker ran on a
   500 ms interval, which cost nothing while `[data-collider]` was on nothing and
   costs a forced layout twice a second now that it reads every block of type.

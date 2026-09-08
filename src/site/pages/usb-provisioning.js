@@ -171,5 +171,14 @@ export function html(p) {
 
 export function mount({ scope }) {
   const el = document.querySelector("[data-term]");
-  if (el) createTerm({ scope, el, script: SESSION });
+  if (!el) return;
+  const term = createTerm({ scope, el, script: SESSION });
+  // ── AND A HANDLE ON IT, THE WAY THE DECK AND THE ANIMAL HAVE ONE ────────
+  // term.js already carries a `debugRun`, written for the fact that rAF and
+  // timers are both throttled in a hidden preview pane and the tape has to be
+  // runnable by hand. It was unreachable: nothing held the object. A debug
+  // affordance nobody can call is a comment. Goes away with the page, like
+  // every other thing this scope owns.
+  window.__TERM__ = term;
+  scope?.add(() => { if (window.__TERM__ === term) delete window.__TERM__; });
 }

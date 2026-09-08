@@ -32,7 +32,21 @@ import { v2 } from "../../utils/math.js";
 //   this list is remeasured twice a second — it would lag by whatever the
 //   reader just did. The nav is small, at the rim, and much less disturbing to
 //   sit on than prose.
-const MEDIA = "img, video, svg, canvas, picture";
+// A BOX THAT PAINTS ITS OWN CONTENT rather than laying out text children. The
+// text walk cannot see any of these: an <img> has no text nodes, and neither
+// does a console that types itself into a child div a character at a time.
+//
+// `[data-term]` is here on exactly the same grounds as <canvas>, and it is not
+// a class list creeping in by the back door — it is the one element on the site
+// that is a RENDERED SURFACE made of type. Without it the collector missed
+// 1056x504 of transcript, the largest single block of words on any page, and
+// she was free to sit in the middle of it. It cannot be found by watching for
+// the lines to arrive, either: `collect()` runs on a route swap and a resize,
+// the typewriter changes nothing's box but its own, and a MutationObserver
+// firing on 3,240 keystrokes to rediscover a box that was the same size the
+// whole time is a lot of work to learn nothing. The container is the answer,
+// and the container is there from the first frame.
+const MEDIA = "img, video, svg, canvas, picture, [data-term]";
 /** words of its own — a text node with something in it, directly inside */
 function hasOwnText(el) {
   for (let n = el.firstChild; n; n = n.nextSibling) {

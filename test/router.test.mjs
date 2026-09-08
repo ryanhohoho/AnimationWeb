@@ -742,14 +742,15 @@ console.log("\n== the page turn does not move the type");
   const TURN = -30;
   // an element whose rect carries whatever transform its OWNER is holding, the
   // way a real one carries its ancestor's
-  const mkEl = (owner, tag, x, w, text) => ({
+  const mkEl = (owner, tag, x, w, text, opts = {}) => ({
     tagName: tag,
     firstChild: text ? { nodeType: 3, nodeValue: text, nextSibling: null } : null,
-    parentElement: null,
+    parentElement: opts.parent || null,
     getAttribute: () => null,
-    matches: () => false,
+    matches: () => !!opts.media,
     getBoundingClientRect: () => ({
-      left: x + (owner.style.transform ? TURN : 0), top: 100, width: w, height: 40
+      left: x + (owner.style.transform ? TURN : 0), top: opts.top ?? 100,
+      width: w, height: opts.height ?? 40
     })
   });
   const mkDoc = (style) => {
@@ -757,6 +758,20 @@ console.log("\n== the page turn does not move the type");
     // whitespace-only span second: it is not type and must not be collected
     d._kids = [mkEl(d, "P", 200, 400, "a paragraph of words"),
                mkEl(d, "SPAN", 900, 120, "  ")];
+    return d;
+  };
+  // ...and a document with a terminal in it: a box that paints its own content,
+  // with the typed lines inside it. The collector must take the CONTAINER and
+  // nothing under it.
+  const mkTermDoc = () => {
+    const d = { style: {}, querySelectorAll: () => d._kids };
+    const term = mkEl(d, "DIV", 172, 1056, null, { media: true, top: 300, height: 504 });
+    d._kids = [
+      mkEl(d, "P", 200, 400, "a paragraph of words"),
+      term,
+      mkEl(d, "P", 180, 900, "> .\\USB-Tool.ps1", { parent: term, top: 310, height: 16 }),
+      mkEl(d, "P", 180, 900, "  4 drives found", { parent: term, top: 330, height: 16 })
+    ];
     return d;
   };
   const fakeDoc = mkDoc({ transform: `translate3d(${TURN}px,0,0)` });
@@ -822,6 +837,28 @@ console.log("\n== the page turn does not move the type");
     fire([]);
     ok(w3.collidersVersion > before,
       "a box changing shape remeasures on the spot, not up to half a second later");
+
+    // ── THE TERMINAL IS ONE BLOCK, AND IT IS THERE FROM THE FIRST FRAME ──
+    // The transcript types itself into a child a character at a time, so the
+    // text walk finds nothing at load and 54 paragraphs later — 1056x504 of
+    // the largest block of words on the site, invisible to the collector for
+    // as long as it mattered. `[data-term]` joins the list of boxes that paint
+    // their own content, beside <canvas> and <video>, and the outermost-wins
+    // rule then keeps every typed line out of the list.
+    {
+      const td = mkTermDoc();
+      document.getElementById = (id) => (id === "doc" ? td : held(id));
+      const w6 = createWorld({ headless: true });
+      createColliderTracker(w6);
+      const boxes = w6.colliders.map((c) => [c.rect.w, c.rect.h]);
+      ok(w6.colliders.length === 2,
+        `the paragraph and the terminal, and nothing else (${w6.colliders.length} rects)`);
+      ok(boxes.some(([w, h]) => w === 1056 && h === 504),
+        "the terminal is collected whole, at its full size, with nothing typed yet");
+      ok(!boxes.some(([, h]) => h === 16),
+        "control: not one of the lines inside it is a rect of its own — the " +
+        "container wins, so typing cannot churn the grid");
+    }
 
     // ── AND THE OBSERVER HAS AN OWNER ────────────────────────────────────
     // utils/lifecycle.js is explicit that a leak needs a named owner rather
