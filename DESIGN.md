@@ -288,11 +288,17 @@ with the alert's warning-triangle slot replaced by a hole onto the sky), and a
 COLOPHON of four metadata columns closing on a full-bleed horizon band.
 
 Neither survives as a PLACE, because the deck has four cards and neither of them
-is one. Both survive as **components**: `.dialog`, `.dlg-bar`, `.fig`, `.cols`,
-`.check` and the rest are still in `site.css`, named and explained, waiting for
-the project sheets' real writing. That block says so at its head, and
-`site/media.js` says the same thing about captures. Leaving them named and
-explained is the difference between a palette and dead code.
+is one. Both survive as **components** — and most of them are now in use. When
+the project sheets were rebuilt as columns they reached for exactly the block
+that had been kept for them: `.cols` carries every colophon, `.tab` the measured
+run times and the closet's 24-of-24, `.checks` the iClicker claim table (whose
+empty last row the stylesheet already describes as "the finding"), and `.fig`
+every figure. `site/media.js` was kept unimported on the same argument and
+needed no changes beyond a poster when the moment came.
+
+Still unused and still named: `.doc` / `.ring`, `.dialog` / `.dlg-*`, `.side`,
+`.spec.wide-col`. Leaving them explained is the difference between a palette and
+dead code.
 
 ### Mew's aperture — removed
 
@@ -522,12 +528,19 @@ at it, and all three were nothing until recently.
 
 ## 9. Still to come
 
-Each project sheet gets **its own writing**, developed one at a time. All three
-are currently two plates of placeholder prose on the shared trim
-(`pages/sheet.js`), which is the honest empty state: the plate is set and the
-words have not had their turn. The component palette in `site.css` and
-`site/media.js` are what that writing should reach for rather than inventing a
-second vocabulary beside them.
+Each project sheet gets **its own writing**, developed one at a time. The prose
+is still a placeholder; what changed is that the sheets are no longer only
+prose. They are columns now (`pages/sheet.js`) carrying a hero figure, the
+evidence the palette was written for, a second figure and a colophon — so the
+shape the writing has to fill exists, and filling it is a matter of words and
+real captures rather than of layout.
+
+**The media are stand-ins.** Reference art out of `aesthetic-images/`, baked by
+`tools/bake_captures.mjs`, and deliberately **uncaptioned**: a figcaption
+claiming somebody else's artwork is a screenshot of the tool would be the first
+false label on a site whose whole discipline is that every label is true. Drop a
+real capture in under the id in `src/assets/media/README.txt` and the stand-in
+is gone, caption and all.
 
 The GitHub and LinkedIn handles in `content.js` are marked `placeholder`, and
 render dashed and italic so the page never claims a link it does not have.

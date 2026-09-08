@@ -21,7 +21,7 @@ changes and the window does not.
 ```bash
 npm install
 npm run dev      # localhost:5173
-npm test         # 876 checks: a headless engine sim + a router/page-swap harness
+npm test         # 902 checks: a headless engine sim + a router/page-swap harness
 npm run build    # production bundle
 ```
 

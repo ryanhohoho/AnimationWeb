@@ -91,7 +91,7 @@ two are checked against each other on the GPU.
 
 ```bash
 npm run dev            # localhost:5173 — the owner tests here, in his own browser
-npm test               # 876 checks: the headless sim + the router harness
+npm test               # 902 checks: the headless sim + the router harness
 npm run test:sim       # just the engine/behaviour suite
 npm run test:router    # just the router + page-swap harness (needs a fake DOM)
 npm run build          # production bundle
@@ -117,6 +117,16 @@ Icon pipeline (only if a project's icon changes, or a project is added):
 node tools/bake_icons.mjs        # tools/icons/*  ->  icon-atlas.png, glyph-*.png,
                                  #                    src/site/iconatlas.js
 ```
+
+Project-sheet figures (only if a sheet's media changes):
+
+```bash
+node tools/bake_captures.mjs [--only <id>] [--dry]   # -> src/assets/media/stand-*
+```
+
+The crop decisions live in a manifest at the head of the tool, the way `CELLS`
+does in `bake_icons.mjs`. It derives quality from a size ceiling and **exits
+non-zero over budget** rather than printing a warning nobody reads.
 
 Tab mark and link card (only if the mark, the palette or the pitch changes):
 
