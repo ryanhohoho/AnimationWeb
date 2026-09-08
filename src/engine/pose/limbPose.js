@@ -92,11 +92,37 @@ export function createLimbPose({ config, world }) {
   return {
     /** the flail envelope, 0..1, for whatever else wants to ride it */
     get flail() { return flailOut; },
+    /** ...and WHICH envelope it is. The whole-body shake in mew.js rides this
+        one number, and a 19 Hz buzz is a COLLISION idea -- it is the other half
+        of an impact. A flight has no impact in it, so the shake asks. */
+    get panicking() { return panicMode; },
     update(ctx) {
       const { rig, body, brain, dt, time } = ctx;
       const speed = Math.hypot(body.vel.x, body.vel.y);
       // the beam brace sweeps the limbs back like full flight
-      const blendGoal = brain.state === "fire" ? 1
+      // ── SHE FLIES OUT, SHE DOES NOT RUN ────────────────────────────
+      // The press opening is the size of the page and she leaves. What she is
+      // NOT doing is running: this animal has no gait and never has -- her
+      // locomotion is swimming, the feet flutter off the spine's undulation
+      // wave and the arms scull on a sub-harmonic of it. The panic used to bolt
+      // a 13.5 Hz windmill on all four limbs over the top of that, at 27
+      // degrees of throw and 1.15x on the feet because they are longer, held
+      // FLAT for 78% of the burst. Two oscillators above 13 Hz on a foot is not
+      // a run, it is a vibration, and it is the whole of what looked wrong.
+      //
+      // So a panic pins the streamlined pose instead. `poses.cruise` already IS
+      // the flight pose taken off the references -- arms swept back along the
+      // sides, legs extended away down the long axis, loose enough that the
+      // noise and the follow-through read as dangling in the wind. Pinning it
+      // means she is streamlined from the FIRST frame rather than waiting to
+      // cross blendLoPx at 120 px/s, which she does not do until she has
+      // already bolted.
+      //
+      // The fear is untouched, because none of it was ever in the legs: the
+      // >.< face overlay, the sweat thrown in three waves, the head whipping
+      // onto the escape line, and the raised agitation that widens the tail's
+      // sway are all still exactly as they were.
+      const blendGoal = brain.state === "fire" || panicMode ? 1
         : Math.max(smoothstep(cfg.blendLoPx, cfg.blendHiPx, speed), (ctx.shared.swimAlign || 0) * 0.85);
       const blend = blendS.step(blendGoal, dt);
       const startle = startleS.step(brain.state === "startle" ? 1 : 0, dt) + flinchS.step(0, dt);

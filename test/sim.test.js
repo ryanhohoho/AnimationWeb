@@ -2152,17 +2152,59 @@ section("panic: she looks, she turns, she goes — and she goes straight out");
 }
 
 // ---------------------------------------------------------------------------
-section("a frightened flail is not an annoyed one");
+section("a fright is a FLIGHT, and a tantrum is a windmill");
+// THIS SECTION USED TO OPEN "terror is much faster", asserting
+// `panicHz > flailHz * 1.5`, and that is the contract the owner asked to
+// change. It was a faithful test of a wrong idea: 27 degrees at 13.5 Hz on all
+// four limbs, held flat for 78% of the burst and with 1.15x on the feet, is two
+// oscillators above 13 Hz on a foot. It reads as vibration rather than fright,
+// and this animal has no gait to windmill with anyway -- her locomotion is
+// swimming, and the panic bolted a run on top of it.
+//
+// A flight is a streamlined pose with a shiver on it. What survives from the old
+// section is everything about the ENVELOPE, because that part was right: she is
+// still not getting over it, she is still leaving.
 {
   const L = rigConfig.limbs;
-  ok(L.panicHz > L.flailHz * 1.5, `terror is much faster (${L.panicHz} vs ${L.flailHz} Hz)`);
-  ok(L.panicDeg < L.flailDeg, `and tighter (${L.panicDeg} vs ${L.flailDeg} deg)`);
-  // the tantrum winds down; the panic does not, because she is not getting over
-  // it, she is leaving
+
+  // ── the shape of the burst is unchanged ──────────────────────────────
+  ok(L.panicDeg < L.flailDeg, `a fright is tighter than a tantrum (${L.panicDeg} vs ${L.flailDeg} deg)`);
   ok(L.flailHzEnd / L.flailHz < 0.6, "the tantrum winds right down");
-  ok(L.panicHzEnd / L.panicHz > 0.75, "the panic barely slows");
+  ok(L.panicHzEnd / L.panicHz > 0.75, "the fright barely slows — she is not calming down");
   ok(L.panicAttack < L.flailAttack, "and it is snapped on harder");
   ok(L.panicHold > 0.6, "held flat for most of the flight, then dropped");
+
+  // ── and it is no longer a faster windmill ────────────────────────────
+  // Peak angular rate of the limb oscillator is amplitude x 2pi x hz. That is
+  // the number a foot buzzes at, and it is the one the report was about.
+  const rate = (deg, hz) => deg * 2 * Math.PI * hz;
+  const fright = rate(L.panicDeg * L.flailFootMul, L.panicHz);
+  const tantrum = rate(L.flailDeg * L.flailFootMul, L.flailHz);
+  ok(fright < 600,
+    `a foot in flight moves at ${Math.round(fright)} deg/s peak, which does not read as a buzz`);
+  ok(fright < tantrum,
+    `...and less than the tantrum it used to beat (${Math.round(fright)} vs ${Math.round(tantrum)} deg/s)`);
+
+  // THE PAIRED CONTROL: the settings that produced the report, run through the
+  // same arithmetic. 27 deg at 13.5 Hz is nearly four times the threshold.
+  const before = rate(27 * L.flailFootMul, 13.5);
+  ok(before > 600 * 3,
+    `control: the old fright ran at ${Math.round(before)} deg/s, which is what "the feet vibrate" was`);
+
+  // ── the pose she leaves in is the flight pose ────────────────────────
+  // limbPose pins the cruise blend for the whole of a panic, so she is
+  // streamlined from the first frame instead of waiting to cross blendLoPx --
+  // which she has not done at the moment the fright starts, because the first
+  // beat of it BRAKES her to a stop. Cruise has to actually be a flight pose
+  // for that to mean anything: arms swept back, legs extended away.
+  const { hover, cruise } = L.poses;
+  ok(cruise.armL[0] < hover.armL[0] - 20,
+    `cruise sweeps the arms back (${cruise.armL[0]} vs ${hover.armL[0]} deg)`);
+  ok(cruise.footL[0] > hover.footL[0] + 20,
+    `and extends the legs away down the long axis (${cruise.footL[0]} vs ${hover.footL[0]} deg)`);
+  ok(rigConfig.behavior.panicBrake > 5,
+    `...which is why it is pinned: beat one BRAKES her (${rigConfig.behavior.panicBrake}/s), ` +
+    `so speed cannot be what selects the pose`);
 }
 
 // ---------------------------------------------------------------------------

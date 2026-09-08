@@ -1068,9 +1068,18 @@ export const rigConfig = {
     // SMALLER, TIGHTER and much faster, and it does not wind down, because she
     // is not getting over it, she is leaving. It holds flat for as long as she
     // is running and drops only at the very end.
-    panicDeg: 27,             // less throw than the tantrum's 42...
-    panicHz: 13.5,            // ...at nearly twice the rate
-    panicHzEnd: 11.0,         // and barely slowing
+    // ...AND IT IS A TREMOR NOW, NOT A WINDMILL. 27 degrees at 13.5 Hz on all
+    // four limbs, with 1.15x on the feet and held flat for 78% of the burst,
+    // is two oscillators above 13 Hz on a foot -- which reads as vibration,
+    // not as fright, and was the whole of "the feet effectively vibrate".
+    // She flies out now: limbPose pins the streamlined cruise pose for the
+    // length of a panic (arms swept back, legs extended), and what is left
+    // here is a small fast shiver ON that pose rather than a gait bolted over
+    // it. The fear was never in the legs -- it is the >.< face, the sweat and
+    // the head whip, and all three are untouched.
+    panicDeg: 7,              // a shiver, not a throw
+    panicHz: 5.5,             // ...and below the rate a foot reads as buzzing
+    panicHzEnd: 4.2,          // still barely slowing: she is not calming down
     panicDurS: 1.6,           // as long as the flight
     panicAttack: 0.03,        // snapped on
     panicHold: 0.78,          // held flat this far, then dropped

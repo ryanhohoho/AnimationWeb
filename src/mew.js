@@ -441,7 +441,9 @@ export function bootMew({ world, deck, scope }) {
       // THE SHAKE. the other half of a good impact: the whole character buzzes
       // on the flail's own envelope. It rides the RENDER position only, exactly
       // like the bob, so physics and collision never feel it.
-      if (limbFx && limbFx.flail > 0.001) {
+      // ...on a BUMP. Not on a flight: 5.5 px at 19 Hz is the other half of an
+      // impact, and there is no impact in leaving.
+      if (limbFx && limbFx.flail > 0.001 && !limbFx.panicking) {
         const f = limbFx.flail * cfg.limbs.flailShakePx;
         const w = simTime * cfg.limbs.flailShakeHz * 2 * Math.PI;
         px += Math.sin(w) * f;
