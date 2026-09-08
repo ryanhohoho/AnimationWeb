@@ -882,6 +882,14 @@ export function createRouter({ scope, deck, world, onPage }) {
     // a sideways-scrolling box owns its own horizontal drags -- the terminal
     // transcript on a project sheet is 87 columns wide and scrolls
     if (e.target?.closest?.("[data-noswipe], .term")) { sw = null; return; }
+    // ...and so does MEW. A fling is a mostly-sideways touch drag, which is
+    // the exact shape this watches for, so throwing her across a phone screen
+    // navigated away from the page you threw her on. There is no element to
+    // exclude -- she is a WebGL context and the grab is a window listener --
+    // so the engine publishes it. This runs after world.js's own pointerdown
+    // listener, which is registered at construction, so by here the flag is
+    // already set for this very press.
+    if (world?.grabbing) { sw = null; return; }
     sw = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId };
   }, { passive: true, signal: scope?.signal });
 

@@ -20,6 +20,15 @@ export function createWorld({ seed = 1337, headless = false } = {}) {
     colliders: [],          // [{ rect: {x, y, w, h}, el }] in DOCUMENT coords
     collidersVersion: 0,    // bumped on every remeasure so consumers can rebuild
     panicking: false,       // the flight, see brain.panicFrom
+    // ── THE HAND IS ON HER ────────────────────────────────────────────────
+    // Published for the same reason `panicking` is: something outside the
+    // engine has to know. The router's swipe watches every touch drag on the
+    // page and reads a mostly-sideways one as "next card" — and a fling is a
+    // mostly-sideways touch drag. On a phone, throwing her sideways navigated
+    // away from the page you threw her on. There is no element to check
+    // against, because she is a WebGL context and the grab is a window
+    // listener, so the flag is the only thing that can answer it.
+    grabbing: false,
     offLeash: false,        // ...and the two moments when being off the page is
                             // the POINT: that flight, and the beat she waits
                             // outside the frame before entering a new sheet.

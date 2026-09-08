@@ -2906,6 +2906,67 @@ section("a label never leaves its last word alone — and never becomes one word
 }
 
 // ---------------------------------------------------------------------------
+// A FLING IS A SWIPE, AND THE PAGE WAS LISTENING. The router reads any
+// mostly-sideways touch drag as "next card", which is exactly the shape of
+// throwing her across a phone screen — so a fling navigated away from the page
+// you threw her on. She is a WebGL context and the grab is a window listener,
+// so there is no element for the swipe to exclude; the engine has to say so.
+section("the hand is on her, and the page can tell");
+{
+  const P = rigConfig.physics;
+  const B = rigConfig.behavior;
+  const mk = () => {
+    const w = createWorld({ headless: true, seed: 4 });
+    w.docSize = { w: 1400, h: 2000 };
+    w.viewport = { w: 1400, h: 900 };
+    w.poseState = { leanIn: 1 };
+    w.colliders = []; w.collidersVersion = 1;
+    const b = createBody({ x: 700, y: 450, radius: 75, config: P });
+    const br = createBrain({ body: b, world: w, config: B,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    return { w, b, br };
+  };
+
+  {
+    const { w, b, br } = mk();
+    ok(w.grabbing === false, "nobody is holding her to start with");
+    w.emit("mewdown", { point: { x: b.pos.x, y: b.pos.y } });
+    ok(w.grabbing === true && br.state === "held",
+      "a press on her says so on the WORLD, in the same tick as the press");
+    w.emit("pointerup", {});
+    ok(w.grabbing === false, "and letting go says so too");
+  }
+
+  // ── AND IT CANNOT OUTLIVE THE GRAB ────────────────────────────────────
+  // `panicking` has a paragraph about exactly this: she can be startled out of
+  // a state, or the sheet can swap under one, and a flag left behind is a flag
+  // that lies for the rest of the session.
+  {
+    const { w, b, br } = mk();
+    w.emit("mewdown", { point: { x: b.pos.x, y: b.pos.y } });
+    ok(w.grabbing === true, "held...");
+    br.state = "hover";                       // torn out of it by anything at all
+    w.time += 1 / 120; br.step(1 / 120);
+    ok(w.grabbing === false,
+      "...and one step after she stops being held, nothing still says she is");
+  }
+
+  // THE PAIRED CONTROL, and it has to be a press that really reaches the
+  // handler and really is declined — "a press somewhere else" would pass
+  // whether or not this flag existed, because mew.js is what decides a press is
+  // on her and mew.js needs a GPU. A press mid-beam does reach it, and the
+  // handler's first line turns it away.
+  {
+    const { w, b, br } = mk();
+    br.state = "charge";
+    w.emit("mewdown", { point: { x: b.pos.x, y: b.pos.y } });
+    ok(w.grabbing === false && br.state === "charge",
+      "control: a press that the handler declines raises nothing — the flag " +
+      "follows the grab rather than the press");
+  }
+}
+
+// ---------------------------------------------------------------------------
 // utils/lifecycle.js opens with "a leak needs a named OWNER, not vigilance",
 // names six classes of leak and claims four of them outright — and then says
 // it "runs headless in test/type.test.js, which is the only way the 'zero

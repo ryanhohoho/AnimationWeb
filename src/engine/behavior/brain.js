@@ -248,6 +248,12 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
   // it with the hand's velocity. a press that never moves resolves to a pet
   world.on("mewdown", (e) => {
     if (brain.state === "charge" || brain.state === "fire") return;
+    // THE PAGE HAS TO KNOW, and it has to know NOW rather than at the next sim
+    // step: world.js emits `pointerdown` from a window listener it registered
+    // at construction, so this whole chain runs before the router's own
+    // listener for the same event — which is exactly where the swipe decides
+    // whether to start watching. A step later is a step too late.
+    world.grabbing = true;
     brain.state = "held";
     brain.stateTime = 0;
     brain.path = null;
@@ -262,6 +268,7 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
   });
 
   world.on("pointerup", () => {
+    world.grabbing = false;
     if (brain.state !== "held") return;
     const h = brain.held;
     brain.held = null;
@@ -814,6 +821,11 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     // She can be grabbed mid-flight, and if that stole the state while
     // `panicking` was still set, every hard bump for the rest of the session
     // would silently skip its flail.
+    // ...and the same for the hand. She can be startled out of a grab, or the
+    // page can swap under one, and a flag that outlives its state is the bug
+    // `panicking` already has a paragraph about.
+    if (world.grabbing && brain.state !== "held") world.grabbing = false;
+
     if (world.panicking && (brain.state !== "startle" || !brain.panic)) {
       world.panicking = false;
       brain.gazeAt = null;

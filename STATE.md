@@ -1433,6 +1433,17 @@ The reason is **not** "no generative grounds". Verbatim:
   that has a keyboard attached (`.term` only takes `overflow-x` under 860 px).
   Measured in the browser: on the USB sheet Down and Space are no longer taken
   and Right still is; on `/experience`, one screen tall, all three still are.
+- **A fling IS a swipe, and the page was listening.** The router reads any
+  mostly-sideways touch drag as "next card" — which is the exact shape of
+  throwing her across a phone screen, so a fling navigated away from the page
+  you threw her on. There is no element for the swipe to exclude, because she
+  is a WebGL context and the grab is a window listener, so the engine publishes
+  `world.grabbing`. It must be raised in the `mewdown` handler and not at the
+  next sim step: world.js's window listener was registered at construction, so
+  the whole press → mewdown → brain chain runs before the router's own listener
+  for the same event, which is where the swipe decides whether to watch. A step
+  later is a step too late. Verified live: the same 140 px drag navigates from
+  empty paper and does not from her.
 - **`step(-1)` at the first project reports false, and that is not a bug.**
   ArrowUp at the top of `usb-provisioning` looks unhandled because there is no
   previous project to go to — the same key on `closet` is taken.
