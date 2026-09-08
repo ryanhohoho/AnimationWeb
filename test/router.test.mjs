@@ -724,5 +724,79 @@ console.log("\n== a way home from every page but home");
   document.getElementById = byId;
 }
 
+// ---------------------------------------------------------------------------
+// THE TYPE IS MEASURED WHERE THE DOCUMENT LIVES, NOT WHERE IT IS STANDING.
+// The collider tracker is the second thing on this site to measure the page,
+// and it measures it at the worst possible moment: `recollect` fires while #doc
+// still carries the page turn's inline transform, and the measurement lands on
+// the next frame, well inside it. getBoundingClientRect INCLUDES a transform,
+// so every rect on a freshly turned sheet would be baked sideways for the life
+// of the page — she would sit in a column believing it was 30 px to the left.
+// Exactly the aperture bug (site/deck.js), which is why this is checked here
+// rather than trusted to look right.
+console.log("\n== the page turn does not move the type");
+{
+  const { createColliderTracker } = await import("../src/engine/physics/colliders.js");
+  const { createWorld } = await import("../src/engine/world.js");
+
+  const TURN = -30;
+  // an element whose rect carries whatever transform its OWNER is holding, the
+  // way a real one carries its ancestor's
+  const mkEl = (owner, tag, x, w, text) => ({
+    tagName: tag,
+    firstChild: text ? { nodeType: 3, nodeValue: text, nextSibling: null } : null,
+    parentElement: null,
+    getAttribute: () => null,
+    matches: () => false,
+    getBoundingClientRect: () => ({
+      left: x + (owner.style.transform ? TURN : 0), top: 100, width: w, height: 40
+    })
+  });
+  const mkDoc = (style) => {
+    const d = { style, querySelectorAll: () => d._kids };
+    // whitespace-only span second: it is not type and must not be collected
+    d._kids = [mkEl(d, "P", 200, 400, "a paragraph of words"),
+               mkEl(d, "SPAN", 900, 120, "  ")];
+    return d;
+  };
+  const fakeDoc = mkDoc({ transform: `translate3d(${TURN}px,0,0)` });
+  const held = document.getElementById;
+  const heldAll = document.querySelectorAll;
+  document.getElementById = (id) => (id === "doc" ? fakeDoc : held(id));
+  document.querySelectorAll = () => [];              // no [data-collider] anywhere
+  globalThis.requestAnimationFrame = () => {};       // measure() is called directly
+  const hadInterval = globalThis.setInterval;
+  globalThis.setInterval = () => 0;
+
+  const world = createWorld({ headless: true });
+  createColliderTracker(world);                      // collect + measure, inline
+
+  ok(world.colliders.length === 1 && world.colliders[0].soft === true,
+    `the words are collected and they are SOFT (${world.colliders.length} rect)`);
+  ok(world.colliders[0].rect.x === 200,
+    `and measured where the document lives, not where the turn is standing ` +
+    `(x ${world.colliders[0].rect.x}, not ${200 + TURN})`);
+  ok(fakeDoc.style.transform === `translate3d(${TURN}px,0,0)`,
+    "...and the transform is put back, or the turn stops mid-slide");
+
+  // THE PAIRED CONTROL, and it is the same code with the fix DISABLED rather
+  // than different code: a #doc whose transform cannot be cleared. Everything
+  // else runs exactly as above, and the paragraph measures 30 px out.
+  const stubborn = mkDoc({
+    get transform() { return `translate3d(${TURN}px,0,0)`; },
+    set transform(_v) { /* the removal does not take */ }
+  });
+  document.getElementById = (id) => (id === "doc" ? stubborn : held(id));
+  const w2 = createWorld({ headless: true });
+  createColliderTracker(w2);
+  ok(w2.colliders[0].rect.x === 200 + TURN,
+    `control: with nothing taken off, the same paragraph measures at ` +
+    `${w2.colliders[0].rect.x} — the whole column baked ${-TURN} px left`);
+
+  document.getElementById = held;
+  document.querySelectorAll = heldAll;
+  globalThis.setInterval = hadInterval;
+}
+
 console.log(failures ? `\n${failures} FAILED` : "\nall clear");
 process.exit(failures ? 1 : 0);

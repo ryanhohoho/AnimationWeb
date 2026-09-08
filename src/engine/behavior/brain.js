@@ -38,6 +38,13 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     moveIntent: v2.make(0, 0),  // unit heading the brain WANTS (doc coords);
                                 // bodyPose leans onto it before speed exists
     orbit: { theta: 0, dir: 1, nextFlipAt: 0 },
+    onTypeFor: 0,               // how long she has been SITTING on the words.
+                                // Only ever ticks while hovering: flying over
+                                // them is not sitting on them.
+    asideGiveUpUntil: 0,        // ...and nowhere better was found, so stop
+                                // looking for a bit
+    asideGlanceUntil: 0,        // she is looking at the words she just vacated
+
     path: null,          // [{x, y}] doc coords, current route
     pathIndex: 0,
     pathTarget: v2.make(0, 0),
@@ -45,6 +52,9 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     // WHERE SHE HAS ALREADY FAILED TO GET TO. Kept for a few seconds so the
     // next destination is a DIFFERENT one — see giveUp().
     blocked: [],
+    returnWhenClear: 0,  // a sheet changed mid-flight: finish leaving, then
+                         // come back. Closed in step(); see the recollect
+                         // handler for why it is not closed at the swap
     enterAt: -Infinity,  // a new sheet holds her outside the frame until this
     entrySide: 0,        // ...and this is the way she comes in when it lifts
     step,
@@ -105,29 +115,7 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     brain.path = null;
     brain.blocked.length = 0;
 
-    // ── AND THE FRIGHT IS OVER, WHICHEVER BRANCH RUNS ────────────────────
-    // This used to sit in the placement branch below, which is the branch that
-    // almost never runs. The crossing swaps at 0.8 s, she does not start moving
-    // until 0.66 s (a 0.50 s braked double-take, then a 0.16 s whip), so she is
-    // still on screen and the early return below takes it -- and the panic went
-    // on running on a page that had already replaced the one that scared her.
-    //
-    // What that cost, measured: 1.1 s more of panicThrust at 2600 px/s^2 with
-    // the leash off, carrying her ~1626 px out; then 1.2 s of `recover`
-    // coasting another ~450; then hover, which anchors her where she is. Nine
-    // seconds before she was back, and five of them were spent waiting.
-    //
-    // She is not running from anything any more. The press that opened is on a
-    // sheet that does not exist.
-    brain.panic = null;
-    brain.gazeAt = null;
-    brain.gazeFront = false;
-    brain.gazeWhip = false;
-    world.panicking = false;
-    brain.startleUntil = 0;
-    if (brain.state === "startle") { brain.state = "hover"; brain.stateTime = 0; }
-
-    // ── AND A TELEPORT IS ONLY FREE WHILE NOBODY CAN SEE IT ──────────────
+    // ── A TELEPORT IS ONLY FREE WHILE NOBODY CAN SEE IT ─────────────────
     // The paragraph above this handler says the swap is "the one moment in the
     // whole transition when the window is completely covered", and for a
     // CROSSING that is nearly true — except she is drawn at z30, above the
@@ -138,21 +126,70 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     // the edge, on every arrow key.
     //
     // So the test is not which kind of transition it was. It is whether she can
-    // be seen. On screen, she is left exactly where she is and carries on —
-    // mid-flight through the hole on a crossing, mid-wander on a turn, which is
-    // the truthful picture of both. Off screen, the placement below is free and
-    // she gets the deliberate entrance it was written for.
+    // be seen.
     const r = body.radius || 0;
     const top = world.scroll.y;
-    if (body.pos.x > -r && body.pos.x < vp.w + r
-        && body.pos.y > top - r && body.pos.y < top + vp.h + r) {
-      // ...and she must not be left waiting in the wings while standing in the
-      // middle of the page: enterAt freezes her until it lifts
+    const onScreen = body.pos.x > -r && body.pos.x < vp.w + r
+      && body.pos.y > top - r && body.pos.y < top + vp.h + r;
+
+    if (onScreen && world.panicking) {
+      // ── SHE IS MID-EXIT, AND THE EXIT IS THE POINT ───────────────────
+      // The fright used to be cleared here, and that was wrong in a way that
+      // took a report to see: the crossing swaps at 0.800 s and she does not
+      // leave the ground until 0.66 s (a 0.50 s braked double-take, then a
+      // 0.16 s whip), so at the swap she is about 140 ms and 177 px into her
+      // bolt. Ending it there stops the thrust dead and she decelerates in
+      // full view — "it just starts to fly away but then stops when the new
+      // page loads in".
+      //
+      // The press is gone, but the flight is not finished. So the fright ends
+      // when she is OUT OF SIGHT rather than when the page changes: the latch
+      // below is closed in step() on the frame she clears the window, and she
+      // comes straight back in from the side.
+      //
+      // This is not a return to the nine seconds. That was never the flight —
+      // it was 1.1 s of thrust AFTER she was already gone, a 1.2 s coast, an
+      // anchor holding her outside and a 4 s grace, and all four of those
+      // stay fixed.
+      brain.returnWhenClear = world.time + cfg.exitCapS;
+      return;
+    }
+
+    // whatever she was running from is on a sheet that does not exist
+    endFright();
+
+    if (onScreen) {
+      // a page TURN, which covers nothing: she is left exactly where she is and
+      // carries on. She must not be left waiting in the wings while standing in
+      // the middle of the page — enterAt freezes her until it lifts.
       brain.enterAt = -Infinity;
       brain.entrySide = 0;
       return;
     }
 
+    // off screen already: the placement is free, so she gets the entrance
+    enterFromSide();
+  });
+
+  /** the fright, ended. Called on the frame the page changes if she was not
+      flying, and otherwise on the frame she goes out of sight. */
+  function endFright() {
+    brain.panic = null;
+    brain.gazeAt = null;
+    brain.gazeFront = false;
+    brain.gazeWhip = false;
+    world.panicking = false;
+    brain.startleUntil = 0;
+    brain.returnWhenClear = 0;
+    if (brain.state === "startle") { brain.state = "hover"; brain.stateTime = 0; }
+  }
+
+  /** Put her just outside the nearer side, level with the window the reader is
+      actually looking at, and let her fly in after a beat. Only ever called
+      while she is off screen, because a teleport is only free while nobody can
+      see it. */
+  function enterFromSide() {
+    const vp = world.viewport;
     const side = body.pos.x < vp.w * 0.5 ? -1 : 1;
     body.pos.x = side < 0 ? -cfg.entryOffsetPx : vp.w + cfg.entryOffsetPx;
     body.pos.y = world.scroll.y + vp.h * (0.3 + world.random() * 0.4);
@@ -169,14 +206,11 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     // old sheet's position and the new one — a streak across the page on the
     // first frame of every arrival.
     v2.copy(body.prevPos, body.pos);
-
-    // ...and she is arriving. The fright and the page's own state were cleared
-    // above, for both branches.
     brain.state = "seek";
     brain.seekMode = "offscreen";  // ...which aims at the middle of the window
     brain.stateTime = 0;
     brain.offscreenSince = null;
-  });
+  }
 
   /** is no part of her inside the window? Published on the world every step so
       the router can hold the paper open until she is gone — see step(). */
@@ -435,7 +469,20 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     // longer be pinned by it, but being ejected from something you are still
     // being aimed at is a shove, not navigation. Aim at the nearest place she
     // may actually be and the two stop arguing at all.
-    const target = pathfinder.nearestOpenPoint(rawTarget, body.radius);
+    // ...AND "SOMEWHERE SHE CANNOT BE" INCLUDES THE OTHER SIDE OF THE LEASH.
+    // The sideways leash holds her BODY on the page — the line sits one radius
+    // in (physics.edgeSlackXPx is 0) — so a destination nearer the rim than
+    // that is one she can never arrive at. It used to be unreachable in theory
+    // only, because with an empty grid every cell was open and the nearest open
+    // cell was the target itself. Now that the type is in the grid, a sheet
+    // with little open space leaves slivers of it against the rims, and
+    // nearestOpenPoint hands one back: she pushes into the leash for the whole
+    // cruise, times out, gives up, picks again, and resolves to the same
+    // sliver. Pinned to the edge of the paper, for good.
+    const target = pathfinder.nearestOpenPoint(rawTarget, body.radius, {
+      min: body.radius,
+      max: Math.max(body.radius, world.docSize.w - body.radius)
+    });
 
     const needPlan =
       !brain.path ||
@@ -560,9 +607,20 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
   // is most of why coming back took so long. Clamping the anchor into the
   // visible band makes the hover orbit fetch her by itself: no new state, no
   // new mode, and it uses a force that is already running every frame.
+  /** how much room an anchor needs so the whole ORBIT clears the type */
+  function seatRoom() {
+    return body.radius + cfg.hover.orbitRadiusPx * cfg.aside.roomFactor;
+  }
+
   function settle() {
     const vp = world.viewport, m = cfg.margin, sy = world.scroll.y;
-    v2.copy(brain.anchor, pathfinder.nearestOpenPoint(body.pos, body.radius));
+    // ROOMY, NOT MERELY OPEN. `nearestOpenPoint` asks that a cell be cheap,
+    // which on the placement grid means "not type" — and that is satisfied by a
+    // gap she overhangs. The trip she just took ends here, so this is the
+    // decision that makes her final position land off the words rather than
+    // near them; the half-second notice below is the safety net for everything
+    // that moves under her afterwards, not the mechanism.
+    v2.copy(brain.anchor, pathfinder.nearestRoomyPoint(body.pos, body.radius, seatRoom()));
     brain.anchor.x = clamp(brain.anchor.x, m, Math.max(m, vp.w - m));
     brain.anchor.y = clamp(brain.anchor.y, sy + m, sy + Math.max(m, vp.h - m));
   }
@@ -654,11 +712,20 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     const cy = world.scroll.y + vp.h * 0.5;
     let best = null;
     let bestScore = -Infinity;
+    // ...AND A SECOND-BEST, for a sheet where nothing at all is cheap enough.
+    // Before there was type in the grid every sample passed and this never
+    // mattered; now a dense page can reject all thirty, and returning null
+    // stops her CHOOSING anywhere — she hovers on the spot until the layout
+    // changes. The least bad sample is a destination; nothing is not.
+    let fallback = null, fallbackCost = Infinity;
 
     for (let i = 0; i < 30; i++) {
       const p = v2.make(m + world.random() * (vp.w - 2 * m), y0 + world.random() * Math.max(y1 - y0, 1));
       const c = pathfinder.costPoint(p, body.radius);
-      if (c > cfg.interest.maxCost) continue;
+      if (c > cfg.interest.maxCost) {
+        if (c < fallbackCost) { fallbackCost = c; fallback = p; }
+        continue;
+      }
 
       // a trip worth taking: neither next door nor across the document
       const d = v2.len(v2.sub(v2.make(), p, body.pos));
@@ -685,7 +752,7 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
       score += world.random() * cfg.interest.jitter;
       if (score > bestScore) { bestScore = score; best = p; }
     }
-    return best;
+    return best || fallback;
   }
 
   function scheduleNextInterest() {
@@ -723,6 +790,25 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     // no WebGL, a chunk that failed — never waits for an animal it does not
     // have.
     world.mewClear = clearOfWindow();
+
+    // ── AND THE EXIT IS FINISHED THE MOMENT SHE IS OUT OF SIGHT ──────────
+    // Armed by `recollect` when the sheet changed while she was still flying.
+    // The cap is the backstop: thrown into a corner, or an odd viewport, and
+    // she is fetched back anyway rather than left out there.
+    if (brain.returnWhenClear
+        && (world.mewClear || world.time > brain.returnWhenClear)) {
+      endFright();
+      enterFromSide();
+    }
+
+    // The glance back at the words is the only gaze this file sets outside a
+    // panic, so it is also the only one that has to put itself away. Never over
+    // a panic's: that one owns the head for the whole flight and is cleared
+    // with the flight.
+    if (brain.asideGlanceUntil && world.time > brain.asideGlanceUntil) {
+      brain.asideGlanceUntil = 0;
+      if (!brain.panic) brain.gazeAt = null;
+    }
 
     // ANY exit from the startle state clears the flag, not just the tidy one.
     // She can be grabbed mid-flight, and if that stole the state while
@@ -800,6 +886,50 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
         body.addForce(v2.set(tmpF,
           (tx - body.pos.x) * h.posGain - body.vel.x * h.velDamp,
           (ty - body.pos.y) * h.posGain - body.vel.y * h.velDamp));
+        // ── SHE NOTICES WHEN SHE IS IN THE WAY ───────────────────────────
+        // Landing on a paragraph is allowed, and has to be: the alternative is
+        // a page she is forbidden from, which is what the old hard colliders
+        // were and why they read as furniture. She is simply not allowed to
+        // STAY. Half a second is long enough that the move is a decision rather
+        // than a flinch, and short enough that nobody reads a line through her.
+        //
+        // ONLY IN HOVER. Cruising over the words is not sitting on them, and a
+        // route that had to break off halfway because it crossed a column is
+        // exactly the avoidance this is written to not be.
+        //
+        // The trigger is her circle actually OVERLAPPING type (clearance under
+        // her own radius); the seat she moves to needs the orbit's worth of
+        // room on top of that. The gap between the two is the hysteresis, so
+        // arriving somewhere cannot immediately re-trigger.
+        const room = pathfinder.clearanceAt(body.pos, body.radius);
+        if (room >= body.radius || world.time < brain.asideGiveUpUntil) {
+          brain.onTypeFor = 0;
+        } else if ((brain.onTypeFor += dt) >= cfg.aside.noticeS) {
+          brain.onTypeFor = 0;
+          const seat = pathfinder.nearestRoomyPoint(body.pos, body.radius, seatRoom());
+          if (pathfinder.clearanceAt(seat, body.radius) > room + 1) {
+            // ...and she looks at what she was sitting on as she slides off it.
+            // A point, so the head keeps turning to hold it as she leaves —
+            // which is the whole gesture, and it costs one assignment.
+            brain.gazeAt = { x: body.pos.x, y: body.pos.y };
+            brain.asideGlanceUntil = world.time + cfg.aside.glanceS;
+            v2.set(brain.anchor, seat.x, seat.y);
+            brain.anchor.x = clamp(brain.anchor.x, cfg.margin,
+              Math.max(cfg.margin, world.viewport.w - cfg.margin));
+            brain.anchor.y = clamp(brain.anchor.y, world.scroll.y + cfg.margin,
+              world.scroll.y + Math.max(cfg.margin, world.viewport.h - cfg.margin));
+            // NO NEW STATE, and no thrust either. The hover spring is
+            // near-critical and already running; letting it fetch her comes out
+            // as an unhurried scoot, which is the body language asked for. A
+            // seek would have opened the throttle and read as an errand.
+          } else {
+            // nowhere better within reach — a phone, a full-bleed figure. Stop
+            // searching the grid every half second for an answer that is not
+            // there.
+            brain.asideGiveUpUntil = world.time + cfg.aside.giveUpForS;
+          }
+        }
+
         if (world.time >= brain.nextInterestAt) {
           const p = pickInterest();
           if (p) {

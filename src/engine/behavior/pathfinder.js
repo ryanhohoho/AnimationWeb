@@ -42,6 +42,19 @@
 // test read that. Charging the sampler for the squeeze emptied the page: she
 // would not choose anywhere that was not a hall.
 //
+// AND SOFT RECTS PAY ONLY THE PLACEMENT GRID. A rect marked `soft` is TYPE —
+// something to read, not something to hit. Nothing pushes her off it and
+// nothing routes around it, so it never touches `travel` and never narrows the
+// clearance the squeeze is charged from: she flies over a paragraph in a
+// straight line exactly as if it were not there. What it does do is raise
+// `cost`, which is the grid every question about WHERE TO STOP reads. The two
+// grids were already separated for a different reason (a corridor is a bad
+// thing to thread and a fine place to hover); this is the same seam, used for
+// the difference between passing over the words and sitting on them.
+//
+// Hard rects — anything carrying `data-collider`, which today is nothing — go
+// into both, and behave exactly as they always have.
+//
 // AND THE GRID DOES NOT STOP AT THE PAGE. It carries `outsideXPx` of open space
 // past the left and right rims, because she is allowed out there now. An
 // element flush to the edge used to have a crack beside it and nothing else;
@@ -53,7 +66,7 @@ export function createPathfinder(world, cfg) {
   const cell = cfg.cellPx;
   let cols = 0, rows = 0;
   let cost = null;           // what a cell CONTAINS — destinations read this
-  let travel = null;         // ...plus the squeeze — A* and LOS read this
+  let travel = null;         // ...HARD rects only, plus the squeeze — A*/LOS
   let solid = null;          // raw type, uninflated — what clearance is measured to
   let clearPx = null;        // how much room each cell has, in px
   let originX = 0, originY = 0;
@@ -69,12 +82,19 @@ export function createPathfinder(world, cfg) {
     const n = cols * rows;
     cost = new Float32Array(n).fill(1);
     solid = new Uint8Array(n);
+    // ...and the same two, built from the HARD rects alone. They are what a
+    // route is planned against, and type is not a thing a route knows about.
+    const hardCost = new Float32Array(n).fill(1);
+    const hardSolid = new Uint8Array(n);
+    let anyHard = false;
     const inflate = radius * 0.5 + cfg.padPx;
     const ring = cfg.nearCells;
     const gx = (v) => Math.floor((v - originX) / cell);
     const gy = (v) => Math.floor((v - originY) / cell);
     for (const c of world.colliders) {
       const r = c.rect;
+      const hard = c.soft !== true;
+      if (hard) anyHard = true;
       const x0 = gx(r.x - inflate);
       const y0 = gy(r.y - inflate);
       const x1 = gx(r.x + r.w + inflate);
@@ -91,6 +111,7 @@ export function createPathfinder(world, cfg) {
             : 1 + (cfg.nearCost - 1) * (1 - (out - 1) / ring);
           const i = y * cols + x;
           if (v > cost[i]) cost[i] = v;
+          if (hard && v > hardCost[i]) hardCost[i] = v;
         }
       }
       // ...and the UNINFLATED rect, separately. Clearance has to be distance to
@@ -99,11 +120,21 @@ export function createPathfinder(world, cfg) {
       const sx0 = Math.max(0, gx(r.x)), sx1 = Math.min(cols - 1, gx(r.x + r.w));
       const sy0 = Math.max(0, gy(r.y)), sy1 = Math.min(rows - 1, gy(r.y + r.h));
       for (let y = sy0; y <= sy1; y++) {
-        for (let x = sx0; x <= sx1; x++) solid[y * cols + x] = 1;
+        for (let x = sx0; x <= sx1; x++) {
+          solid[y * cols + x] = 1;
+          if (hard) hardSolid[y * cols + x] = 1;
+        }
       }
     }
-    buildClearance();
-    chargeForTheSqueeze(radius);
+    clearPx = distanceToSolid(solid);
+    // THE SQUEEZE IS A HARD-RECT IDEA. It prices a gap the BODY cannot fly
+    // through, and nothing about type narrows a gap any more — she passes
+    // straight over it. With no hard rects on the page (which is the state the
+    // site ships in) `travel` is flat 1, every line of sight succeeds, and a
+    // route is the straight line between its ends.
+    travel = anyHard
+      ? chargeForTheSqueeze(hardCost, distanceToSolid(hardSolid), radius)
+      : hardCost;
     builtVersion = world.collidersVersion;
     builtRadius = radius;
   }
@@ -112,11 +143,11 @@ export function createPathfinder(world, cfg) {
   // Chamfer distance transform, 3-4 weights, two sweeps. Distance in cells to
   // the nearest cell of type, scaled to px. Off-grid counts as open, which is
   // correct: past the edge of the grid is further from the page still.
-  function buildClearance() {
+  function distanceToSolid(src) {
     const n = cols * rows;
     const INF = 1e9;
     const d = new Float32Array(n);
-    for (let i = 0; i < n; i++) d[i] = solid[i] ? 0 : INF;
+    for (let i = 0; i < n; i++) d[i] = src[i] ? 0 : INF;
     const put = (i, v) => { if (v < d[i]) d[i] = v; };
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
@@ -142,8 +173,8 @@ export function createPathfinder(world, cfg) {
         }
       }
     }
-    clearPx = d;
-    for (let i = 0; i < n; i++) clearPx[i] = (d[i] / 3) * cell;
+    for (let i = 0; i < n; i++) d[i] = (d[i] / 3) * cell;
+    return d;
   }
 
   // ── A GAP SHE CANNOT FIT THROUGH IS WORTH WHAT NO GAP IS WORTH ──────────
@@ -155,19 +186,19 @@ export function createPathfinder(world, cfg) {
   //
   // Squared in between, so a merely snug gap is only mildly discouraged and a
   // genuinely tight one is ruled out fast.
-  function chargeForTheSqueeze(radius) {
+  function chargeForTheSqueeze(base, room, radius) {
     const fit = radius * cfg.tightFitFactor;
     const ease = fit + cfg.tightEasePx;
     const span = Math.max(1, ease - fit);
-    travel = Float32Array.from(cost);
-    for (let i = 0; i < cost.length; i++) {
-      if (solid[i]) continue;
-      const c = clearPx[i];
-      if (c >= ease) continue;
+    const out = Float32Array.from(base);
+    for (let i = 0; i < out.length; i++) {
+      const c = room[i];
+      if (c === 0 || c >= ease) continue;
       const t = Math.min(1, Math.max(0, (ease - c) / span));
       const v = 1 + (cfg.tightCost - 1) * t * t;
-      if (v > travel[i]) travel[i] = v;
+      if (v > out[i]) out[i] = v;
     }
+    return out;
   }
 
   function ensure(radius) {
@@ -190,14 +221,39 @@ export function createPathfinder(world, cfg) {
   /** open enough to want to be in */
   const isOpen = (x, y) => inGrid(x, y) && cost[y * cols + x] <= cfg.openMaxCost;
 
-  // nearest genuinely open cell (for targets that landed inside type)
-  function nearestFree(c) {
-    if (isOpen(c.x, c.y)) return c;
+  // ── NEAREST GENUINELY OPEN CELL SHE CAN ACTUALLY OCCUPY ────────────────
+  // Unbounded in range — a hard obstacle can be two thousand pixels across, and
+  // the nearest way out of the middle of one is genuinely far — but bounded in
+  // X, and that part is not an optimisation. Without it this hands back the
+  // first open cell it finds anywhere, and on a sheet with little open space
+  // that is a sliver against the rim of the page. The sideways leash holds her
+  // BODY on the paper, so the line sits one radius in and a destination past it
+  // is one she can never arrive at: she pushes into the leash for the whole
+  // cruise, times out, gives up, picks again, and resolves to the same sliver.
+  // Pinned to the edge of the paper, for good. Only reachable once the grid had
+  // real type in it — with an empty grid every cell was open and the nearest
+  // open cell was always the target itself.
+  //
+  // With nothing open in reach the honest answer is no answer, and the caller
+  // aims at the point it asked about. Type is expensive, not impassable.
+  function nearestFree(c, band) {
+    // `band` is a world-x range she is allowed to occupy, and it has to be part
+    // of the SEARCH rather than a clamp afterwards. Clamping the answer back
+    // into the band lands it inside whatever sits against the rim — which on
+    // this site is a full-height aperture — and aiming her at the middle of
+    // that is the opposite of what the snap is for.
+    const okBand = !band ? () => true : (x) => {
+      const wx = originX + (x + 0.5) * cell;
+      return wx >= band.min && wx <= band.max;
+    };
+    if (isOpen(c.x, c.y) && okBand(c.x)) return c;
     for (let ring = 1; ring < Math.max(cols, rows); ring++) {
       for (let dy = -ring; dy <= ring; dy++) {
         for (let dx = -ring; dx <= ring; dx++) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
-          if (isOpen(c.x + dx, c.y + dy)) return { x: c.x + dx, y: c.y + dy };
+          if (okBand(c.x + dx) && isOpen(c.x + dx, c.y + dy)) {
+            return { x: c.x + dx, y: c.y + dy };
+          }
         }
       }
     }
@@ -240,8 +296,16 @@ export function createPathfinder(world, cfg) {
     ensure(radius);
     // the start is wherever she IS, type or not; only the goal has to be open
     const start = clampCell(toCell(from));
-    const goal = nearestFree(toCell(to));
-    if (!goal) return null;
+    // A GOAL WITH NO OPEN CELL ANYWHERE IS STILL A GOAL. `nearestFree` walks the
+    // whole grid and gives up, and returning null there means no route at all —
+    // the caller falls back to a direct steer, arrives nowhere in particular,
+    // times out, gives up, picks another target that is also not open, and does
+    // it again. That is a stall, and it only became reachable when the grid got
+    // real content in it: a narrow window, or a sheet that is type from edge to
+    // edge, has nowhere that clears the openness ring. Type is expensive, not
+    // impassable — which is this file's whole thesis — so plan to the cell she
+    // asked for and let the cost field make it a considered trip.
+    const goal = nearestFree(toCell(to)) || clampCell(toCell(to));
 
     const idx = (c) => c.y * cols + c.x;
     const open = [];   // binary-ish: small grids, a sorted-insert array is fine
@@ -331,12 +395,50 @@ export function createPathfinder(world, cfg) {
 
   /** the nearest point she may actually BE, in world coords. Returns the point
       itself when it is already fine, so the common case allocates nothing new. */
-  function nearestOpenPoint(p, radius) {
+  function nearestOpenPoint(p, radius, band) {
     ensure(radius);
     const c = toCell(p);
-    if (isOpen(c.x, c.y)) return p;
-    const f = nearestFree(c);
+    if (isOpen(c.x, c.y) && (!band || (p.x >= band.min && p.x <= band.max))) return p;
+    const f = nearestFree(c, band);
     return f ? toWorld(f) : p;
+  }
+
+  /** ── SOMEWHERE SHE CAN SIT WITHOUT SITTING ON ANYTHING ──────────────────
+      The nearest point with `wantPx` of room around it. `nearestOpenPoint` asks
+      only that a cell be cheap, and cheap is not the same as roomy: the hover
+      orbit is 55 px wide and she is 75 px across, so an anchor that merely
+      clears the type still swings her back over it every lap. Asking for room
+      puts the whole orbit in the gap.
+
+      Falls back to the roomiest cell it saw rather than to nothing, because a
+      narrow sheet — a phone, a wide figure — can genuinely have nowhere that
+      qualifies, and standing still on the words is the one outcome worse than
+      an imperfect seat. Returns `p` itself when `p` is already fine, so the
+      common case allocates nothing. */
+  function nearestRoomyPoint(p, radius, wantPx) {
+    ensure(radius);
+    const c = toCell(p);
+    const roomAt = (x, y) => (inGrid(x, y) ? clearPx[y * cols + x] : Infinity);
+    if (roomAt(c.x, c.y) >= wantPx) return p;
+    let bestRoom = roomAt(c.x, c.y), best = null;
+    // A BOUND, NOT THE WHOLE GRID. An unbounded ring search on a page with no
+    // open space walks every cell of a document-sized grid, every time it is
+    // asked — and it is asked from a per-frame path. Far enough to cross the
+    // widest column on the site and stop.
+    const maxRing = Math.ceil(cfg.roomSearchPx / cell);
+    for (let ring = 1; ring <= maxRing; ring++) {
+      for (let dy = -ring; dy <= ring; dy++) {
+        for (let dx = -ring; dx <= ring; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+          const x = c.x + dx, y = c.y + dy;
+          if (!inGrid(x, y)) continue;
+          const room = clearPx[y * cols + x];
+          if (room >= wantPx) return toWorld({ x, y });
+          if (room > bestRoom) { bestRoom = room; best = { x, y }; }
+        }
+      }
+    }
+    return best ? toWorld(best) : p;
   }
 
   /** how much room a point has, in px — 0 inside type */
@@ -348,6 +450,7 @@ export function createPathfinder(world, cfg) {
 
   return {
     findPath, losPoints, isFreePoint, costPoint, clearanceAt, nearestOpenPoint,
+    nearestRoomyPoint,
     _debug: {
       build,
       get grid() { return { cols, rows, cost, travel, clearPx, solid, originX, originY, cell }; }

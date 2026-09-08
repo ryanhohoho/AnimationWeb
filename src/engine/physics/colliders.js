@@ -6,26 +6,98 @@ import { v2 } from "../../utils/math.js";
 
 // --- measurement (browser) ---------------------------------------------------
 
+// ── WHAT SHE IS ASKED TO SIT OFF ────────────────────────────────────────────
+// Two kinds of rectangle, one list.
+//
+//   HARD  `[data-collider]`. A physical obstacle: it steers her, it can bump
+//         her, and routes go round it. Nothing on this site carries it.
+//   SOFT  every block of type and every picture. It is something to READ, so
+//         it exerts no force at all and no route knows it exists — she flies
+//         straight over it. All it does is make a cell an expensive place to
+//         STOP. See pathfinder.js, which has had the two grids for this since
+//         before there was anything to put in them.
+//
+// The soft set is found rather than declared, because a class list naming this
+// site's own vocabulary (.t, .d, .fig, .check, .tab, .cols) is stale the next
+// time a sheet is written, and `data-collider` on every paragraph is markup
+// carrying engine state. The test is generic: an element with words of its
+// own, or a picture.
+//
+// TWO THINGS ARE DELIBERATELY NOT IN IT.
+//   The apertures. `.ap` is an empty span — no text, no image — so it fails the
+//   test on its own, and that is the right answer rather than an oversight: a
+//   die-cut is a rectangle of sky, and the one unprinted thing on the page
+//   resting in it is the best place she can be.
+//   #chrome. A fixed element's DOCUMENT rectangle moves with the scroll, and
+//   this list is remeasured twice a second — it would lag by whatever the
+//   reader just did. The nav is small, at the rim, and much less disturbing to
+//   sit on than prose.
+const MEDIA = "img, video, svg, canvas, picture";
+/** words of its own — a text node with something in it, directly inside */
+function hasOwnText(el) {
+  for (let n = el.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType === 3 && n.nodeValue.trim().length > 1) return true;
+  }
+  return false;
+}
+
 export function createColliderTracker(world) {
   let els = [];
   let dirty = true;
   let rafPending = false;
 
   function collect() {
-    els = Array.from(document.querySelectorAll("[data-collider]"));
+    els = Array.from(document.querySelectorAll("[data-collider]"))
+      .map((el) => ({ el, soft: false }));
+    const doc = document.getElementById("doc");
+    if (!doc) return;
+    // OUTERMOST WINS. A <p> holding an <em> matches twice, and the inner rect
+    // is inside the outer one, so it is pure work for no coverage. Document
+    // order means an ancestor is always seen first.
+    const chosen = new Set();
+    for (const el of doc.querySelectorAll("*")) {
+      // NOT aria-hidden. That attribute is about the screen reader, and the
+      // biggest block of type on this site is inside one: the terminal
+      // transcript types itself into `<div data-lines aria-hidden="true">`
+      // because the accessible copy of it is the `<pre class="sr">` next door.
+      // Skipping it would leave a 1056x504 hole in the middle of the sheet that
+      // she is free to sit in. Visually hidden things are excluded by their
+      // rectangle instead — `.sr` measures 1x1 and does not survive the filter.
+      if (!hasOwnText(el) && !el.matches(MEDIA)) continue;
+      let covered = false;
+      for (let a = el.parentElement; a && a !== doc; a = a.parentElement) {
+        if (chosen.has(a)) { covered = true; break; }
+      }
+      if (covered) continue;
+      chosen.add(el);
+      els.push({ el, soft: true });
+      if (els.length >= 400) break;   // a sheet is not a spreadsheet
+    }
   }
 
   function measure() {
     // document coords: stable under scroll, only layout changes matter
     const sy = window.scrollY;
-    const next = els.map((el) => {
+    // ── AND THE TURN COMES OFF FIRST ─────────────────────────────────────
+    // `recollect` fires while #doc still carries the page turn's inline
+    // transform, and this measurement is on the next frame — well inside it.
+    // getBoundingClientRect INCLUDES a transform, so every rect on a freshly
+    // turned sheet would be baked 30 px sideways for the life of the page.
+    // Exactly the aperture bug (site/deck.js), and the same fix: take it off
+    // for the length of the measurement, and only when there is one to take.
+    const docEl = document.getElementById("doc");
+    const heldTf = docEl && docEl.style.transform;
+    if (heldTf) docEl.style.transform = "";
+    const next = els.map(({ el, soft }) => {
       const r = el.getBoundingClientRect();
-      return { rect: { x: r.left, y: r.top + sy, w: r.width, h: r.height }, el };
+      return { rect: { x: r.left, y: r.top + sy, w: r.width, h: r.height }, el, soft };
     }).filter((c) => c.rect.w > 4 && c.rect.h > 4);
+    if (heldTf) docEl.style.transform = heldTf;
     // only bump the version when geometry actually changed (pathfinder rebuilds on it)
     const changed = next.length !== world.colliders.length || next.some((c, i) => {
       const o = world.colliders[i]?.rect;
-      return !o || Math.abs(o.x - c.rect.x) > 1 || Math.abs(o.y - c.rect.y) > 1 ||
+      return !o || world.colliders[i].soft !== c.soft ||
+        Math.abs(o.x - c.rect.x) > 1 || Math.abs(o.y - c.rect.y) > 1 ||
         Math.abs(o.w - c.rect.w) > 1 || Math.abs(o.h - c.rect.h) > 1;
     });
     world.colliders = next;
@@ -237,6 +309,13 @@ export function avoidColliders(body, world, cfg) {
   let worst = null;
 
   for (const c of world.colliders) {
+    // TYPE PUSHES NOTHING. It is read, not hit: no steer around it, no escape
+    // out of it, no bump, no flail. The old version of this behaviour was a
+    // hard collision she leaned through after a second or two of ramping, and
+    // the whole point of the soft rect is that there is nothing to lean
+    // through — she passes over a paragraph exactly as if it were blank paper,
+    // and the only thing that knows about it is where she chooses to stop.
+    if (c.soft) continue;
     const rect = c.rect;
     const nx0 = Math.max(rect.x, Math.min(body.pos.x, rect.x + rect.w));
     const ny0 = Math.max(rect.y, Math.min(body.pos.y, rect.y + rect.h));

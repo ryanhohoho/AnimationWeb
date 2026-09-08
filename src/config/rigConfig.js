@@ -585,6 +585,13 @@ export const rigConfig = {
     // WHERE SHE RE-ENTERS after a page swap. Far enough out to be genuinely
     // offscreen at any sensible viewport, close enough that she is not gone for
     // a second and a half first.
+    exitCapS: 1.1,            // the longest she may spend FINISHING an exit
+                              // after the sheet has already changed. She is
+                              // airborne at 0.66 s and clears ~700 px at about
+                              // 1.22 s, which is ~0.42 s past the 0.800 s swap;
+                              // this is roughly double that, so it is a
+                              // backstop for a flight that never clears rather
+                              // than the usual path
     entryOffsetPx: 170,
     entrySpeed: 620,          // and this is the speed she comes in at
     entryDelayS: 0.45,        // ...after waiting this long out of frame. She
@@ -718,6 +725,40 @@ export const rigConfig = {
                                 // only open space left is near a spot she gave
                                 // up on, going back beats standing still
     },
+    // ── SHE MOVES OUT OF YOUR LIGHT ────────────────────────────────────────
+    // Nothing stops her landing on a paragraph, and nothing should: being told
+    // where she may not go is what made the old collision version read as
+    // furniture. She is allowed to drift onto the words, notice, and move —
+    // which is what an animal on a desk does, and it is legible in a way a
+    // force field never is.
+    //
+    // Half a second is the number in the request and it is a good one: under
+    // it the move reads as a twitch, over it she looks like she is settling in.
+    // The glance is the cute half — she looks at what she was sitting on as she
+    // slides off it — and it outlasts the move slightly so it does not snap
+    // away the instant she arrives.
+    aside: {
+      noticeS: 0.5,             // ...on the words before she does anything
+      glanceS: 0.9,             // and how long she keeps looking at them
+      roomFactor: 1.0,          // x hover.orbitRadiusPx: the ORBIT has to clear
+                                // the type, not just the anchor. She is 75 px
+                                // across and the orbit is 55 px wide, so a seat
+                                // needs 130 px of room or she swings back over
+                                // the line every lap.
+                                //
+                                // AND IT HAS TO BEAT `isOpen`, WHICH IS NOT
+                                // OBVIOUS. A cell counts as open at
+                                // radius x 0.5 + padPx + nearCells x cellPx =
+                                // 117 px of clearance (path.insideCost's ring),
+                                // so anything under 0.77 here asks for LESS
+                                // room than nearestOpenPoint already gave and
+                                // the whole change is a no-op. Measured, not
+                                // picked: 0.6 was the first value tried and the
+                                // paired test caught it.
+      giveUpForS: 6             // found nowhere better: stop asking for a while
+                                // rather than searching the grid every frame
+    },
+
     // grab & fling: press on mew and drag to carry it, release to throw.
     // a press without movement is still a pet (hyper beam)
     fling: {
@@ -817,6 +858,10 @@ export const rigConfig = {
     // It is a COST field instead. Crossing a paragraph is dear enough that she
     // goes round it whenever round is remotely reasonable, and possible when
     // the alternative is a trip along the margin.
+    // AND THIS IS A PLACEMENT PRICE NOW. Soft rects — every block of type on
+    // the page — reach `cost` and never `travel`, so these numbers say where
+    // she may STOP and say nothing at all about how she gets anywhere. Routes
+    // are planned against hard rects alone, of which there are none.
     insideCost: 12,             // a cell inside a rect
     nearCost: 3,                // ...and the graded ring around it
     nearCells: 2,               // how many cells wide that ring is
@@ -853,7 +898,16 @@ export const rigConfig = {
     // driving her into the leash. Routes stay on the paper; the push ramp is
     // what gets her past things.
     outsideXPx: 0,
-    outsideYPx: 0
+    outsideYPx: 0,
+
+    // ── HOW FAR SHE WILL LOOK FOR A SEAT ─────────────────────────────────
+    // nearestRoomyPoint rings outward from wherever she is. Unbounded, on a
+    // page with no open space anywhere — a phone, a full-bleed figure — that is
+    // a walk of the entire document-sized grid from a per-frame path. 520 px
+    // crosses the widest column this site sets (66rem measure, ~1056 px, so
+    // half of it plus a margin) which is as far as "move aside" can mean
+    // without becoming "go somewhere else".
+    roomSearchPx: 520
   },
 
   // streamlined mew flight: the LONG axis (head to tail) aligns to travel,

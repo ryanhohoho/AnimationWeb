@@ -919,6 +919,53 @@ reset to rest first**. Body → head → limbs → ears → tail → face.
 The sim is 120 Hz fixed-step with render interpolation; the sim never sees a
 variable dt.
 
+### Getting out of your light
+
+**The type is in the grid again, and none of it pushes her.** The tracker walks
+`#doc` for elements with words of their own (a non-empty text node directly
+inside) plus `img/video/svg/canvas`, outermost wins, and files each as a rect
+with `soft: true`. Found, not declared: a class list naming this site's own
+vocabulary would be stale the next time a sheet is written.
+
+A soft rect reaches the **placement** grid and never the **travel** one, so:
+
+| | hard (`data-collider`, nothing today) | soft (all the type) |
+|---|---|---|
+| steer / escape / bump | yes | **no** |
+| A\* and line of sight | yes | **no** |
+| expensive to STOP on | yes | yes |
+
+Three mechanisms, all of them small:
+
+- `settle()` asks `nearestRoomyPoint` for a seat with room for the **orbit**, not
+  just the body — `radius + orbitRadiusPx` = 130 px. Anything under 0.77 ×
+  `orbitRadiusPx` asks for LESS than `nearestOpenPoint` already gave (a cell
+  counts as open at `radius × 0.5 + padPx + nearCells × cellPx` = 117 px), so it
+  would be a no-op. `roomFactor` 0.6 was tried and the paired test caught it.
+- **Half a second sitting in type moves her**, hovering only, triggered on her
+  circle actually overlapping (clearance under her radius) and satisfied at
+  130 px — the gap between the two is the hysteresis. It moves the ANCHOR and
+  sets `gazeAt` on the spot she is leaving; the near-critical hover spring does
+  the rest, so it is a scoot and not an errand. Travelling over type never fires
+  it.
+- **A cooldown** (`aside.giveUpForS`) for a page with nowhere to sit.
+
+Measured over 60 s on each of the five real page layouts, dumped from the running
+site at 1400×900:
+
+| | resting on type | travelling over it |
+|---|---|---|
+| as shipped | **1.7%** | 7.6% |
+| control: no roomy seat | 3.7% | 5.0% |
+| control: never notices | 8.3% | 10.0% |
+
+In the browser, dropped on the 937 px rule line of `/experience`: notices at
+**0.49 s**, glances the same frame, fully clear of every rect at **1.48 s**,
+never leaves `hover`. On a phone (375 px, widest column 339, her radius 48) there
+is nowhere to sit at all and the cooldown holds it to **4 anchor moves a minute**.
+
+Cost: 13.8 ms of brain + physics per simulated second, i.e. ~1.4% of real time.
+
 ### Navigation — the current design
 
 This went through five rounds. The end state is three ideas that only work
@@ -1213,6 +1260,33 @@ The reason is **not** "no generative grounds". Verbatim:
   sideways dodge.
 - Headless scenarios must keep the scripted cursor inside the scripted viewport —
   real ones always are, and violating it manufactures fake behaviour bugs.
+- **`nearestOpenPoint` must not hand back somewhere the leash forbids.** It
+  returns the nearest open cell anywhere, and on a sheet with little open space
+  that is a sliver against the rim. The sideways leash holds her BODY on the
+  page — the line sits one radius in — so she pushes into it for the whole
+  cruise, times out, gives up, picks again and resolves to the same sliver:
+  pinned to the edge of the paper, for good. It takes an x band now. Unreachable
+  only became reachable when the grid got real type in it; with an empty grid
+  every cell was open and the nearest open cell was always the target itself.
+- **And the band has to be part of the SEARCH, not a clamp on the answer.**
+  Clamping it back lands the target inside whatever sits against the rim, which
+  on this site is a full-height aperture — aiming her at the middle of that is
+  the opposite of what the snap is for. It cost a passing check.
+- **A goal with no open cell anywhere is still a goal.** `findPath` returned
+  null there, the caller fell back to a direct steer, arrived nowhere, timed
+  out, gave up and picked another target that was also not open. Type is
+  expensive, not impassable: plan to the cell she asked for.
+- **The collider tracker measures during the page turn.** `recollect` fires
+  while `#doc` still carries the turn's inline transform and the measure lands
+  on the next frame, well inside it. Same fix as `deck.js` — take the transform
+  off for the length of the measurement — and there is a paired control in the
+  router harness that measures 30 px out without it.
+- **`aria-hidden` is not "invisible".** The biggest block of type on the site is
+  inside one: the terminal transcript types itself into
+  `<div data-lines aria-hidden="true">`, because the accessible copy is the
+  `<pre class="sr">` next door. Skipping it leaves a 1056×504 hole in the middle
+  of the sheet for her to sit in. Visually-hidden things are excluded by their
+  rectangle instead — `.sr` measures 1×1.
 
 ## The phone
 
@@ -1353,7 +1427,7 @@ The reason is **not** "no generative grounds". Verbatim:
 # 9 · Verification
 
 ```bash
-npm test                      # sim (826) + router harness
+npm test                      # sim (918) + router harness
 node test/tail_scroll.js      # PASS/FAIL gate for the scroll-drag bug
 node test/tail_probe.js --calm --fly --wire   # tail integrity, three scenarios
 node test/tail_turn.js        # base-vs-body angle through hard turns

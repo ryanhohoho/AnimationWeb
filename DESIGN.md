@@ -401,18 +401,58 @@ event between two lists of text is a toll booth.
   Netlify, Cloudflare Pages and Render all serve for an unknown path, with the
   URL left intact for the router to read.
 
-### Colliders — there are none
+### Colliders — there are none, and she still gets out of your light
 
 She used to collide with the headline, the index, the spec column, the dialog and
-the colophon columns, so that she never sat on text you were reading. That is
-gone, by instruction: **`data-collider` appears nowhere in the site markup any
-more**, so the tracker collects an empty list, the pathfinder grid is uniform and
-she flies straight through everything.
+the colophon columns, so that she never sat on text you were reading. That went,
+by instruction: **`data-collider` appears nowhere in the site markup**, and it
+still does not. Nothing on this page stops her, nothing pushes her, and no route
+goes round anything.
 
-Worth knowing that this is markup, not engine. The whole collision system —
-`physics/colliders.js`, the cost grid, the squeeze surcharge, the push ramp, and
-the checks that hold them — is untouched and still correct. Putting
-`data-collider` back on an element turns it back on with nothing else to change.
+What came back is the *reading experience*, without any of the physics that used
+to buy it. The tracker now finds the type by itself — an element inside `#doc`
+with words of its own, or a picture — and files it as a **soft** rect. A soft
+rect is data about where the READING is, not an obstacle:
+
+| | hard rect (`data-collider`) | soft rect (the type) |
+|---|---|---|
+| pushes her | yes | **no** |
+| routes go round it | yes | **no** |
+| bumps, flails | yes | **no** |
+| expensive to STOP on | yes | yes |
+
+The two already had separate grids in `pathfinder.js`, for an unrelated reason —
+a narrow corridor is a miserable thing to thread at speed and a perfectly fine
+place to hover — so soft rects reach the placement grid and never the travel
+one. She crosses a paragraph in a straight line, because as far as the planner
+is concerned it is blank paper.
+
+Three things then do the whole job:
+
+- **She lands off the words.** A trip ends in `settle()`, which asks for the
+  nearest point with enough room for the *orbit*, not just for her body. The
+  orbit is 55 px and she is 75 across, so a seat that merely clears the column
+  swings her back over it every eleven-second lap.
+- **She notices.** Sitting in type for half a second — her circle actually
+  overlapping it, while hovering — moves the anchor to a roomier seat and sets a
+  glance at the words she was covering. No new state and no thrust: the hover
+  spring is near-critical and already running, so it comes out as an unhurried
+  scoot rather than an errand. Travelling over type never triggers it; flying
+  over the words is not sitting on them.
+- **She gives up gracefully.** On a phone the widest column is 339 px of a
+  375 px window, so there is nowhere with 48 px of room and there never will be.
+  A cooldown stops her searching for a seat that does not exist. Measured: four
+  anchor moves in a minute, not one per half-second.
+
+Measured over a minute of ordinary life on each of the five real page layouts,
+dumped from the running site: **1.7%** of resting time overlapping type, against
+**8.3%** with the noticing switched off and **3.7%** with the roomy seat switched
+off. Travelling over type is unremarkable and deliberately untouched.
+
+The rest is markup, not engine, exactly as before. The whole collision system —
+the escape, the squeeze surcharge, the push ramp, and the checks that hold them —
+is untouched and still correct, and putting `data-collider` back on an element
+turns it back on with nothing else to change.
 
 ---
 

@@ -254,8 +254,12 @@ when only the numbers were.
   the picture INSIDE a fixed frame for exactly this reason: the hole has to stay
   where it was measured.
 - **`data-collider` appears nowhere in the site markup**, by instruction — Mew
-  passes through everything now. The collision engine is intact and still tested;
-  putting the attribute back on an element turns it on again.
+  passes through everything, and no route goes round anything. The collision
+  engine is intact and still tested; putting the attribute back on an element
+  turns it on again. The tracker DOES collect the type now, as `soft` rects, and
+  a soft rect exerts no force and is invisible to A\* — it only makes a cell an
+  expensive place to STOP. Everything about where she settles reads the
+  placement grid; nothing about how she travels does.
 - **A hole is measured where the document LIVES, not where it is standing.**
   `getBoundingClientRect` includes a transform, and a page turn has one on
   `#doc` at the exact moment `commit()` calls `bind()`. `measure()` takes it off

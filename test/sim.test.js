@@ -1661,6 +1661,189 @@ section("pathing: for the first three seconds, type always wins");
 }
 
 // ---------------------------------------------------------------------------
+// TYPE IS READ, NOT HIT. The request in one line: she may fly over the words,
+// she may land on them, she may not SIT on them. Every check here is paired
+// against the same geometry marked hard, because a soft rect that behaved like
+// a hard one would pass three of the four on its own.
+section("she gets out of your light");
+{
+  const P = rigConfig.physics;
+  const B = rigConfig.behavior;
+  const R = 75;
+  // a column of prose down the middle of the sheet, open paper either side
+  const COL = { x: 470, y: 120, w: 460, h: 660 };
+  const mk = (soft) => {
+    const w = createWorld({ headless: true, seed: 3 });
+    w.docSize = { w: 1400, h: 900 };
+    w.viewport = { w: 1400, h: 900 };
+    w.poseState = { leanIn: 1 };
+    w.colliders = [{ rect: COL, el: null, soft }];
+    w.collidersVersion = 1;
+    return w;
+  };
+
+  // ── 1. THE ROUTE DOES NOT KNOW THE WORDS ARE THERE ────────────────────
+  {
+    const from = { x: 180, y: 450 }, to = { x: 1220, y: 450 };
+    const straight = createPathfinder(mk(true), rigConfig.path)
+      .findPath(from, to, R);
+    const around = createPathfinder(mk(false), rigConfig.path)
+      .findPath(from, to, R);
+    const bend = (pts) => Math.max(...pts.map((q) => Math.abs(q.y - 450)));
+    ok(straight && straight.length === 2 && bend(straight) < 1,
+      `a route across a paragraph is the straight line (${straight.length} waypoints, ` +
+      `${bend(straight).toFixed(0)} px of detour)`);
+    ok(around && bend(around) > 120,
+      `control: the same rect as a hard collider and she goes round it ` +
+      `(${bend(around).toFixed(0)} px of detour)`);
+  }
+
+  // ── 2. ...AND NOTHING PUSHES HER OFF THEM ─────────────────────────────
+  {
+    const mid = { x: COL.x + COL.w / 2, y: COL.y + COL.h / 2 };
+    const run = (soft) => {
+      const w = mk(soft);
+      const b = createBody({ x: mid.x, y: mid.y, radius: R, config: P });
+      const worst = avoidColliders(b, w, P);
+      // body2d holds the accumulated force until the next step consumes it
+      const f = Math.hypot(b._force.x, b._force.y);
+      return { f, worst };
+    };
+    const soft = run(true), hard = run(false);
+    ok(soft.f === 0 && soft.worst === null,
+      "sitting dead inside a paragraph, nothing pushes and nothing bumps");
+    ok(hard.f > P.insideAccel * 0.9,
+      `control: the same rect as a collider throws her out at ${hard.f.toFixed(0)} px/s^2`);
+  }
+
+  // ── 3. SHE STOPS OFF THE WORDS, AND STAYS OFF THEM ────────────────────
+  // Not the anchor — the ORBIT. An anchor that clears the column by a hair
+  // still swings her back across it every lap, and the lap is eleven seconds
+  // long, so the reader sees far more of the overhang than of the seat. Half a
+  // minute of ordinary hovering, and the measurement is the fraction of it she
+  // spends overlapping type.
+  //
+  // The control is `roomFactor`, which is the knob the whole thing turns on:
+  // at 0 a seat needs only her own width, which is LESS than nearestOpenPoint
+  // was already giving, and the overhang comes back.
+  {
+    const hoverFor = (roomFactor) => {
+      const w = mk(true);
+      const cfg = { ...B, aside: { ...B.aside, roomFactor } };
+      const b = createBody({ x: COL.x + COL.w / 2, y: COL.y + COL.h / 2, radius: R, config: P });
+      const br = createBrain({ body: b, world: w, config: cfg,
+        pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+      br.state = "hover"; br.anchor.x = b.pos.x; br.anchor.y = b.pos.y;
+      br.nextInterestAt = 1e9;                  // no wandering off mid-measure
+      const over = (p) => p.x > COL.x - R && p.x < COL.x + COL.w + R
+        && p.y > COL.y - R && p.y < COL.y + COL.h + R;
+      let on = 0, n = 0;
+      for (let i = 0; i < 120 * 30; i++) {
+        w.time += 1 / 120; br.step(1 / 120); resolveAll(b, w, P); b.step(1 / 120);
+        if (i > 120 * 3) { n++; if (over(b.pos)) on++; }   // after she has moved
+      }
+      return on / n;
+    };
+    const seated = hoverFor(B.aside.roomFactor);
+    const skimped = hoverFor(0);
+    ok(seated < 0.02,
+      `half a minute of hovering and she is over the column ${(seated * 100).toFixed(1)}% of it`);
+    ok(skimped > seated + 0.05,
+      `control: a seat sized to her body alone puts her back on the words ` +
+      `${(skimped * 100).toFixed(1)}% of the time`);
+  }
+
+  // ── 3b. and the picker itself ─────────────────────────────────────────
+  {
+    const pf = createPathfinder(mk(true), rigConfig.path);
+    const seat = R + B.hover.orbitRadiusPx * B.aside.roomFactor;
+    const roomy = pf.nearestRoomyPoint({ x: COL.x + 200, y: COL.y + 300 }, R, seat);
+    ok(pf.clearanceAt(roomy, R) >= seat,
+      `a seat in the middle of a column moves to ${Math.round(pf.clearanceAt(roomy, R))} px ` +
+      `of room (asked for ${Math.round(seat)})`);
+    const clear = { x: 150, y: 450 };
+    ok(pf.nearestRoomyPoint(clear, R, seat) === clear,
+      "and somewhere already roomy is returned untouched");
+  }
+
+  // ── 4. HALF A SECOND ON THE WORDS, AND SHE MOVES ──────────────────────
+  // The pair that matters most: the same rect, the same spot, hovering vs
+  // travelling. One of them is sitting on the page and one of them is passing
+  // over it, and only the first is a thing to correct.
+  {
+    const drive = (state) => {
+      const w = mk(true);
+      const start = { x: COL.x + COL.w / 2, y: COL.y + COL.h / 2 };
+      const b = createBody({ x: start.x, y: start.y, radius: R, config: P });
+      const br = createBrain({ body: b, world: w, config: B,
+        pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+      br.state = state;
+      if (state === "hover") {
+        br.anchor.x = start.x; br.anchor.y = start.y;
+      } else {
+        br.interest.x = 1250; br.interest.y = start.y;
+      }
+      br.nextInterestAt = 1e9;          // no ordinary wandering in the way
+      const over = () => b.pos.x > COL.x - R && b.pos.x < COL.x + COL.w + R
+        && b.pos.y > COL.y - R && b.pos.y < COL.y + COL.h + R;
+      let movedAt = null, glanced = false, onType = 0;
+      for (let i = 0; i < 120 * 4; i++) {
+        w.time += 1 / 120; br.step(1 / 120); resolveAll(b, w, P); b.step(1 / 120);
+        // ...and only while she is still DOING the thing. A cruise ends in an
+        // arrival, and an arrival settles, and settling moves the anchor — read
+        // one step later that is indistinguishable from the notice firing, when
+        // it is just the trip finishing. Checked BEFORE the anchor is sampled,
+        // because the step that changes the state is the step that moves it.
+        if (br.state !== state) break;
+        if (over()) onType += 1 / 120;
+        if (br.gazeAt) glanced = true;
+        if (movedAt === null && Math.hypot(br.anchor.x - start.x, br.anchor.y - start.y) > 60) {
+          movedAt = (i + 1) / 120;
+        }
+      }
+      return { movedAt, glanced, onType, state: br.state, pos: { ...b.pos } };
+    };
+    const sat = drive("hover");
+    ok(sat.movedAt !== null && sat.movedAt < 0.6,
+      `half a second sitting on a paragraph and she excuses herself ` +
+      `(${sat.movedAt === null ? "never" : sat.movedAt.toFixed(2) + "s"})`);
+    ok(sat.glanced, "...with a look back at the words she was covering");
+    ok(sat.state === "hover",
+      "and it is still a hover — no new state, no errand, just the anchor moving");
+    const past = drive("cruise");
+    ok(past.movedAt === null && past.onType > B.aside.noticeS,
+      `control: ${past.onType.toFixed(2)}s of CRUISING across the same column and nothing ` +
+      "fires — flying over the words is not sitting on them");
+  }
+
+  // ── 5. A PAGE WITH NOWHERE TO SIT DOES NOT THRASH ─────────────────────
+  {
+    const w = createWorld({ headless: true, seed: 3 });
+    w.docSize = { w: 1400, h: 900 };
+    w.viewport = { w: 1400, h: 900 };
+    w.poseState = { leanIn: 1 };
+    w.colliders = [{ rect: { x: -200, y: -200, w: 1800, h: 1300 }, el: null, soft: true }];
+    w.collidersVersion = 1;
+    const b = createBody({ x: 700, y: 450, radius: R, config: P });
+    const br = createBrain({ body: b, world: w, config: B,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    br.state = "hover"; br.anchor.x = 700; br.anchor.y = 450;
+    br.nextInterestAt = 1e9;
+    let jumps = 0, last = { x: 700, y: 450 };
+    for (let i = 0; i < 120 * 8; i++) {
+      w.time += 1 / 120; br.step(1 / 120); resolveAll(b, w, P); b.step(1 / 120);
+      if (Math.hypot(br.anchor.x - last.x, br.anchor.y - last.y) > 20) jumps++;
+      last = { x: br.anchor.x, y: br.anchor.y };
+    }
+    ok(jumps <= 2,
+      `on a sheet that is type from edge to edge she gives up rather than ` +
+      `fidgeting (${jumps} anchor moves in 8s)`);
+    ok(B.aside.giveUpForS >= 4,
+      "control: and the cooldown that does it is long enough to be one");
+  }
+}
+
+// ---------------------------------------------------------------------------
 section("navigation: she stays on the screen");
 {
   const P = rigConfig.physics;
@@ -1843,16 +2026,53 @@ section("navigation: she stays on the screen");
     return Infinity;
   };
 
-  const afterCross = firstSeen({ x: 700, y: 450 }, true);
-  ok(afterCross <= 2.0,
-    `after a real crossing she is in frame in ${afterCross.toFixed(2)}s (budget 2.00)`);
+  // ── SHE LEAVES, AND THEN SHE IS BACK ───────────────────────────────────
+  // BOTH HALVES, and the first one is why this check was rewritten. It used to
+  // assert only the budget, and it read 0.00 s — which passes while describing
+  // a bug: ending the fright at the swap stopped the thrust 140 ms and 177 px
+  // into her bolt, so she never left at all. "It just starts to fly away but
+  // then stops when the new page loads in."
+  const leftAndBack = () => {
+    const w = createWorld({ headless: true, seed: 11 });
+    w.docSize = { w: 1400, h: 9000 };
+    w.viewport = { w: 1400, h: 900 };
+    w.poseState = { leanIn: 1 };
+    w.scroll.y = 0;
+    const b = createBody({ x: 700, y: 450, radius: 75, config: P });
+    const br = createBrain({ body: b, world: w, config: B,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    const seen = () => b.pos.x > -b.radius && b.pos.x < w.viewport.w + b.radius
+      && b.pos.y > w.scroll.y - b.radius
+      && b.pos.y < w.scroll.y + w.viewport.h + b.radius;
+    w.emit("crossing", { ms: 1600, from: { x: 700, y: 450 } });
+    for (let i = 0; i < 120 * 0.8; i++) {          // ...and the swap at 0.8 s
+      w.time += 1 / 120; br.step(1 / 120); resolveAll(b, w, P); b.step(1 / 120);
+    }
+    w.emit("recollect", { scrolledBy: 0 });
+    let gone = null, back = null;
+    for (let i = 0; i < 120 * 6 && back === null; i++) {
+      w.time += 1 / 120; br.step(1 / 120); resolveAll(b, w, P); b.step(1 / 120);
+      if (gone === null && !seen()) gone = (i + 1) / 120;
+      else if (gone !== null && seen()) back = (i + 1) / 120;
+    }
+    return { gone, back };
+  };
+  const trip = leftAndBack();
+  ok(trip.gone !== null && trip.gone < 1.0,
+    `she finishes the exit and is gone ${trip.gone === null ? "never" : trip.gone.toFixed(2) + "s"} ` +
+    "after the swap — the flight is not cut off when the page changes");
+  ok(trip.back !== null && trip.back <= 2.0,
+    `...and back in frame ${trip.back === null ? "never" : trip.back.toFixed(2) + "s"} after it (budget 2.00)`);
+
   const fromOff = firstSeen({ x: 700, y: 2600 }, false);
   ok(fromOff <= 2.0,
     `and from off the foot of the old sheet, ${fromOff.toFixed(2)}s`);
 
-  // THE PAIRED CONTROL. It is the panic surviving the swap that used to cost
-  // the seconds, so a panic that is still running has to be the thing that is
-  // measured as gone.
+  // THE PAIRED CONTROL, and it is the opposite of what it used to say. It read
+  // "the swap ends it, so nothing carries the flight onto the new sheet",
+  // which was a faithful test of the thing that broke the exit. The fright now
+  // SURVIVES the swap for exactly as long as she is still visible, and ends on
+  // the frame she goes out of sight.
   {
     const w = createWorld({ headless: true, seed: 11 });
     w.docSize = { w: 1400, h: 9000 };
@@ -1863,10 +2083,18 @@ section("navigation: she stays on the screen");
       pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
     w.emit("crossing", { ms: 1600, from: { x: 700, y: 450 } });
     br.step(1 / 120);
-    ok(w.panicking === true, "control: the press really does start a panic...");
+    ok(w.panicking === true, "control: the press really does start a fright...");
     w.emit("recollect", { scrolledBy: 0 });
-    ok(w.panicking === false && br.panic == null,
-      "...and the swap ends it, so nothing carries the flight onto the new sheet");
+    ok(w.panicking === true,
+      "...the swap does NOT end it while she is still on screen, or the exit stops dead");
+    let endedWhileVisible = false;
+    const seen = () => b.pos.x > -b.radius && b.pos.x < w.viewport.w + b.radius;
+    for (let i = 0; i < 120 * 3 && w.panicking; i++) {
+      w.time += 1 / 120; br.step(1 / 120); resolveAll(b, w, P); b.step(1 / 120);
+      if (!w.panicking && seen()) endedWhileVisible = true;
+    }
+    ok(w.panicking === false && !endedWhileVisible,
+      "...and it ends on the frame she is out of sight, never in view of the reader");
   }
 
   // ── AND THE PAPER KNOWS WHETHER IT MAY SWAP YET ────────────────────────
