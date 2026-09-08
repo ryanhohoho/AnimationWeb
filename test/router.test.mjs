@@ -793,6 +793,46 @@ console.log("\n== the page turn does not move the type");
     `control: with nothing taken off, the same paragraph measures at ` +
     `${w2.colliders[0].rect.x} — the whole column baked ${-TURN} px left`);
 
+  // ── AND IT WATCHES INSTEAD OF POLLING ─────────────────────────────────
+  // The tracker used to remeasure on a 500 ms interval, which cost nothing
+  // while the list was empty and costs a forced layout twice a second now that
+  // it holds every block of type. A ResizeObserver does the same job on the
+  // three things the interval's own comment named — fonts, images, content —
+  // and does it when they happen. The check is that the poll is GONE when there
+  // is something better, and still there when there is not.
+  {
+    let observed = [], fire = null, intervals = 0;
+    globalThis.setInterval = () => { intervals++; return 0; };
+    globalThis.ResizeObserver = class {
+      constructor(cb) { fire = cb; }
+      observe(el) { observed.push(el); }
+      disconnect() { observed = []; }
+    };
+    document.getElementById = (id) => (id === "doc" ? fakeDoc : held(id));
+    let frames = 0;
+    globalThis.requestAnimationFrame = (fn) => { frames++; fn(); return 0; };
+    const w3 = createWorld({ headless: true });
+    createColliderTracker(w3);
+    ok(intervals === 0, "with a ResizeObserver there is no interval at all");
+    ok(observed.includes(fakeDoc) && observed.length === 2,
+      `and it watches #doc and the type in it (${observed.length} targets)`);
+    const before = w3.collidersVersion;
+    // the paragraph grows, the way a font landing or an image arriving grows it
+    fakeDoc._kids[0].getBoundingClientRect = () => ({ left: 200, top: 100, width: 400, height: 90 });
+    fire([]);
+    ok(w3.collidersVersion > before,
+      "a box changing shape remeasures on the spot, not up to half a second later");
+
+    // THE PAIRED CONTROL. No ResizeObserver, and the poll it replaced is back.
+    delete globalThis.ResizeObserver;
+    intervals = 0;
+    const w4 = createWorld({ headless: true });
+    createColliderTracker(w4);
+    ok(intervals === 1,
+      "control: on a browser without one, the interval is still there — being " +
+      "right on an old engine beats being tidy on it");
+  }
+
   document.getElementById = held;
   document.querySelectorAll = heldAll;
   globalThis.setInterval = hadInterval;

@@ -73,6 +73,7 @@ export function createColliderTracker(world) {
       els.push({ el, soft: true });
       if (els.length >= 400) break;   // a sheet is not a spreadsheet
     }
+    watch();
   }
 
   function measure() {
@@ -115,11 +116,43 @@ export function createColliderTracker(world) {
     });
   }
 
+  // ── A REMEASURE IS A REACTION, NOT A POLL ────────────────────────────────
+  // This was `setInterval(requestMeasure, 500)`, and while `[data-collider]`
+  // was on nothing that cost nothing: the list was empty and the tick did no
+  // work at all. It reads every block of type on the page now, so the same
+  // interval is a forced layout twice a second, for the life of the tab, on a
+  // page where nothing is moving. Measured at 0.4 ms a pass on a 1400 px sheet
+  // — small, permanent, and avoidable.
+  //
+  // A ResizeObserver is strictly better than the poll it replaces, not merely
+  // cheaper. The interval's comment named three things — fonts, images,
+  // content — and all three are box changes, so all three fire this; and they
+  // fire WHEN THEY HAPPEN rather than up to half a second later, which is half
+  // a second of her sitting on type that has already moved. Idle costs nothing.
+  //
+  // #doc catches anything that reflows the page. The collected elements are
+  // observed too, for a block that changes shape without changing the page's
+  // own height. A transform is not a resize, so the card hover — which scales
+  // a picture inside a fixed frame — cannot reach this: nothing on a hover
+  // path may read layout, and this stays off that path.
+  const ro = typeof ResizeObserver === "function"
+    ? new ResizeObserver(() => requestMeasure())
+    : null;
+  // ...and if there is no ResizeObserver there is still the poll it replaced,
+  // because being right on an old browser matters more than being tidy on it.
+  if (!ro) setInterval(() => requestMeasure(), 500);
+
+  function watch() {
+    if (!ro) return;
+    ro.disconnect();
+    const doc = document.getElementById("doc");
+    if (doc) ro.observe(doc);
+    for (const { el } of els) ro.observe(el);
+  }
+
   world.on("resize", () => { collect(); requestMeasure(); });
   // beam destruction can delete colliders outright
   world.on("recollect", () => { collect(); requestMeasure(); });
-  // catch layout shifts that don't fire resize (fonts, images, content)
-  setInterval(() => requestMeasure(), 500);
 
   collect();
   measure();

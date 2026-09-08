@@ -2937,6 +2937,16 @@ section("no word on this sheet is printed under the floor");
   ok(tokens["--paper"] && tokens["--ink"] && tokens["--n3"] && tokens["--n4"],
     `read the palette off the stylesheet (${Object.keys(tokens).length} tokens)`);
 
+  // ── AND WHILE THE REAL STYLESHEET IS OPEN: EVERY FACE IS COMPRESSED ────
+  // The two terminal weights shipped as .ttf, which is the uncompressed
+  // container — 276 KB for the pair, against 80 KB for the same 1,033 glyphs
+  // in woff2, on the one page that asks for them. Nothing about the outlines
+  // changes, so the only way this comes back is by somebody dropping a new
+  // face in the way the last one arrived.
+  const faces = [...css.matchAll(/format\("([a-z2]+)"\)/g)].map((m) => m[1]);
+  ok(faces.length >= 3 && faces.every((f) => f === "woff2"),
+    `every @font-face is woff2 (${faces.length} of them: ${[...new Set(faces)].join(", ")})`);
+
   const paper = tokens["--paper"];
   ok(ratio(tokens["--ink"], paper) > 12, `ink on bone is ${ratio(tokens["--ink"], paper).toFixed(1)}:1`);
   ok(ratio(tokens["--n3"], paper) >= 4.5,

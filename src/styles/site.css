@@ -41,10 +41,23 @@
    display face would be a drawing of a terminal rather than a terminal. So it
    is scoped to the two places that ARE a machine talking: the played sessions
    (.term) and the quoted response body (.doc). Nowhere else may use it. */
+/* WOFF2, NOT TTF. These shipped as TrueType, which is the uncompressed
+   container: 276 KB for the pair against 80 KB for the same 1,033 glyphs
+   wrapped in woff2 — a 71% saving on the one page that asks for them, for no
+   change at all to the outlines. Measured before the swap: the two containers
+   render the transcript's own alphabet, box drawing and punctuation to
+   identical advance, ascent and descent. Regenerate with
+
+     python3 -c "from fontTools.ttLib import TTFont; \
+       f=TTFont('src/assets/fonts/IBMPlexMono-SemiBold.ttf'); \
+       f.flavor='woff2'; f.save('src/assets/fonts/IBMPlexMono-SemiBold.woff2')"
+
+   (needs fonttools + brotli). The .ttf sources are not in the tree; they are
+   IBM Plex Mono, OFL, and OFL.txt beside these is theirs. */
 @font-face { font-family: "PlexMono"; font-weight: 400; font-display: swap;
-  src: url("../assets/fonts/IBMPlexMono-ExtraLight.ttf") format("truetype"); }
+  src: url("../assets/fonts/IBMPlexMono-ExtraLight.woff2") format("woff2"); }
 @font-face { font-family: "PlexMono"; font-weight: 600; font-display: swap;
-  src: url("../assets/fonts/IBMPlexMono-SemiBold.ttf") format("truetype"); }
+  src: url("../assets/fonts/IBMPlexMono-SemiBold.woff2") format("woff2"); }
 
 :root {
   /* BONE, not white. A sheet is stock, and stock has a colour: #FFF is the
@@ -1155,6 +1168,20 @@ body.on-project .plate .corner.tl {
   .t.body, .t.body.wide, .t.body.bio, .t.body.row-what, .t.body.pcard-line { max-width:none; }
   .row-org { font-size:15px; }
   .name { font-size:clamp(34px,11vw,52px); }
+
+  /* ── THE ROLE TAKES ITS OWN LINE, ALWAYS ──────────────────────────────
+     `.row-head` wraps, so whether the job title sits beside the employer or
+     under it depends on how long the two happen to be. Measured at 414 px:
+     "Royal Canadian Mounted Police" (264) + "Junior Software Developer" (175)
+     is 453 into a 378 px column, so it wraps; "Free Geek Vancouver" (173) +
+     "Computer Technician" (133) is 320, so it does not. Two rows stacked and
+     one row inline, in a list whose whole job is to be scanned down.
+     A rhythm that depends on the length of somebody's job title is not a
+     rhythm. Below 560 the column can no longer hold the longest of them
+     (509 px), so the answer is to stop trying: the role always goes under the
+     employer, and all three rows read the same way.
+     `.row-loc` is already here for the same reason, one line further down. */
+  .row-role { width:100%; }
 }
 
 /* ══ REDUCED MOTION ══════════════════════════════════════════════════════

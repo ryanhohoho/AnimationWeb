@@ -1133,6 +1133,38 @@ somewhere to arrive into.
 
 ---
 
+## What the page actually costs, measured
+
+Taken in a real browser at 1400x900, dpr 2, on the dev build. Every number is a
+median of 40+ samples.
+
+| | cost | how often |
+|---|---|---|
+| the press repainting the whole sheet (`__DECK__.debug.paint`) | **0.1 ms** JS | up to 20/s (the cloud loop) |
+| `poser.update` — every pose layer, one render frame | **0.1 ms** (p90 0.3) | per frame |
+| `brain.step` — one 120 Hz sim step | **< 0.01 ms** | 120/s |
+| the collider remeasure, 19 rects, forced layout | **0.4 ms** (max 1.3) | only on a real layout change |
+| brain + physics, headless, per simulated second | **13.8 ms** | ~1.4% of real time |
+
+**There is no hardware-heavy redundancy of consequence, and that is a
+measurement rather than an opinion.** The sheet's fragment work is ~5 Mpx a pass
+at 20/s on a desktop and ~3 Mpx at 20/s on a phone; everything the site adds on
+top of the three.js draw is sub-millisecond. The one thing that WAS permanent
+and avoidable — a 500 ms interval remeasuring every block of type, twice a
+second, forever — is now a ResizeObserver (see below).
+
+Two costs were looked at and deliberately left alone:
+
+- **The grain**, `body::before`: a fixed full-viewport `mix-blend-mode:multiply`
+  layer above everything. It is the most expensive compositing on the page by
+  construction, because a blend layer cannot be skipped. It is also the print,
+  and the print is the site. Not a candidate.
+- **The duplicate soft rects.** A project card stacks a still and a clip in the
+  same frame, so the collector finds two elements with the same box and the grid
+  pays for both — 22 rects where 19 would do. The saving is 14% of a rebuild
+  that happens on a layout change, and the containment test that would earn it
+  is O(n²) over up to 400 rects. Not worth the code.
+
 # 7 · Taste — accepted and rejected
 
 ### Accepted, keep
@@ -1260,6 +1292,15 @@ The reason is **not** "no generative grounds". Verbatim:
   sideways dodge.
 - Headless scenarios must keep the scripted cursor inside the scripted viewport —
   real ones always are, and violating it manufactures fake behaviour bugs.
+- **A remeasure must be a reaction, not a poll.** The collider tracker ran on a
+  500 ms interval, which cost nothing while `[data-collider]` was on nothing and
+  costs a forced layout twice a second now that it reads every block of type.
+  It is a ResizeObserver on `#doc` and on the collected elements — which is not
+  merely cheaper but strictly better, because it fires WHEN the font or the
+  image lands rather than up to half a second afterwards. `collect()` must
+  `disconnect()` before re-observing or every route swap leaves twenty
+  observations on detached nodes. A transform is not a resize, so the card
+  hover cannot reach it: nothing on a hover path may read layout.
 - **`nearestOpenPoint` must not hand back somewhere the leash forbids.** It
   returns the nearest open cell anywhere, and on a sheet with little open space
   that is a sliver against the rim. The sideways leash holds her BODY on the
@@ -1289,6 +1330,20 @@ The reason is **not** "no generative grounds". Verbatim:
   rectangle instead — `.sr` measures 1×1.
 
 ## The phone
+
+- **A wrap is not a rhythm.** `.row-head` is a wrapping flex row, so whether a
+  job title sat beside the employer or under it depended on how long the two
+  happened to be: at 414 px, "Royal Canadian Mounted Police" (264) + "Junior
+  Software Developer" (175) is 453 into a 378 px column and wraps, while "Free
+  Geek Vancouver" (173) + "Computer Technician" (133) is 320 and does not. Two
+  rows stacked, one row inline, in a list whose whole job is to be scanned
+  down. Below 560 px the column cannot hold the longest pair (509 px) at all,
+  so `.row-role` takes `width:100%` there and all three read the same way.
+- **The chart cells are 26 px wide and stay that way.** They are butted
+  together on a shared grid with no gap, so a 44 px pad would overlap its
+  neighbours by 9 px on each side and a third of every cell would fire the
+  wrong page. The pad grows the target to 26x44 in the axis where it is free to,
+  and the 44x44 primary control is the pair of arrows in the same bar.
 
 - **`100lvh` is the height with the toolbars RETRACTED**, so on an iPhone with
   them showing every card was ~140 px taller than the screen and "one card, one
@@ -1464,7 +1519,7 @@ node_modules was installed on a different OS it fails with MODULE_NOT_FOUND on
 | `tools/icons/icon-*.{png,jpg}` | the SOURCE art the atlas is baked from. Outside `src/` on purpose — see the traps |
 | `src/assets/media/card-*.{webp,mp4}` | **placeholders**, from `aesthetic-images/`, transcoded to card size (~1.7 MB for all six). Drop a real `card-<slug>` in and it is picked up next build |
 | `assets-source/*.mp4` | **the only copy of the cloud clip.** 60 MB, gitignored. Deleting it means the sky can never be re-baked |
-| `src/assets/fonts/` | IBM Plex Mono 200/600 + Overpass Mono var, and their OFL licences |
+| `src/assets/fonts/` | Overpass Mono var (22 KB) + IBM Plex Mono 200/600 (80 KB), all woff2, and their OFL licences. The Plex pair shipped as .ttf until it was measured: 276 KB of uncompressed container for the same 1,033 glyphs. The .ttf sources are not in the tree — they are stock IBM Plex Mono, and site.css carries the one-line fonttools command that made these |
 | `src/assets/media/` | capture slots — drop a file named for the id and it appears next build. `README.txt` lists what is still wanted |
 
 Capture slots still empty: `usb-hub`, `usb-engraver`, `closet-app`,
