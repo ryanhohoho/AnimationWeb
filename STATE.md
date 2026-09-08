@@ -1420,6 +1420,23 @@ The reason is **not** "no generative grounds". Verbatim:
   inverts and destroys the drawing. What is true of all three is that most of the
   frame is dark and the mark is light.
 
+## The keyboard
+
+- **A key that scrolls is the reader's before it is the deck's.** ArrowDown,
+  ArrowUp and Space went straight into `step()` alongside the horizontal
+  arrows, with `preventDefault()` on top — so on a project sheet, 3,310 px of
+  terminal and figures, the three standard scrolling keys threw a keyboard
+  reader onto the next project and stopped the browser scrolling as well. The
+  one kind of page that actually scrolls was the one you could not scroll.
+  `keyScrollsFirst()` gates the vertical keys on scroll position now; Left and
+  Right are untouched, because nothing on this site scrolls sideways at a width
+  that has a keyboard attached (`.term` only takes `overflow-x` under 860 px).
+  Measured in the browser: on the USB sheet Down and Space are no longer taken
+  and Right still is; on `/experience`, one screen tall, all three still are.
+- **`step(-1)` at the first project reports false, and that is not a bug.**
+  ArrowUp at the top of `usb-provisioning` looks unhandled because there is no
+  previous project to go to — the same key on `closet` is taken.
+
 ## The page swap
 
 - **`window.scrollY` must be read BEFORE `#doc` is replaced.** A shorter page

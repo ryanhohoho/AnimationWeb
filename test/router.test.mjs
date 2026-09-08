@@ -134,7 +134,7 @@ const deck = {
   get crossCovered() { return frameNo >= coverAfter; }
 };
 
-const { createRouter, RAMP } = await import("../src/site/router.js");
+const { createRouter, RAMP, keyScrollsFirst } = await import("../src/site/router.js");
 const router = createRouter({ deck, world: { emit() {} }, onPage() {} });
 
 /** pump n frames at 60 Hz, recording where the top of the viewport sits in the
@@ -823,6 +823,29 @@ console.log("\n== the page turn does not move the type");
     ok(w3.collidersVersion > before,
       "a box changing shape remeasures on the spot, not up to half a second later");
 
+    // ── AND THE OBSERVER HAS AN OWNER ────────────────────────────────────
+    // utils/lifecycle.js is explicit that a leak needs a named owner rather
+    // than vigilance, and an observer is one of the four classes it exists to
+    // own. This one is built at boot and lives as long as the page, so it has
+    // never leaked anything — which is exactly the shape of thing that starts
+    // leaking the day somebody tears the engine down.
+    {
+      const held = [];
+      const fakeScope = { add: (d) => { held.push(d); return () => {}; },
+                          addInterval: () => 0 };
+      const w5 = createWorld({ headless: true });
+      const tracker = createColliderTracker(w5, fakeScope);
+      ok(held.length === 1 && typeof held[0].disconnect === "function",
+        "the observer is registered with the page's scope, not left to vigilance");
+      let stopped = 0;
+      held[0].disconnect = () => { stopped++; };
+      tracker.dispose();
+      tracker.dispose();
+      ok(stopped === 2,
+        "and a caller with no scope can stop it directly — twice, because " +
+        "disconnect() is idempotent by spec and a guard would be a lie about why");
+    }
+
     // THE PAIRED CONTROL. No ResizeObserver, and the poll it replaced is back.
     delete globalThis.ResizeObserver;
     intervals = 0;
@@ -836,6 +859,47 @@ console.log("\n== the page turn does not move the type");
   document.getElementById = held;
   document.querySelectorAll = heldAll;
   globalThis.setInterval = hadInterval;
+}
+
+// ---------------------------------------------------------------------------
+// The deck is driven by the arrow keys, and Down / Up / Space went straight
+// into step() with the horizontal ones — with preventDefault() on top, so the
+// browser could not scroll either. On a deck card that is one screen tall it is
+// right and nothing changes. On a project sheet it took the three standard
+// scrolling keys away from a keyboard reader and threw them onto the next
+// project: the one kind of page that actually scrolls was the one you could not
+// scroll.
+console.log("\n== a key that scrolls is the reader's first");
+{
+  const win = (h, y) => ({ innerHeight: h, scrollY: y });
+  const docOf = (sh) => ({ documentElement: { scrollHeight: sh } });
+
+  // a project sheet: 3,310 px of terminal and figures in a 900 px window
+  const sheet = docOf(3310);
+  ok(keyScrollsFirst(1, win(900, 0), sheet),
+    "at the top of a long sheet, Space and ArrowDown scroll it");
+  ok(keyScrollsFirst(1, win(900, 1200), sheet),
+    "...and halfway down, still");
+  ok(!keyScrollsFirst(1, win(900, 2410), sheet),
+    "at the bottom there is nothing left, so the next Space turns the page");
+  ok(!keyScrollsFirst(-1, win(900, 0), sheet),
+    "and ArrowUp at the very top steps BACK rather than fighting the scroll");
+  ok(keyScrollsFirst(-1, win(900, 2410), sheet),
+    "...while ArrowUp anywhere below the top scrolls");
+
+  // THE PAIRED CONTROL, and it is the case that must not change. A deck card is
+  // one screen, so there is no scrolling to protect and every key is the deck's
+  // exactly as it was.
+  const card = docOf(900);
+  ok(!keyScrollsFirst(1, win(900, 0), card) && !keyScrollsFirst(-1, win(900, 0), card),
+    "control: on a one-screen deck card nothing is intercepted, either way");
+  // ...and a card that is a little taller than the window IS scrolled first,
+  // which is the same rule and not a special case: /projects is 1,213 px.
+  ok(keyScrollsFirst(1, win(900, 0), docOf(1213)),
+    "a deck card taller than the window is scrolled first too — same rule");
+
+  ok(!keyScrollsFirst(1, null, sheet) && !keyScrollsFirst(1, win(900, 0), null),
+    "and with no window or no document it declines rather than throwing");
 }
 
 console.log(failures ? `\n${failures} FAILED` : "\nall clear");

@@ -2906,6 +2906,120 @@ section("a label never leaves its last word alone — and never becomes one word
 }
 
 // ---------------------------------------------------------------------------
+// utils/lifecycle.js opens with "a leak needs a named OWNER, not vigilance",
+// names six classes of leak and claims four of them outright — and then says
+// it "runs headless in test/type.test.js, which is the only way the 'zero
+// pending after dispose' assertion can be cheap enough to run on every commit".
+// There is no test/type.test.js. The file that the whole no-leak doctrine rests
+// on was the one file with nothing checking it, which is the funniest possible
+// place for that to be true. Here is the assertion it promised.
+section("a leak needs a named owner");
+{
+  const { createScope } = await import("../src/utils/lifecycle.js");
+
+  // ── EVERYTHING REGISTERED IS EVERYTHING RELEASED ──────────────────────
+  {
+    const scope = createScope("test");
+    const target = new EventTarget();
+    let heard = 0, timerRan = 0, tornDown = 0;
+    scope.listen(target, "ping", () => { heard++; });
+    scope.addTimer(() => { timerRan++; }, 50);
+    scope.addInterval(() => { timerRan++; }, 10);
+    scope.addRaf(() => { timerRan++; });
+    scope.add(() => { tornDown++; });
+    scope.add({ dispose() { tornDown++; } });
+    scope.add({ disconnect() { tornDown++; } });
+
+    target.dispatchEvent(new Event("ping"));
+    ok(heard === 1, "a listener registered on the scope actually listens");
+    const p = scope.pending;
+    ok(p.timers === 2 && p.rafs === 1 && p.disposables === 3,
+      `and everything registered is counted (${p.timers} timers, ${p.rafs} raf, ` +
+      `${p.disposables} disposables)`);
+
+    scope.dispose();
+    const q = scope.pending;
+    ok(q.timers === 0 && q.rafs === 0 && q.disposables === 0,
+      "ZERO PENDING AFTER DISPOSE — the assertion the file's own header promises");
+    ok(tornDown === 3,
+      `every shape of disposable ran: a function, a dispose(), a disconnect() (${tornDown} of 3)`);
+    target.dispatchEvent(new Event("ping"));
+    ok(heard === 1, "and one abort() took the listener with it");
+  }
+
+  // ── THE TIMERS REALLY STOP, NOT JUST THE BOOKKEEPING ──────────────────
+  // The counts above would pass just as well if dispose() only emptied its own
+  // Sets. This is the paired control: real timers, real clock, and a scope that
+  // was never disposed to prove the clock is actually turning.
+  {
+    const dead = createScope("dead");
+    const live = createScope("live");
+    let deadTicks = 0, liveTicks = 0;
+    dead.addInterval(() => { deadTicks++; }, 4);
+    dead.addTimer(() => { deadTicks++; }, 6);
+    live.addInterval(() => { liveTicks++; }, 4);
+    dead.dispose();
+    await new Promise((r) => setTimeout(r, 60));
+    live.dispose();
+    ok(deadTicks === 0, `a disposed scope's timers never fire (${deadTicks} ticks)`);
+    ok(liveTicks > 0,
+      `control: the same interval on a live scope fired ${liveTicks} times in the ` +
+      "same 60 ms, so the clock was running the whole time");
+  }
+
+  // ── REGISTERING INTO A DEAD SCOPE IS LOUD ─────────────────────────────
+  // Silent is how this becomes a leak nobody can find: the thing registered
+  // after teardown is never cleaned up, because the cleanup already ran.
+  {
+    const scope = createScope("gone");
+    scope.dispose();
+    let threw = 0;
+    for (const go of [() => scope.add(() => {}),
+                      () => scope.addTimer(() => {}, 1),
+                      () => scope.addInterval(() => {}, 1),
+                      () => scope.addRaf(() => {}),
+                      () => scope.listen(new EventTarget(), "x", () => {}),
+                      () => scope.child()]) {
+      try { go(); } catch { threw++; }
+    }
+    ok(threw === 6, `every way in throws on a disposed scope (${threw} of 6)`);
+    scope.dispose();
+    ok(scope.disposed === true,
+      "and disposing twice is not an error — a double unmount is a race, not a bug");
+  }
+
+  // ── A CHILD GOES WITH ITS PARENT, AND TEARDOWN UNWINDS ────────────────
+  {
+    const parent = createScope("parent");
+    const child = parent.child();
+    let childRan = 0;
+    child.add(() => { childRan++; });
+    const order = [];
+    parent.add(() => order.push("first"));
+    parent.add(() => order.push("second"));
+    parent.dispose();
+    ok(childRan === 1 && child.disposed,
+      "a child scope is disposed with its parent");
+    ok(order[0] === "second" && order[1] === "first",
+      `teardown unwinds like a stack, latest first (${order.join(" then ")})`);
+  }
+
+  // ── ONE BROKEN TEARDOWN MUST NOT STRAND THE REST ──────────────────────
+  {
+    const scope = createScope("thrower");
+    let after = 0;
+    scope.add(() => { after++; });                       // registered FIRST, so runs LAST
+    scope.add(() => { throw new Error("teardown blew up"); });
+    const err = console.error;
+    console.error = () => {};                            // it is supposed to log
+    scope.dispose();
+    console.error = err;
+    ok(after === 1,
+      "a disposable that throws does not strand the ones registered before it");
+  }
+}
+
+// ---------------------------------------------------------------------------
 section("no word on this sheet is printed under the floor");
 // site.css says it in a comment above the palette: the greys that carry WORDS
 // are near-ink and only the greys that carry LINES stay grey. It was true of

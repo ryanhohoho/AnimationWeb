@@ -92,6 +92,35 @@ const DESC = {
   404: "Nothing was pulled here."
 };
 
+/**
+ * ── A KEY THAT SCROLLS MUST BE ALLOWED TO SCROLL ──────────────────────────
+ * True when the page still has somewhere to go in direction `d`, so the deck
+ * should keep its hands off this keypress.
+ *
+ * ArrowDown, ArrowUp and Space were wired straight into step() alongside the
+ * horizontal arrows, with preventDefault() on top. On a deck card that is one
+ * screen tall, that is exactly right and nothing changes. On a project sheet —
+ * 3,310 px of terminal and figures on the USB one — it takes the three
+ * standard scrolling keys away from a keyboard reader and throws them onto the
+ * next project instead, and stops the browser scrolling as well. The one kind
+ * of page that actually scrolls was the one you could not scroll.
+ *
+ * Gating them on scroll position is also the better reading flow, and the one
+ * the front card already advertises: Space walks down the sheet, and the Space
+ * at the bottom turns the page.
+ *
+ * Reads layout, once, on a keypress — which is not a hover or a scroll path,
+ * and is the only place the answer can come from.
+ */
+export function keyScrollsFirst(d, win = globalThis.window, doc = globalThis.document) {
+  const el = doc && doc.documentElement;
+  if (!el || !win) return false;
+  const max = (el.scrollHeight || 0) - (win.innerHeight || 0);
+  if (max <= 1) return false;                  // nothing to scroll: it is the deck's
+  const y = win.scrollY || 0;
+  return d > 0 ? y < max - 1 : y > 1;
+}
+
 export function createRouter({ scope, deck, world, onPage }) {
   const doc = document.getElementById("doc");
   const metaDesc = document.querySelector('meta[name="description"]');
@@ -871,19 +900,30 @@ export function createRouter({ scope, deck, world, onPage }) {
   window.addEventListener("pointercancel", () => { sw = null; }, { passive: true, signal: scope?.signal });
 
   window.addEventListener("keydown", (e) => {
+    // (see keyScrollsFirst, below the handler, for why the vertical keys are
+    // not simply wired to step() the way the horizontal ones are)
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target;
     // never steal a key from something being typed into
     if (t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName || "")) return;
     let d = 0;
-    if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " " || e.key === "Enter") d = 1;
-    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") d = -1;
+    // ...and whether this key is one the READER uses to move down a page.
+    // Left and Right are not: nothing on this site scrolls sideways at a width
+    // that has a keyboard attached (`.term` only takes overflow-x under 860),
+    // so they are the deck's without argument.
+    let scrolls = false;
+    if (e.key === "ArrowRight" || e.key === "Enter") d = 1;
+    else if (e.key === "ArrowLeft") d = -1;
+    else if (e.key === "ArrowDown" || e.key === " ") { d = 1; scrolls = true; }
+    else if (e.key === "ArrowUp") { d = -1; scrolls = true; }
     else if (e.key === "Escape" && current?.name === "project") {
       e.preventDefault(); go("/projects"); return;
     }
     if (!d) return;
     // Enter and Space belong to a focused link or button first
     if ((e.key === " " || e.key === "Enter") && t?.closest?.("a,button")) return;
+    // ...and then to the page, if the page still has somewhere to go
+    if (scrolls && keyScrollsFirst(d)) return;
     if (step(d)) e.preventDefault();
   }, { signal: scope?.signal });
 

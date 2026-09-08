@@ -41,7 +41,16 @@ function hasOwnText(el) {
   return false;
 }
 
-export function createColliderTracker(world) {
+/**
+ * @param world the shared world
+ * @param scope the page's lifecycle scope. Optional, because the tests build a
+ *   tracker without one — but utils/lifecycle.js is explicit that a leak needs
+ *   a named OWNER rather than vigilance, and an observer is one of the four
+ *   classes it exists to own. The tracker is built once at boot and lives as
+ *   long as the page, so this has never leaked anything; it is registered so
+ *   that the day something tears the engine down, it does not start.
+ */
+export function createColliderTracker(world, scope) {
   let els = [];
   let dirty = true;
   let rafPending = false;
@@ -138,9 +147,15 @@ export function createColliderTracker(world) {
   const ro = typeof ResizeObserver === "function"
     ? new ResizeObserver(() => requestMeasure())
     : null;
+  if (ro) scope?.add(ro);          // runDisposable() calls disconnect()
   // ...and if there is no ResizeObserver there is still the poll it replaced,
   // because being right on an old browser matters more than being tidy on it.
-  if (!ro) setInterval(() => requestMeasure(), 500);
+  let pollId = 0;
+  if (!ro) {
+    pollId = scope
+      ? scope.addInterval(() => requestMeasure(), 500)
+      : setInterval(() => requestMeasure(), 500);
+  }
 
   function watch() {
     if (!ro) return;
@@ -156,7 +171,14 @@ export function createColliderTracker(world) {
 
   collect();
   measure();
-  return { requestMeasure };
+  return {
+    requestMeasure,
+    // for a caller with no scope. Idempotent, like every other dispose here.
+    dispose() {
+      ro?.disconnect();
+      if (pollId) { clearInterval(pollId); pollId = 0; }
+    }
+  };
 }
 
 // --- resolution (headless-safe) ----------------------------------------------

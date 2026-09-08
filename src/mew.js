@@ -187,7 +187,7 @@ export function bootMew({ world, deck, scope }) {
     radius: 60,
     config: cfg.physics
   });
-  createColliderTracker(world);
+  createColliderTracker(world, scope);
   const brain = createBrain({
     body, world,
     config: cfg.behavior, pathConfig: cfg.path, attackConfig: cfg.attack

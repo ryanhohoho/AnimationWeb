@@ -8,9 +8,12 @@
 // observers). gpu objects and detached-dom closures still need each module's
 // own dispose(), but they register it here so there is one call at the end.
 //
-// pure: no dom, no three.js. it runs headless in test/type.test.js, which is
-// the only way the "zero pending after dispose" assertion can be cheap enough
-// to run on every commit.
+// pure: no dom, no three.js. it runs headless in test/sim.test.js, under
+// "a leak needs a named owner", which is the only way the "zero pending after
+// dispose" assertion is cheap enough to run on every commit. That section also
+// carries the paired control the counts need: a disposed scope's interval and
+// a live one's, on the same real clock, so an empty Set cannot pass for a
+// stopped timer.
 
 // rAF only exists in a browser. headless we fall back to a timer at roughly
 // 60 Hz -- not because anyone wants to animate in node, but because a scope
