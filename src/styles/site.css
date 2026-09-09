@@ -145,6 +145,37 @@
 html { scroll-behavior:smooth; }
 html,body { height:100%; }
 
+/* ── THE PAGE MAY NOT BOUNCE, BECAUSE THE PRINT CANNOT BOUNCE WITH IT ──────
+   Drag past the top on a Mac and the elastic overscroll slides the document
+   down -- but every hole in the paper is painted on #sheet, which is
+   position:fixed and stays exactly where it was. So the lens' cut circle
+   stayed pinned at the top while the hairline ring drawn around it by CSS
+   walked away from it. Reported as "the dot cutout is locked to the top and
+   separate from the outline", and it is true of every aperture on the page;
+   the lens is just the one where a few pixels are obvious, because a circle
+   against its own ring has no slack in it at all.
+
+   IT CANNOT BE CORRECTED FOR, WHICH IS WHY THE BOUNCE GOES. MDN is explicit
+   about the split (Window.scrollY): "Safari responds to overscrolling by
+   updating scrollY beyond the maximum scroll position ... while Chrome and
+   Firefox do not." So WebKit hands the press a NEGATIVE scrollY and the press,
+   which simply draws every hole at docY - scrollY, tracks the bounce without
+   being told anything -- there is no bug there. Chromium and Gecko clamp at 0
+   and move the layer on the compositor instead, where getBoundingClientRect
+   cannot see it either, so there is no number anywhere in the page that says
+   how far the paper has slid. The engine with the bug is the one that will not
+   tell you about it, and the engine that would tell you does not have it.
+
+   Taking the bounce away is the same decision as history.scrollRestoration =
+   "manual" further down: the router owns the scroll on this site, and anything
+   that moves the page without saying so breaks the one invariant the whole
+   sheet rests on -- that a hole stays registered to the page.
+
+   It costs pull-to-refresh on Android Chrome, which on a single-page site that
+   would re-download the engine to show you the page you are already on is not
+   much of a loss. */
+html { overscroll-behavior-y:none; }
+
 /* WEIGHT 400, NOT 200.
    Everything small on this sheet used to be set in an extra-light, which is a
    display weight being asked to do body work: at 11-12px it has no stem left

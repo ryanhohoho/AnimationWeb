@@ -1528,6 +1528,27 @@ The reason is **not** "no generative grounds". Verbatim:
   ArrowUp at the top of `usb-provisioning` looks unhandled because there is no
   previous project to go to — the same key on `closet` is taken.
 
+## The scroll
+
+- **The paper may not bounce, because the print cannot bounce with it.** Every
+  hole is painted on `#sheet`, which is `position:fixed`, so a macOS elastic
+  overscroll slides the document down and leaves every cut circle behind — the
+  lens' hole pinned at the top with its own hairline ring walking away from it.
+  It is true of every aperture; the lens is only where a few pixels are obvious,
+  because a circle against its own ring has no slack.
+  **It cannot be corrected for.** MDN's `Window.scrollY` page states the split:
+  Safari updates `scrollY` beyond the maximum, Chrome and Firefox do not. So
+  WebKit hands the press a negative `scrollY` and the press tracks the bounce
+  for free — no bug there — while Chromium and Gecko clamp at 0 and move the
+  layer on the compositor, where `getBoundingClientRect` cannot see it either.
+  The engine with the bug is the one that will not tell you about it. So the
+  bounce goes: `html { overscroll-behavior-y: none }`, which is the same
+  decision as `history.scrollRestoration = "manual"` — the router owns the
+  scroll, and anything that moves the page without saying so breaks the one
+  invariant the sheet rests on. `overscroll-behavior-x` stays `auto`, and the
+  rule is on `html` and not on `.term`, which is the one thing here that is
+  supposed to scroll to its own ends. Costs pull-to-refresh on Android Chrome.
+
 ## The page swap
 
 - **`window.scrollY` must be read BEFORE `#doc` is replaced.** A shorter page

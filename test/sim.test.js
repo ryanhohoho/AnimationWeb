@@ -3281,6 +3281,36 @@ section("a leak needs a named owner");
 
 // ---------------------------------------------------------------------------
 section("no word on this sheet is printed under the floor");
+// ---------------------------------------------------------------------------
+// THE PAGE MAY NOT BOUNCE. Every hole in the paper is painted on #sheet, which
+// is position:fixed, so a macOS elastic overscroll slides the document down and
+// leaves every cut circle behind — the lens' hole pinned at the top with its
+// own hairline ring walking away from it. It cannot be corrected for in
+// Chromium, where the bounce is a compositor transform that neither
+// window.scrollY nor getBoundingClientRect can see, so the bounce is what goes.
+section("the paper does not bounce, because the print cannot bounce with it");
+{
+  const { readFileSync } = await import("node:fs");
+  const css = readFileSync(new URL("../src/styles/site.css", import.meta.url), "utf8");
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .map(([, sel, body]) => ({ sel: sel.trim().split(/\s*\n\s*/).pop().trim(), body }));
+  const declares = rules.filter((r) => /overscroll-behavior(-y)?\s*:\s*none/.test(r.body));
+  ok(declares.length > 0, "the root scroller refuses the bounce");
+  ok(declares.some((r) => /(^|,)\s*html\b/.test(r.sel)),
+    `and it is on html, the element that IS the viewport scroller — on body it ` +
+    `only reaches the viewport by propagation (${declares.map((r) => r.sel).join(", ")})`);
+
+  // THE PAIRED CONTROL, and it is about the OTHER scroller on the page. The
+  // terminal transcript scrolls sideways on a phone, and `none` there would
+  // stop it at its own ends rather than merely stopping the chain — the rule
+  // must not have leaked onto it.
+  const onTerm = declares.some((r) => /\.term/.test(r.sel));
+  ok(!onTerm,
+    "control: and NOT on the transcript, which is the one thing here that is " +
+    "supposed to scroll to its own ends");
+}
+
+// ---------------------------------------------------------------------------
 // site.css says it in a comment above the palette: the greys that carry WORDS
 // are near-ink and only the greys that carry LINES stay grey. It was true of
 // --n3 and it was not true of --n4, which is 2.61:1 on bone -- not a near miss
