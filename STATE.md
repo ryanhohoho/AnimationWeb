@@ -1457,6 +1457,16 @@ The reason is **not** "no generative grounds". Verbatim:
   that has a keyboard attached (`.term` only takes `overflow-x` under 860 px).
   Measured in the browser: on the USB sheet Down and Space are no longer taken
   and Right still is; on `/experience`, one screen tall, all three still are.
+- **A crossing with no origin still means "away".** The return — experience
+  back to summary — is the only transition whose opening closes in from the rim
+  rather than out of a hole, so it hands the brain no source. That used to
+  invert the rule: no source meant run at the middle of the room. It made the
+  return the one press that flew her across the reader's view, and it was the
+  longest possible way off the page. Measured from the four seats `settle()`
+  actually finds on that sheet: **0.82 s to clear and 190 px of sideways travel
+  outward, against 1.75 s and 1,375 px inward** — she used to cross the whole
+  window to leave it. `panicFrom(null)` reads the middle of the screen as the
+  thing to get away from now, which is one rule for every crossing.
 - **A fling IS a swipe, and the page was listening.** The router reads any
   mostly-sideways touch drag as "next card" — which is the exact shape of
   throwing her across a phone screen, so a fling navigated away from the page

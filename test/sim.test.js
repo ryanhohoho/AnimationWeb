@@ -2425,17 +2425,39 @@ section("panic: she looks, she turns, she goes — and she goes straight out");
   brain.step(1 / 120);
   ok(world.panicking === false, "and anything that steals the state clears it");
 
-  // a rim closing in has no source: she goes for the middle of the room
-  const body2 = createBody({ x: 150, y: 200, radius: 60, config: rigConfig.physics });
-  const brain2 = createBrain({
-    body: body2, world, config: rigConfig.behavior,
-    pathConfig: rigConfig.path, attackConfig: rigConfig.attack
-  });
-  brain2.panicFrom(null, 1);
-  ok(brain2.panic.esc.x > 0 && brain2.panic.esc.y > 0,
-    "no source: she runs inward, away from the nearest edges");
-  ok(brain2.gazeFront === true,
-    "and squares up to the viewport just the same — the rim is the whole room");
+  // ── A RIM CLOSING IN, WHICH IS THE ONE WITH NO SOURCE ─────────────────
+  // THIS ASSERTED THE OPPOSITE, and the contract is what changed rather than
+  // the code drifting. It read "no source: she runs inward, away from the
+  // nearest edges", on the reasoning that a rim has no one place it comes from
+  // so the far side of the room is its middle. Two things are wrong with that.
+  // It made the return the only transition that flew her ACROSS the reader's
+  // view, where the identical press one card earlier sends her out by the
+  // nearest edge. And she has about 0.28 s to be gone before the sheet swaps,
+  // so inward is the longest way off the page — she has to cross the room
+  // before she can start leaving it.
+  const nearestEdgeRun = (x, y) => {
+    const b = createBody({ x, y, radius: 60, config: rigConfig.physics });
+    const br = createBrain({ body: b, world, config: rigConfig.behavior,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    br.panicFrom(null, 1);
+    return br;
+  };
+  // top-left of the window (centre is 600, 400): out is further up and left
+  const tl = nearestEdgeRun(150, 200);
+  ok(tl.panic.esc.x < 0 && tl.panic.esc.y < 0,
+    "no source: from the top-left corner she leaves by the top-left, not " +
+    "across the whole window to the middle");
+  // ...AND THE CONTROL IS THE OTHER CORNER. A rule that just happens to point
+  // up-and-left would pass the line above and be no rule at all.
+  const br2 = nearestEdgeRun(1050, 700);
+  ok(br2.panic.esc.x > 0 && br2.panic.esc.y > 0,
+    "control: from the bottom-right she leaves by the bottom-right — it is " +
+    "the same rule as every other crossing, away from the source");
+  ok(Math.abs(tl.panic.esc.x + br2.panic.esc.x) < 0.35,
+    "and the two are near mirror images, because the only thing deciding is " +
+    "which side of the middle she was standing on");
+  ok(tl.gazeFront === true,
+    "she still squares up to the viewport — the rim is the whole room");
 }
 
 // ---------------------------------------------------------------------------

@@ -814,8 +814,11 @@ export function createRouter({ scope, deck, world, onPage }) {
       // the opening retreating into the home window, and it was arriving there
       // still wearing the project's ink.
       // SHE SEES IT COMING. Closing in from the rim, so there is no one place
-      // it comes from: from: null sends her at the middle of the room, which
-      // is the same rule (go where it is furthest away) applied to an edge.
+      // it comes from — and `from: null` is how the brain is told that. It
+      // reads that as the middle of the screen and sends her out by the
+      // nearest edge, the same as every other crossing (behaviour/brain.js,
+      // panicFrom). It used to mean the opposite, and this was the one
+      // transition that flew her across the reader's view to get out.
       world?.emit("crossing", { ms: RETURN_MS, from: null });
       runReturn(RETURN_MS, rampTarget, land, () => { settle(); land(); });
       wd = setTimeout(guard(() => { land(); deck.setCrossing(null); }), RETURN_MS * 4);

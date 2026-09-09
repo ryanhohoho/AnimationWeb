@@ -372,15 +372,29 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
   //               the middle, which is the same rule applied to a rim.
   function panicFrom(from, intensity = 1) {
     const vp = world.viewport;
-    let ax, ay;
-    if (from) {
-      ax = body.pos.x - from.x;
-      ay = body.pos.y - from.y;
-    } else {
-      // closing in from the rim: the far side of the room is its middle
-      ax = vp.w * 0.5 - body.pos.x;
-      ay = world.scroll.y + vp.h * 0.5 - body.pos.y;
-    }
+    // ── ONE RULE: AWAY FROM WHATEVER IT IS ───────────────────────────────
+    // ...and with no origin given, the middle of the screen is what she is
+    // getting away from. This used to invert for that case — a rim closing in
+    // has no one place it comes from, so the reasoning went, the far side of
+    // the room is its middle and she should run INWARD. It reads wrong and it
+    // is wrong.
+    //
+    // Wrong to look at: a return is the only transition where she was sent
+    // ACROSS the reader's view. She rests off the type, which on these sheets
+    // means near a margin, so "run at the centre" is a diagonal over the whole
+    // window — while the identical press one card earlier (summary out to
+    // experience, which has a real origin) sends her out by the nearest edge.
+    // Same gesture, opposite reading, and the odd one out was the one with no
+    // origin to point at.
+    //
+    // And wrong on the clock, which is the part that settles it: she has about
+    // 0.28 s of flight before the sheet swaps and she has to be gone. Outward
+    // from wherever she is standing is the SHORTEST way off the page by
+    // construction; inward is the longest, because she has to cross the room
+    // before she can start leaving it.
+    const src = from || { x: vp.w * 0.5, y: world.scroll.y + vp.h * 0.5 };
+    const ax = body.pos.x - src.x;
+    const ay = body.pos.y - src.y;
     const len = Math.hypot(ax, ay);
     // dead centre of the opening is the one case with no "away" — break the tie
     // upward, which is where a startled thing goes anyway
