@@ -1186,6 +1186,124 @@ section("shiny: the games' colours and an entrance that ends");
   ok(rerun(99) === rerun(99), "the same seed replays the same burst");
 }
 
+// ---------------------------------------------------------------------------
+// THE STAR IS A STAR, NOT A SPARKLE. Both bursts used the astroid — the
+// four-pointed twinkle with concave sides that the shiny sprites use — and on
+// the annoyance stars, at that size and that spin, four long thin concave arms
+// read as a little yellow spikeball. A knocked-loose star is the other
+// vocabulary entirely: five points, straight edges, fat body.
+section("a knocked-loose star is a star, and there are four sizes of it");
+{
+  const AN = rigConfig.shiny.sparkle.annoy;
+  const K = AN.starWaist;
+
+  // ── THE SHAPE ─────────────────────────────────────────────────────────
+  // A twin of the fragment shader's fivePoint(), the way sweatGeometry's
+  // sdDrop is a twin of the press's. Both run 0 at the centre and 1 on the
+  // outline, so the boundary radius along any ray is just 1/field(unit ray).
+  const fivePoint = (x, y) => {
+    const seg = 1.25663706, h = 0.62831853;
+    const a = Math.abs(((Math.atan2(x, y) + seg * 0.5) % seg + seg) % seg - seg * 0.5);
+    const rho = Math.hypot(x, y);
+    const nx = K * Math.sin(h), ny = 1 - K * Math.cos(h);
+    return (Math.cos(a) * rho * nx + Math.sin(a) * rho * ny) / nx;
+  };
+  const astroid = (x, y) =>
+    Math.pow(Math.abs(x), 0.6667) + Math.pow(Math.abs(y), 0.6667);
+  const edgeAt = (field, deg) => {
+    const t = deg * Math.PI / 180;
+    return 1 / field(Math.sin(t), Math.cos(t));      // 0 deg is straight up
+  };
+
+  ok(Math.abs(edgeAt(fivePoint, 0) - 1) < 1e-6,
+    `a point reaches the full radius (${edgeAt(fivePoint, 0).toFixed(4)})`);
+  ok(Math.abs(edgeAt(fivePoint, 36) - K) < 1e-6,
+    `and the waist between two points sits at starWaist (${edgeAt(fivePoint, 36).toFixed(3)} vs ${K})`);
+  ok([72, 144, 216, 288].every((d) => Math.abs(edgeAt(fivePoint, d) - 1) < 1e-6),
+    "five points, evenly spaced — the other four are full radius too");
+
+  // ── AND THE EDGES ARE STRAIGHT, WHICH IS THE WHOLE DIFFERENCE ─────────
+  // A star has straight edges between tip and waist. The astroid's are
+  // CONCAVE, which is what makes four of them a spikeball rather than a
+  // sparkle at this size. Sample the boundary across one edge and measure how
+  // far it bows off the chord.
+  const bow = (field, aTip, aWaist) => {
+    const pt = (deg) => {
+      const t = deg * Math.PI / 180, r = edgeAt(field, deg);
+      return [Math.sin(t) * r, Math.cos(t) * r];
+    };
+    const A = pt(aTip), B = pt(aWaist);
+    let worst = 0;
+    for (let i = 1; i < 20; i++) {
+      const P = pt(aTip + (aWaist - aTip) * (i / 20));
+      // distance from P to the chord AB, normalised by the chord's length
+      const ux = B[0] - A[0], uy = B[1] - A[1];
+      const len = Math.hypot(ux, uy);
+      worst = Math.max(worst, Math.abs((P[0] - A[0]) * uy - (P[1] - A[1]) * ux) / (len * len));
+    }
+    return worst;
+  };
+  const starBow = bow(fivePoint, 0.001, 35.999);
+  const twinkleBow = bow(astroid, 0.001, 44.999);
+  ok(starBow < 0.002,
+    `the edge from a point to the waist is straight (bows ${(starBow * 100).toFixed(2)}% of the chord)`);
+  // measured: the star bows 0.2% of its chord, the astroid 7.0%, so the bound
+  // sits between them rather than being picked out of the air
+  ok(twinkleBow > 0.05,
+    `control: the twinkle's is deeply concave (${(twinkleBow * 100).toFixed(1)}% ` +
+    `against the star's ${(starBow * 100).toFixed(1)}%) — that hollow is what ` +
+    "four arms of it read as");
+
+  // ── THE FOUR SIZES ────────────────────────────────────────────────────
+  ok(Math.max(...AN.sizeLadder) / Math.min(...AN.sizeLadder) <= 3.0,
+    `the widest star is at most three times the narrowest ` +
+    `(${(Math.max(...AN.sizeLadder) / Math.min(...AN.sizeLadder)).toFixed(2)}x)`);
+  ok(AN.sizeLadder.length === AN.sizeWeights.length,
+    "every rung is weighted, or a draw can fall off the end of the ladder");
+
+  const burst = (seed) => {
+    const b = createStarBurst({
+      parent: new THREE.Object3D(), config: rigConfig.shiny.sparkle,
+      view: { worldPerPx: 0.01 }
+    });
+    b.annoy(seed);
+    return b._debug.stars;
+  };
+  let lo = Infinity, hi = 0, offLadder = 0, rungsSeen = new Set();
+  for (const seed of [1, 7, 22, 91]) {
+    for (const s of burst(seed)) {
+      lo = Math.min(lo, s.size); hi = Math.max(hi, s.size);
+      const r = s.size / AN.sizePx;
+      const on = AN.sizeLadder.some((v) => Math.abs(v - r) < 1e-9);
+      if (!on) offLadder++; else rungsSeen.add(r);
+    }
+  }
+  ok(offLadder === 0,
+    "every star emitted lands exactly on a rung — no jitter on top, because a " +
+    "jitter is what would quietly push the ratio past three");
+  ok(rungsSeen.size === AN.sizeLadder.length,
+    `and across four bursts all ${AN.sizeLadder.length} rungs actually come up`);
+  ok(hi / lo <= 3.0,
+    `so the burst's own widest-to-narrowest holds too (${(hi / lo).toFixed(2)}x)`);
+
+  // ── AND ONLY THE ANNOYANCE STARS CHANGED ──────────────────────────────
+  // The shiny entrance is a different reference and a different moment: the
+  // games' shiny really is a four-pointed sparkle, and it keeps it.
+  ok(burst(3).every((s) => s.five === 1),
+    "every annoyance star is a five-pointed star");
+  const ent = (() => {
+    const b = createStarBurst({
+      parent: new THREE.Object3D(), config: rigConfig.shiny.sparkle,
+      view: { worldPerPx: 0.01 }
+    });
+    b.shiny(3);
+    return b._debug.stars;
+  })();
+  ok(ent.length > 0 && ent.every((s) => s.five === 0),
+    `control: every star of the shiny entrance is still a twinkle (${ent.length} of them)`);
+}
+
+// ---------------------------------------------------------------------------
 section("presentation: cutout overlay cover-fit + scroll");
 {
   // square image into a wide viewport -> crop vertically, x untouched

@@ -112,7 +112,35 @@ export const rigConfig = {
         gravityPx: 660,       // what turns the throw into an arc
         lifeLoS: 0.45,
         lifeHiS: 0.85,
-        sizePx: 21
+
+        // ── THE SHAPE, AND IT IS NOT THE SHINY SPARKLE'S ─────────────────
+        // A knocked-loose star is the manga/Kirby star: five points, straight
+        // edges, fat body. The shiny entrance keeps its four-pointed astroid,
+        // which is a different reference and a different moment.
+        //
+        // The waist is the whole character of it. 0.382 (1/phi^2) is the
+        // pentagram-sharp star and reads as a spikeball at these sizes and
+        // this spin — which is the report this fixes. 0.52 is measured off the
+        // reference: the waist a little past half way out, so the body is
+        // round and the points are short.
+        starWaist: 0.52,
+        // ...and the core threshold has to be re-derived for it, or the
+        // two-tone changes when only the OUTLINE was supposed to. Both fields
+        // run 0 at the centre to 1 on the edge, but they fill differently: the
+        // astroid's `d <= c` region is the astroid scaled by c^(3/2) on each
+        // axis, so its area goes as c^3, and 0.42^3 is 7.4% of the sprite. The
+        // five-point field is linear in radius, so its area goes as c^2, and
+        // sqrt(0.074) is 0.27. Same white core, same weight, different shape.
+        starCore: 0.27,
+
+        // ── FOUR SIZES, AND THE RATIO BETWEEN THEM IS THE BRIEF ──────────
+        // Rungs, not a jitter: the reference is one big star and a few smaller
+        // ones, each a size you could name. 1.00 / 0.34 is 2.94x, under the
+        // 3x ceiling asked for, and there is a check on it — a jitter on top
+        // would quietly put it over.
+        sizePx: 26,                        // the largest rung, in character px
+        sizeLadder: [1.0, 0.68, 0.47, 0.34],
+        sizeWeights: [1, 2, 3, 3]          // the big one is the rare one
       }
     }
   },

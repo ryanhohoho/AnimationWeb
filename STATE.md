@@ -1457,6 +1457,25 @@ The reason is **not** "no generative grounds". Verbatim:
   that has a keyboard attached (`.term` only takes `overflow-x` under 860 px).
   Measured in the browser: on the USB sheet Down and Space are no longer taken
   and Right still is; on `/experience`, one screen tall, all three still are.
+- **The annoyance stars are a different reference from the shiny sparkle.**
+  Both bursts drew the astroid — the four-pointed twinkle with concave sides
+  the shiny sprites use — and four long thin concave arms at that size and that
+  spin read as a little yellow spikeball. A knocked-loose star is the manga /
+  Kirby star: five points, straight edges, fat body. `fivePoint()` folds the
+  plane into one 72° wedge, where the whole boundary is a single straight edge
+  from tip to waist, and tests one dot product against its un-normalised
+  normal — no divides, no per-edge atan. `starWaist` 0.52 is the character of
+  it; 0.382 (1/φ²) is the pentagram-sharp star and is the spikeball.
+  **The shiny entrance keeps the astroid** — that one really is a four-pointed
+  sparkle in the games, and it is a different moment.
+  Verified on the GPU: the shader's boundary radius matches the headless twin
+  to 0.005 at thirteen angles, five tips at 1.0 and five waists at 0.52.
+- **`starCore` is derived, not chosen.** Both fields run 0 at the centre and 1
+  on the outline, but they FILL differently: the astroid's `d ≤ c` region has
+  area ∝ c³, the five-point's ∝ c². So 0.42 on one is 0.42³ = 7.4% of the
+  sprite, and the same 7.4% on the other is √0.074 = 0.27. Change the outline
+  without re-deriving this and the two-tone changes when only the shape was
+  supposed to.
 - **A crossing with no origin still means "away".** The return — experience
   back to summary — is the only transition whose opening closes in from the rim
   rather than out of a hole, so it hands the brain no source. That used to
