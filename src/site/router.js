@@ -935,7 +935,14 @@ export function createRouter({ scope, deck, world, onPage }) {
     if ((e.key === " " || e.key === "Enter") && t?.closest?.("a,button")) return;
     // ...and then to the page, if the page still has somewhere to go
     if (scrolls && keyScrollsFirst(d)) return;
-    if (step(d)) e.preventDefault();
+    if (step(d)) {
+      e.preventDefault();
+      // ONLY A PRESS THAT MOVED SOMETHING LIGHTS A CAP. Everything above this
+      // line is a reason the key was not a navigation, and the chrome cannot
+      // know any of them -- so it is told here rather than listening for
+      // keydown itself (site/chrome.js).
+      world?.emit("deckstep", { d });
+    }
   }, { signal: scope?.signal });
 
   // The crossing starts AT the thing you clicked, so a link inside a hole opens

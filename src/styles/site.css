@@ -630,13 +630,70 @@ pre.sr { white-space:pre; }
 }
 
 .keys { position:absolute; right:var(--pad); bottom:calc(var(--pad) * .8);
-        color:var(--n3); display:flex; align-items:center; gap:.3rem; }
+        color:var(--n3); display:flex; align-items:center; gap:.36rem; }
 /* step() returns false for a route that is not in the deck, so on a 404 the
    arrow keys do nothing -- and a label naming a key that does nothing is the
    one kind of label this sheet does not carry. */
 body.off-deck .keys { display:none; }
-.keys kbd { font:inherit; font-size:9px; border:1px solid var(--n4);
-            border-radius:2px; padding:.1rem .3rem; }
+.keys-say { margin-left:.2rem; }
+
+/* ── A KEY, DRAWN AS A KEY ──────────────────────────────────────────────────
+   20 px square, because a keycap is square and a rectangle reads as a button.
+   The outline is --n3 rather than --n4: this is a mark somebody has to read at
+   a glance, and --n4 is 2.61:1 and belongs to hairlines. The glyph is ink.
+
+   `place-items:center` on a grid rather than padding, so the drawing sits on
+   the cap's own centre at any size -- the old version padded a text arrow and
+   the two glyphs were visibly at different heights, because ← and → do not
+   share a baseline offset in this face. */
+.keycap {
+  display:grid; place-items:center; width:20px; height:20px; flex:none;
+  border:1px solid var(--n3); border-radius:3px;
+  color:var(--ink); text-decoration:none;
+  transition:border-color var(--t1) var(--e), background-color var(--t1) var(--e),
+             color var(--t1) var(--e);
+}
+.keycap svg { width:13px; height:13px; display:block; }
+.keycap svg path { fill:none; stroke:currentColor; stroke-width:1.6;
+                   stroke-linecap:round; stroke-linejoin:round; }
+
+/* AN END IS AN END, AND YOU CAN SEE IT COMING. The same rule the phone's
+   arrows have had: the control stays where it is and goes quiet, so reaching
+   the last card reads as an edge rather than as a key that stopped working. */
+/* ...and it dims with OPACITY, the way .mob-b already does, rather than by
+   repainting the glyph in --n4. Two reasons, and the second is the real one:
+   the check on the stylesheet cannot tell an inactive mark from a word, so
+   --n4 in a `color:` is a violation whatever it is drawing -- and opacity is
+   what the other costume of this same control has always used, so the two
+   cannot drift. .32 rather than .2 because this cap is 20 px against a 44 px
+   circle, and the point of leaving it there is that it can still be seen. */
+.keycap[aria-disabled="true"] { opacity:.32; pointer-events:none; }
+@media (hover:hover) {
+  .keys .keycap:hover { border-color:var(--blue); color:var(--blue); }
+}
+.keycap:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+
+/* ── AND IT ANSWERS THE KEYBOARD ────────────────────────────────────────────
+   Nielsen's first heuristic, and the cheapest possible version of it: press the
+   key and the cap it belongs to inverts for a moment. It confirms the mapping
+   the first time and then never needs to be read again -- which is what a good
+   signifier does, teach itself and get out of the way. Driven from the router
+   through the world bus, so the only thing that can light a cap is a keypress
+   the router actually acted on (site/chrome.js). */
+.keycap.hit { background:var(--blue); border-color:var(--blue); color:var(--paper);
+              transition:none; }
+
+/* the one inside a sentence sits ON the line rather than beside it, and takes
+   the link's colour with it so the whole phrase reads as one object */
+.keycap-in { display:inline-grid; vertical-align:-.42em; margin:0 .06em;
+             width:19px; height:19px; color:inherit; border-color:currentColor; }
+/* THE WORDS ARE UNDERLINED, THE KEY IS NOT. On the anchor the rule runs
+   straight through the cap and the key looks struck out; taken off entirely,
+   colour alone is left saying "this is a link", which on a page with one other
+   blue thing on it is not enough. */
+.hint-a { text-decoration:none; }
+.hint-a .hint-w { text-decoration:underline; text-underline-offset:.24em;
+                  text-decoration-thickness:1px; }
 
 /* the phone's arrow keys. Hidden on anything with a keyboard. */
 .mob { position:absolute; right:var(--pad); top:50%; transform:translateY(-50%);

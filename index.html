@@ -167,7 +167,21 @@
         <h1 class="d name" style="--i:2">Ryan Ho</h1>
         <p class="t body bio" style="--i:3">Systems developer. I reverse-engineer undocumented file formats and automate the hardware nobody wants to do by hand &mdash; right now for the <em>RCMP</em>.</p>
         <p class="t body bio" style="--i:4">I study Computer Science and Biology at <em>UBC</em>. The Mew wandering around this page is procedurally animated &mdash; no keyframes anywhere, just springs and a small brain.</p>
-        <p class="t dim hint" style="--i:6"><a class="link" href="/experience" data-route>press &rarr; to continue</a></p>
+        <!-- THE SAME KEY, TAUGHT ONCE. This read "press → to continue" in
+             body copy, while the corner taught the identical control in a
+             different vocabulary two hundred pixels away -- one instruction,
+             given twice, in two costumes. The keycap here IS the corner's
+             keycap, so the reader learns one object; and the whole line stays a
+             link, so pressing the key and clicking the sentence do the same
+             thing. The label carries the words for a screen reader, because the
+             cap is a picture of a key rather than the word for one.
+
+             The words carry the underline, not the anchor: a rule that runs
+             under the cap as well makes the key look struck through, and
+             dropping the underline altogether would leave colour alone doing
+             the work of saying this is a link. -->
+        <p class="t dim hint" style="--i:6"><a class="link hint-a" href="/experience" data-route
+             aria-label="Press the right arrow key to continue"><span class="hint-w">press</span> <span class="keycap keycap-in" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8h8M8 4.5 11.5 8 8 11.5" /></svg></span> <span class="hint-w">to continue</span></a></p>
       </div>
 
       <!-- THE WINDOW. The crossing to the next card opens out of exactly this
@@ -319,7 +333,51 @@
       </span>
     </nav>
 
-    <p class="t dim keys"><kbd>&larr;</kbd><kbd>&rarr;</kbd>&nbsp;navigate</p>
+    <!-- ── THE ARROW KEYS, DRAWN AS KEYS AND WIRED AS CONTROLS ───────────────
+         This was `<kbd>←</kbd><kbd>→</kbd> navigate`: two 9 px boxes in --n4,
+         the hairline grey, saying a word that names a category rather than an
+         action. The single strongest signifier on the page was the smallest and
+         faintest thing on it, and it did nothing when you pointed at it.
+
+         Four changes, and each one is a different rule:
+
+         AFFORDANCE. A thing that says "press me" should look pressable and BE
+         pressable. These are real links now, so a reader who never touches the
+         keyboard has a next/previous control on the desktop for the first time
+         -- and they carry the same data-prev/data-next as the phone's bar, so
+         they are one control in two costumes rather than two controls.
+
+         VISIBILITY. The cap is 20 px with the glyph in ink; --n4 is a hairline
+         colour and may not carry a mark anyone has to read.
+
+         CONSTRAINT MADE VISIBLE. chrome.js makes the cap at the end of the deck
+         inert, exactly as it already did for the phone's arrows: you can SEE
+         that ← does nothing on card 01 before you press it and wonder whether
+         the page is broken.
+
+         AND IT SAYS WHAT IT MOVES. "navigate" is a category. On the deck these
+         browse the cards, on a project sheet they browse the projects, and the
+         label says whichever is true (chrome.js, data-keys-say).
+
+         The glyph is drawn rather than typed: at 20 px the ← and → characters
+         of this face are thin, off-centre in their em box, and land on a
+         different baseline in every fallback. A path is the same shape on every
+         machine, and it is the same drawing as the chart's cross.
+
+         AND IT IS AN ARROW, WITH A STEM, not a chevron. Drawn side by side at
+         eight times the size, the chevron reads as a pagination button and the
+         arrow reads as the KEY -- because that is the difference on the
+         keyboard itself. The phone's circles keep their chevrons for the same
+         reason: they are buttons and there is no key to point at. -->
+    <p class="keys">
+      <a class="keycap" data-route data-prev href="/" aria-label="Previous card">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.5 8H4.5M8 4.5 4.5 8 8 11.5" /></svg>
+      </a>
+      <a class="keycap" data-route data-next href="/experience" aria-label="Next card">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h8M8 4.5 11.5 8 8 11.5" /></svg>
+      </a>
+      <span class="t dim keys-say" data-keys-say>browse the cards</span>
+    </p>
 
   </div>
 

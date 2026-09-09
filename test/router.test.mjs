@@ -623,8 +623,15 @@ console.log("\n== a way home from every page but home");
   });
   const back = mk({ "data-back": "" });
   const home = mk({ "data-home": "" });
+  // TWO OF EACH, because there are two of each on the page now: the phone's bar
+  // and the desktop's keycaps are one control in two costumes, and the whole
+  // point of them carrying the same attribute is that one rule drives both.
+  // A fixture with one of each would pass while the second costume did nothing.
   const prev = mk({ "data-prev": "" });
   const next = mk({ "data-next": "" });
+  const capPrev = mk({ "data-prev": "" });
+  const capNext = mk({ "data-next": "" });
+  const keysSay = mk({ "data-keys-say": "" });
   const count = mk({ "data-count": "" });
   const dots = [0, 1, 2, 3].map(() => mk({ "data-dot": "" }));
   const chromeRoot = {
@@ -634,8 +641,12 @@ console.log("\n== a way home from every page but home");
       sel.includes("data-home") ? home :
       sel.includes("data-prev") ? prev :
       sel.includes("data-next") ? next :
+      sel.includes("data-keys-say") ? keysSay :
       sel.includes("data-count") ? count : null,
-    querySelectorAll: (sel) => (sel.includes("data-dot") ? dots : [])
+    querySelectorAll: (sel) =>
+      sel.includes("data-dot") ? dots :
+      sel.includes("data-prev") ? [prev, capPrev] :
+      sel.includes("data-next") ? [next, capNext] : []
   };
   const byId = document.getElementById;
   document.getElementById = (id) => (id === "chrome" ? chromeRoot : byId(id));
@@ -712,14 +723,29 @@ console.log("\n== a way home from every page but home");
   ok(count.textContent.startsWith("——"),
     `and the legend says so rather than counting (${count.textContent})`);
   ok(!home.hidden, "a 404 still carries the way home — it needs it most");
-  ok(!prev.attrs.href && !next.attrs.href,
+  ok(!prev.attrs.href && !next.attrs.href && !capPrev.attrs.href && !capNext.attrs.href,
     "and the deck's arrows go inert: the reader is not at position zero of anything");
+  ok(capPrev.attrs["aria-disabled"] === "true" && capNext.attrs["aria-disabled"] === "true",
+    "...both costumes of them — the keycap says it as loudly as the phone's button");
 
   // THE PAIRED CONTROL. On a real deck card all four of those flip.
   chrome.setPage({ name: "home" });
   ok(dots.some((d) => d.attrs["aria-current"] === "page") &&
      count.textContent.startsWith("01") && next.attrs.href,
     "control: on card 01 the chart names a cell, the legend counts, and next steps");
+  ok(capNext.attrs.href === next.attrs.href && !capPrev.attrs.href,
+    "and the keycaps agree with the bar exactly: → live, ← inert on the first card");
+
+  // ── THE LEGEND NAMES WHAT THE KEYS MOVE ──────────────────────────────
+  // It said "navigate" on every page, which is a category rather than an
+  // action and is the same word whether the keys are stepping cards or
+  // projects. Two routes, two truths.
+  ok(keysSay.textContent === "browse the cards",
+    `on the deck the arrows browse the cards ("${keysSay.textContent}")`);
+  chrome.setPage({ name: "project", project: PROJECTS[1] });
+  ok(keysSay.textContent === "browse the projects",
+    `control: inside a project sheet they browse the projects ("${keysSay.textContent}")`);
+  chrome.setPage({ name: "home" });
 
   document.getElementById = byId;
 }

@@ -1446,6 +1446,33 @@ The reason is **not** "no generative grounds". Verbatim:
 
 ## The keyboard
 
+- **The arrow-key legend is a control, not a caption.** It was
+  `<kbd>←</kbd><kbd>→</kbd> navigate`: two 9 px boxes in `--n4`, the hairline
+  grey, naming a category rather than an action, and doing nothing when
+  pointed at. It is now two 20 px keycaps that are real links carrying the same
+  `data-prev`/`data-next` as the phone's bar — one control in two costumes, one
+  rule in chrome.js driving both — so a desktop reader who never touches the
+  keyboard has a next/previous control for the first time. `chrome.js`
+  `querySelector` became `querySelectorAll` for exactly that reason: it took
+  whichever costume came first in the document, which works right up until
+  there are two.
+- **The glyph is an arrow, not a chevron, and it is drawn rather than typed.**
+  Side by side at 8×, a chevron reads as a pagination button and a stemmed
+  arrow reads as the KEY — which is the difference on the keyboard itself. The
+  phone's circles keep chevrons: they are buttons, and there is no key to point
+  at. Typed `←`/`→` sit off-centre in their em box and on a different baseline
+  in every fallback face; a path is the same shape everywhere.
+- **A cap lights only on a press the router acted on.** The flash is driven
+  through the world bus (`deckstep`), not a keydown listener in chrome, because
+  the router is the only thing that has already discounted modifiers, a field
+  being typed into, a focused link taking Enter, and a page with scrolling
+  left. Measured: ArrowRight lights `→`; ArrowLeft on card 01, where `step(-1)`
+  fails, lights nothing.
+- **An inert cap dims with opacity, never with `--n4`.** The `--n4` check reads
+  the real stylesheet and cannot tell an inactive mark from a word, so the
+  token in a `color:` is a violation whatever it draws — and `.mob-b` has
+  always dimmed with opacity, so the two costumes now cannot drift.
+
 - **A key that scrolls is the reader's before it is the deck's.** ArrowDown,
   ArrowUp and Space went straight into `step()` alongside the horizontal
   arrows, with `preventDefault()` on top — so on a project sheet, 3,310 px of

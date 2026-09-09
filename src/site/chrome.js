@@ -21,14 +21,20 @@
 import { DECK, PATH } from "./router.js";
 import { PROJECTS } from "./projects.js";
 
-export function createChrome({ scope, deck }) {
+export function createChrome({ scope, deck, world }) {
   const root = document.getElementById("chrome");
   if (!root) return { setPage() {} };
 
   const count = root.querySelector("[data-count]");
   const dots = [...root.querySelectorAll("[data-dot]")];
-  const prev = root.querySelector("[data-prev]");
-  const next = root.querySelector("[data-next]");
+  // ALL OF THEM, not the first. The phone's bar and the desktop's keycaps are
+  // the same control in two costumes -- same route, same ends, same inert
+  // state -- so they carry the same attribute and one rule drives both.
+  // querySelector took whichever happened to be earlier in the document, which
+  // is exactly the kind of thing that works until somebody adds the second one.
+  const prev = [...root.querySelectorAll("[data-prev]")];
+  const next = [...root.querySelectorAll("[data-next]")];
+  const keysSay = root.querySelector("[data-keys-say]");
   const back = root.querySelector("[data-back]");
   const home = root.querySelector("[data-home]");
 
@@ -116,15 +122,24 @@ export function createChrome({ scope, deck }) {
       const j = (onDeck < 0 ? 0 : onDeck) + d;
       return (j >= 0 && j < DECK.length) ? PATH[DECK[j]] : null;
     };
-    for (const [el, d] of [[prev, -1], [next, 1]]) {
-      if (!el) continue;
+    for (const [els, d] of [[prev, -1], [next, 1]]) {
       const href = stepTo(d);
-      // an end is an end: the control stays visible and goes inert, so the
-      // reader can SEE that they have reached one rather than pressing into
-      // nothing and wondering whether it is broken
-      if (href) { el.setAttribute("href", href); el.removeAttribute("aria-disabled"); }
-      else { el.removeAttribute("href"); el.setAttribute("aria-disabled", "true"); }
+      for (const el of els) {
+        // an end is an end: the control stays visible and goes inert, so the
+        // reader can SEE that they have reached one rather than pressing into
+        // nothing and wondering whether it is broken
+        if (href) { el.setAttribute("href", href); el.removeAttribute("aria-disabled"); }
+        else { el.removeAttribute("href"); el.setAttribute("aria-disabled", "true"); }
+      }
     }
+
+    // ── AND THE LEGEND SAYS WHAT THEY MOVE ──────────────────────────────
+    // It said "navigate", which is a category rather than an action and is the
+    // same word whether the keys are stepping cards or projects. Naming the
+    // thing they move through is the difference between a label and an
+    // instruction, and it costs one assignment on a path that is already
+    // writing the counter next door.
+    if (keysSay) keysSay.textContent = isProject ? "browse the projects" : "browse the cards";
 
     // ── THE TWO DISCS ───────────────────────────────────────────────────
     // Both are fixed to the window and both are a small circle of sky, printed
@@ -163,6 +178,26 @@ export function createChrome({ scope, deck }) {
     // page always remeasures whether or not anything was revealed
     if (moved || isProject) deck?.remeasure();
   }
+
+  // ── THE CAP ANSWERS THE KEY ───────────────────────────────────────────────
+  // Visibility of system status, in its cheapest form: press an arrow and the
+  // cap it belongs to inverts for a moment. It confirms the mapping the first
+  // time and is never read again, which is what a signifier is supposed to do.
+  //
+  // Driven off the bus rather than off a keydown listener of its own, because
+  // the router is the only thing that knows whether a press was a NAVIGATION:
+  // it has already discounted modifiers, a field being typed into, a focused
+  // link taking Enter, and a page that had scrolling left to do. A second
+  // listener here would light the cap for every one of those.
+  world?.on?.("deckstep", (e) => {
+    const els = e && e.d < 0 ? prev : next;
+    for (const el of els) {
+      el.classList.remove("hit");
+      void el.offsetWidth;              // restart it if two presses land close
+      el.classList.add("hit");
+    }
+    scope?.addTimer?.(() => { for (const el of els) el.classList.remove("hit"); }, 150);
+  });
 
   return { setPage };
 }

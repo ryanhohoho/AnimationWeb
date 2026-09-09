@@ -53,7 +53,7 @@ siteScope.add(() => pageScope?.dispose());
 // updated afterwards. It is the stitch chart, the phone bar and the back
 // control -- all of which sit outside #doc precisely so that the wholesale swap
 // below cannot destroy and rebuild them once per navigation.
-const chrome = createChrome({ scope: siteScope, deck });
+const chrome = createChrome({ scope: siteScope, deck, world });
 
 createRouter({
   scope: siteScope,
