@@ -62,7 +62,11 @@ createRouter({
   onPage(route) {
     pageScope?.dispose();
     pageScope = createScope("page");
-    mountPage(route, { scope: pageScope, deck });
+    // `world` as well as `deck`: the USB sheet's second figure is a scroll
+    // track, and it takes its progress from world.scroll.y rather than from
+    // a listener of its own — one subscription, re-measured on `recollect`
+    // like everything else positional.
+    mountPage(route, { scope: pageScope, deck, world });
     // after mountPage: the cards clear the masked hole as they are disposed, and
     // on a project sheet the back arrow is the thing that claims it next
     chrome.setPage(route);

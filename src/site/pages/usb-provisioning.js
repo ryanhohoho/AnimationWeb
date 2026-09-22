@@ -18,6 +18,7 @@
 import { renderSheet } from "./sheet.js";
 import { createTerm } from "../term.js";
 import { capture } from "../media.js";
+import { mountUsbDemo } from "../usbDemo.js";
 
 // A substituted device identifier. Same width as the real thing so every
 // column downstream of it lands where it really lands.
@@ -111,18 +112,20 @@ const PLAIN = SESSION
 
 export function html(p) {
   return renderSheet(p, {
-    headline: "ten thousand drives,<br />and nobody typing<br /><em>a single serial</em>",
-    lead: "Two command-line tools that took the manual step out of an RCMP hardware " +
-      "pipeline. Drives are formatted and BitLocker-encrypted unattended, several " +
-      "at a time; asset numbers are laid onto physical jig coordinates by a " +
-      "generator rather than typed into an engraver pocket by pocket.",
+    headline: "USB Provisioning<br /><em>App</em>",
+    // THE LEAD IS ON PLATE 1, not under the headline. With the hero gone,
+    // plate 0 is a title page -- one display line on one screen, which is what
+    // the first plate of a two-plate sheet has always been in print. The
+    // argument starts where the evidence does. renderSheet takes an empty lead
+    // and prints no paragraph for it.
+    lead: "",
     notes: [
       { k: "DELIVERED", v: "In daily use. The provisioning tool has run several thousand drives." },
       { k: "THE HARD PART", v: "Not the encryption. Windows recycles drive letters within seconds of a release, so every drive has to be re-resolved by a stable device identity on each poll or the tool will call a half-encrypted drive safe to remove." },
       // THE DISCLOSURE, ON THE PAGE. Not only in a comment: this cell and the
       // subtitle beside the transcript are the two places a reader is told, and
       // the page must never carry the transcript without both of them.
-      { k: "DISCLOSURE", v: "No asset numbers, serials, volume identifiers, key material or credentials appear anywhere on this sheet. The transcript is a real run with every device identifier replaced by a stand-in of the same width." }
+      { k: "DISCLOSURE", v: "No asset numbers, serials, volume identifiers, key material or credentials appear anywhere on this sheet. The transcript is a real run with every device identifier replaced by a stand-in of the same width. The engraving figure is a real run too, against a batch of sequential synthetic serials generated for it, and the label it engraves carries a stand-in telephone number." }
     ],
     // THE TRANSCRIPT IS THE ONE FIGURE ON ANY OF THESE THREE SHEETS THAT IS
     // REAL, which is why this page keeps a second element the others do not.
@@ -130,6 +133,12 @@ export function html(p) {
     // landing on the lead at 28% and the colophon at 28%, which is the
     // collision that started this rework. In a column it needs no wrapper.
     body: `
+    <p class="t body wide lead">Two command-line tools that took the manual step
+      out of an RCMP hardware pipeline. Drives are formatted and
+      BitLocker-encrypted unattended, several at a time; asset numbers are laid
+      onto physical jig coordinates by a generator rather than typed into an
+      engraver pocket by pocket.</p>
+
     <div class="term-col">
       <p class="t dim">A REAL RUN. DEVICE IDENTIFIERS&nbsp;SUBSTITUTED.</p>
       <!-- tabindex, because on a narrow screen this is the one thing on the site
@@ -162,14 +171,83 @@ export function html(p) {
     // be told: a screen and a half rather than a screen
     deep: true,
 
-    hero: capture({ id: "stand-usb-hero", ratio: "1.3333",
-      alt: "Reference artwork standing in for a capture of the hub." }),
+    // ── THE FIGURE IS THE HERO, which is what `hero` has always meant on this
+    // trim: the figure under the headline. It was on plate 1 for one draft and
+    // that put the sheet's own aperture and its opening paragraph above it --
+    // so a reader landing on the page met two things before the thing the page
+    // is about. It is the first object now, and the plate 0 rule in site.css
+    // starts it far enough down that most of the window is still below the
+    // fold: something to scroll INTO rather than something already arrived.
+    hero: `
+    <!-- ── FIG. 2 — THE SECOND TOOL, AND THE ONE THAT GOT A FACE ──────────
+         A scroll track with a sticky child. The generator's terminal and the
+         generator's UI are the same rectangle, playing the same run; the
+         terminal is clipped away from the right as the reader goes down the
+         track. site/usbDemo.js owns the number, site.css owns everything that
+         reads it.
+
+         NO data-ap ANYWHERE IN HERE, and this is the reason to say so out
+         loud: a hole is measured where the document LIVES, and everything
+         inside a sticky child moves under it. The plate's one aperture is on
+         plate 1, below this, and it does not move. -->
+    <div class="usb-stage" data-usb-stage>
+      <div class="usb-pin">
+        <div class="usb-glow" aria-hidden="true"></div>
+        <!-- data-noswipe: a shadow root retargets its events to this element,
+             so the router's page-swipe would otherwise read a drag across the
+             figure as a request to turn the page. -->
+        <div class="usb-frame" data-usb-frame data-noswipe>
+          <div class="usb-ui" data-usb-ui></div>
+          <!-- aria-hidden for the same reason FIG. 1's played body is: at any
+               instant this holds a few lines of a run in progress, which is a
+               meaningless snapshot to anyone who cannot watch it arrive. The
+               sentence underneath says what it is instead. -->
+          <div class="usb-cli" data-usb-cli aria-hidden="true">
+            <!-- just CLI. It named one jig and one pocket count, and the figure
+                 now runs two different fixtures — so the label was wrong half
+                 the time, and it was labelling the obvious anyway. -->
+            <div class="usb-cli-bar">CLI</div>
+            <div class="usb-cli-body" data-usb-lines></div>
+          </div>
+          <!-- THE POINTER, over both halves. It belongs to the figure rather
+               than to the app: the script's cursor has to be visible while the
+               terminal is still covering the thing it is pressing, and the
+               terminal is not the app's to draw on. -->
+          <div class="usb-cursor" data-usb-cursor aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+    <p class="sr">A recording of the engraving generator being used. An operator
+      chooses a jig, chooses whether it is loaded down the columns or across the
+      rows, and generates one thousand two hundred and fifty synthetic serials
+      into a seventy-five pocket jig; then does it again with a smaller
+      eighteen-pocket fixture, three hundred and six serials and the other
+      order. The same run is shown twice at once: the command line the
+      tool has always had, and the desktop interface built over it. Scrolling
+      wipes the terminal away to the left until only the interface is left. It
+      plays on its own and cannot be operated.</p>
+    <p class="t dim usb-cap">FIG.&nbsp;2 — THE SAME RUN, TWICE. SCROLL&nbsp;TO&nbsp;CROSS&nbsp;OVER.</p>
+    `,
+
+    // NO HERO. It was a piece of reference artwork standing in for a capture
+    // that was never taken, and this sheet now has two real figures on it --
+    // a played transcript and a running interface. A placeholder above them
+    // was the least true thing on the page in the most prominent slot.
     figure: capture({ id: "stand-usb-side", ratio: "0.7069", cls: "narrow",
       alt: "Reference artwork standing in for a capture of the engraver tray." })
   });
 }
 
-export function mount({ scope }) {
+export function mount({ scope, world }) {
+  // FIG. 2 first, because it is the one that loads something. It puts its own
+  // teardown on the page scope and returns null when the track is not in the
+  // markup, which is what the router harness renders.
+  const demo = mountUsbDemo({ scope, world });
+  if (demo) {
+    window.__USBDEMO__ = demo;
+    scope?.add(() => { if (window.__USBDEMO__ === demo) delete window.__USBDEMO__; });
+  }
+
   const el = document.querySelector("[data-term]");
   if (!el) return;
   const term = createTerm({ scope, el, script: SESSION });

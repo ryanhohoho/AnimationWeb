@@ -91,7 +91,7 @@ two are checked against each other on the GPU.
 
 ```bash
 npm run dev            # localhost:5173 — the owner tests here, in his own browser
-npm test               # 902 checks: the headless sim + the router harness
+npm test               # 998 checks: the headless sim + the router harness
 npm run test:sim       # just the engine/behaviour suite
 npm run test:router    # just the router + page-swap harness (needs a fake DOM)
 npm run build          # production bundle
@@ -127,6 +127,23 @@ node tools/bake_captures.mjs [--only <id>] [--dry]   # -> src/assets/media/stand
 The crop decisions live in a manifest at the head of the tool, the way `CELLS`
 does in `bake_icons.mjs`. It derives quality from a size ceiling and **exits
 non-zero over budget** rather than printing a warning nobody reads.
+
+FIG. 2 on the USB sheet — the engraving generator's UI, built as a library in
+another repository and vendored in (only if that app or its recordings change):
+
+```bash
+cd ../USB-UI/app
+npm run build:lib      # -> out/lib/xtool-demo.{js,css}, gated by demo:check
+npm run demo:record    # -> demo/recordings/ (both runs, and a preview per jig)
+cd -
+node tools/vendor_demo.mjs        # -> src/vendor/xtool-demo/
+```
+
+`src/vendor/xtool-demo/` is **generated — do not edit it.** The tool rewrites the
+stylesheet for a shadow root and switches the app's dark mode off, and it exits
+non-zero if either rewrite stops matching. `test/sim.test.js` re-checks the
+vendored recordings from this side rather than trusting the other repository's
+gate. See STATE.md, "FIG. 2 — the command line becoming the interface".
 
 Tab mark and link card (only if the mark, the palette or the pitch changes):
 

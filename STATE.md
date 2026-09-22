@@ -316,6 +316,252 @@ gets `overflow-x:auto` under 860 px, which makes it the one thing on the site
 that scrolls sideways; a scrollable region a keyboard cannot reach is a region a
 keyboard cannot read, so it carries `tabindex="0"` and a group label.
 
+### FIG. 2 — the command line becoming the interface
+
+The USB sheet documents two tools and only ever showed one of them. The second,
+the engraving generator, now has a desktop UI, and plate 1 carries that UI
+**running** — the real React app, the real store, the real stream parsing, fed
+by stdout the real generator printed. Over it, on exactly the same rectangle, a
+terminal playing the same run's console output; the terminal is clipped away to
+the left as the reader goes down a scroll track, so at half the track they see
+half of each and at the end of it the interface is alone.
+
+It is the HERO of plate 0 — the figure under the headline — and the plate 0 rule
+starts it 51lvh down, so about 70% of the window is below the fold when the
+reader lands. The page opens on a title and the top of a screen, and the figure
+is something to scroll into rather than something already arrived. Measured at
+1440x900: the title block and the gaps above it come to 370px, which is what the
+`max(0px, calc(51lvh - 370px))` is; re-measure it if the headline gains a line.
+
+**Nothing in it can be clicked, at any point in the scroll.** It is evidence, the
+way the transcript below it is evidence, and a reader who can operate it is a
+reader who can leave it in a state that demonstrates nothing — a stopped run, an
+empty jig, a dialog over the thing they were meant to be looking at. So it is
+permanently `inert`, which is the attribute that covers the mouse, the keyboard
+AND the screen reader; `pointer-events:none` alone would leave a tab stop inside
+an application sitting in the middle of a page about engraving. There was a gate
+here once, with hysteresis, that handed the app over at 100% of the track. It is
+gone, and `mountDemo`'s `setInteractive` is simply never called.
+
+The no-framework principle is set aside here and only here. What is being shown
+IS a React app, and a reimplementation of it would be a drawing of the product
+rather than the product.
+
+**It is a demo, not a loop of a run.** A pass is: open Templates, choose a jig,
+open Generate, choose the load order, retype the serial prefix, press the
+button — then the batches. The script presses the app's REAL controls with
+`element.click()`, found by the accessible names a screen reader would use, so
+every handler and every transition is the app's own; a renamed control breaks
+the demo, which is the right failure. It reaches them through `inert` — which
+blocks hit-testing, focus and the accessibility tree but not a click dispatched
+straight at a node. That was verified in a browser, not assumed: with `inert` on
+the mount point and again on the shadow host, a synthetic click still fires
+while `elementFromPoint` over the same button returns null. So the script can
+reach what the reader cannot.
+
+The prefix step is typed rather than clicked, through the native value setter on
+`HTMLInputElement.prototype` plus an `input` event — a controlled React input
+ignores `value = x`, because React paints it back from its own state. It is also
+a true step: the generator's default prefix is `E` and this pipeline's serials
+begin with `X`.
+
+**Two jigs, and that is the point of two passes.** 1,250 serials go into the
+75-pocket 32GB fixture down the columns; 306 go into the 18-pocket Western
+Digital Large across the rows, six across and three down, painted violet.
+Seventeen batches each, and each pass runs about eleven and a half seconds.
+
+It was a 150-pocket fixture for a draft, and BOTH reasons it stopped being one
+came off the page rather than out of a preference. A 150-pocket jig is eight
+columns by NINETEEN ROWS, so the sidebar's grid is bound by its height, the
+cells go small and most of the sidebar's width is left empty — no cap or budget
+fixes that, it is the fixture's own shape. And it carried 527 elements against
+this one's 90; measured on the built page, 829 SVG paths became 127.
+
+They need DIFFERENT PACES, which is the part that is easy to miss. Cinematic
+spacing puts a fixed gap between pockets, so a batch takes as long as its pocket
+count: 75 pockets is about 700 ms and 18 is 165 ms, which is not a jig filling,
+it is a flicker. The small fixture plays at a quarter of the speed, which makes
+a batch legible on both and lands the two passes within a few hundred
+milliseconds of each other.
+
+The violet is a PRESENTATION choice and is applied to the event stream rather
+than to the recording, which stays byte-true evidence. It has to be applied
+there and not only to `inspectTemplate`: the idle still comes from the
+inspection, but the viewer rebuilds its scene from the run's own
+`template_loaded` the moment a pass starts, so an override on the still alone is
+thrown away by the first frame of the thing it was meant to colour.
+
+**And the gate caught a real one on the way in.** `Western Digital Large.xcs`
+carries two loose text elements on its serial layer — asset-number-shaped
+strings that are not pockets, so the generator does not detect them as
+placeholders and they are engraved verbatim onto every sheet. That is worth
+knowing about the template on its own account; for this figure it is simply not
+publishable. They are redacted at record time, text AND pre-rendered outlines,
+because replacing the string alone leaves the original digits being drawn — the
+same trap the telephone number set.
+
+**The terminal answers the same prompts at the same moment.** It used to sit
+black through the approach, which was the one stretch where the two halves were
+not the same run. The lines are the generator's OWN prompts, lifted from
+`generate_xcs_master.py` rather than written to look plausible — the numbered
+template list, the row/col diagram it draws, the prefix step and its `E`
+default — and they are keyed on the step the script reports, so the terminal
+answers a prompt at the instant the pointer presses the control that answers it.
+
+**The terminal prints a line at a time**, because a program does, even a quick
+one. Events arrive in frame-sized groups and used to be appended in one go, so a
+step's worth of output — the fourteen-line header the generator writes before
+its first batch, or the prompt block answering a click — landed as a single cut.
+A group is queued now and drained one line per animation frame, about sixty a
+second: the header is over in a quarter of a second and still reads as printing.
+The drain takes more per frame when the queue is long (capped at six) so the
+backlog always clears inside 700 ms — a fixed rate would let the terminal fall
+behind the interface, and the whole figure is the claim that they are one run at
+one instant.
+
+**The viewer draws on TWO SVGs, and that is a paint decision.** A repaint of an
+SVG is a repaint of the whole SVG, and the serials are revealed by writing
+`stroke-dashoffset` every frame — so with the jig and the serials in one root,
+every frame of every trace re-rasterised the entire drawing. 829 paths on the
+150-pocket fixture against 384 on the 75-pocket one, which is exactly why the
+bigger jig was the one that stuttered and why it took Mew and the rest of the
+page down with it. Split, the jig is rasterised once and never touched again;
+`will-change:transform` promotes it, and `contain:paint` on the viewer stops
+what is left from walking the invalidation up into a page that has a live WebGL
+character on it.
+
+**The sidebar minimap is bounded on both axes and its cell has a ceiling.** Its
+grid was `1fr` columns with `aspect-square` cells — a width rule and a shape rule
+and no height rule — so it grew downwards for as many rows as the fixture had,
+and the 150-pocket jig covered the navigation. The cell size now comes from
+whichever bound binds first, capped at 20px so a two-pocket fixture is not two
+enormous squares. The height budget is MEASURED, and the thing that makes it
+awkward is worth writing down: `nav` is `flex-1`, so its height, clientHeight
+and scrollHeight are all "the space it was given" rather than "the space it
+needs" — subtracting that is circular, and the grid duly collapsed to a 45px
+column. Its children's heights are what it actually needs.
+
+**The backlight turns.** The hue travels round the bezel the way Siri's does,
+and it is a CHILD that rotates rather than the gradient: animating a `from`
+angle or a `hue-rotate` re-rasterises and re-blurs the whole layer every frame,
+which is the cost this figure had already been in trouble for. A child with a
+transform on it is compositor work. The child is a square at 170% of the box so
+no corner ever swings out of frame, the parent clips it to the window's rounded
+rect, and the blur softens that edge outward. It is paused until `--p` clears
+0.02, so a figure nobody has scrolled to is not cycling a colour behind an
+opacity of zero.
+
+**The jig stopped re-zooming mid-run, and the cause was two layout leaks
+rather than anything pressing Fit.** The viewer refits when its container
+changes size, which is right — and its container was changing size during a run
+for two reasons. The form column beside it was `minmax(320px,380px)`, so it
+breathed by forty pixels as its own content changed ("⌘↩ to start" goes, the
+button's label shortens). And the viewer's own grid had an implicit `auto`
+column, which is max-content: the console two rows below sets its lines
+`white-space:pre`, so the column tracked the longest line the generator had
+printed and the viewer stretched past its cell to match. Fixed width and
+`grid-cols-[minmax(0,1fr)]` respectively; measured after, the viewer holds its
+size for a whole pass and the scale only changes between the two fixtures,
+which is the one time it should.
+
+Two corrections came out of that, and both are the kind that only show on the
+page. Pinning the form column at the TOP of its old range took forty pixels off
+the jig and the console for ever — the two things worth looking at — so it sits
+near the bottom of the range instead, at 340, where everything in it still fits.
+And a fixed-height row whose text wraps does not grow, it OVERLAPS: the status
+line broke after "Batch" and its second line landed on the progress bar beneath
+it. The two counters refuse to wrap and the filename is the one that gives,
+because it is long, monospaced and the least damaged by losing its tail.
+
+**The pointer is drawn UNDER the mask.** It is pressing controls in the
+interface, and the interface is the half the wipe has uncovered; a cursor
+floating over the terminal points at something that is not there.
+
+**Both halves are the same events.** `mountDemo` hands over every console line
+as its replay reaches it (`onLines`), so the words in the terminal and the
+pocket lighting up in the viewer come out of the same frame of the same run.
+Two recordings on two clocks would drift, and a wipe between two things that
+have drifted is a wipe between two different runs. It is visible on the page:
+the terminal and the app's own console pane print the same batch number.
+
+**A shadow root, and it is not optional.** The app's stylesheet is Tailwind's
+output — it styles `body` and `html` and sets `user-select:none` — and this
+site's `* { margin:0 }` would style every node in the app right back. Neither
+is a bug in either stylesheet; they are two documents' worth of assumptions in
+one document. `tools/vendor_demo.mjs` rewrites `:root` to `:host` on the way in,
+because `:root` matches nothing inside a shadow root and every design token the
+app defines would otherwise be undefined. Each rewrite is checked, and a rewrite
+that matches nothing is an error in the tool rather than a styling bug three
+files away.
+
+**The figure is always printed light.** The app follows `prefers-color-scheme`,
+which is right on a desktop and wrong inside a printed sheet. The deciding
+reason is not taste: the terminal is set in the sheet's own ink, `#16150F`, and
+the app's dark window is `#1E1E1E`. Eight points apart — the cut between the two
+halves was almost invisible in dark mode and is a hard black-to-white edge in
+light. The whole figure is that cut. The dark block is made inert at vendor
+time; `.usb-frame` therefore carries one background value and cannot drift out
+of step with a second.
+
+**THE DIVISOR, which is the one thing here that is easy to get wrong.** `--p` is
+measured in DESIGNED SCROLLS, not in track. The wipe finishes at 1, the backlight
+peaks at 1.2, and at 1.3 the sticky child reaches the foot of its track and lets
+go — so the track is 1.3 designed scrolls long and the designed scroll is the
+sticky travel over 1.3. Dividing by the sticky travel instead is the obvious
+thing to write and it is wrong in a way that looks almost right: `p` then tops
+out at exactly 1.0 at the foot of the track, so the wipe completes at the same
+instant the pin releases — the reader never gets a moment with the interface
+alone, and the backlight never reaches full. It was a divisor. Measured on the
+real page after the fix: 998 px of sticky travel, 768 of designed scroll, and
+**230 px still pinned after the terminal has gone**.
+
+**No scroll timeline.** `animation-timeline: view()` is the CSS feature for this
+and it would run off the main thread, and it was not used. The reason is
+narrower than browser support: the properties this effect animates —
+`clip-path: inset()` and a blurred layer's opacity — are not compositor-driven
+in any current engine, so the work lands on the main thread either way and the
+timeline buys a frame of latency rather than a free effect. What it would cost
+is two implementations of the same number, one of which cannot be verified in
+this environment at all. The SHAPE is still the one Apple and NVIDIA product
+pages use, because the shape is the part that matters: a tall track, a sticky
+child, progress derived from position in the track. No scroll-jacking, and
+scrolling back up runs it backwards because the number is a pure function of
+scroll.
+
+`progressAt` is exported and pure, and that is where it is checked — a page is
+only ever showing one value of `--p`, and the preview pane does not scroll at
+all.
+
+**What it costs, and the frame it used to drop.** Lazily loaded behind an
+IntersectionObserver, and then behind an IDLE CALLBACK as well, which is the
+part that matters: the figure is the first thing on the sheet now, so the
+observer fires on landing and used to put the module's evaluation, React's first
+mount and the first jig's render in among the sky shader compiling and the
+animal being rigged. Measured with `PerformanceObserver`: **354 ms of total
+blocking time across nine long tasks, down to 110 ms across two.**
+
+Three things got it there. The idle callback (with a 1.2 s timeout, so a page
+that never goes idle still starts it). Splitting the FETCH from the PARSE — a
+fetch costs the main thread nothing, `buildSchedule` costs 16 ms warm and 31 ms
+cold, and doing both in one step put the parse two milliseconds after the fetch
+resolved, which is to say in the middle of React's first mount; split, the bytes
+are on their way while the cursor walks to Templates and the parse lands four
+seconds later on a quiet thread. And fetching each template's geometry only when
+that template is CHOSEN, through `inspectTemplate`, which the app was going to
+call anyway.
+
+A scroll frame is still one property write and no layout.
+
+**The data.** Sequential synthetic serials from `X1111111`, generated for this
+and belonging to nobody, and the template's telephone number is substituted the
+same way the transcript's device identifiers are. The source repository gates
+its own build; `test/sim.test.js` checks the vendored files again from this
+side, by PARSING them rather than pattern-matching — a pattern loose enough to
+catch a real asset number also catches a number out of the middle of an SVG
+curve, which the source repository's gate failed on twice before it was
+rewritten this way. The label's pre-rendered glyph outlines are checked as well
+as its text: replacing the text alone leaves the original digits being drawn.
+
 ### The engine chunk is three.js, and that was measured
 
 809 KB raw / 222 KB gzip, and none of it is waste worth chasing. Two things were

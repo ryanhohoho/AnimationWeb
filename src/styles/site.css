@@ -1087,6 +1087,322 @@ body.on-project .plate .corner.tl {
 .term .sub { color:var(--ink); }
 .term.done::after { content:"▍"; color:var(--n4); }
 
+/* ══ FIG. 2 — THE COMMAND LINE BECOMING THE INTERFACE ════════════════════
+   A scroll track with a sticky child in it. The terminal and the UI are the
+   same rectangle; the terminal is clipped from the right as the reader goes
+   down the track, so at half of it they see half of each. See site/usbDemo.js
+   for the number and for why it is computed there rather than by a scroll
+   timeline.
+
+   EVERY VISUAL HERE IS A FUNCTION OF ONE CUSTOM PROPERTY. A scroll frame is
+   one property write and no layout; the cascade does the rest. */
+
+/* Registered, so `--p` is a NUMBER to calc() rather than a token substitution,
+   and so the figure is correctly composed before a line of JS has run. The
+   `--p:0` on .usb-stage says the same thing again for engines without
+   @property, where an unset var would make every calc() below invalid. */
+@property --p { syntax:"<number>"; inherits:true; initial-value:0; }
+
+.usb-stage {
+  --p:0;
+  position:relative;
+  /* 100lvh of pin + 130% of it = the travel. The reader scrolls 100% to finish
+     the wipe, 120% to reach full backlight, and at 130% the sticky child meets
+     the foot of its track and releases on its own — the unpin is geometry, not
+     a rule anyone has to remember. */
+  height:230lvh;
+  /* THE FIGURE USES THE SCREEN, NOT THE READING COLUMN. .sheet-in is 66rem
+     wide and this is a window, not a paragraph. The usual objection to 100vw
+     is that it counts the scrollbar and grows a horizontal one of its own --
+     which cannot happen here, because body is already overflow-x:hidden (and
+     #stage, the animal's own layer, is 100vw for the same reason). */
+  margin-inline:calc(50% - 50vw);
+  width:100vw;
+}
+/* ── WHERE THE FIGURE STARTS ON THE FIRST SCREEN ──────────────────────────
+   It is the hero of plate 0, under the headline, and it is meant to be
+   something the reader scrolls INTO rather than something already arrived:
+   about 70% of the window sits below the fold when they land, so the page
+   opens on a title and the top of a screen.
+
+   70% of a 70lvh window showing means 49lvh of it is visible, which puts its
+   top at 51lvh. The pin CENTRES its frame, so the frame already sits 15lvh
+   below the top of the stage — the drop only has to make up the difference,
+   which is 36lvh less the 334px the title block and gaps measure at 1440x900.
+
+   The subtrahend is px because most of what is above the frame is px — the
+   headline's own two lines — while the target is a fraction of the screen;
+   `max` keeps it from going negative on a short laptop, where the stack above
+   already fills more than a third of the screen on its own.
+
+   Re-measure this if the headline gains a line. */
+#p0 .usb-stage { margin-top:max(0px, calc(36lvh - 334px)); }
+
+.usb-pin {
+  position:sticky; top:0; height:100lvh;
+  /* CENTRED IN THE PIN. Once the track takes over, the figure is the only
+     thing on the screen, and the only place a lone object belongs is the
+     middle — pinned near the top it read as having been pushed up against the
+     chrome. The 15lvh this leaves above it is also what the plate 0 rule above
+     leans on, so the two numbers are one decision. */
+  display:grid; place-items:center;
+  /* the glow and the frame share one cell, so paint order is source order and
+     nothing needs a z-index */
+  grid-template-areas:"fig";
+}
+/* THE GLOW IS THE FRAME'S OWN SIZE, and it has to be said here rather than
+   left to `width:100%`. Both share one grid cell, and that cell is the full
+   width of the pin — which is the screen — so a glow at 100% of it was a
+   screen-wide wash with a window sitting in the middle of it. Same box, same
+   bounds, stated once. */
+.usb-glow, .usb-frame {
+  grid-area:fig;
+  aspect-ratio:1280 / 860;
+  height:min(70lvh, calc((100vw - var(--pad) * 2) * 860 / 1280));
+  width:auto;
+  border-radius:10px;
+}
+
+/* THE FIGURE'S OWN BOUNDS. A window, at the proportions the real one opens at
+   (1280 x 860, app/src/shared/preload-api.ts). Bounded by HEIGHT first and
+   width second, the way .sheet-in .fig is: both bounds apply and the smaller
+   wins, so it is clamped to the view on a laptop and on a phone alike. */
+.usb-frame {
+  position:relative;
+  overflow:hidden;
+  /* the app's own --window-bg. Two values, and they MUST stay in step with
+     tokens.css in the USB-UI repository: the app paints panels and a sidebar
+     on top of its window but leaves the window itself to the host, because on
+     macOS that surface is native vibrancy rather than a colour. */
+  /* ONE VALUE, NOT TWO. The app's dark mode is switched off in the vendored
+     stylesheet (tools/vendor_demo.mjs says why), so the window is white on
+     every machine and this does not need a second value that could drift
+     out of step with it. */
+  background:#FFF;
+  box-shadow:0 1px 2px rgb(0 0 0 / .18), 0 12px 38px rgb(0 0 0 / .14);
+}
+
+/* ── THE BACKLIGHT ──────────────────────────────────────────────────────
+   A screen that is on spills light onto what is behind it. It ramps from
+   nothing and reaches full at 120% of the track, which is 20% AFTER the
+   reader takes control — so the figure is still arriving at the moment it
+   becomes theirs, rather than announcing it in advance.
+
+   SQUARED, not linear: a linear opacity ramp reads as a dimmer being turned
+   up. Light blooms late. 1.44 is 1.2², so the curve reaches exactly 1 at the
+   moment the ramp ends and holds there for the rest of the track.
+
+   Only opacity and transform follow the scroll. The blur is a static raster —
+   animating `box-shadow` instead would re-blur the whole layer every frame,
+   which is the one thing this site does not have the budget for. */
+/* ── THE BACKLIGHT ────────────────────────────────────────────────────────
+   The light a screen spills onto what is behind it, and the reference is the
+   glow round the edge of an iPhone when Siri is listening: a band of hue that
+   travels round the bezel, brightest at the edge and falling away OUTWARD.
+
+   HOW IT IS BUILT. A conic gradient the exact size of the window, blurred, and
+   painted BEFORE the window in source order — so the window's own opaque
+   surface covers the middle and what is left is a rim. That is what makes the
+   fade outward without a mask: there is nothing to fade inward, because the
+   inside is behind the screen.
+
+   ONE HUE SWEEP, NOT A RAINBOW. Apple's runs blue through indigo and magenta
+   into warm, with the warm arc short — a full spectrum reads as a gaming
+   keyboard. These are the system colours at full chroma, ordered the way the
+   reference runs them, and the two blues at either end close the circle so
+   there is no seam.
+
+   IT DOES NOT ANIMATE ON ITS OWN. Both the blur and the gradient are a static
+   raster: only opacity and scale follow the scroll, which are the two things a
+   compositor can do without repainting. Rotating the gradient would re-render
+   and re-blur the whole layer every frame, and this site cannot spend that. */
+.usb-glow {
+  --glow:clamp(0, calc(var(--p) * var(--p) / 1.44), 1);
+  position:relative;
+  overflow:hidden;
+  filter:blur(clamp(10px, 1.25vw, 20px));
+  opacity:calc(var(--glow) * .95);
+  /* Just proud of the window, so the rim is a light leak at the bezel rather
+     than a second rectangle behind it. */
+  transform:scale(calc(1 + .022 * var(--glow)));
+  will-change:opacity, transform;
+  pointer-events:none;
+}
+
+/* ── AND IT TURNS ─────────────────────────────────────────────────────────
+   The hue travels round the bezel the way Siri's does.
+
+   IT IS A CHILD THAT ROTATES, NOT THE GRADIENT, and that is the whole
+   performance argument. Animating the gradient itself — a `from` angle, or a
+   hue-rotate filter — re-rasterises AND re-blurs the entire layer on every
+   frame, which is precisely the cost this figure has already been in trouble
+   for. A child with a transform on it is compositor work: the blurred rim is
+   one raster that gets re-composited, not redrawn.
+
+   The child is a SQUARE at 170% of the box and centred, because a rectangle
+   rotated about its centre sweeps its corners out of the frame — at 170% the
+   shortest side still covers the box's diagonal at every angle, so no corner
+   ever goes bare. The parent clips it back to the window's rounded rect and
+   the blur softens that edge outward. */
+.usb-glow::before {
+  content:"";
+  position:absolute; left:50%; top:50%;
+  width:170%; aspect-ratio:1;
+  margin:0;
+  translate:-50% -50%;
+  background:conic-gradient(
+    from 128deg,
+    #0A84FF, #5E5CE6, #7D3CF8, #BF5AF2, #E845C4,
+    #FF375F, #FF6A3D, #FF9F0A, #FF375F, #BF5AF2, #5E5CE6, #0A84FF);
+  /* Paused by default. usbDemo.js turns it on when the backlight is actually
+     visible, so a figure sitting at --p:0 is not spending frames on a hue
+     nobody can see. */
+  animation:usb-glow-turn 18s linear infinite paused;
+  will-change:transform;
+}
+.usb-stage[data-usb-glow="on"] .usb-glow::before { animation-play-state:running; }
+
+@keyframes usb-glow-turn { to { rotate:360deg; } }
+
+@media (prefers-reduced-motion:reduce){
+  /* A slow full-viewport-adjacent colour cycle is exactly the kind of thing
+     the preference is asking about. The rim stays; it stops travelling. */
+  .usb-stage[data-usb-glow="on"] .usb-glow::before { animation-play-state:paused; }
+}
+
+/* ── THE TWO HALVES, ONE RECTANGLE ──────────────────────────────────────── */
+.usb-ui, .usb-cli { position:absolute; inset:0; }
+
+/* THE WIPE. One compositor-friendly property, no layout, and a pure function
+   of scroll — which is why scrolling back up runs it backwards for free. */
+.usb-cli {
+  z-index:2;
+  clip-path:inset(0 calc(min(var(--p), 1) * 100%) 0 0);
+  display:flex; flex-direction:column;
+  background:var(--ink);
+  color:var(--paper);
+  font-family:"PlexMono", ui-monospace, Menlo, monospace;
+}
+
+/* A TERMINAL, NOT TEXT ON THE SHEET.
+   .term above deliberately has no surface: FIG. 1 is a transcript set as page
+   content. This one is a screen, because the thing beside it is a screen and a
+   wipe between a screen and a piece of prose would be a wipe between two
+   different kinds of object. It is printed in the sheet's own ink rather than
+   in black, so it is a thing on this page rather than a screenshot pasted on
+   it. */
+.usb-cli-bar {
+  flex:none; display:flex; align-items:center; gap:.9ch;
+  padding:.5rem .9rem; min-height:26px;
+  border-bottom:1px solid rgb(255 255 255 / .1);
+  font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+  /* --n4 CARRIES A WORD HERE, AND IT IS ALLOWED TO, because the ground is
+     stated on this rule rather than inherited. The palette's rule is that --n4
+     is 2.61:1 ON BONE and therefore never a word; on the sheet's own ink it is
+     5.99:1, which clears the floor. The contrast check in test/sim.test.js
+     measures a rule against its own declared background for exactly this case
+     (.dlg-bar is the other one) — so the background below is not a repeat of
+     the parent's, it is this rule saying what it is printed on. */
+  background:var(--ink);
+  color:var(--n4);
+  /* the label is the command that produced what is under it. A title bar with
+     three coloured discs in it would be decoration; this is a LABEL. */
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.usb-cli-body {
+  flex:1 1 auto; min-height:0; overflow:hidden;
+  display:flex; flex-direction:column; justify-content:flex-end;
+  padding:.6rem .9rem 1rem;
+  font-size:min(11.5px, 0.78vw); line-height:1.75; letter-spacing:.01em;
+}
+/* JUSTIFIED TO THE END, which is what keeps this free. The newest line is the
+   bottom one because the column is packed downwards, so nothing ever reads
+   scrollHeight or writes scrollTop — and a console streaming a thousand lines
+   never forces a layout to stay pinned to its own foot. */
+.usb-cli-body .ul { white-space:pre; flex:none; }
+.usb-cli-body .warn  { color:#E8B54A; }
+.usb-cli-body .error { color:#E8674A; }
+
+/* THE CUT EDGE. A 1px catch of light where the terminal ends, so the reader
+   reads an EDGE rather than a crop. On the frame and not inside the clipped
+   element, because a line drawn at the exact boundary of a clip is a line the
+   clip is entitled to eat. It exists only while there is a cut to mark. */
+.usb-frame::after {
+  content:""; position:absolute; top:0; bottom:0; width:1px;
+  right:calc(min(var(--p), 1) * 100%);
+  background:rgb(255 255 255 / .55);
+  /* AN ENVELOPE, NOT A RAMP: up over the first 12% of the track and down over
+     the last 8%, whichever is lower. At rest there is no cut, so there is no
+     line; at the end the line leaves just before the last sliver of terminal
+     does, rather than sitting alone against the left edge. */
+  opacity:clamp(0, min(calc(var(--p) * 8), calc((1 - min(var(--p), 1)) * 12)), 1);
+  pointer-events:none;
+}
+
+/* ── THE POINTER THE SCRIPT DRIVES ──────────────────────────────────────
+   Over both halves, because the cursor has to be visible while the terminal is
+   still covering the control it is pressing.
+
+   Transform and opacity only, so the whole thing stays on the compositor: the
+   move is a transition on translate3d, and the press is the same transition
+   ending on a smaller scale. A ring rather than an arrow — an arrow would be a
+   picture of somebody else's cursor, at somebody else's DPI, pointing with the
+   wrong hotspot. */
+.usb-cursor {
+  /* UNDER THE TERMINAL, NOT OVER IT. The pointer is pressing controls in the
+     interface, and the interface is the half the wipe has uncovered -- a cursor
+     floating over the terminal is pointing at something that is not there. The
+     mask clips it exactly as it clips the app, so it appears out of the cut
+     edge along with the button it is reaching for. */
+  position:absolute; top:0; left:0; z-index:1;
+  width:18px; height:18px; margin:-9px 0 0 -9px;
+  border-radius:50%;
+  border:1.5px solid rgb(255 255 255 / .92);
+  background:rgb(0 0 0 / .18);
+  box-shadow:0 1px 5px rgb(0 0 0 / .45);
+  opacity:0;
+  pointer-events:none;
+  /* A spring, near-critically damped: it arrives without overshooting, which
+     is what a pointer does. `bounce` in Motion's terms would be ~0. */
+  transition:transform 320ms cubic-bezier(0.22, 0.9, 0.24, 1), opacity 180ms linear;
+}
+@media (prefers-reduced-motion:reduce){
+  /* The figure is settled under reduced motion, so nothing is scripted and
+     nothing should be drawn pointing at it. */
+  .usb-cursor { display:none; }
+}
+
+/* ── WHAT IT SAYS WHILE IT IS NOT READY ─────────────────────────────────
+   Same register as a capture slot with no file: the true thing, plainly. */
+.usb-stage[data-usb-load="failed"] .usb-ui::after {
+  content:"FIGURE NOT LOADED"; position:absolute; inset:0;
+  display:grid; place-content:center; gap:.4rem;
+  font-size:11px; letter-spacing:.06em; color:var(--n3);
+}
+
+/* ── AND THE CAPTION, WHICH IS THE ONLY PART IN THE COLUMN ───────────── */
+.usb-cap { text-align:center; }
+
+@media (max-width:860px){
+  /* A phone cannot hold 88 columns of console beside an app window at any
+     legible size, and a figure that needs both is a figure that has to be
+     shorter rather than narrower. The track keeps its proportions; only the
+     frame gives up the height bound, because on a phone the WIDTH is the
+     binding constraint by a long way. */
+  .usb-stage { height:200lvh; }
+  .usb-frame { height:auto; width:calc(100vw - var(--pad) * 2); }
+  .usb-cli-body { font-size:9px; line-height:1.6; }
+}
+
+/* REDUCED MOTION KEEPS THE WIPE. It is direct manipulation — the reader's own
+   scroll, answered — rather than motion the page decided to make, and taking
+   it away would leave a figure that cannot be operated at all. What goes is
+   the RUN: mountDemo is given `settled`, and both halves show a batch that is
+   already finished. The backlight stops travelling and simply sits on. */
+@media (prefers-reduced-motion:reduce){
+  .usb-glow { transform:none; opacity:.34; }
+}
+
 /* ══ CAPTURES ════════════════════════════════════════════════════════════
    A screenshot or a screen recording of the tool actually running. Mounted the
    way an aperture is mounted — a rectangle cut in the sheet with registration

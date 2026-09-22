@@ -37,6 +37,7 @@ hashed URLs, `public/`, the SPA fallback — for checking the bundle as a bundle
 | `src/site/deck.js` | the mask: geometry, the crossing, the two draws. |
 | `src/site/router.js` | going through the hole. Page scopes, generation-guarded watchdogs, the swipe. |
 | `src/site/pages/sheet.js` | the two-plate trim every project sheet is cut to. The three project files are only the **words**. |
+| `src/site/usbDemo.js` | FIG. 2 on the USB sheet: a terminal and the interface built over it, one rectangle, wiped between by the scroll. |
 | `src/engine/**` | Mew: physics, a small brain, pose layers, and effects whose maths is headless-testable. |
 | `src/mew.js` | the engine, behind a dynamic import. The sheet is a finished page without it. |
 | `tools/` | the bake scripts. Nothing generated is edited by hand. |
@@ -58,6 +59,8 @@ measured and thrown away.
 
 The three project sheets carry **placeholder prose** on the shared trim — the
 plate is set and the words have not had their turn. The card media are
-placeholders too. The LinkedIn handle in `src/site/content.js` is marked
+placeholders too. Their FIGURES are not placeholders: the USB sheet plays a real
+recorded session and, beside it, the engraving generator's own interface running
+a real recorded batch. The LinkedIn handle in `src/site/content.js` is marked
 `placeholder: true` and renders as visibly unset rather than as a plausible
 guess.

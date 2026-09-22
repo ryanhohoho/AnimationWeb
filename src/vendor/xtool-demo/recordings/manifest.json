@@ -1,0 +1,55 @@
+{
+ "recordedAt": "2026-09-22T02:38:12.880Z",
+ "protocol": 1,
+ "prefix": "X",
+ "firstSerial": "X1111111",
+ "count": 1250,
+ "synthetic": true,
+ "runs": {
+  "col-major": {
+   "note": "Fills top to bottom, one column at a time.",
+   "order": "col",
+   "template": "templates/32GB.xcs",
+   "prefix": "X",
+   "firstSerial": "X1111111",
+   "lastSerial": "X1112360",
+   "serials": 1250,
+   "exitCode": 0,
+   "wallMs": 7699,
+   "stdoutBytes": 662298,
+   "stderrBytes": 0
+  },
+  "row-major": {
+   "note": "Fills left to right, one row at a time.",
+   "order": "row",
+   "template": "templates/Western Digital Large.xcs",
+   "prefix": "X",
+   "firstSerial": "X1111111",
+   "lastSerial": "X1111416",
+   "serials": 306,
+   "exitCode": 0,
+   "wallMs": 2667,
+   "stdoutBytes": 212891,
+   "stderrBytes": 0
+  }
+ },
+ "python": "Python 3.13.2",
+ "previews": {
+  "32GB": {
+   "stem": "32GB",
+   "template": "templates/32GB.xcs",
+   "file": "preview.32gb.json",
+   "pockets": 75,
+   "elements": 233,
+   "bytes": 251494
+  },
+  "Western Digital Large": {
+   "stem": "Western Digital Large",
+   "template": "templates/Western Digital Large.xcs",
+   "file": "preview.western-digital-large.json",
+   "pockets": 18,
+   "elements": 90,
+   "bytes": 104519
+  }
+ }
+}

@@ -63,6 +63,9 @@ const nb = (v) => esc(v).replace(/ (?=[^ ]*$)/, "&nbsp;");
  * @param headline the display line on plate 0. Raw HTML: it carries <br> and
  *                 one <em>, which is the only emphasis this face has.
  * @param lead     one paragraph. ONE -- the argument goes on plate 1.
+ *                 May be empty, and then plate 0 is the headline alone: a
+ *                 title page. The USB sheet is set that way, because it has
+ *                 two real figures and had a placeholder standing over them.
  * @param notes    [{ k, v }] for the colophon. Three or four.
  * @param hero     the figure under the headline. Normally capture().
  * @param figure   the figure on plate 1, after the evidence. Normally capture().
@@ -88,7 +91,7 @@ export function renderSheet(p, {
     <div class="sheet-in">
       <h1 class="d sheet-h">${headline}</h1>
       ${hero}
-      <p class="t body wide lead">${lead}</p>
+      ${lead ? `<p class="t body wide lead">${lead}</p>` : ""}
     </div>
   </section>
 

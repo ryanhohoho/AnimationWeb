@@ -3404,6 +3404,231 @@ section("the paper does not bounce, because the print cannot bounce with it");
 }
 
 // ---------------------------------------------------------------------------
+section("the command line crosses over exactly where it is supposed to");
+// FIG. 2 is a scroll track: a 230lvh stage with a 100lvh sticky child in it, so
+// there are 130lvh of travel and the progress runs 0 -> 1.3. Everything the
+// reader sees is a function of that one number -- the wipe is
+// `clip-path:inset(0 calc(min(--p,1) * 100%) 0 0)`, the backlight is --p
+// squared over 1.44, and the hand-off is a threshold on it.
+//
+// So the number is the figure. It cannot be checked by looking at the page,
+// because a page is only ever showing one value of it, and it cannot be
+// checked in the preview pane, which does not scroll at all. It is pure, and
+// this is where it is checked.
+{
+  const { progressAt, RELEASE } = await import("../src/site/usbDemo.js");
+
+  // A 900px viewport and the 230lvh track it produces, measured on the real
+  // page. The stage is 2,070 tall, so the pin moves 1,170 through it -- and the
+  // DESIGNED SCROLL is that over 1.3, which is the distinction this whole
+  // section exists to pin down.
+  const VH = 900, TOP = 1613;
+  const STICKY = 2070 - VH;
+  const TRAVEL = STICKY / RELEASE;
+
+  ok(progressAt(TOP, TOP, TRAVEL) === 0, "at the top of the track the terminal is whole");
+  ok(progressAt(TOP + TRAVEL * 0.5, TOP, TRAVEL) === 0.5,
+    "half way down, half of each — which is the frame the whole figure is for");
+  ok(progressAt(TOP + TRAVEL, TOP, TRAVEL) === 1,
+    "the wipe finishes at 100% of the designed scroll");
+  ok(progressAt(TOP + TRAVEL * 1.2, TOP, TRAVEL) === 1.2,
+    "the backlight reaches full at 120%");
+
+  // AND THE RELEASE LANDS ON THE FOOT OF THE TRACK, which is the claim the
+  // stage's 230lvh is making. Off by a divisor and the wipe finishes at the
+  // moment the figure unpins, so there is no interactive state at all -- which
+  // is exactly the bug this assertion was written after finding.
+  ok(progressAt(TOP + STICKY, TOP, TRAVEL) === RELEASE,
+    `the pin lets go at ${String(RELEASE)}, at the exact foot of its track`);
+  ok(progressAt(TOP + STICKY * 0.999, TOP, TRAVEL) < RELEASE,
+    "...and not one pixel before it");
+
+  // ABOVE THE TRACK IS NOT A NEGATIVE WIPE. A reader arriving from plate 0 is
+  // at a smaller scrollY than the track's top, and an unclamped number there
+  // would put the cut edge off the left of the frame and the backlight on.
+  ok(progressAt(0, TOP, TRAVEL) === 0, "above the track it is pinned at 0");
+  ok(progressAt(TOP - 1, TOP, TRAVEL) === 0, "...right up to the last pixel before it");
+  ok(progressAt(1e6, TOP, TRAVEL) === RELEASE,
+    `and past the foot it is pinned at ${String(RELEASE)}`);
+
+  // A TRACK SHORTER THAN THE VIEWPORT HAS NO TRAVEL, and dividing by it would
+  // make every reader's progress Infinity -- which is a figure that is handed
+  // over before it has been seen. Can happen on a short phone in landscape.
+  ok(Number.isFinite(progressAt(TOP + 10, TOP, 0)),
+    "a track with no travel does not divide by zero");
+
+  // ROUNDED, so a sub-pixel scroll does not write a custom property that
+  // resolves to the same paint. Three places is a thousandth of the frame's
+  // width, which is well under a pixel on any screen.
+  ok(String(progressAt(TOP + TRAVEL * 0.123456, TOP, TRAVEL)).length <= 5,
+    "the number is rounded before it is written, so a 0.1px scroll is not a repaint");
+
+  // ── AND IT IS NEVER HANDED OVER ──────────────────────────────────────
+  // There was a gate here, with hysteresis, that gave the reader the app at
+  // 100% of the track. It is gone: the figure is evidence rather than a tool,
+  // and a reader who can click into it can leave it in a state that no longer
+  // demonstrates anything. What is left of that decision is one attribute,
+  // which is easier to check on the module than on the page.
+  const source = await (await import("node:fs")).promises.readFile(
+    new URL("../src/site/usbDemo.js", import.meta.url), "utf8");
+  ok(!/setInteractive\s*\(\s*true/.test(source),
+    "nothing in the figure ever asks for control of the app");
+  ok(/inert/.test(source),
+    "...and the reason `inert` is permanent is written down where it is done");
+
+  // THE PAIRED CONTROL. Every assertion above passes on a function that always
+  // returns the same thing, which is what a broken one would do.
+  const flat = new Set([0, 0.25, 0.5, 0.75, 1, 1.3].map((f) =>
+    progressAt(TOP + f * TRAVEL, TOP, TRAVEL)));
+  ok(flat.size === 6, `control: the progress actually varies (${flat.size} distinct values)`);
+}
+
+// ---------------------------------------------------------------------------
+section("FIG. 2 is a real run too, and nothing real is in it either");
+// The section above scans every committed text file for five SHAPES. That is
+// the right tool for prose and for source, and it is the wrong tool for the
+// 2.8 MB of recorded generator output that arrived with the second figure: the
+// thing to know about a recording is not whether it LOOKS like it holds an
+// asset number, it is whether every serial in it is one of the two thousand
+// that were generated for the demo and belong to nobody.
+//
+// So this is a PARSE, not a pattern. The protocol lines are read as JSON and
+// only the fields that can hold an identifier are looked at; the prose is read
+// whole, because every serial the generator prints appears there too and there
+// is no geometry in it. A pattern loose enough to catch a real asset number
+// also catches a number out of the middle of an SVG curve, and the source
+// repository's own gate failed on exactly that twice before it was rewritten
+// this way.
+//
+// It duplicates a check that already runs in ../USB-UI. That is deliberate:
+// the rule is about what is in THIS repository, and a repository that can only
+// verify its own contents by trusting another one cannot verify them.
+{
+  const { readFileSync, existsSync } = await import("node:fs");
+  const VENDOR = new URL("../src/vendor/xtool-demo/", import.meta.url);
+  const read = (name) => readFileSync(new URL(name, VENDOR), "utf8");
+
+  ok(existsSync(new URL("xtool-demo.js", VENDOR)),
+    "the vendored demo is present (tools/vendor_demo.mjs puts it there)");
+
+  const manifest = JSON.parse(read("recordings/manifest.json"));
+  ok(manifest.synthetic === true && manifest.prefix === "X",
+    `the recordings declare themselves synthetic, prefix ${manifest.prefix}`);
+
+  // the exact set that was generated, built from the manifest rather than
+  // copied here -- so a re-record with a different range moves this with it
+  const first = Number(manifest.firstSerial.slice(1));
+  const allowed = new Set();
+  for (let n = 0; n < manifest.count; n++) allowed.add(`X${String(first + n)}`);
+  ok(allowed.size === manifest.count,
+    `${String(allowed.size)} serials were generated for this figure, sequentially`);
+
+  const ASSET = /[A-Z][0-9]{7}/g;
+  const FIELDS = new Set(["serial", "first", "last", "text", "filename", "value"]);
+
+  // only the fields that can hold one, however deep. Everything else in a
+  // protocol line is geometry, and geometry is where the false positives live.
+  const fields = (value, out, depth = 0) => {
+    if (depth > 6 || value === null || typeof value !== "object") return out;
+    for (const [k, v] of Object.entries(value)) {
+      if (FIELDS.has(k) && (typeof v === "string" || typeof v === "number")) out.push(String(v));
+      else if (typeof v === "object") fields(v, out, depth + 1);
+    }
+    return out;
+  };
+
+  const strays = (text) => {
+    const hits = new Set();
+    for (const line of text.split("\n")) {
+      if (!line.startsWith("@@XT ")) {
+        for (const hit of line.match(ASSET) || []) if (!allowed.has(hit)) hits.add(hit);
+        continue;
+      }
+      let event;
+      try { event = JSON.parse(line.slice(5)); } catch { hits.add("<unparseable protocol line>"); continue; }
+      for (const v of fields(event, [])) {
+        for (const hit of v.match(ASSET) || []) if (!allowed.has(hit)) hits.add(hit);
+      }
+    }
+    return [...hits];
+  };
+
+  for (const name of ["col-major", "row-major"]) {
+    const found = strays(read(`recordings/${name}.stdout.txt`));
+    ok(found.length === 0,
+      found.length ? `${name} carries ${found.length} serial(s) that were not generated for it — ` +
+        `first: ${found[0]}`
+        : `${name} prints nothing of asset-number shape that is not one of the two thousand`);
+  }
+
+  // ── THE LABEL THE JIG ENGRAVES ───────────────────────────────────────
+  // The template carries a "return if found" label with a telephone number on
+  // it, and the figure engraves it seventy-five times a batch. It is a real
+  // number on the real jig, substituted digit for digit the same way the
+  // transcript's device identifiers are -- and the font's figures are tabular,
+  // so the stand-in occupies exactly the same space the original did.
+  //
+  // The TEXT alone is not the check. The geometry carries pre-rendered
+  // per-character outlines beside it, and replacing the text field without
+  // re-rendering them leaves the original digits being drawn while the label
+  // reads as substituted. So the outline ids are read as well: fourteen
+  // characters using exactly two distinct glyphs is `1`s and `-`s and can be
+  // nothing else.
+  // ONE PREVIEW PER JIG. The figure runs two fixtures, and each needs the
+  // geometry the viewer draws while it is idle.
+  const PREVIEWS = ["preview.32gb.json", "preview.western-digital-large.json"];
+  let labelled = 0;
+  for (const name of PREVIEWS) {
+    const preview = JSON.parse(read(`recordings/${name}`));
+    ok(preview.pockets.length > 0, `${name} describes a jig (${preview.pockets.length} pockets)`);
+
+    const label = preview.elements.find((e) => typeof e.text === "string" &&
+      e.text.startsWith("Return if found"));
+    // Not every fixture carries the label -- D Side Profile does not -- so its
+    // absence is not a failure. Its PRESENCE with the wrong number is.
+    if (!label) continue;
+    labelled++;
+    ok(/1-111-111-1111$/.test(label.text), `${name}: the telephone number is the stand-in`);
+    const glyphs = new Set(label.chars.slice(-14).map((c) => c[0]));
+    ok(glyphs.size === 2,
+      `${name}: ...and the OUTLINES it draws are the stand-in too — ${String(glyphs.size)} ` +
+      "distinct glyph(s) across those fourteen characters, which is a one and a dash");
+  }
+  // ...and the loop above is not passing by finding nothing to check.
+  ok(labelled > 0, `${String(labelled)} of the fixtures engraves the label, and it was checked`);
+
+  // ── NO MACHINE PATHS ─────────────────────────────────────────────────
+  // The recordings are a real process's stdout, so they held the operator's
+  // home directory and a temp directory until the recorder replaced them.
+  for (const name of ["col-major.stdout.txt", "row-major.stdout.txt", ...PREVIEWS]) {
+    ok(!/\/Users\/|\/private\/var|C:\\Users\\/.test(read(`recordings/${name}`)),
+      `${name} carries no path off the machine it was recorded on`);
+  }
+
+  // ── AND THE PAGE REFERENCES WHAT WAS JUST CHECKED ────────────────────
+  // A check on a file nobody ships is a check on nothing.
+  const demo = readFileSync(new URL("../src/site/usbDemo.js", import.meta.url), "utf8");
+  for (const name of ["col-major.stdout.txt", "row-major.stdout.txt", ...PREVIEWS]) {
+    ok(demo.includes(name), `usbDemo.js names recordings/${name}`);
+  }
+
+  // ── THE PAIRED CONTROL ───────────────────────────────────────────────
+  // Every assertion above passes on clean recordings, which is also what it
+  // would do if the parser never looked at anything. These are the same
+  // functions over text that IS a violation.
+  // two, because a batch filename carries the first serial and the last one
+  ok(strays('  wrote batch_001_E1643057-E1643132.xcs (75 serial(s))').length === 2,
+    "control: asset numbers in the prose are caught");
+  ok(strays('@@XT {"ev":"pocket_filled","t":1,"serial":"E1643057"}').length === 1,
+    "control: ...and one inside a protocol field is caught");
+  ok(strays('@@XT {"ev":"x","t":1,"d":"M152.50099999999998L519.03749,1643057"}').length === 0,
+    "control: ...and a number out of the middle of a path is NOT, which is the " +
+    "whole reason this is a parse");
+  ok(strays(`  wrote batch_001_${manifest.firstSerial}-X1111185.xcs`).length === 0,
+    "control: ...and the figure's own serials pass");
+}
+
+// ---------------------------------------------------------------------------
 section("the icon atlas is generated, so it can go stale");
 // site/iconatlas.js says GENERATED -- DO NOT EDIT at the top, and a generated
 // file is a file that is right until somebody changes its source and does not
@@ -3513,12 +3738,35 @@ section("the USB sheet carries a real run and nothing real in it");
   // Every one of these is unmistakable: none of them can occur by accident in
   // prose, a hex colour, a file size or a timestamp, which is what lets this
   // run over the whole tree instead of over one file.
+  // THE TWO UUIDs THAT CANNOT IDENTIFY ANYTHING.
+  // RFC 9562 reserves the all-zero and all-f values: the nil UUID means "no
+  // value" and the max UUID is the upper bound. Neither names a volume, a
+  // drive or anything else, and they turn up as literals inside any library
+  // that VALIDATES a UUID -- which is how they got here: zod's uuid() carries
+  // both in its pattern, and zod is in the vendored demo bundle because the
+  // generator's protocol is schema-checked.
+  //
+  // Allowed as bare values only. A volume PATH is a separate shape below and
+  // is not exempted, so `\\?\Volume{` followed by any of these is still
+  // caught -- which is the only context in which one of them would mean
+  // anything at all.
+  const RFC_UUID = new Set([
+    "0".repeat(8) + "-" + ["0000", "0000", "0000"].join("-") + "-" + "0".repeat(12),
+    "f".repeat(8) + "-" + ["ffff", "ffff", "ffff"].join("-") + "-" + "f".repeat(12)
+  ]);
+
   const SHAPES = [
-    [/\b\d{6}-\d{6}-\d{6}-\d{6}-\d{6}-\d{6}-\d{6}-\d{6}\b/, "a BitLocker recovery key"],
-    [/\{?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\}?/, "a GUID or volume identifier"],
-    [/\\\\\?\\Volume/, "a volume path"],
-    [/ConvertTo-SecureString|AsPlainText|-Credential\b/, "PowerShell credential handling"],
-    [/\b(?:password|passwd|secret|api[_-]?key|token)\s*[:=]\s*["'][^"']{4,}/i, "an assigned credential"]
+    [/\b\d{6}-\d{6}-\d{6}-\d{6}-\d{6}-\d{6}-\d{6}-\d{6}\b/g, "a BitLocker recovery key"],
+    [/\{?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\}?/g,
+      // BRACES OFF BEFORE COMPARING. The shape above captures an enclosing
+      // `{...}` when there is one, so `{` + the nil UUID + `}` is a different
+      // string from the nil UUID and went straight past the allowlist. The
+      // control below is what found that.
+      "a GUID or volume identifier",
+      (hit) => RFC_UUID.has(hit.replace(/[{}]/g, "").toLowerCase())],
+    [/\\\\\?\\Volume/g, "a volume path"],
+    [/ConvertTo-SecureString|AsPlainText|-Credential\b/g, "PowerShell credential handling"],
+    [/\b(?:password|passwd|secret|api[_-]?key|token)\s*[:=]\s*["'][^"']{4,}/gi, "an assigned credential"]
   ];
 
   const SKIP = new Set(["node_modules", "dist", ".git", "assets-source",
@@ -3536,9 +3784,16 @@ section("the USB sheet carries a real run and nothing real in it");
     }
   })(ROOT);
 
+  // Every match is looked at rather than just the first, because one shape now
+  // has an exemption and `re.test` cannot tell an exempt hit from a real one
+  // sitting behind it in the same file.
   const scan = (text, where) => {
     const hits = [];
-    for (const [re, what] of SHAPES) if (re.test(text)) hits.push(`${what} in ${where}`);
+    for (const [re, what, allow] of SHAPES) {
+      re.lastIndex = 0;
+      const found = text.match(re) || [];
+      if (found.some((hit) => !allow || !allow(hit))) hits.push(`${what} in ${where}`);
+    }
     return hits;
   };
 
@@ -3590,6 +3845,15 @@ section("the USB sheet carries a real run and nothing real in it");
   ok(scan(FAKE_KEY, "control").length === 1, "control: a recovery key is caught");
   ok(scan("\\\\?\\Volume{" + "0123abcd-4567-89ef-0123-456789abcdef" + "}", "control").length === 2,
     "control: a volume path and its GUID are both caught");
+  // THE CONTROLS FOR THE RFC EXEMPTION, both directions. It lets two literals
+  // through; it must not have let the shape through.
+  ok(scan("0".repeat(8) + "-0000-0000-0000-" + "0".repeat(12), "control").length === 0,
+    "control: the nil UUID is not an identifier and is allowed");
+  ok(scan("b50f1b51-7531-4efd-aa65-6a7a8f97ff02", "control").length === 1,
+    "control: ...and an ordinary GUID beside it is still caught");
+  ok(scan("\\\\?\\Volume{" + "0".repeat(8) + "-0000-0000-0000-" + "0".repeat(12) + "}",
+    "control").length === 1,
+    "control: ...and an exempt UUID inside a volume path still reports the path");
   ok(scan('$p = "hunter2"; secret = "abcdef"', "control").length === 1,
     "control: an assigned credential is caught");
   ok(!STANDINS.includes("8675309") && [..."#8675309".matchAll(/#(\d+)/g)]

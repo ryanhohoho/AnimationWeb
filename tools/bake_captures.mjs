@@ -41,11 +41,18 @@ const OUT = join(ROOT, "src", "assets", "media");
 // A `clip` makes it motion: [start seconds, duration seconds].
 const SHEET = [
   // usb-provisioning · NAVY + BLACK
-  // a rectangular block of sky lifted out of a landscape, which is the literal
-  // subject of this whole site: a die-cut is a rectangle of weather held out of
-  // the page
-  { id: "stand-usb-hero", w: 1400,
-    src: "698128379785451550.jpg" },
+  //
+  // NO HERO ON THIS SHEET. It had one -- a rectangular block of sky lifted out
+  // of a landscape, which is the literal subject of this whole site -- and it
+  // was removed rather than replaced: that plate now carries two REAL figures,
+  // a played transcript and a running interface, and a piece of reference
+  // artwork standing above them was the least true thing on the page in the
+  // most prominent slot. The entry is left here rather than deleted because
+  // the source still exists and this is the only record of which image it was:
+  //
+  //   { id: "stand-usb-hero", w: 1400, src: "698128379785451550.jpg" },
+  //
+  // Put that line back and re-run to bring it back.
   { id: "stand-usb-side", w: 900,
     src: "698128379785715134_ASCII GRAPHIC DESIGN.png" },
 
