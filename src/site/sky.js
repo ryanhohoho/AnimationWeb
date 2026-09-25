@@ -44,6 +44,8 @@
 // ~300ms of pixel work without dropping a frame, and it happens to look like a
 // print developing, which is the honest picture of what it is.
 
+import { PALETTE } from "./palette.js";
+
 // ── ink ────────────────────────────────────────────────────────────────────
 // BOTH INKS ARE THE ANIMAL'S. Measured off her shipped sprites through the
 // real light rig: she renders at OKLCh hue 241 when she comes up shiny and 345
@@ -55,8 +57,11 @@
 // different colours, close enough to read as HERS rendered wrong. Overprinted,
 // these two land on a deep navy-plum, which is the night at the foot of the
 // page and the same family as her own outline.
-// bone. Must match --paper in styles/site.css and PAPER in site/pressgl.js
-const PAPER = [0xef, 0xed, 0xe6];
+// bone, from site/palette.js -- the one place both presses read it. This is
+// the reference press and it prints once per call, so it takes a snapshot.
+
+const toBytes = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const PAPER = toBytes(PALETTE.paper);
 // THE INK IS NOT THE COLOUR THAT COMES OUT, and that is the whole point of
 // pre-compensating it. A halftone over bone drifts toward the paper as coverage
 // drops: an ink at her exact hue printed at h 191-226 across the range the sky
@@ -70,8 +75,8 @@ const PAPER = [0xef, 0xed, 0xe6];
 // wrong; print them and they are her.
 //
 // Measured on screen, not modelled: she is #99D9FD shiny and #F7A8D8 base.
-const INK_A = [0x1a, 0x71, 0xaf]; // prints as her shiny. NEVER changes.
-const INK_B = [0xcb, 0x64, 0xc4]; // prints as her base — the light
+const INK_A = toBytes(PALETTE.homeInkA); // prints as her shiny (palette.js)
+const INK_B = toBytes(PALETTE.homeInkB); // prints as her base — the light
 
 // THE IDENTITY SYSTEM.
 // Cerulean is the constant: it is the site's ink and it is the air in every

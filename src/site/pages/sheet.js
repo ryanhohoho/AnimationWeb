@@ -97,7 +97,6 @@ export function renderSheet(p, {
 
   <section class="plate sheet${deep ? " deep" : ""}" id="p1">
     <div class="sheet-in">
-      <span class="ap sheet-ap" data-ap data-second></span>
       ${body}
       ${figure}
       <div class="cols">

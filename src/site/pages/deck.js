@@ -89,6 +89,10 @@ function experience() {
 //                 Fades out as the sky fades in, and both are driven by one
 //                 tween in cards.js so they cannot disagree.
 //
+// The kind line is TWO spans, `kind` and `year`, rather than one string joined
+// with a dot: each is its own field in projects.js, and the editor (editor/)
+// can only write a word back to the one string it came from.
+//
 // data-icon-ap gives the deck the cell to cut; data-cross-from tells the router
 // to open the crossing from here. They are on the same span as the glyph is
 // centred over, so the hole, the punch, the white plate and the origin of the
@@ -113,7 +117,7 @@ function projects() {
            aria-label="Open ${esc(p.title)} — ${esc(p.sub)}">${media}
           <span class="pcard-meta">
             <span class="pcard-title">${esc(p.title)}</span>
-            <span class="t dim pcard-kind">${esc(p.kind)} · ${esc(p.year)}</span>
+            <span class="t dim pcard-kind"><span>${esc(p.kind)}</span> · <span>${esc(p.year)}</span></span>
             <span class="t body pcard-line">${esc(p.line)}</span>
           </span>
         </a>

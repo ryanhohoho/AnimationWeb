@@ -282,6 +282,10 @@ moving. Click, and the crossing opens out of that icon.
 
 ### FIG. 2 — the command line becoming the interface
 
+(FIG. 1, the played transcript below it, was removed as the outdated demo in
+September 2026. The paragraphs below still describe the relationship it had
+with FIG. 2, because that is why FIG. 2 is built the way it is.)
+
 The USB sheet documents two command-line tools and could only ever show one of
 them: a transcript plays, because a tool whose whole surface is the text it
 leaves behind cannot be shown any other way. The second tool — the engraving

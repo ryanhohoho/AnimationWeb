@@ -18,6 +18,12 @@
 // operator's screen. No asset numbers, serials, volume identifiers, key
 // material or credentials appear anywhere in this file.
 //
+// NOTHING IMPORTS THIS RIGHT NOW, and that is the media.js argument again
+// rather than rot. Its one user was FIG. 1 on the USB sheet, removed as the
+// outdated demo; Rollup never reaches an unimported module, so it costs zero
+// bytes. The .term block in site.css is kept for the same reason. If nothing
+// wants a played transcript again, delete this file and that block together.
+//
 // COST
 // ----
 // One rAF while a line is typing, one timer while it is holding, and neither

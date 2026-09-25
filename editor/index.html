@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Editor — RYAN HO</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <!-- NOT through vite's html pipeline (editor/server/plugin.js serves this
+       file raw), so the shell has no reload client: saving a source file
+       reloads the SITE in the frame below and never this page, which is
+       holding the undo history and the test output. -->
+  <link rel="stylesheet" href="/editor/client/ui.css" />
+</head>
+<body>
+  <header id="bar">
+    <div class="bar-l">
+      <span class="brand"><i></i>EDIT</span>
+      <nav id="pages" aria-label="Pages"></nav>
+    </div>
+    <div class="bar-c">
+      <div id="bps" class="seg" role="radiogroup" aria-label="Screen size"></div>
+    </div>
+    <div class="bar-r">
+      <button id="undo" class="icon" title="Undo (⌘Z)" aria-label="Undo">
+        <svg viewBox="0 0 16 16"><path d="M5.5 4 2.5 7l3 3M3 7h6.5a3.5 3.5 0 0 1 0 7H8" /></svg></button>
+      <button id="redo" class="icon" title="Redo (⇧⌘Z)" aria-label="Redo">
+        <svg viewBox="0 0 16 16"><path d="M10.5 4l3 3-3 3M13 7H6.5a3.5 3.5 0 0 0 0 7H8" /></svg></button>
+      <label class="tog" title="Show or hide Mew while you edit"><input id="mew" type="checkbox" checked /> Mew</label>
+      <label class="tog" title="Use the page like a visitor: links, hovers and arrow keys work, nothing is selectable"><input id="preview" type="checkbox" /> Preview</label>
+      <span id="dirty" class="dirty"></span>
+      <button id="save" class="primary" title="Save (⌘S)">Save</button>
+    </div>
+  </header>
+
+  <main id="work">
+    <aside id="layers" aria-label="Layers">
+      <div class="panel-h">Layers <span class="hint">drag to reorder</span></div>
+      <div id="tree"></div>
+    </aside>
+    <section id="canvas">
+      <div id="device"><iframe id="site" title="The site, being edited"></iframe></div>
+    </section>
+    <aside id="inspector" aria-label="Inspector"></aside>
+  </main>
+
+  <footer id="status">
+    <span id="crumbs"></span>
+    <span id="tests" class="tests" role="button" tabindex="0" title="Show test output"></span>
+  </footer>
+  <div id="log" hidden><div class="log-h">npm test <button id="log-x" class="icon" aria-label="Close">✕</button></div><pre id="log-out"></pre></div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="modal" hidden></div>
+  <input id="file" type="file" accept="image/*,video/*" hidden />
+
+  <script type="module" src="/editor/client/main.js"></script>
+</body>
+</html>

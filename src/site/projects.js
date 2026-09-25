@@ -23,7 +23,7 @@ export const PROJECTS = [
   {
     slug: "usb-provisioning",
     n: "01",
-    title: "usb provisioning cli",
+    title: "glyph auto detection engine",
     sub: "batch engraving + encryption tooling · rcmp",
     kind: "SYSTEMS TOOLING · COMMISSIONED",
     year: "2025",

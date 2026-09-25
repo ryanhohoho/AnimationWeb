@@ -3811,11 +3811,12 @@ section("the USB sheet carries a real run and nothing real in it");
   const html = usb.html({ n: "01", title: "usb provisioning cli", sub: "s", kind: "k",
                           year: "2025", inkName: "NAVY", inkWhy: "w", slug: "usb-provisioning" });
 
-  // every identifier printed on that page is one of the four stand-ins
+  // every identifier printed on that page is one of the four stand-ins. FIG. 1
+  // -- the transcript that printed them -- was removed as the outdated demo, so
+  // the page now prints NONE; the stand-in rule stays for anything put back.
   const ids = [...html.matchAll(/#(\d+)/g)].map((m) => m[1]);
-  ok(ids.length > 0, `the transcript prints ${ids.length} device identifiers`);
   ok(ids.every((d) => STANDINS.includes(d)),
-    `...and every one of them is a stand-in (${[...new Set(ids)].join(", ")})`);
+    `every device identifier on the sheet is a stand-in (${ids.length} printed)`);
 
   // ...and there is no long digit run anywhere on the page that is not one.
   // 10,000 / 57.3 / 09:41:07 / 2025 are all short, so the floor is seven.
@@ -3823,18 +3824,19 @@ section("the USB sheet carries a real run and nothing real in it");
   ok(runs.every((d) => STANDINS.includes(d)),
     `no seven-figure number on the sheet is anything but a stand-in (${runs.length} found)`);
 
-  // BOTH DISCLOSURES, and the page must never carry the transcript without
-  // them: one in the colophon, one beside the figure where it is actually read.
+  // THE DISCLOSURE. There were two while FIG. 1 was on the page -- one in the
+  // colophon and a subtitle beside the transcript -- and the subtitle went with
+  // the transcript. The colophon's must survive every edit.
   ok(/DISCLOSURE/.test(html), "the colophon still declares the substitution");
   // spacing-agnostic ON PURPOSE. The first version of this matched the literal
   // `&nbsp;` run and failed the moment those captions were allowed to wrap on a
   // phone -- which is a typographic edit, not a disclosure being removed. What
   // must survive an edit is the SENTENCE.
   const words = (t) => html.replace(/&nbsp;|&#160;|\s+/g, " ").includes(t);
-  ok(words("DEVICE IDENTIFIERS SUBSTITUTED"),
-    "...and so does the subtitle beside the transcript");
-  ok(words("every device identifier replaced by a stand-in"),
-    "...and the colophon still says what the substitution IS");
+  ok(words("No asset numbers, serials, volume identifiers, key material or credentials"),
+    "...and it still says what is NOT on the sheet");
+  ok(words("sequential synthetic serials"),
+    "...and what the engraving figure runs instead");
 
   // ── THE PAIRED CONTROL ───────────────────────────────────────────────
   // Every check above passes on a page with nothing wrong with it, which is

@@ -21,6 +21,7 @@ changes and the window does not.
 ```bash
 npm install
 npm run dev      # localhost:5173
+npm run edit     # localhost:5275/editor/ — edit the site visually, save into the source
 npm test         # 902 checks: a headless engine sim + a router/page-swap harness
 npm run build    # production bundle
 ```
@@ -41,6 +42,7 @@ hashed URLs, `public/`, the SPA fallback — for checking the bundle as a bundle
 | `src/engine/**` | Mew: physics, a small brain, pose layers, and effects whose maths is headless-testable. |
 | `src/mew.js` | the engine, behind a dynamic import. The sheet is a finished page without it. |
 | `tools/` | the bake scripts. Nothing generated is edited by hand. |
+| `editor/` | a visual editor that runs the real site in a frame and saves words, styles, colours and media back into the source. `editor/README.md`. |
 
 ## Reading it
 

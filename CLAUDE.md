@@ -91,6 +91,7 @@ two are checked against each other on the GPU.
 
 ```bash
 npm run dev            # localhost:5173 — the owner tests here, in his own browser
+npm run edit           # localhost:5275/editor/ — the visual editor (see below)
 npm test               # 998 checks: the headless sim + the router harness
 npm run test:sim       # just the engine/behaviour suite
 npm run test:router    # just the router + page-swap harness (needs a fake DOM)
@@ -290,6 +291,13 @@ when only the numbers were.
   spreading print, so a crossing does not hide one either, and a fade covers
   nothing at all. `recollect` places her only when she is off screen; on screen
   she is left where she is, carried by the same scroll offset the plate gets.
+- **The paper is written in two places, not three.** `site/palette.js` is the
+  one source for the press (the shader takes it as the `uPaper` uniform, and
+  `sky.js` reads it too); `--paper` in `site.css` is the CSS twin. Change both,
+  or use the editor, which writes both.
+- **`#doc[data-page]` is set by the router on every commit** (`home`,
+  `experience`, `project:<slug>` …). `edits.css` scopes page rules with it; the
+  three project sheets share every other id they have.
 - **`--n4` may never carry a word.** It is 2.61:1 on bone — under half the 4.5:1
   floor — and it is for hairlines, ticks and inactive marks. Eight rules were
   painting text in it. There is a check, and it reads the real stylesheet.
@@ -321,11 +329,30 @@ credential.
 committed file, or in any transcript:** credentials or key material, real asset
 numbers, drive serials, or volume identifiers.
 
-The transcript on that page is a real run with **every device identifier
-substituted** (`id #1234567`, `#2345678` are placeholders), and the page carries
-a DISCLOSURE block saying so. If you edit that page, keep both true. If you are
-ever asked to include real capture data, censor it in a copy of the file rather
-than reading the original into context.
+FIG. 1 — the played PowerShell transcript and its timing table — was removed
+as the outdated demo; FIG. 2 runs sequential synthetic serials. The page
+carries a DISCLOSURE block saying what is not on it, and the redaction check in
+`test/sim.test.js` still holds any device identifier to the four stand-ins
+(`#1234567` …). If you edit that page, keep both true. If you are ever asked to
+include real capture data, censor it in a copy of the file rather than reading
+the original into context.
+
+## The editor — `npm run edit`
+
+A visual editor for the site, in `editor/`, that runs the REAL site (same vite
+config plus one plugin, port 5275) in a frame and writes changes back into the
+source. Read `editor/README.md` before touching it. What it writes:
+
+- **words** into the string they came from (`content.js`, `projects.js`, the
+  page files, `index.html`), found through the AST, never a text search;
+- **styles** into `src/styles/edits.css` — GENERATED, imported after `site.css`,
+  three sections (all widths / ≤860 / ≤560). Do not hand-edit its format;
+- **ids** as `data-e="…"` in markup (and `capture({ e })` for figures), which is
+  what `edits.css` selectors key on. Leave them in place when editing markup;
+- **colours** into `site/palette.js` + the `:root` tokens in `site.css`;
+- **media** encoded into `src/assets/media/` the way `bake_captures.mjs` does.
+
+Nothing in `editor/` is reachable from `index.html`; the build never sees it.
 
 ## Conventions
 

@@ -295,6 +295,11 @@ of page. That is the only way to see it in this environment.
 
 ### The transcript, for somebody who cannot watch it
 
+**FIG. 1 IS GONE (2026-09-22), by instruction** — the played session and the
+table of timings read off it were the outdated demo on that sheet. `term.js`
+and the `.term` block in `site.css` are kept unimported, on the `media.js`
+argument. What follows is the record of how it was built.
+
 The played session on the USB sheet is **content, not decoration** — a tool
 whose whole surface is the text it leaves behind cannot be shown any other way.
 But at any instant the played version is a few lines mid-type, so a reader on a
@@ -1925,3 +1930,33 @@ Capture slots still empty: `usb-hub`, `usb-engraver`, `closet-app`,
 - Longer term: `auto_iClicker/` is worth reading when that page comes up, and the
   Closet thesis is in `Closet/ENGINE_V3_STYLIST.md` and `Closet/STRATEGY.md` —
   both outside this repo.
+
+---
+
+# 12 · The editor
+
+`npm run edit` → `localhost:5275/editor/`. Full account in `editor/README.md`;
+the short version, and the traps:
+
+- **It runs the real site.** `editor/vite.editor.config.js` is the site's own
+  config plus one plugin, so the frame shows exactly what ships. The plugin
+  marks every start tag in `index.html` and the page templates with
+  `data-esrc="file:offset"` — in edit mode only — which is how a click becomes a
+  place in the code.
+- **Words go back through the AST** (`vite`'s `parseAst`), matched on what the
+  reader sees (entities decoded, whitespace collapsed), with duplicates told
+  apart by page order. A string assembled by code is refused, not guessed.
+- **Styles go to `src/styles/edits.css`**, keyed on `data-e` ids the editor
+  writes into markup, scoped by `#doc[data-page]`, in three breakpoint sections.
+- **A save is all or nothing.** Every change is a range edit against the file
+  the page was built from; all are checked, then all are written; a file that
+  changed on disk since is refused. `npm test` runs after and streams back.
+- **Moves are `translate`, never `transform`**: every entrance animation ends on
+  `transform:none` with fill `both`, which would erase a transform for good.
+- **A template shared by several pages** (`shell()`, `renderSheet()`) asks before
+  an insert or duplicate lands on all of them.
+- **An icon the bake refuses is rolled back**, so `tools/icons` never disagrees
+  with the atlas.
+- **The shell has no vite client on purpose**: it is served raw, so a save
+  reloads the site in the frame and never the editor holding the history.
+

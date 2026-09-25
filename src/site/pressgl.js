@@ -37,6 +37,8 @@
 // used to cost EXACTLY zero, because every hole was a static bitmap already
 // sitting at its document position. Now a scroll costs one pass.
 
+import { PALETTE, unit } from "./palette.js";
+
 const HOLES_MAX = 12;
 
 // How far down one continuous plate 01:00 is. Every sheet on the site is a cut
@@ -200,10 +202,13 @@ uniform vec4  uMaskBox;    // x, y, w, h in DOCUMENT px. z <= 0 is off
 uniform vec4  uMaskUV;     // u0, v0, du, dv -- this glyph's cell in the atlas
 uniform float uMaskAmt;    // 0..1, the hover crossfade
 
-// bone. Must match --paper in styles/site.css and PAPER in site/sky.js — the
-// shader paints the stock, so a mismatch is a visible seam between the page
-// and its own background.
-const vec3  PAPER = vec3(0.93725, 0.92941, 0.90196);   // #EFEDE6
+// bone. A UNIFORM, not a const, and it comes from site/palette.js -- the one
+// place the paper is written for both presses. The shader paints the stock, so
+// a mismatch with --paper in styles/site.css is a visible seam between the
+// page and its own background; the editor writes both. The define keeps every
+// line below reading PAPER.
+uniform vec3  uPaper;
+#define PAPER uPaper
 // THE INK IS NOT THE COLOUR THAT COMES OUT, and that is the whole point of
 // pre-compensating it. A halftone over bone drifts toward the paper as coverage
 // drops: an ink at her exact hue printed at h 191-226 across the range the sky
@@ -499,10 +504,11 @@ const hex = (h) => [
   parseInt(h.slice(3, 5), 16) / 255,
   parseInt(h.slice(5, 7), 16) / 255
 ];
-// The HOME sheet's pair. A project sheet replaces BOTH of them now — its sky
-// is its own, not a recolour of hers (site/projects.js).
-const SKY  = [0x1a / 255, 0x71 / 255, 0xaf / 255];   // #1A71AF, prints h~234
-const ROSE = [0xcb / 255, 0x64 / 255, 0xc4 / 255];   // #CB64C4, prints h~343
+// The HOME sheet's pair, and the paper, read from site/palette.js on every
+// draw rather than captured here -- the editor recolours the live sheet by
+// writing to PALETTE, and a copy taken at import would never see it. A project
+// sheet replaces BOTH inks; its sky is its own, not a recolour of hers
+// (site/projects.js).
 
 /**
  * Attach the press to a canvas. Returns null only if there is no WebGL at all,
@@ -556,7 +562,7 @@ export function createSheetPress(canvas, sheet, frames) {
   for (const n of ["uDens", "uTex", "uFrames", "uF", "uRes", "uScroll", "uPlate", "uRefH", "uSky", "uSkyRamp", "uBand",
                    "uInkA", "uInkB", "uInkA2", "uInkB2", "uAltHole", "uAltIdn", "uOverlay", "uIdentity", "uRuling", "uHoles", "uHoleCount", "uCross", "uCross2", "uEatOut", "uEatA", "uEatB", "uEatIdn",
                    "uRoundHole", "uHoleFade",
-                   "uMask", "uMaskBox", "uMaskUV", "uMaskAmt"]) {
+                   "uMask", "uMaskBox", "uMaskUV", "uMaskAmt", "uPaper"]) {
     U[n] = gl.getUniformLocation(prog, n);
   }
 
@@ -670,6 +676,9 @@ export function createSheetPress(canvas, sheet, frames) {
     else gl.uniform4f(U.uCross2, 0, 0, 0, 0);
     // which side of the opening the paper is on, and what it prints in
     gl.uniform1f(U.uEatOut, cross && cross.out ? 1 : 0);
+    const SKY = unit(PALETTE.homeInkA), ROSE = unit(PALETTE.homeInkB);
+    const pp = unit(PALETTE.paper);
+    gl.uniform3f(U.uPaper, pp[0], pp[1], pp[2]);
     const ea = eat?.inkA ? hex(eat.inkA) : SKY;
     const eb = eat?.inkB ? hex(eat.inkB) : ROSE;
     gl.uniform3f(U.uEatA, ea[0], ea[1], ea[2]);

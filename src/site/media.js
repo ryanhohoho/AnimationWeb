@@ -65,8 +65,12 @@ const nb = (s) => esc(s).replace(/ /g, "&nbsp;");
  *              it. bake_captures.mjs prints the number for each asset.
  * @param cls   extra classes. `narrow` is the one the sheet column uses, so two
  *              figures on one sheet are not two identical rectangles.
+ * @param e     the editor's id for this figure (editor/), written here by the
+ *              editor the first time it styles one figure on its own. It is
+ *              an argument rather than a mark in the markup below because
+ *              that markup is shared by every figure on every sheet.
  */
-export function capture({ id, cap = "", alt = "", pos = "", ratio = "1.6", cls = "" }) {
+export function capture({ id, cap = "", alt = "", pos = "", ratio = "1.6", cls = "", e = "" }) {
   const hit = BY_ID.get(id);
   const style = `${pos ? pos + "; " : ""}--ratio:${ratio}`;
   let inner;
@@ -96,7 +100,7 @@ export function capture({ id, cap = "", alt = "", pos = "", ratio = "1.6", cls =
   // `set` is what makes the slot part of the plate's four-corner composition;
   // without a position it simply flows, which is what the narrow layout wants.
   const klass = `fig${pos ? " set" : ""}${hit ? " has" : ""}${cls ? ` ${cls}` : ""}`;
-  return `<figure class="${klass}" style="${style}">
+  return `<figure class="${klass}"${e ? ` data-e="${esc(e)}"` : ""} style="${style}">
       <div class="fig-in">${inner}</div>
       ${cap ? `<figcaption class="t dim">${nb(cap)}</figcaption>` : ""}
     </figure>`;

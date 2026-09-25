@@ -65,7 +65,7 @@
      screen rather than sitting in paper. This value must stay in step with
      PAPER in site/pressgl.js and site/sky.js — the shader paints the stock, so
      a mismatch shows as a seam between the page and its own background. */
-  --paper:#EFEDE6;
+  --paper:#FFFFFF;
   --ink:  #16150F;
   /* SECONDARY TEXT IS NOT LIGHT TEXT.
      Labels, captions and annotation carried a warm mid-grey, which on a #FFF

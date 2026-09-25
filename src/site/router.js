@@ -200,6 +200,18 @@ export function createRouter({ scope, deck, world, onPage }) {
   // above would throw at construction.
   let current = routeOf(location.pathname);
 
+  // ── WHICH SHEET IS PRINTED, WRITTEN ON THE SHEET ─────────────────────────
+  // `data-page` on #doc: "home", "experience", "projects", "contact",
+  // "project:<slug>" or "404". The three project sheets are all cut from one
+  // trim and share every id in it (#p0, #p1), so nothing in the markup could
+  // tell one from another. styles/edits.css -- written by the editor -- scopes
+  // a change to one page with it. Set on every commit and once here for the
+  // home sheet, which is never committed on a first load.
+  const pageKey = (r) => r.name === "project" ? `project:${r.project.slug}` : r.name;
+  // guarded, because the router harness hands in a bare object for #doc
+  const markPage = (r) => { if (doc.dataset) doc.dataset.page = pageKey(r); };
+  markPage(current);
+
   function commit(route, { carry = true } = {}) {
     current = route;
     const { html, title, desc, ink, inkA } = render(route);
@@ -218,6 +230,7 @@ export function createRouter({ scope, deck, world, onPage }) {
     // frame. Same fault as the original teleport, same fix, other direction.
     const leftAt = window.scrollY;
     doc.innerHTML = html;
+    markPage(route);
     document.title = title;
     // the description travels with the title, or a shared inner page quotes the
     // front page. og:title too: a scraper that runs JS reads the property, and

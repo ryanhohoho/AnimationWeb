@@ -27,6 +27,10 @@ import { createChrome } from "./site/chrome.js";
 import { createRouter } from "./site/router.js";
 import { mountPage } from "./site/pages.js";
 import "./styles/site.css";
+// AFTER site.css, and it has to be: it is the editor's output (editor/), a
+// generated layer of overrides that wins by coming later. Empty until the
+// editor saves something. Do not edit it by hand -- see its own header.
+import "./styles/edits.css";
 
 // ONE world for the page: one event bus, one pointer, one scroll. The engine
 // chunk is handed this rather than making its own, so a swipe and a startle are
