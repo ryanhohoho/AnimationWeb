@@ -43,7 +43,7 @@ export function createLayers(ed, mount) {
         const kind = kindOf(c, ed.win);
         const hidden = ed.win.getComputedStyle(c).display === "none";
         const row = h("div", {
-          class: `node${lock ? " locked" : ""}${ed.sel?.el === c ? " sel" : ""}${hidden ? " hidden-bp" : ""}`,
+          class: `node${lock ? " locked" : ""}${ed.isSelected(c) ? " sel" : ""}${hidden ? " hidden-bp" : ""}`,
           style: { paddingLeft: 8 + depth * 12 + "px" },
           draggable: !lock && ed.canReorder(c) ? "true" : null,
           title: lock || ""
@@ -51,7 +51,13 @@ export function createLayers(ed, mount) {
           h("span", { class: "ty", html: `<svg viewBox="0 0 16 16"><path d="${lock ? ICON.lock : ICON[kind]}"/></svg>` }),
           h("span", { class: "nm" }, nameOf(c, ed.win)),
           kind !== "text" && classesOf(c).length ? h("span", { class: "cl" }, "." + classesOf(c)[0]) : null);
-        row.addEventListener("click", () => { if (!lock) ed.select(c); });
+        // the same keys as on the canvas: ⇧ adds, ⌘/Ctrl-⇧ takes out
+        row.addEventListener("click", (e) => {
+          if (lock) return;
+          if (e.shiftKey && (e.metaKey || e.ctrlKey)) ed.removeFromSelection(c);
+          else if (e.shiftKey) ed.addToSelection(c);
+          else ed.select(c);
+        });
         row.addEventListener("mouseenter", () => { ed.hover = c; });
         row.addEventListener("mouseleave", () => { if (ed.hover === c) ed.hover = null; });
         if (!lock && ed.canReorder(c)) {

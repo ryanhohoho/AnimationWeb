@@ -13,6 +13,7 @@ import { classesOf, nameOf, lockReason } from "./identity.js";
 // The backlight's tokens and presets, from the site's own model rather than
 // copied here: the page and the editor must agree on which six names exist.
 import { GLOW_TOKENS, APPLE_GLOW, VIVID_GLOW } from "../../src/site/glowField.js";
+import { scaleText, round } from "../shared/scale.js";
 
 const WEIGHTS = [300, 400, 500, 600, 700];
 
@@ -36,12 +37,17 @@ export function createInspector(ed, mount) {
   /**
    * A number with a unit. `get()` -> ed.read-shaped value; `set(v, live)`.
    * The label scrubs: press on it and drag sideways.
+   *
+   * `rel(delta, live, fromLive)`, when given, is what a scrub does instead of
+   * setting one absolute value: a selection of several with different values
+   * is moved BY the drag, each from its own value, rather than all set to one.
+   * `cur.mixed` shows as "Mixed".
    */
-  function num({ k, title, get, set, unit = "px", step = 1, min = -Infinity, max = Infinity, dec = 0 }) {
+  function num({ k, title, get, set, rel = null, unit = "px", step = 1, min = -Infinity, max = Infinity, dec = 0 }) {
     const cur = get();
     const dot = cur.value !== undefined ? (cur.from === ed.bp ? "set" : "inh") : "";
     const shown = cur.value !== undefined ? cur.value : "";
-    const ph = cur.computed ? tidy(cur.computed) : "";
+    const ph = cur.placeholder ?? (cur.mixed ? "Mixed" : cur.computed ? tidy(cur.computed) : "");
     const input = h("input", { value: shown, placeholder: ph, spellcheck: "false", "aria-label": title });
     const commit = () => {
       const raw = input.value.trim();
@@ -61,24 +67,34 @@ export function createInspector(ed, mount) {
     });
     input.addEventListener("blur", commit);
     const key = h("span", { class: "k", title: `${title} — drag to change` }, k);
-    key.addEventListener("mousedown", (e) => {
+    // THE POINTER IS CAPTURED, so the drag keeps coming to this label wherever
+    // it goes -- across the canvas, whose frame would otherwise swallow every
+    // move the moment the pointer crossed into it, and off the edge of the
+    // panel. One step per 2 px of travel, ⇧ for ten.
+    key.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
       e.preventDefault();
-      const start = parseFloat(input.value || ph) || 0;
+      key.setPointerCapture(e.pointerId);
+      const mixed = cur.mixed && rel;
+      const start = mixed ? 0 : parseFloat(input.value || ph) || 0;
       const u = /[a-z%]+$/.exec(input.value || ph)?.[0] ?? unit;
       const x0 = e.clientX;
       let last = null;
       ed.beginLive();
       const mv = (m) => {
-        const v = Math.max(min, Math.min(max, start + Math.round((m.clientX - x0) / 2) * step * (m.shiftKey ? 10 : 1)));
+        const d = Math.round((m.clientX - x0) / 2) * step * (m.shiftKey ? 10 : 1);
+        if (mixed) { last = d; input.value = (d > 0 ? "+" : "") + +d.toFixed(dec + 2); rel(d, true); return; }
+        const v = Math.max(min, Math.min(max, start + d));
         last = `${+v.toFixed(dec + 2)}${u}`;
         input.value = last;
         set(last, true);
       };
       const up = () => {
-        removeEventListener("mousemove", mv); removeEventListener("mouseup", up);
-        if (last !== null) set(last, false, true); else ed.cancelLive();
+        key.removeEventListener("pointermove", mv); key.removeEventListener("pointerup", up); key.removeEventListener("pointercancel", up);
+        if (last === null) { ed.cancelLive(); return; }
+        if (mixed) rel(last, false, true); else set(last, false, true);
       };
-      addEventListener("mousemove", mv); addEventListener("mouseup", up);
+      key.addEventListener("pointermove", mv); key.addEventListener("pointerup", up); key.addEventListener("pointercancel", up);
     });
     const x = h("button", { class: `x${dot === "set" ? " on" : ""}`, title: "Reset at this size", onclick: () => set(null) }, "↺");
     return h("label", { class: "num", title }, key, input, dot ? h("span", { class: `dot ${dot}` }) : null, x);
@@ -171,10 +187,77 @@ export function createInspector(ed, mount) {
     ed.style(ed.sel.el, { translate: val }, { live, label: "Move" });
   };
 
+  // ── linked dimensions ──────────────────────────────────────────────────
+  // The chain: ON, a text block's size and box are one thing (W scales the
+  // type, Aa scales the box it has), and a box keeps its width-to-height ratio.
+  // The canvas's handles read the same switch (editor.js, ed.link).
+  const CHAIN = "M6.5 9.5l3-3M5.2 7.6 3.9 8.9a2.1 2.1 0 0 0 3 3l1.3-1.3M10.8 8.4l1.3-1.3a2.1 2.1 0 0 0-3-3L7.8 5.4";
+  const CHAIN_OFF = "M5.2 7.6 3.9 8.9a2.1 2.1 0 0 0 3 3l1.3-1.3M10.8 8.4l1.3-1.3a2.1 2.1 0 0 0-3-3L7.8 5.4M3 3l1.5 1.5M13 13l-1.5-1.5";
+  function linkBtn(kind, label) {
+    const on = ed.link[kind];
+    return h("button", { class: `link${on ? " on" : ""}`, type: "button", "aria-pressed": String(on),
+      title: on ? `${label} — on. Click to unlink.` : `${label} — off. Click to link.`,
+      onclick: () => { ed.setLink(kind, !on); render(); },
+      html: `<svg viewBox="0 0 16 16"><path d="${on ? CHAIN : CHAIN_OFF}"/></svg><span>${label}</span>` });
+  }
+
+  /** what a text block measures now, taken once per gesture so a scrub does not compound */
+  const textBase = (el) => {
+    const cs = ed.win.getComputedStyle(el);
+    const lh = parseFloat(cs.lineHeight);
+    return { w0: parseFloat(cs.width), fs0: parseFloat(cs.fontSize), lh0: Number.isFinite(lh) ? lh : null,
+             ls0: ed.read(el, "letter-spacing").value || null, wSet: ed.read(el, "width").value };
+  };
+  /**
+   * W or Aa on a text block. Linked, the other follows by the same ratio:
+   * widen the box and the type grows with it (the lines break where they
+   * did); grow the type and a box with a set width grows with it. A value
+   * that is not in pixels (a %, a clamp()) is set on its own, as typed.
+   */
+  function textSet(el, field) {
+    let base = null;
+    return (v, live, fromLive) => {
+      base ||= textBase(el);
+      let props;
+      const n = parseFloat(v);
+      if (v === null) props = field === "w" ? { width: null, "max-width": null } : { "font-size": null };
+      else if (!ed.link.text || !/px$/.test(v) || !Number.isFinite(n) || n <= 0) {
+        props = field === "w" ? { width: v, "max-width": "none" } : { "font-size": v };
+      } else {
+        props = scaleText(base, field === "w" ? n / base.w0 : n / base.fs0);
+        if (field === "w") props.width = v; else props["font-size"] = v;
+        // a block that takes its width from the page keeps doing so
+        if (field === "size" && !base.wSet) { delete props.width; delete props["max-width"]; }
+      }
+      if (!live) base = null;
+      const label = field === "w" ? "Width" : "Size";
+      if (fromLive) return ed.endLive(label, el, props);
+      ed.style(el, props, { live, label });
+    };
+  }
+  /** W or H on a box; linked, the other keeps the ratio the box has now */
+  function boxSet(el, prop) {
+    let base = null;
+    return (v, live, fromLive) => {
+      if (!base) { const cs = ed.win.getComputedStyle(el); base = { w: parseFloat(cs.width), h: parseFloat(cs.height) }; }
+      const props = { [prop]: v };
+      const n = parseFloat(v);
+      if (ed.link.box && v !== null && /px$/.test(v) && n > 0 && base.w > 0 && base.h > 0) {
+        if (prop === "width") props.height = `${Math.round(n * base.h / base.w)}px`;
+        else props.width = `${Math.round(n * base.w / base.h)}px`;
+      }
+      if (!live) base = null;
+      const label = prop === "width" ? "Width" : "Height";
+      if (fromLive) return ed.endLive(label, el, props);
+      ed.style(el, props, { live, label });
+    };
+  }
+
   // ── the panels ─────────────────────────────────────────────────────────
   function render() {
     closePop();
     if (!ed.doc) { mount.replaceChildren(h("div", { class: "note" }, "Loading the site…")); return; }
+    if (ed.sels.length > 1) return renderMulti();
     if (!ed.sel) return renderPage();
     glowPreview(false);
     const el = ed.sel.el;
@@ -240,15 +323,13 @@ export function createInspector(ed, mount) {
       num({ k: "Y", title: "Move up or down (offset from its place)", get: translateGet(1), set: translateSet(1) }),
       round
         ? num({ k: "⌀", title: "Diameter", get: R("width"), set: (v, live, fl) => fl ? ed.endLive("Size", el, { width: v, height: v }) : ed.style(el, { width: v, height: v }, { live, label: "Size" }) })
-        : num({ k: "W", title: kind === "text" ? "Box width — where the lines break" : "Width",
-            get: R("width"), set: (v, live, fl) => {
-              const props = { width: v };
-              if (kind === "text") props["max-width"] = v === null ? null : "none";
-              if (fl) return ed.endLive("Width", el, props);
-              ed.style(el, props, { live, label: "Width" });
-            } }),
+        : num({ k: "W", title: kind === "text" ? (ed.link.text ? "Box width — the type scales with it" : "Box width — where the lines break") : "Width",
+            get: R("width"), set: kind === "text" ? textSet(el, "w")
+              : el.matches("figure.fig, .pcard-media") ? S("width", "", "Width") : boxSet(el, "width") }),
       !round && kind !== "text" && !el.matches("figure.fig, .pcard-media")
-        ? num({ k: "H", title: "Height", get: R("height"), set: S("height") }) : h("span"))];
+        ? num({ k: "H", title: "Height", get: R("height"), set: boxSet(el, "height") }) : h("span"))];
+    if (kind === "text") layout.push(h("div", { class: "row" }, linkBtn("text", "Size and box scale together")));
+    else if (!round && !el.matches("figure.fig, .pcard-media")) layout.push(h("div", { class: "row" }, linkBtn("box", "Keep width and height in ratio")));
     layout.push(h("div", { class: "grid2", style: { marginTop: "6px" } },
       num({ k: "↑", title: "Space above", get: R("margin-top"), set: S("margin-top", "", "Space above") }),
       num({ k: "↓", title: "Space below", get: R("margin-bottom"), set: S("margin-bottom", "", "Space below") })));
@@ -289,7 +370,7 @@ export function createInspector(ed, mount) {
       const fs = ed.read(el, "font-style");
       parts.push(sec("Type", [
         h("div", { class: "grid3" },
-          num({ k: "Aa", title: "Size", get: R("font-size"), set: S("font-size", "", "Size"), step: 1, min: 4 }),
+          num({ k: "Aa", title: ed.link.text ? "Size — a set box width scales with it" : "Size", get: R("font-size"), set: textSet(el, "size"), step: 1, min: 4 }),
           num({ k: "↔", title: "Letter spacing (em)", get: R("letter-spacing"), set: S("letter-spacing", "", "Tracking"), unit: "em", step: 0.01, dec: 2 }),
           num({ k: "↕", title: "Line height (× the size)", get: R("line-height"), set: S("line-height", "", "Leading"), unit: "", step: 0.05, dec: 2, min: 0.5 })),
         h("div", { class: "row" }, h("span", { class: "lab" }, "Weight"), h("div", { class: "slider", style: { flex: 1 } }, range, out)),
@@ -341,12 +422,228 @@ export function createInspector(ed, mount) {
     mount.replaceChildren(...parts);
   }
 
-  function resetAll(el) {
-    const sel = ed.peek(el);
-    if (!sel) return toast("Nothing is set on this element at this scope.");
-    ed.store.global("Reset styles", (st) => {
+  // ── several selected ───────────────────────────────────────────────────
+  // Only what they have in common: layout for everything; type only if they
+  // are all words; the picture's fit and shape only if they are all pictures.
+  // A field shows a value when every one of them has it, and "Mixed" when not.
+  // Typing sets it on all of them; dragging a label moves each one BY the drag
+  // from its own value, so a set of different sizes keeps its differences.
+  function renderMulti() {
+    glowPreview(false);
+    const els = ed.selEls();
+    const kinds = els.map((e) => ed.kind(e));
+    const allText = kinds.every((k) => k === "text");
+    const allMedia = kinds.every((k) => k === "media");
+    const noHeight = els.some((e) => ed.kind(e) === "text" || e.matches("figure.fig, .pcard-media, [data-round]"));
+    const count = {};
+    for (const k of kinds) count[k] = (count[k] || 0) + 1;
+    const summary = Object.entries(count).map(([k, n]) => `${n} ${k === "box" ? "box" : k}${n > 1 ? (k === "box" ? "es" : k === "text" ? "s" : "") : ""}`).join(" · ");
+
+    // reading: one value if they share it
+    const G = (prop, child) => () => {
+      const vals = els.map((e) => ed.read(e, prop, child));
+      const v0 = vals[0].value, c0 = vals[0].computed;
+      const same = vals.every((v) => v.value === v0);
+      const sameComp = vals.every((v) => v.computed === c0);
+      return { value: same ? v0 : undefined, from: same ? vals[0].from : null, computed: sameComp ? c0 : "", mixed: !same || (v0 === undefined && !sameComp) };
+    };
+    // writing: the same value on all, as one step
+    const SA = (prop, label, child = "") => (v, live, fromLive) => {
+      const pairs = els.map((el) => ({ el, props: { [prop]: v }, child }));
+      if (fromLive) return ed.endLiveMany(label, pairs);
+      ed.styleMany(pairs, { live, label });
+    };
+    // dragging: each moved by the same amount from where it was
+    const RA = (prop, label, unit = "px", map = null) => {
+      let base = null;
+      return (d, live, fromLive) => {
+        base ||= els.map((el) => { const r = ed.read(el, prop); return parseFloat(r.value ?? r.computed) || 0; });
+        const pairs = els.map((el, i) => ({ el, props: map ? map(el, i, base[i] + d, base[i]) : { [prop]: `${round(base[i] + d, 3)}${unit}` } }));
+        if (!live) base = null;
+        if (fromLive) return ed.endLiveMany(label, pairs);
+        ed.styleMany(pairs, { live, label });
+      };
+    };
+    const axis = (i) => {
+      let base = null;
+      const write = (vals, live, fromLive) => {
+        const pairs = els.map((el, j) => {
+          const t = ed.translateOf(el);
+          t[i] = vals[j];
+          return { el, props: { translate: t[0] === 0 && t[1] === 0 ? null : `${Math.round(t[0])}px ${Math.round(t[1])}px` } };
+        });
+        if (fromLive) return ed.endLiveMany("Move", pairs);
+        ed.styleMany(pairs, { live, label: "Move" });
+      };
+      return {
+        get: () => {
+          const vals = els.map((e) => ed.translateOf(e)[i]);
+          const same = vals.every((v) => v === vals[0]);
+          return { value: same && vals[0] !== 0 ? `${vals[0]}px` : undefined, from: ed.bp, computed: same ? `${vals[0]}px` : "", mixed: !same };
+        },
+        set: (v, live, fromLive) => write(els.map(() => (v === null ? 0 : parseFloat(v) || 0)), live, fromLive),
+        rel: (d, live, fromLive) => {
+          base ||= els.map((e) => ed.translateOf(e)[i]);
+          const vals = base.map((b) => b + d);
+          if (!live) base = null;
+          write(vals, live, fromLive);
+        }
+      };
+    };
+    const X = axis(0), Y = axis(1);
+
+    // SCALE: everything in the selection grown or shrunk by one percentage, in
+    // place -- type by its size and box together, pictures by width, boxes by
+    // both. Always relative (a selection has no single size to type in).
+    let scaleBase = null;
+    const scaleRel = (d, live, fromLive) => {
+      scaleBase ||= els.map((el) => { const cs = ed.win.getComputedStyle(el); return { el, ...textBase(el), h0: parseFloat(cs.height), text: ed.kind(el) === "text", fig: el.matches("figure.fig, .pcard-media"), round: el.matches("[data-round]") }; });
+      const s = Math.max(0.05, 1 + d / 100);
+      const pairs = scaleBase.map((b) => ({ el: b.el, props: b.text ? scaleText(b, s)
+        : b.fig ? { width: `${Math.round(b.w0 * s)}px` }
+        : b.round ? { width: `${Math.round(b.w0 * s)}px`, height: `${Math.round(b.w0 * s)}px` }
+        : { width: `${Math.round(b.w0 * s)}px`, height: `${Math.round(b.h0 * s)}px` } }));
+      if (!live) scaleBase = null;
+      if (fromLive) return ed.endLiveMany("Scale", pairs);
+      ed.styleMany(pairs, { live, label: "Scale" });
+    };
+
+    const parts = [h("div", { class: "insp-head" },
+      h("div", { class: "insp-kind" }, h("span", { class: "badge" }, String(els.length)), "elements selected"),
+      h("div", { class: "insp-src" }, summary),
+      h("div", { class: "bpnote", html: `Changes apply to each of them, on <b>${ed.BPS.find((b) => b.key === ed.bp).label}</b>${ed.bp === "base" ? " (and smaller)" : ""}. ⇧-click adds, ⌘⇧-click takes out.` }))];
+
+    // LAYOUT
+    const layout = [h("div", { class: "grid2" },
+      num({ k: "X", title: "Move sideways — drag the label to move them all", get: X.get, set: X.set, rel: X.rel }),
+      num({ k: "Y", title: "Move up or down — drag the label to move them all", get: Y.get, set: Y.set, rel: Y.rel }),
+      num({ k: "W", title: "Width — typed: all the same; dragged: each by the same amount", get: G("width"), set: SA("width", "Width"),
+        rel: RA("width", "Width", "px", (el, i, v) => (ed.kind(el) === "text" ? { width: `${round(v)}px`, "max-width": "none" } : { width: `${round(v)}px` })) }),
+      noHeight ? h("span") : num({ k: "H", title: "Height", get: G("height"), set: SA("height", "Height"), rel: RA("height", "Height") }))];
+    layout.push(h("div", { class: "grid2", style: { marginTop: "6px" } },
+      num({ k: "%", title: "Scale everything in place — drag the label", get: () => ({ value: undefined, computed: "", mixed: true, placeholder: "scale" }), set: () => {}, rel: scaleRel }),
+      h("span")));
+    layout.push(h("div", { class: "grid2", style: { marginTop: "6px" } },
+      num({ k: "↑", title: "Space above", get: G("margin-top"), set: SA("margin-top", "Space above"), rel: RA("margin-top", "Space above") }),
+      num({ k: "↓", title: "Space below", get: G("margin-bottom"), set: SA("margin-bottom", "Space below"), rel: RA("margin-bottom", "Space below") })));
+    const hidden = els.every((e) => ed.read(e, "display").value === "none");
+    layout.push(h("div", { class: "row" },
+      h("label", { class: "tog", style: { padding: 0 } },
+        h("input", { type: "checkbox", checked: hidden ? true : null,
+          onchange: (e) => ed.styleMany(els.map((el) => ({ el, props: { display: e.target.checked ? "none" : null } })), { label: "Hide" }) }),
+        ` Hide all at this size${ed.bp === "base" ? " (and smaller)" : ""}`)));
+    parts.push(sec("Layout", layout, () => ed.styleMany(els.map((el) => ({ el, props: { translate: null, width: null, height: null, "max-width": null, "margin-top": null, "margin-bottom": null } })), { label: "Reset layout" })));
+
+    // TYPE, only if every one of them is words
+    if (allText) {
+      // Aa dragged: each size by the same amount -- and, linked, each box with it
+      const sizeRel = (() => {
+        let base = null;
+        return (d, live, fromLive) => {
+          base ||= els.map(textBase);
+          const pairs = els.map((el, i) => {
+            const b = base[i], n = Math.max(4, b.fs0 + d);
+            if (!ed.link.text) return { el, props: { "font-size": `${round(n)}px` } };
+            const props = scaleText(b, n / b.fs0);
+            if (!b.wSet) { delete props.width; delete props["max-width"]; }
+            return { el, props };
+          });
+          if (!live) base = null;
+          if (fromLive) return ed.endLiveMany("Size", pairs);
+          ed.styleMany(pairs, { live, label: "Size" });
+        };
+      })();
+      const wt = G("font-weight")();
+      const wv = parseInt(wt.value || wt.computed) || 400;
+      const range = h("input", { type: "range", min: 300, max: 700, step: 100, value: wv });
+      const out = h("output", {}, wt.mixed ? "—" : wv);
+      const weightPairs = () => els.map((el) => ({ el, props: { "font-weight": range.value } }));
+      range.addEventListener("pointerdown", () => ed.beginLive());
+      range.addEventListener("input", () => { out.textContent = range.value; ed.styleMany(weightPairs(), { live: true }); });
+      range.addEventListener("change", () => ed.endLiveMany("Weight", weightPairs()));
+      const pick = (prop, label) => (v) => ed.styleMany(els.map((el) => ({ el, props: { [prop]: v } })), { label });
+      parts.push(sec("Type", [
+        h("div", { class: "grid3" },
+          num({ k: "Aa", title: "Size — typed: all the same; dragged: each by the same amount", get: G("font-size"), set: SA("font-size", "Size"), rel: sizeRel, min: 4 }),
+          num({ k: "↔", title: "Letter spacing (em)", get: G("letter-spacing"), set: SA("letter-spacing", "Tracking"), rel: RA("letter-spacing", "Tracking", "em"), unit: "em", step: 0.01, dec: 2 }),
+          num({ k: "↕", title: "Line height (× the size)", get: G("line-height"), set: SA("line-height", "Leading"), rel: RA("line-height", "Leading", ""), unit: "", step: 0.05, dec: 2, min: 0.5 })),
+        h("div", { class: "row" }, linkBtn("text", "Size and box scale together")),
+        h("div", { class: "row" }, h("span", { class: "lab" }, "Weight"), h("div", { class: "slider", style: { flex: 1 } }, range, out)),
+        h("div", { class: "row" }, h("span", { class: "lab" }, "Align"),
+          h("div", { style: { flex: 1 } }, buttons([
+            { v: "left", t: "Left", svg: "M2.5 4h11M2.5 7h7M2.5 10h11M2.5 13h7", match: (c) => c === "left" || c === "start" },
+            { v: "center", t: "Centre", svg: "M2.5 4h11M4.5 7h7M2.5 10h11M4.5 13h7", match: (c) => c === "center" },
+            { v: "right", t: "Right", svg: "M2.5 4h11M6.5 7h7M2.5 10h11M6.5 13h7", match: (c) => c === "right" || c === "end" },
+            { v: "justify", t: "Justify", svg: "M2.5 4h11M2.5 7h11M2.5 10h11M2.5 13h11", match: (c) => c === "justify" }
+          ], G("text-align")(), pick("text-align", "Align")))),
+        h("div", { class: "row" }, h("span", { class: "lab" }, "Case"),
+          h("div", { style: { flex: 1 } }, buttons([
+            { v: "none", l: "As typed", t: "As typed", match: (c) => c === "none" },
+            { v: "uppercase", l: "AB", t: "Upper case", match: (c) => c === "uppercase" },
+            { v: "lowercase", l: "ab", t: "Lower case", match: (c) => c === "lowercase" },
+            { v: "capitalize", l: "Ab", t: "Title case", match: (c) => c === "capitalize" }
+          ], G("text-transform")(), pick("text-transform", "Case")))),
+        h("div", { class: "row" }, h("span", { class: "lab" }, "Style"),
+          h("div", { style: { flex: 1 } }, buttons([
+            { v: "normal", l: "Upright", t: "Upright", match: (c) => c === "normal" },
+            { v: "italic", l: "Italic", t: "Italic", match: (c) => c === "italic" }
+          ], G("font-style")(), pick("font-style", "Italic")))),
+        colorField({ label: "Colour", get: G("color"), set: SA("color", "Colour"), allowNone: false })
+      ], () => ed.styleMany(els.map((el) => ({ el, props: { "font-size": null, "font-weight": null, "letter-spacing": null, "line-height": null,
+        "text-transform": null, "text-align": null, "font-style": null, color: null } })), { label: "Reset type" })));
+    }
+
+    // THE PICTURE, only if every one of them is one
+    if (allMedia) {
+      const fitChild = (el) => el.matches(".pcard-media") ? ".pcard-still, .pcard-vid" : ".fig-in > img, .fig-in > video";
+      const fitCur = (() => { const v = els.map((el) => ed.read(el, "object-fit", fitChild(el))); return { value: v.every((x) => x.value === v[0].value) ? v[0].value : undefined, computed: v[0].computed }; })();
+      const shapeChild = (el) => el.matches("figure.fig") ? "> .fig-in" : "";
+      const shapes = [["", "Original"], ["16 / 9", "16:9"], ["3 / 2", "3:2"], ["4 / 3", "4:3"], ["1 / 1", "1:1"], ["3 / 4", "3:4"], ["9 / 16", "9:16"]];
+      const selEl = h("select", { style: { flex: 1, padding: "4px", border: "1px solid var(--line2)", borderRadius: "5px", background: "#fff" },
+        onchange: (e) => ed.styleMany(els.map((el) => ({ el, props: { "aspect-ratio": e.target.value || null }, child: shapeChild(el) })), { label: "Shape" }) },
+        shapes.map(([v, l]) => h("option", { value: v }, l)));
+      const ars = els.map((el) => ed.read(el, "aspect-ratio", shapeChild(el) || undefined).value);
+      selEl.value = ars.every((a) => a === ars[0]) && shapes.some(([v]) => v === ars[0]) ? ars[0] || "" : "";
+      parts.push(sec("Pictures", [
+        h("div", { class: "row" }, h("span", { class: "lab" }, "Fit"),
+          h("div", { style: { flex: 1 } }, buttons([
+            { v: "cover", l: "Fill & crop", t: "Fill the box, crop what does not fit", match: (c) => c === "cover" },
+            { v: "contain", l: "Show all", t: "Show the whole picture", match: (c) => c === "contain" }
+          ], fitCur, (v) => ed.styleMany(els.map((el) => ({ el, props: { "object-fit": v }, child: fitChild(el) })), { label: "Fit" })))),
+        h("div", { class: "row" }, h("span", { class: "lab" }, "Shape"), selEl),
+        h("div", { class: "note", style: { margin: "8px 0 0" } }, "Replacing a picture, and its focal point, are one at a time: select just that one.")]));
+    }
+
+    // FILL
+    const op = G("opacity")();
+    const ov = Math.round((parseFloat(op.value ?? op.computed) || 1) * 100);
+    const orange = h("input", { type: "range", min: 0, max: 100, value: ov });
+    const oout = h("output", {}, op.mixed ? "—" : ov + "%");
+    const opPairs = (final) => els.map((el) => ({ el, props: { opacity: final && orange.value === "100" ? null : String(orange.value / 100) } }));
+    orange.addEventListener("pointerdown", () => ed.beginLive());
+    orange.addEventListener("input", () => { oout.textContent = orange.value + "%"; ed.styleMany(opPairs(false), { live: true }); });
+    orange.addEventListener("change", () => ed.endLiveMany("Opacity", opPairs(true)));
+    parts.push(sec("Fill", [
+      kinds.every((k) => k === "hole") ? null : colorField({ label: "Background", get: G("background-color"), set: SA("background-color", "Background") }),
+      h("div", { class: "row" }, h("span", { class: "lab" }, "Opacity"), h("div", { class: "slider", style: { flex: 1 } }, orange, oout))
+    ]));
+
+    parts.push(sec("Elements", [h("div", { class: "actions" },
+      h("button", { class: "danger", onclick: () => ed.remove(), title: "⌫" }, `Delete ${els.length}`),
+      h("button", { class: "ghost", onclick: () => resetAll(els) }, "Reset styles on all"),
+      h("button", { class: "ghost", onclick: () => ed.select(null) }, "Deselect"))]));
+
+    mount.replaceChildren(...parts);
+  }
+
+  /** one element (at the inspector's scope) or several (each on its own), as ONE step */
+  function resetAll(which) {
+    const many = Array.isArray(which);
+    const sels = (many ? which : [which]).map((el) => ed.peek(el, many ? "el" : ed.scope)).filter(Boolean);
+    if (!sels.length) return toast(many ? "Nothing is set on these at this size." : "Nothing is set on this element at this scope.");
+    ed.store.global(many ? `Reset styles on ${sels.length}` : "Reset styles", (st) => {
       for (const s of Object.keys(st.styles.rules)) {
-        if (s === sel || s.startsWith(sel + " ")) {
+        if (sels.some((sel) => s === sel || s.startsWith(sel + " "))) {
           delete st.styles.rules[s][ed.bp];
           if (!Object.keys(st.styles.rules[s]).length) delete st.styles.rules[s];
         }
@@ -552,7 +849,7 @@ export function createInspector(ed, mount) {
     apply();
   }
 
-  const pageName = () => ({ home: "Summary", experience: "Experience", projects: "Projects", contact: "Contact" }[ed.page]
+  const pageName = () => ({ home: "Home", experience: "Experience", projects: "Projects", contact: "Contact" }[ed.page]
     || (ed.page?.startsWith("project:") ? ed.page.slice(8) : ed.page));
 
   return { render, closePop };

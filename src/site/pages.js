@@ -12,9 +12,11 @@
 import * as iclicker from "./pages/iclicker.js";
 import * as usbProvisioning from "./pages/usb-provisioning.js";
 import * as motionGraphics from "./pages/motion-graphics.js";
+import * as rcmpEncryption from "./pages/rcmp-encryption.js";
 import { renderDeckPage } from "./pages/deck.js";
 import { mountCards } from "./cards.js";
 import { mountMedia } from "./media.js";
+export { afterArrival } from "../utils/arrival.js";
 
 // the three deck cards that are not the summary. The summary ships as markup in
 // index.html so the first paint needs no JS, and the router captures it once.
@@ -22,9 +24,15 @@ export { renderDeckPage };
 
 // A project with its own sheet is registered here. Everything else falls back
 // to the shared chrome below, which says plainly that it is not printed yet.
-const SHEETS = { iclicker, "motion-graphics": motionGraphics, "usb-provisioning": usbProvisioning };
+const SHEETS = { iclicker, "motion-graphics": motionGraphics, "usb-provisioning": usbProvisioning,
+  "rcmp-encryption": rcmpEncryption };
 
 export function sheetFor(slug) { return SHEETS[slug] || null; }
+
+/** A move towards `route` has started: its sheet may fetch its code now. */
+export function prefetchPage(route) {
+  if (route?.name === "project") sheetFor(route.project.slug)?.prefetch?.();
+}
 
 /** Called after the router has committed a page. */
 export function mountPage(route, ctx) {

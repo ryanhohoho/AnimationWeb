@@ -19,9 +19,6 @@
 #doc[data-page="home"] [data-e="t-kxel"] { translate:176px 162px; }
 #doc[data-page="home"] [data-e="t-wxlk"] { translate:176px 176px; }
 #doc[data-page="home"] [data-e="t-zx0b"] { translate:176px 136px; }
-#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(1) { order:2; }
-#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(2) { order:1; }
-#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(3) { order:3; }
 
 /* @bp 860 */
 @media (max-width:860px) {

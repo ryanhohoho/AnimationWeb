@@ -6,18 +6,22 @@ as the only unprinted thing on it.
 
 ![The link card: bone paper with a rectangle cut out of it, and Mew standing in the hole in cerulean.](public/og.png)
 
-Four cards — summary, experience, projects, contact — reached from a small bar
-at the top, with three project sheets hanging off the projects card. The deck
-shape exists so the work survives being skimmed; the sheet it is cut from has not
-changed. Mew stays on the four cards.
+Four cards — home, experience, projects, contact — reached from a small bar at
+the top, with the project sheets hanging off the projects card. The deck shape
+exists so the work survives being skimmed; the sheet it is cut from has not
+changed. Mew is on Home, and nowhere else.
 
-One of the three sheets is not on the sheet at all: **experimental motion
+One of the four sheets is not on the sheet at all: **experimental motion
 graphics** is a showcase of short vertical works rendered live in the browser --
 a drifting wall of every one of them playing at once from one video, the
 longest first, a flower stepped through 21 techniques as you scroll, and the
 whole film they were cut from as the conclusion. A viewer opens out of any of
 them with the Photos app's gestures. It is dressed in the works' look rather
 than the site's.
+
+Another is locked: **rcmp encryption architecture**, the confidential other
+half of the USB tooling, says what the work was and what the role was, and
+marks the rest "This work is confidential" with a way to ask.
 
 Vite and Three.js. No framework, no CSS library, no component library. Real
 routes via the History API, because Mew is a live WebGL context with physics and
@@ -68,7 +72,7 @@ measured and thrown away.
 
 ## Not finished
 
-The three project sheets carry **placeholder prose** — the words have not had
+The project sheets carry **placeholder prose** — the words have not had
 their turn, including the motion-graphics page's process notes and its three
 behind-the-scenes slots. The USB and iClicker card media are placeholders too. Their FIGURES are not placeholders: the USB sheet plays a real
 recorded session and, beside it, the engraving generator's own interface running

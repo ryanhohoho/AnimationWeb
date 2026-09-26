@@ -12,13 +12,14 @@ import ATLAS_URL from "../assets/media/icon-atlas.png?url";
 const URL_ = ATLAS_URL || null;
 
 export const hasIconAtlas = !!URL_;
-export const CELLS = ["usb-provisioning","motion-graphics","iclicker"];
+export const CELLS = ["usb-provisioning","motion-graphics","rcmp-encryption","iclicker"];
 export const CELL_PX = 128;
 export const COVER = 0.82;
 
 import g0 from "../assets/media/glyph-usb-provisioning.png?url";
 import g1 from "../assets/media/glyph-motion-graphics.png?url";
-import g2 from "../assets/media/glyph-iclicker.png?url";
+import g2 from "../assets/media/glyph-rcmp-encryption.png?url";
+import g3 from "../assets/media/glyph-iclicker.png?url";
 
 /** the glyph plates, by slug -- the white icon you see at rest, and the CSS mask
     that punches the hole in the card it sits on.
@@ -32,7 +33,8 @@ import g2 from "../assets/media/glyph-iclicker.png?url";
 const GLYPHS = {
   "usb-provisioning": g0,
   "motion-graphics": g1,
-  "iclicker": g2
+  "rcmp-encryption": g2,
+  "iclicker": g3
 };
 export const glyphUrl = (slug) => GLYPHS[slug] || null;
 

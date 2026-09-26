@@ -697,7 +697,7 @@ console.log("\n== a change of hash is not a change of page");
     `control: a popstate to another path still navigates (${commits - before} commit, on ${page})`);
 }
 
-console.log("\n== mew is on the four cards, and not on the project sheets");
+console.log("\n== mew is on home, and nowhere else");
 {
   const { createMewPresence } = await import("../src/site/mewPresence.js");
   const { PROJECTS } = await import("../src/site/projects.js");
@@ -708,14 +708,16 @@ console.log("\n== mew is on the four cards, and not on the project sheets");
     routes.forEach((n) => on(n === "project" ? { name: n, project: PROJECTS[0] } : { name: n }));
     return { said, boots };
   };
-  const a = run(["home", "projects", "project", "project", "projects", "contact"]);
-  ok(a.said.join() === "false,false,true,true,false,false",
-    `she is told she is away on each project sheet and back on each card (${a.said.join()})`);
+  const a = run(["home", "experience", "projects", "project", "contact", "home"]);
+  ok(a.said.join() === "false,true,true,true,true,false",
+    `she is away on every page but home, and back on home (${a.said.join()})`);
   ok(a.boots.length === 1 && a.boots[0].enter === false,
-    "the engine boots ONCE, on the first card, where she simply appears as she always has");
-  const b = run(["project", "project", "projects", "home"]);
+    "the engine boots ONCE, on home, where she simply appears as she always has");
+  const b = run(["project", "experience", "projects", "contact", "home"]);
   ok(b.boots.length === 1 && b.boots[0].enter === true,
-    "a visit that starts on a project sheet boots her on the first card, entering from the side");
+    "a visit that starts anywhere else fetches nothing until home, and she enters from the side");
+  const noHome = run(["experience", "projects", "project", "contact"]);
+  ok(noHome.boots.length === 0, "a visit that never reaches home never fetches the engine");
   // THE PAIRED CONTROL: the same visit with less motion asked for never boots
   // her, so the boots above are the rule and not a module that always boots
   const c = run(["project", "projects", "home"], true);

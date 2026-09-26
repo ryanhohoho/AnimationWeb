@@ -140,12 +140,20 @@ export function html() {
   </section>`;
 }
 
+// the page's code is fetched as soon as a move towards it STARTS, so it is
+// usually in hand by the time the paper closes over the page (pages.js)
+let code = null;
+export function prefetch() {
+  code ||= import("../motionPage.js");
+  return code;
+}
+
 export function mount(ctx) {
   const root = document.querySelector(".mg");
   if (!root) return;
   let gone = false;
   ctx.scope?.add(() => { gone = true; });
-  import("../motionPage.js")
+  prefetch()
     .then((m) => { if (!gone && root.isConnected) m.mountMotion(ctx, root); })
-    .catch((err) => console.error("[motion] page failed to mount:", err));
+    .catch((err) => { code = null; console.error("[motion] page failed to mount:", err); });
 }

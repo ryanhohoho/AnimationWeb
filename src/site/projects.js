@@ -2,9 +2,11 @@
 //
 // ORDER
 // -----
-// The gate shows them in this order and the order is a judgement: the shipped,
-// commissioned tool that is in daily use goes first, the ongoing engine second,
-// the case study last. Nothing here is sorted by date.
+// The projects card shows them in this order, and so do the arrow keys on a
+// sheet, and the order is the owner's (2026-09-26): the motion graphics first,
+// then the USB tooling and its confidential other half, then the case study.
+// It was set in the editor as CSS `order` on the list at first, which the
+// arrow keys could not see; it lives here now. Nothing is sorted by date.
 //
 // THE IDENTITY RULE
 // -----------------
@@ -21,8 +23,31 @@
 
 export const PROJECTS = [
   {
-    slug: "usb-provisioning",
+    // "let me be a flower" (../VisualAudialExperience), shown by instruction as
+    // a page named for what it is rather than for the film: no title of its own
+    // on the site, every scene named instead (pages/motion-graphics.js). It took
+    // closet's slot, which was scrapped on 2026-09-25.
+    slug: "motion-graphics",
     n: "01",
+    title: "experimental motion graphics",
+    sub: "a vertical visual-audio piece · rendered live in the browser",
+    kind: "MOTION GRAPHICS · WEBGL + WEB AUDIO",
+    year: "2026",
+    // PLACEHOLDER PROSE, like the other two: the owner rewrites it in the editor
+    line: "A vertical piece for phones, every frame drawn live by its own shader and scored by code — shown here as each of its scenes, and the whole of it.",
+    skills: "WEBGL2 · GLSL · RAYMARCHING · POST-EFFECT CHAINS · WEB AUDIO · BLENDER CYCLES · PHOTOGRAMMETRY · OPENCV TRACKING",
+    // THE TWO INKS THE PIECE ENGRAVES IN. Its eye and its flower are cut as burin
+    // lines in ultramarine with a second ink in crimson laid out of register on
+    // the wet rims (iris.js, story.js ENGRAVE): the piece's own pair, and the only
+    // red this site prints.
+    inkA: "#1F24D6",   // ultramarine
+    ink: "#B3122E",    // crimson
+    inkName: "ULTRAMARINE&nbsp;+&nbsp;CRIMSON",
+    inkWhy: "the two inks the piece engraves its eye and its flower in"
+  },
+  {
+    slug: "usb-provisioning",
+    n: "02",
     title: "glyph auto detection engine",
     sub: "batch engraving + encryption tooling · rcmp",
     kind: "SYSTEMS TOOLING · COMMISSIONED",
@@ -41,31 +66,30 @@ export const PROJECTS = [
     inkWhy: "the colour of the hardware it writes to"
   },
   {
-    // "let me be a flower" (../VisualAudialExperience), shown by instruction as
-    // a page named for what it is rather than for the film: no title of its own
-    // on the site, every scene named instead (pages/motion-graphics.js). It took
-    // closet's slot, which was scrapped on 2026-09-25.
-    slug: "motion-graphics",
-    n: "02",
-    title: "experimental motion graphics",
-    sub: "a vertical visual-audio piece · rendered live in the browser",
-    kind: "MOTION GRAPHICS · WEBGL + WEB AUDIO",
-    year: "2026",
-    // PLACEHOLDER PROSE, like the other two: the owner rewrites it in the editor
-    line: "A vertical piece for phones, every frame drawn live by its own shader and scored by code — shown here as each of its scenes, and the whole of it.",
-    skills: "WEBGL2 · GLSL · RAYMARCHING · POST-EFFECT CHAINS · WEB AUDIO · BLENDER CYCLES · PHOTOGRAMMETRY · OPENCV TRACKING",
-    // THE TWO INKS THE PIECE ENGRAVES IN. Its eye and its flower are cut as burin
-    // lines in ultramarine with a second ink in crimson laid out of register on
-    // the wet rims (iris.js, story.js ENGRAVE): the piece's own pair, and the only
-    // red this site prints.
-    inkA: "#1F24D6",   // ultramarine
-    ink: "#B3122E",    // crimson
-    inkName: "ULTRAMARINE&nbsp;+&nbsp;CRIMSON",
-    inkWhy: "the two inks the piece engraves its eye and its flower in"
+    // CONFIDENTIAL BY DESIGN (2026-09-26). The encryption side of the same RCMP
+    // pipeline the USB sheet shows the engraving side of: the page says what
+    // the work was and what the role was, and locks the rest, the way a studio
+    // portfolio marks work under NDA (pages/rcmp-encryption.js). Every fact on
+    // it is one the site already states elsewhere; nothing new is disclosed.
+    slug: "rcmp-encryption",
+    n: "03",
+    title: "rcmp encryption architecture",
+    sub: "drive encryption at fleet scale · rcmp · confidential",
+    kind: "SECURITY ENGINEERING · CONFIDENTIAL",
+    year: "2024",
+    // PLACEHOLDER PROSE, drafted from the site's own copy: the owner rewrites it
+    line: "The encryption side of an RCMP hardware pipeline: drives formatted and BitLocker-encrypted unattended, several thousand of them. The architecture itself is confidential.",
+    skills: "POWERSHELL · BITLOCKER / XTS-AES · WINDOWS STORAGE APIS · OPERATOR SOP",
+    // THE USB SHEET'S NAVY, WITH THE DETAIL PRINTED OUT: the same family as
+    // the work beside it, and a cool redaction grey as the second ink
+    inkA: "#16305C",   // deep navy
+    ink: "#7D8594",    // redaction grey
+    inkName: "NAVY&nbsp;+&nbsp;GREY",
+    inkWhy: "the USB sheet's navy, with the detail printed out"
   },
   {
     slug: "iclicker",
-    n: "03",
+    n: "04",
     title: "iclicker",
     sub: "classroom participation · security case study",
     kind: "SECURITY · CASE STUDY",

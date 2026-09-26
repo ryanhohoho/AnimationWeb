@@ -118,7 +118,7 @@ export function createAmbient(canvas) {
   };
   const tA = tex(), tB = tex();
 
-  let src = null, mix = 1, mixFrom = 0, last = 0, raf = 0, alive = true;
+  let src = null, mix = 1, mixFrom = 0, last = 0, raf = 0, alive = true, paused = false;
 
   function size() {
     const w = Math.max(1, Math.ceil(window.innerWidth / SCALE)), h = Math.max(1, Math.ceil(window.innerHeight / SCALE));
@@ -157,12 +157,12 @@ export function createAmbient(canvas) {
   const settled = () => isStill(src) && mix >= 1 && src.complete && src.naturalWidth > 0;
   function frame(now) {
     raf = 0;
-    if (!alive) return;
+    if (!alive || paused) return;
     if (!document.hidden && now - last >= 1000 / FPS - 2) { last = now; draw(now); }
     if (settled()) return;
     if (!reducedMotion) raf = requestAnimationFrame(frame);
   }
-  const kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
+  const kick = () => { if (!raf && !paused) raf = requestAnimationFrame(frame); };
 
   size(); kick();
   const onResize = () => { size(); if (reducedMotion) kick(); };
@@ -184,6 +184,9 @@ export function createAmbient(canvas) {
       if (isStill(el) && !el.complete) el.addEventListener("load", () => { if (src === el) kick(); }, { once: true });
       kick();
     },
+    /** hold the last picture and draw nothing until resume() (a phone's open scene covers it) */
+    pause() { paused = true; cancelAnimationFrame(raf); raf = 0; },
+    resume() { if (!paused) return; paused = false; kick(); },
     dispose() {
       alive = false;
       cancelAnimationFrame(raf);

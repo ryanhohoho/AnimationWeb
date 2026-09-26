@@ -16,6 +16,7 @@ import { mountSheet } from "./motionSheet.js";
 import { mountBloom } from "./motionBloom.js";
 import { mountViewer } from "./motionViewer.js";
 import { createAmbient } from "./motionAmbient.js";
+import { afterArrival } from "../utils/arrival.js";
 
 const esc = (v) => String(v ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -119,36 +120,49 @@ function mountGround(scope, root, ambient, bloom) {
 }
 
 export function mountMotion(ctx, root) {
-  // the credits, printed into the list the markup left for them
+  // ── AT ONCE: what the reader sees as the page lands ──────────────────────
+  // the credits, printed into the list the markup left for them, and the
+  // wall in its columns -- DOM moves and custom properties, cheap, and done
+  // before the page is uncovered so nothing jumps after it is
   const list = root.querySelector("[data-credits]");
   if (list) {
     list.innerHTML = CREDITS.map((c) => `
           <li>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.work)}</a>` : esc(c.work)} <span>${esc(c.author)} · ${esc(c.licence)}</span></li>`).join("");
   }
-  // the wall first: the tiles move into their columns before anything
-  // starts watching or drawing them
   mountWalls(ctx.scope, root);
-  const ambient = createAmbient(root.querySelector(".mg-ground"));
-  ctx.scope?.add(() => ambient.dispose());
-  const sheet = mountSheet(ctx.scope, root);
-  const bloom = mountBloom(ctx.scope, root);
-  const ground = mountGround(ctx.scope, root, ambient, bloom);
 
-  // THE VIEWER PAGES WITHIN WHAT YOU OPENED IT FROM, the way Photos pages
-  // within the album: a tile on the wall pages through the wall, the flower
-  // through its 21 cuts in order, and the film is on its own.
-  const tileOf = (id) => root.querySelector(`.mg-wall [data-scene="${CSS.escape(id)}"] .mg-frame-cut`);
-  const wallIds = [...new Set([...worksOn("top"), ...worksOn("mix")].map((w) => w.id))].filter((id) => CLIPS[id]);
-  const lists = {
-    works: { ids: wallIds, cellOf: tileOf, reveal: (id) => tileOf(id)?.scrollIntoView({ block: "nearest", behavior: "instant" }) },
-    flower: bloom && { ids: bloom.ids, cellOf: () => bloom.frame(), reveal: (id) => bloom.reveal(id) },
-    film: { ids: [FILM.id], cellOf: () => root.querySelector(".mg-end .mg-frame-cut"), reveal: () => {} }
-  };
-  mountViewer(ctx.scope, root, {
-    lists,
-    ambient,
-    cover(on) { sheet.cover(on); if (on) bloom?.pause(); else bloom?.resume(); },
-    // closed: the page's ground goes back to rest, not to the work just seen
-    closed: () => ground.rest()
+  // ── ONCE IT HAS ARRIVED: everything that costs ───────────────────────────
+  // a WebGL context and its shader, the tiles' decoder and their drawing, the
+  // flower's clip. Until then the tiles are black frames in their boxes, which
+  // under the closing paper is all they need to be.
+  afterArrival(ctx, () => {
+    const ambient = createAmbient(root.querySelector(".mg-ground"));
+    ctx.scope?.add(() => ambient.dispose());
+    const sheet = mountSheet(ctx.scope, root);
+    const bloom = mountBloom(ctx.scope, root);
+    const ground = mountGround(ctx.scope, root, ambient, bloom);
+
+    // THE VIEWER PAGES WITHIN WHAT YOU OPENED IT FROM, the way Photos pages
+    // within the album: a tile on the wall pages through the wall, the flower
+    // through its 21 cuts in order, and the film is on its own.
+    const tileOf = (id) => root.querySelector(`.mg-wall [data-scene="${CSS.escape(id)}"] .mg-frame-cut`);
+    const wallIds = [...new Set([...worksOn("top"), ...worksOn("mix")].map((w) => w.id))].filter((id) => CLIPS[id]);
+    const lists = {
+      works: { ids: wallIds, cellOf: tileOf, reveal: (id) => tileOf(id)?.scrollIntoView({ block: "nearest", behavior: "instant" }) },
+      flower: bloom && { ids: bloom.ids, cellOf: () => bloom.frame(), reveal: (id) => bloom.reveal(id) },
+      film: { ids: [FILM.id], cellOf: () => root.querySelector(".mg-end .mg-frame-cut"), reveal: () => {} }
+    };
+    mountViewer(ctx.scope, root, {
+      lists,
+      ambient,
+      cover(on) { sheet.cover(on); if (on) bloom?.pause(); else bloom?.resume(); },
+      // closed: the page's ground goes back to rest, not to the work just seen
+      closed: () => ground.rest()
+    });
+
+    // ── AND AS THE NEXT MOVE STARTS: stop ──────────────────────────────────
+    // the page is about to be covered; its video, tiles, clip and ground
+    // would only be taking frames from the transition that covers them
+    ctx.onLeave?.(() => { sheet.cover(true); bloom?.pause(); ambient.pause(); });
   });
 }

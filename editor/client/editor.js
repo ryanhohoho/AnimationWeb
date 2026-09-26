@@ -16,7 +16,8 @@ export function createEditor({ store, frame }) {
     store, frame,
     bp: "base",
     scope: "el",
-    sel: null,                       // { el, loc }
+    sel: null,                       // { el, loc } when exactly ONE thing is selected
+    sels: [],                        // [{ el, loc }] -- everything selected, in the order it was picked
     hover: null,
     editing: null,                   // the element being typed into
     get ctx() { return frame.ctx; },
@@ -28,18 +29,53 @@ export function createEditor({ store, frame }) {
   };
 
   // ── selection ──────────────────────────────────────────────────────────
-  ed.select = (el) => {
+  // ONE LIST, AND ONE SHORTHAND. `sels` is everything selected; `sel` is set
+  // only when that is exactly one thing, because the verbs that make sense on
+  // one element (edit its words, replace its picture, duplicate it) read it,
+  // and they must not quietly act on the first of five.
+  //
+  // A selection never holds an element AND something inside it: moving both
+  // would move the inner one twice. The outer one wins.
+  function setSels(els) {
     if (ed.editing) ed.finishText();
-    if (!el || lockReason(el)) { ed.sel = null; ed.emit("sel"); return; }
-    ed.sel = { el, loc: locate(el, ed.doc) };
+    const list = [];
+    for (const el of els) if (el && !lockReason(el) && !list.includes(el)) list.push(el);
+    const kept = list.filter((el) => !list.some((o) => o !== el && o.contains(el)));
+    ed.sels = kept.map((el) => ({ el, loc: locate(el, ed.doc) }));
+    ed.sel = ed.sels.length === 1 ? ed.sels[0] : null;
     ed.emit("sel");
-  };
+  }
+  ed.select = (el) => setSels(el ? [el] : []);
+  ed.selectMany = (els) => setSels(els);
+  /** shift: add to what is selected; ⌘/Ctrl-shift: take it out */
+  ed.addToSelection = (els) => setSels([...ed.selEls(), ...[els].flat()]);
+  ed.removeFromSelection = (els) => { const out = [els].flat(); setSels(ed.selEls().filter((e) => !out.includes(e))); };
+  ed.selEls = () => ed.sels.map((s) => s.el);
+  ed.isSelected = (el) => ed.sels.some((s) => s.el === el);
   /** after a re-render, find the selection again or let it go */
   ed.reselect = () => {
-    if (!ed.sel) return;
-    const el = find(ed.sel.loc, ed.doc);
-    ed.sel = el ? { el, loc: ed.sel.loc } : null;
+    if (!ed.sels.length) return;
+    const back = ed.sels.map((s) => ({ el: find(s.loc, ed.doc), loc: s.loc })).filter((s) => s.el);
+    ed.sels = back;
+    ed.sel = back.length === 1 ? back[0] : null;
     ed.emit("sel");
+  };
+
+  // ── linked dimensions ──────────────────────────────────────────────────
+  // TEXT: size and box scale together (on by default, by instruction): every
+  // handle, and W or Aa typed in the inspector, scales the type so its lines
+  // break where they did. Off, the side handles and W re-wrap the lines as
+  // before. BOX: width and height keep their ratio. Remembered in this
+  // browser, not saved into the site -- they are how you edit, not what.
+  const LINK_KEY = "ed-link";
+  ed.link = (() => {
+    try { return { text: true, box: false, ...JSON.parse(localStorage.getItem(LINK_KEY) || "{}") }; }
+    catch { return { text: true, box: false }; }
+  })();
+  ed.setLink = (kind, on) => {
+    ed.link[kind] = on;
+    try { localStorage.setItem(LINK_KEY, JSON.stringify(ed.link)); } catch {}
+    ed.emit("link");
   };
 
   // ── where a style change goes ──────────────────────────────────────────
@@ -130,6 +166,30 @@ export function createEditor({ store, frame }) {
 
   const rerender = () => { frame.renderCss(store.styles); ed.emit("style"); };
   ed.rerender = rerender;
+
+  /**
+   * MANY ELEMENTS, ONE STEP: [{ el, props, child }] -> one undo step (or one
+   * live update). Always "this element only": a multiple selection is a set
+   * of elements, and widening each to its class would reach elements nobody
+   * selected.
+   */
+  ed.styleMany = (pairs, { label = "Style", live = false } = {}) => {
+    const rules = [];
+    for (const { el, props, child = "" } of pairs) {
+      const base = ed.target(el, "el");
+      if (!base) { toast(`${el.tagName.toLowerCase()} cannot be styled on its own, so it was left out.`, true); continue; }
+      rules.push([under(base, child), props]);
+    }
+    if (!rules.length) return false;
+    const mutate = (st) => { for (const [sel, props] of rules) for (const [p, v] of Object.entries(props)) setProp(st.styles, sel, ed.bp, p, v); };
+    if (live) store.live(mutate, rerender);
+    else store.global(label, mutate, rerender);
+    return true;
+  };
+  ed.endLiveMany = (label, pairs) => {
+    if (liveBefore) { const before = liveBefore; liveBefore = null; restore(before); }
+    return ed.styleMany(pairs, { label });
+  };
 
   /** props: { prop: value | null }. One undo step unless `live`. */
   ed.style = (el, props, { label = "Style", live = false, child = "" } = {}) => {
@@ -471,6 +531,7 @@ export function createEditor({ store, frame }) {
   };
 
   ed.remove = async () => {
+    if (ed.sels.length > 1) return removeMany();
     const el = ed.sel?.el; if (!el) return;
     if (el.closest("[data-usb-stage]")) return;
     if (el.closest("[data-ed-copy]")) return toast("This copy is not saved yet; undo the duplicate instead (⌘Z).", true);
@@ -504,6 +565,48 @@ export function createEditor({ store, frame }) {
     ed.select(null);
     ed.afterPage();
   };
+
+  /**
+   * Several at once: one question, then each goes the way it would alone --
+   * an unsaved new element simply disappears, an item of a list leaves that
+   * list, anything else leaves its source. FIG. 2 and unsaved copies are left
+   * where they are and said so.
+   */
+  async function removeMany() {
+    const els = ed.selEls().filter((el) => !el.closest("[data-usb-stage]") && !el.closest("[data-ed-copy]"));
+    if (!els.length) return;
+    const skipped = ed.sels.length - els.length;
+    const choice = await modal(`Delete ${els.length} elements?`, h("div", {},
+      "Each is removed from the source it came from: an item of a list from that list, and anything in a template several pages share from all of those pages.",
+      h("p", { style: { marginTop: "8px" } }, "Or hide them on this page only (at this screen size and smaller), which is reversible in the inspector."),
+      skipped ? h("p", { style: { marginTop: "8px" } }, `${skipped} selected ${skipped === 1 ? "element is" : "elements are"} left alone (unsaved copies, or FIG. 2).`) : null),
+      [{ label: "Cancel", value: null }, { label: "Hide here only", value: "hide" }, { label: `Delete ${els.length}`, kind: "danger", value: "src" }]);
+    if (!choice) return;
+    if (choice === "hide") {
+      ed.styleMany(els.map((el) => ({ el, props: { display: "none" } })), { label: `Hide ${els.length}` });
+      ed.select(null);
+      return;
+    }
+    for (const el of els) {
+      const newCmd = el.closest("[data-ed-new]") && store.done.find((c) => c.newId === el.closest("[data-ed-new]").dataset.e);
+      const count = repeats(el, ed.doc);
+      const loc = locate(el, ed.doc);
+      const op = newCmd ? null : { type: "delete", esrc: el.dataset.esrc || null, count, texts: leafTexts(el, ed.win), page: ed.page };
+      let parent = null, next = null, node = null;
+      store.page({
+        page: ed.page, label: "Delete",
+        apply: (doc) => {
+          node = find(loc, doc); if (!node) return;
+          parent = node.parentElement; next = node.nextSibling; node.remove();
+          if (newCmd) newCmd.dead = true;
+        },
+        revert: () => { if (node && parent) parent.insertBefore(node, next); if (newCmd) newCmd.dead = false; },
+        op
+      }, ed.ctx);
+    }
+    ed.select(null);
+    ed.afterPage();
+  }
 
   /** keep every unsaved insert's markup in step with what is on screen */
   ed.afterPage = () => {

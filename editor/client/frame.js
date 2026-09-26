@@ -89,7 +89,10 @@ export function createFrame({ iframe, onReady, onPage, onEvent }) {
         // cannot turn the page.
         if (editing && type.startsWith("key")) return;
         onEvent?.(e, ctx);
-        if (type === "click" || type === "auxclick" || type === "contextmenu" || type === "dragstart") {
+        // mousedown too: its default is to start a text selection, and a drag
+        // on the canvas -- a move, a resize, a selection box -- then painted
+        // the page's words blue as it went. Words being typed into keep it.
+        if (type === "click" || type === "auxclick" || type === "contextmenu" || type === "dragstart" || type === "mousedown") {
           if (!editing) e.preventDefault();
         }
         e.stopImmediatePropagation();

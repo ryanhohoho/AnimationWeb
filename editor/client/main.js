@@ -46,7 +46,7 @@ frame.applyPalette(store.palette, store.tokens, store.inks);
 
 // ── the pages ──────────────────────────────────────────────────────────────
 const PAGES = [
-  { path: "/", key: "home", label: "Summary" },
+  { path: "/", key: "home", label: "Home" },
   { path: "/experience", key: "experience", label: "Experience" },
   { path: "/projects", key: "projects", label: "Projects" },
   { path: "/contact", key: "contact", label: "Contact" },
@@ -119,7 +119,8 @@ function refresh() {
     $("undo").disabled = !store.canUndo();
     $("redo").disabled = !store.canRedo();
     const s = ed.sel?.el;
-    $("crumbs").textContent = s ? `${frame.ctx.page} › ${s.dataset.e ? "#" + s.dataset.e : s.tagName.toLowerCase()} ${[...s.classList].map((c) => "." + c).join("")}` : frame.ctx.page || "";
+    $("crumbs").textContent = ed.sels.length > 1 ? `${frame.ctx.page} › ${ed.sels.length} elements`
+      : s ? `${frame.ctx.page} › ${s.dataset.e ? "#" + s.dataset.e : s.tagName.toLowerCase()} ${[...s.classList].map((c) => "." + c).join("")}` : frame.ctx.page || "";
   });
 }
 ed.on(refresh);
@@ -133,14 +134,20 @@ $("redo").onclick = redo;
 
 let nudgeT = 0;
 function nudge(dx, dy) {
-  const el = ed.sel?.el; if (!el) return;
-  const [x, y] = ed.translateOf(el);
-  const v = `${x + dx}px ${y + dy}px`;
-  // consecutive nudges are one undo step
+  const els = ed.selEls(); if (!els.length) return;
+  // every selected element by the same step; consecutive nudges are one undo step
+  const pairs = els.map((el) => {
+    const [x, y] = ed.translateOf(el);
+    return { el, props: { translate: x + dx === 0 && y + dy === 0 ? null : `${x + dx}px ${y + dy}px` } };
+  });
   if (!ed.living()) ed.beginLive();
-  ed.style(el, { translate: v }, { live: true });
+  if (els.length === 1) ed.style(els[0], pairs[0].props, { live: true });
+  else ed.styleMany(pairs, { live: true });
   clearTimeout(nudgeT);
-  nudgeT = setTimeout(() => ed.endLive("Nudge", el, { translate: x + dx === 0 && y + dy === 0 ? null : v }), 700);
+  nudgeT = setTimeout(() => {
+    if (els.length === 1) ed.endLive("Nudge", els[0], pairs[0].props);
+    else ed.endLiveMany(`Nudge ${els.length}`, pairs);
+  }, 700);
 }
 
 function onKey(e) {
@@ -153,11 +160,11 @@ function onKey(e) {
   if (mod && k.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
   if (mod && k.toLowerCase() === "s") { e.preventDefault(); save(); return; }
   if (inField) return;
-  if (mod && k.toLowerCase() === "d") { e.preventDefault(); ed.duplicate(); return; }
-  if (!ed.sel) return;
+  if (mod && k.toLowerCase() === "d") { e.preventDefault(); if (ed.sels.length > 1) toast("Duplicate one element at a time."); else ed.duplicate(); return; }
+  if (!ed.sels.length) return;
   if (k === "Escape") { ed.select(null); return; }
   if (k === "Backspace" || k === "Delete") { e.preventDefault(); ed.remove(); return; }
-  if (k === "Enter") { e.preventDefault(); if (isTextLeaf(ed.sel.el, ed.win)) ed.editText(ed.sel.el); return; }
+  if (k === "Enter") { e.preventDefault(); if (ed.sel && isTextLeaf(ed.sel.el, ed.win)) ed.editText(ed.sel.el); return; }
   const step = e.shiftKey ? 10 : 1;
   if (k === "ArrowLeft") { e.preventDefault(); nudge(-step, 0); }
   if (k === "ArrowRight") { e.preventDefault(); nudge(step, 0); }

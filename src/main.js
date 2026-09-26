@@ -25,7 +25,7 @@ import { createScope } from "./utils/lifecycle.js";
 import { createDeck } from "./site/deck.js";
 import { createChrome } from "./site/chrome.js";
 import { createRouter } from "./site/router.js";
-import { mountPage } from "./site/pages.js";
+import { mountPage, prefetchPage } from "./site/pages.js";
 import { createMewPresence } from "./site/mewPresence.js";
 import "./styles/site.css";
 // AFTER site.css, and it has to be: it is the editor's output (editor/), a
@@ -60,7 +60,7 @@ siteScope.add(() => pageScope?.dispose());
 // below cannot destroy and rebuild them once per navigation.
 const chrome = createChrome({ scope: siteScope, deck, world });
 
-// ── THE ANIMAL IS ONLY ON THE FOUR CARDS ─────────────────────────────────
+// ── THE ANIMAL IS ONLY ON HOME ──────────────────────────────────────────
 // Declared before the router, because the router calls onPage for the first
 // page as it is created. The rule is site/mewPresence.js; how she leaves and
 // comes back is src/mew.js ("SHE IS NOT ON THE PROJECT SHEETS").
@@ -72,6 +72,25 @@ const mewFor = createMewPresence({
     .catch((err) => console.error("[mew] engine failed to boot:", err))
 });
 
+// ── WHEN A PAGE MAY SPEND, AND WHEN IT MUST STOP ──────────────────────────
+// A page is committed in the MIDDLE of a transition (the paper is closing over
+// it), so every page gets `settled`, a promise that resolves once the move has
+// finished drawing -- at once for the first page of a visit, which arrives
+// with nothing moving -- and `onLeave(fn)`, which runs as the next move
+// STARTS, while the page is still on screen and about to be covered. The
+// router says when (`navigating`, `settled`); this is where a page hears it.
+let arrive = null;
+let leaving = [];
+let firstPage = true;
+world.on("navigating", ({ to }) => {
+  const fns = leaving; leaving = [];
+  for (const fn of fns) { try { fn(); } catch (err) { console.error("[page] leaving:", err); } }
+  // and the page coming next may start fetching its code now, while the
+  // first half of the move is still drawing (pages.js, prefetchPage)
+  prefetchPage(to);
+});
+world.on("settled", () => { const r = arrive; arrive = null; r?.(); });
+
 createRouter({
   scope: siteScope,
   deck,
@@ -79,11 +98,15 @@ createRouter({
   onPage(route) {
     pageScope?.dispose();
     pageScope = createScope("page");
+    leaving = [];
+    let resolve;
+    const settled = new Promise((r) => { resolve = r; });
+    if (firstPage) { firstPage = false; resolve(); } else arrive = resolve;
     // `world` as well as `deck`: the USB sheet's second figure is a scroll
     // track, and it takes its progress from world.scroll.y rather than from
     // a listener of its own — one subscription, re-measured on `recollect`
     // like everything else positional.
-    mountPage(route, { scope: pageScope, deck, world });
+    mountPage(route, { scope: pageScope, deck, world, settled, onLeave: (fn) => leaving.push(fn) });
     // after mountPage: the cards clear the masked hole as they are disposed, and
     // on a project sheet the back arrow is the thing that claims it next
     chrome.setPage(route);
@@ -108,10 +131,10 @@ window.addEventListener("beforeprint", () => {
 
 // ── AND THE ANIMAL ARRIVES SECOND, which it now genuinely does ─────────────
 // Not awaited, not blocking, and its failure is caught: the sheet does not need
-// her to be a finished page. It is asked for by mewFor() above, on the first
-// page that is one of the four cards -- so a shared link to a project sheet,
-// where she is not, never downloads the 800 KB engine at all, and she arrives
-// from the side the first time the reader steps back onto the deck.
+// her to be a finished page. It is asked for by mewFor() above, the first time
+// the visit reaches Home -- so a shared link to any other page, where she is
+// not, never downloads the 800 KB engine at all, and she arrives from the side
+// the first time the reader comes Home.
 //
 // ...AND SHE DOES NOT ARRIVE AT ALL FOR A READER WHO ASKED FOR LESS MOTION.
 // She wanders, flees the pointer, flails and sprays: an autonomously moving

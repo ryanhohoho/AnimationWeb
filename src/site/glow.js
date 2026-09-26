@@ -361,8 +361,11 @@ export function createGlow({ host, root = document, reduced = false }) {
   const born = view.performance.now();
 
   const lit = () => previewing || progress > LIT_FROM;
+  // `held`: the page is being left, and the transition covering it wants
+  // every frame this would spend (usbDemo.js, onLeave)
+  let held = false;
   const shouldRun = () =>
-    !reduced && !lost && lit() && onScreen && !root.hidden && frameW > 0;
+    !held && !reduced && !lost && lit() && onScreen && !root.hidden && frameW > 0;
 
   function draw(now, pOverride, tOverride) {
     if (!gl || lost || frameW === 0) return;
@@ -445,6 +448,11 @@ export function createGlow({ host, root = document, reduced = false }) {
     preview(on) {
       previewing = !!on;
       kick();
+    },
+    /** Stop drawing (the page is being left); it holds its last frame. */
+    hold() {
+      held = true;
+      if (raf) { view.cancelAnimationFrame(raf); raf = 0; }
     },
     /** Read the colours again now. */
     refresh() {

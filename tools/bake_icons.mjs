@@ -59,6 +59,9 @@ const CELLS = [
   // 26-cell art grid, as white cells on black. The FILL only: with the sprite's
   // one-pixel outline ring included the silhouette read as a blob, not a flower
   { slug: "motion-graphics",  src: "tools/icons/icon-motion-graphics.png" },
+  // the confidential project: a padlock on the same kind of pixel grid as the
+  // flower (src/site/padlock.js, rendered by tools/bake_padlock.mjs)
+  { slug: "rcmp-encryption",  src: "tools/icons/icon-rcmp-encryption.png" },
   { slug: "iclicker",         src: "tools/icons/icon-iclicker.jpg" }
   // THERE IS NO "back" CELL ANY MORE. The back control was an arrow-shaped hole
   // and is now a disc of sky with a drawn arrow on top of it, because a hole

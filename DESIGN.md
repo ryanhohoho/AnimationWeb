@@ -38,7 +38,7 @@ The page is **two sheets of paper and one animal.**
 | **THE ANIMAL** | Mew. The one thing on the page that is not printed. | `src/engine/**` — untouched |
 
 It is a **deck of four cards**, one screen each, read with the arrow keys —
-summary, experience, projects, contact — with the three project sheets hanging
+home, experience, projects, contact — with the four project sheets hanging
 off card three as long documents.
 
 That is a change of shape, and the reason is worth stating plainly because it

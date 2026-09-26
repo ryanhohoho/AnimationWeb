@@ -202,10 +202,11 @@ export function bootMew({ world, deck, scope, enter = false }) {
     brain.enterFromSide();
   }
 
-  // ── SHE IS NOT ON THE PROJECT SHEETS ─────────────────────────────────────
-  // By instruction (2026-09-25): a project sheet is the work, and she stays on
-  // the four cards. Nothing new had to be written for the leaving or the coming
-  // back, because both already exist. Going IN is always a crossing, and the
+  // ── SHE IS ONLY ON HOME ──────────────────────────────────────────────────
+  // By instruction (2026-09-26; before that, 2026-09-25, the four cards):
+  // every other page is something to read, and she stays out of its way.
+  // Nothing new had to be written for the leaving or the coming back, because
+  // both already exist. Leaving Home is always a crossing, and the
   // crossing already sends her out of the window and holds the swap until she
   // is gone (router.js, mewIsClear). Coming BACK, the swap's `recollect` finds
   // her off screen and gives her the side entrance, the same one every new

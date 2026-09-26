@@ -2169,3 +2169,85 @@ test was not touched; the token moved back under it.
   previews on LinkedIn and others want absolute URLs); `npm audit` reports 4
   advisories, all in build-time tools (esbuild's dev server, postcss, nanoid),
   none in what visitors download.
+
+# 16 · Mew on Home only, a confidential sheet, and the phone lag (2026-09-26)
+
+After the site went live on Vercel. By instruction, one question round.
+
+### Mew is on Home, and nowhere else
+`mewPresence.js`: away on every route but `home`; the engine is fetched the
+first time a visit reaches Home. Crossings unchanged: leaving Home is always a
+crossing, so she leaves through it and sleeps; coming Home is a return, and she
+enters from the side. The nav says **Home** and the live region says "home —
+page loaded". Router test rewritten (authorised) with a control; checked
+headless: no engine request on a visit that starts on Experience, asleep on
+Experience and Contact, awake on Home.
+
+### RCMP encryption architecture (confidential)
+`pages/rcmp-encryption.js`, slot 03, between USB and iClicker. The owner's
+reference is liumichelle.com's NDA pages (a Year/Role/Org/With row, labelled
+sections, "This work is confidential. Please email me if you'd like to chat!");
+the look is this site's two-plate trim with a square hairline lock box and a
+pixel padlock (`site/padlock.js`, also the icon via `tools/bake_padlock.mjs`).
+Words drafted ONLY from facts the site already states; three capture slots
+(`rcmp-encryption-1..3`). Card: the USB still, blurred. Inks navy + grey.
+The projects' order moved from editor CSS `order` rules into `projects.js`
+(motion, USB, confidential, iClicker), which is also the arrow keys' order.
+
+### The phone lag
+Measured in headless Chrome on the real GPU, phone viewport, 4x CPU throttle
+(scratch harness, not in the repo), before → after:
+
+| navigation | worst frame DURING the transition |
+|---|---|
+| projects → USB | 408 ms (1.4 s of long tasks) → 25 ms |
+| projects → motion | 158 ms → 75 ms (the page swap itself, under full cover) |
+| home → projects | 159 ms → 44 ms (Mew is not fleeing it any more) |
+
+- **Arrival**: pages start WebGL, decoders and big modules after `settled`
+  (CLAUDE.md invariants). The USB demo's first render (~115 ms on an M2) now
+  happens on a still page; it is the vendored app's own path-building and
+  cannot be split from this side.
+- **The motion page** fetches its code as the move STARTS (`prefetchPage`),
+  lays the wall at commit, starts everything else on arrival, and stops its
+  tiles, clip and ground as the next move starts (`onLeave`). Tiles size from
+  the observer's rect instead of a layout per tile; columns lost will-change.
+- **The viewer**: the endless-seek bug (Safari rounds a seek; the old test
+  never came true) fixed; a scrub or wheel resumes play if the scene was
+  playing; a fresh `<video>` per scene; the page under it stops before it
+  opens and stays stopped through a lift (the old lift woke 40 tiles: a 183 ms
+  hitch in Chrome, the 5 fps drag on the phone); one drag write per frame;
+  the lifted frame is its own layer only while lifted; no shadow edge to edge;
+  the ground stops on a phone while a scene is open; the bar moves by
+  transform. Checked headless with synthetic touch: lift worst frame 183 →
+  10 ms; after a scrub the video plays on.
+- NOT verified on an iPhone: this environment has none. Safari's decoder and
+  compositor are what the fixes target, by their documented behaviour.
+
+# 17 · The editor: scaling text, corners, several at once (2026-09-26)
+
+By instruction, after one question round.
+- **Text scales.** The side handles of a text block used to change only its
+  box, so a big drag barely changed anything visible (the owner's "1-2%").
+  With the chain on (`ed.link.text`, default ON, kept in localStorage) every
+  handle scales size, box and pixel spacing together and writes the leading as
+  a ratio, so the lines break where they did; off, the sides re-wrap as
+  before. Corners always scale. Measured with real pointer input: a corner drag
+  took "ryan ho" 53 → 114 px with the top-left fixed and one line kept.
+- **Corners on everything**: pictures (shape kept), text, boxes (chain or ⇧
+  keeps the ratio).
+- **Several at once**: a selection box from empty space (a container that is
+  not selected), ⇧ to add, ⌘⇧ to take out, on the canvas and in Layers; move,
+  resize (round the group's box), nudge, delete and hide together, each as ONE
+  undo step (`ed.styleMany`, `ed.endLiveMany`). The inspector shows the
+  properties they share, "Mixed" where they differ; a dragged label moves
+  each from its own value; `%` scales all in place.
+- **After a resize the element is measured and its offset corrected** so its
+  fixed point stays put even when the flow moves it (a centred column).
+  Scaled boxes get 0.5% + 1 px of room: at x1.44 a shrink-wrapped label needed
+  49.09 px in a box scaled to 49 and broke (measured).
+- **The inspector's labels capture the pointer**, so a drag keeps going when
+  it crosses onto the canvas (it used to stop dead at the frame's edge).
+- **A canvas drag no longer starts a text selection** in the page (mousedown's
+  default is prevented while not typing).
+- The arithmetic is `editor/shared/scale.js`, pure, checked in sim.test.js.

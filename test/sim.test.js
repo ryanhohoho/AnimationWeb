@@ -4269,6 +4269,46 @@ section("the wall: size is length, order is priority, and the scatter is the sam
   ok(flat(a).length === items.length && new Set(flat(a).map((t) => t.id)).size === items.length, "and every work is placed exactly once");
 }
 
+// ---------------------------------------------------------------------------
+section("the editor's resize arithmetic: a corner follows the pointer, and scaled type keeps its lines");
+// editor/shared/scale.js is the whole of what a handle drag computes, kept
+// free of the DOM so it can be checked here. Each property the owner asked
+// for is paired with the case that would pass if it were wrong.
+{
+  const S = await import("../editor/shared/scale.js");
+  const f = S.factors("e", 50, 0, 100, 40);
+  ok(f.sx === 1.5 && f.sy === 1, "the east edge dragged 50 px on a 100 px box makes it half as wide again, and leaves the height");
+  ok(S.factors("w", 50, 0, 100, 40).sx === 0.5, "control: the WEST edge dragged the same way shrinks it");
+  ok(S.factors("e", -500, 0, 100, 40).sx > 0 && S.factors("n", 0, 900, 100, 40).sy > 0,
+    "dragged past the far side, a box never goes to nothing or turns inside out");
+  ok(S.uniform("se", 1.5, 1.1) === 1.5 && S.uniform("se", 1.05, 0.5) === 0.5,
+    "a corner scales by whichever axis the pointer pulled further, so it follows the cursor");
+  ok(S.uniform("e", 1.5, 3) === 1.5 && S.uniform("s", 3, 1.2) === 1.2,
+    "control: a side handle scales by its own axis only");
+  const r = { left: 100, top: 50, width: 200, height: 100 };
+  const [ax, ay] = S.anchorOf("nw");
+  const m = S.mapRect(r, r.left + ax * r.width, r.top + ay * r.height, 2, 2);
+  ok(m.left + m.width === r.left + r.width && m.top + m.height === r.top + r.height,
+    "dragging the top-left corner keeps the bottom-right corner where it was");
+  const [bx, by] = S.anchorOf("se");
+  const m2 = S.mapRect(r, r.left + bx * r.width, r.top + by * r.height, 2, 2);
+  ok(m2.left === r.left && m2.top === r.top, "...and the bottom-right handle keeps the top-left");
+  const t = S.scaleText({ fs0: 20, w0: 100, ls0: "-1px", lh0: 30 }, 2);
+  ok(t["font-size"] === "40px" && t["letter-spacing"] === "-2px" && t["line-height"] === "1.5",
+    "scaled type doubles its size and its pixel spacing, and keeps its leading as the same ratio");
+  ok(parseFloat(t.width) > 200 && parseFloat(t.width) <= 203,
+    "its box grows with it, with a hair of room so a shrink-wrapped line does not break");
+  ok(!("letter-spacing" in S.scaleText({ fs0: 20, w0: 100, ls0: ".1em", lh0: 30 }, 2)),
+    "control: spacing in em is left alone, because it follows the size by itself");
+  ok(!("line-height" in S.scaleText({ fs0: 20, w0: 100, ls0: null, lh0: null }, 2)),
+    "and a leading of 'normal' is not written at all");
+  const box = { left: 0, top: 0, width: 10, height: 10 };
+  ok(S.meets(box, { left: 5, top: 5, width: 10, height: 10 }) && !S.meets(box, { left: 20, top: 20, width: 5, height: 5 }),
+    "a selection box picks what it touches, and not what it misses");
+  const u = S.union([{ left: 10, top: 20, width: 5, height: 5 }, { left: 0, top: 30, width: 50, height: 2 }]);
+  ok(u.left === 0 && u.top === 20 && u.width === 50 && u.height === 12, "a group's box is the smallest one holding all of it");
+}
+
 console.log(`\n${checks - failures}/${checks} checks passed`);
 if (failures > 0) process.exit(1);
 console.log("ALL PASS");

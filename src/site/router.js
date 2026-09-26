@@ -298,7 +298,7 @@ export function createRouter({ scope, deck, world, onPage }) {
     if (!sayEl) return;
     const name = route?.name === "project"
       ? route.project.title
-      : route?.name === "home" ? "summary" : route?.name || "page";
+      : route?.name || "page";
     // the region is re-read only when its text CHANGES, and two visits to the
     // same card would otherwise be silent the second time
     sayEl.textContent = "";
@@ -762,12 +762,25 @@ export function createRouter({ scope, deck, world, onPage }) {
     const mode = transitionFor(current, route);
     const rampTarget = rampOf(route);
 
+    // ── TWO MOMENTS A PAGE CAN HOLD WORK FOR ─────────────────────────────
+    // `navigating` as a move starts: the page being left stops anything it
+    // is still animating, because it is about to be covered and every frame
+    // it spends from here on is taken from the transition. `settled` once the
+    // move has finished drawing: the page that arrived starts its expensive
+    // parts (a WebGL context, a video decoder, a 500 KB module) then, not in
+    // the middle of the paper closing over it -- which is where they all used
+    // to start, and where a phone dropped the frames.
+    world?.emit("navigating", { from: current, to: route, mode });
+    let arrived = false;
+    const arrive = () => { if (!arrived) { arrived = true; world?.emit("settled", { route }); } };
+
     if (reduced) {
       // no tween to carry the ramp, so it is set outright - and no carry either,
       // because there is no covered moment to hide a wound-on plate behind
       deck.setDocShift(0, 1);
       commit(route, { carry: false });
       deck.setSkyRamp(rampTarget);
+      arrive();
       return;
     }
 
@@ -822,8 +835,9 @@ export function createRouter({ scope, deck, world, onPage }) {
     // words are. A startle here would have her fleeing every arrow key.
     if (mode === "fade") {
       const turn = () => { settle(); land({ carry: false }); };
-      runFade(rampTarget, turn, turn);
-      wd = setTimeout(guard(turn), (FADE_OUT + FADE_IN) * 4);   // watchdog
+      const done = () => { turn(); arrive(); };
+      runFade(rampTarget, turn, done);
+      wd = setTimeout(guard(done), (FADE_OUT + FADE_IN) * 4);   // watchdog
       return;
     }
 
@@ -841,8 +855,8 @@ export function createRouter({ scope, deck, world, onPage }) {
       // panicFrom). It used to mean the opposite, and this was the one
       // transition that flew her across the reader's view to get out.
       world?.emit("crossing", { ms: RETURN_MS, from: null });
-      runReturn(RETURN_MS, rampTarget, land, () => { settle(); land(); });
-      wd = setTimeout(guard(() => { land(); deck.setCrossing(null); }), RETURN_MS * 4);
+      runReturn(RETURN_MS, rampTarget, land, () => { settle(); land(); arrive(); });
+      wd = setTimeout(guard(() => { land(); deck.setCrossing(null); arrive(); }), RETURN_MS * 4);
       return;
     }
 
@@ -854,8 +868,8 @@ export function createRouter({ scope, deck, world, onPage }) {
     // she is on the sheet, so a plate change happens TO her — and this one has
     // a definite source, so she leaves on the line straight out of it
     world?.emit("crossing", { ms: CROSS_MS, from: { x: from.x, y: from.y } });
-    runCrossing(from, CROSS_MS, rampTarget, land, () => { settle(); land(); });
-    wd = setTimeout(guard(() => { land(); deck.setCrossing(null); }), CROSS_MS * 3);
+    runCrossing(from, CROSS_MS, rampTarget, land, () => { settle(); land(); arrive(); });
+    wd = setTimeout(guard(() => { land(); deck.setCrossing(null); arrive(); }), CROSS_MS * 3);
   }
 
   // ── THE ARROW KEYS ───────────────────────────────────────────────────────

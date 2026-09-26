@@ -116,10 +116,11 @@ export function html(p) {
   });
 }
 
-export function mount({ scope, world }) {
+export function mount({ scope, world, settled, onLeave }) {
   // FIG. 2 is the one live thing on this sheet. It puts its own teardown on the page scope and returns null when the track is not in the
-  // markup, which is what the router harness renders.
-  const demo = mountUsbDemo({ scope, world });
+  // markup, which is what the router harness renders. Its expensive parts wait
+  // for the page to arrive (settled) and stop as it is left (onLeave).
+  const demo = mountUsbDemo({ scope, world, settled, onLeave });
   if (demo) {
     window.__USBDEMO__ = demo;
     scope?.add(() => { if (window.__USBDEMO__ === demo) delete window.__USBDEMO__; });

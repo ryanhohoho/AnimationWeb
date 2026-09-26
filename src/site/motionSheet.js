@@ -44,11 +44,13 @@ export function mountSheet(scope, root) {
   still.src = SHEET.still;
 
   // the backing store: the cell's own size at the device's density, but never
-  // more than the tile it is copied from, which is all the detail there is
-  function size(c) {
-    const r = c.cv.getBoundingClientRect();
+  // more than the tile it is copied from, which is all the detail there is.
+  // The width comes from the observer's own entry when there is one: asking
+  // each canvas for its rectangle as it scrolled in forced a layout per tile.
+  function size(c, cssW) {
+    const width = cssW ?? c.cv.getBoundingClientRect().width;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = Math.max(1, Math.min(SHEET.cw, Math.round(r.width * dpr)));
+    const w = Math.max(1, Math.min(SHEET.cw, Math.round(width * dpr)));
     const h = Math.max(1, Math.round(w * SHEET.ch / SHEET.cw));
     if (c.cv.width !== w || c.cv.height !== h) { c.cv.width = w; c.cv.height = h; c.drawn = false; }
   }
@@ -98,7 +100,7 @@ export function mountSheet(scope, root) {
       const c = cells.find((x) => x.cv === e.target);
       if (!c) continue;
       c.on = e.isIntersecting;
-      if (c.on) { size(c); if (!live() && !c.drawn && still.complete) draw(c, still); }
+      if (c.on) { size(c, e.boundingClientRect.width); if (!live() && !c.drawn && still.complete) draw(c, still); }
     }
     update();
   }, { rootMargin: "120px 0px" });

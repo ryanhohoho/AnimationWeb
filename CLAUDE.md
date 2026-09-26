@@ -60,14 +60,14 @@ A personal portfolio site that is **one document**, printed as a **two-ink riso
 sky** seen through **die-cut apertures**, with **Mew** — a procedurally animated
 3D character — loose on the page as the only unprinted thing on it.
 
-It reads as a **deck of four cards** — summary, experience, projects, contact —
+It reads as a **deck of four cards** — home, experience, projects, contact —
 reached from a small nav bar at the top middle -- no box, a hairline over the
 four names, out of the way while scrolling down (the arrow keys and a swipe
-still turn it, unadvertised), with three project sheets hanging off the projects card.
+still turn it, unadvertised), with four project sheets hanging off the projects card.
 The deck shape exists so the work survives being skimmed; the sheet it is cut
-from has not changed. **Mew is on the four cards only**: she leaves through the
-crossing into a project sheet, sleeps there, and comes back by the side
-entrance. Every word is set in **Darker Grotesque**.
+from has not changed. **Mew is on Home only**: she leaves through the crossing
+out of Home, sleeps everywhere else, and comes back by the side entrance on the
+way Home. Every word is set in **Darker Grotesque**.
 
 One project page is not cut to the site's trim: **experimental motion graphics**
 (`pages/motion-graphics.js`), a showcase of short vertical works -- most cut from
@@ -104,7 +104,7 @@ two are checked against each other on the GPU.
 ```bash
 npm run dev            # localhost:5173 — the owner tests here, in his own browser
 npm run edit           # localhost:5275/editor/ — the visual editor (see below)
-npm test               # 1057 checks: the headless sim + the router harness
+npm test               # 1070 checks: the headless sim + the router harness
 npm run test:sim       # just the engine/behaviour suite
 npm run test:router    # just the router + page-swap harness (needs a fake DOM)
 npm run build          # production bundle
@@ -329,7 +329,7 @@ when only the numbers were.
   or use the editor, which writes both.
 - **`#doc[data-page]` is set by the router on every commit** (`home`,
   `experience`, `project:<slug>` …). `edits.css` scopes page rules with it; the
-  three project sheets share every other id they have.
+  project sheets share every other id they have.
 - **`--n4` may never carry a word.** It is 2.61:1 on bone — under half the 4.5:1
   floor — and it is for hairlines, ticks and inactive marks. Eight rules were
   painting text in it. There is a check, and it reads the real stylesheet.
@@ -367,6 +367,27 @@ when only the numbers were.
 - **The ground stops when it rests on a still.** `motionAmbient.js` draws a
   still until it has faded in and then not at all; a loop redrawing it re-rolls
   the grain every frame, which is a shimmer across the whole window.
+- **A page is committed MID-TRANSITION, so nothing costly starts at commit.**
+  The router emits `navigating` as a move starts and `settled` once it has
+  finished drawing; main.js turns those into `ctx.onLeave(fn)` and
+  `ctx.settled`, and `afterArrival(ctx, fn)` (utils/arrival.js) is how a page
+  starts a WebGL context, a video decoder or a big module. Starting them at
+  commit was the frame drop going into every project sheet on a phone
+  (measured: a 408 ms frame into the USB sheet at 4x throttle; 25 ms now).
+  An idle callback is NOT a substitute: Chrome finds idle gaps between a
+  transition's frames, and Safari has no idle callback at all.
+- **A seek is re-issued only for a NEWER request, never to match currentTime.**
+  Safari lands a seek on the nearest time it can present, so "seek again until
+  currentTime equals what I asked" never terminates: after one scrub the
+  viewer's video sat seeking forever (frozen, bar stuck, phone warm).
+  motionViewer.js compares `want` with `asked`, never with the element.
+- **The viewer makes a new `<video>` per scene** and empties the old one (src
+  removed, load()). Swapping the src of one playing element is where iOS kept
+  the clock running on a frozen picture.
+- **Nothing under the motion viewer runs while a scene is open or lifted.** The
+  tiles, their video, the flower's clip stop BEFORE the frame grows and start
+  again only once it has landed back; on a phone the ground stops too (the
+  frame covers it). Waking the page at the start of a lift was the 5 fps drag.
 - **HTML comments never ship.** `vite.config.js` (`buildNotesOut`) strips
   every `<!-- -->` from `index.html` and from the page templates in the BUILD
   only; dev and the editor see the files as written. So no code may depend on

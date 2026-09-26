@@ -18,16 +18,19 @@ its behind-the-scenes figures take **Replace…**.
 | to | do |
 |---|---|
 | select | click it, or click its row in **Layers** (left) |
+| select several | press on empty space and drag a box: it picks every word, picture and hole it touches. ⇧-click (or ⇧-box) adds, ⌘⇧-click (Ctrl-⇧) takes out — on the canvas or in **Layers**. A plain click on one of them selects just that one |
 | select the thing around it | the grey path under its name in the inspector |
 | change words | double-click (or ⏎). ⏎ finishes, ⇧⏎ breaks the line, ⌘B is the site's emphasis |
-| move | drag it. Guides snap to its neighbours and the page's middle; ⌥ turns snapping off, ⇧ holds one axis |
+| move | drag it (drag any one of a selection to move all of them). Guides snap to its neighbours and the page's middle; ⌥ turns snapping off, ⇧ holds one axis |
 | nudge | arrow keys, ⇧ for 10 px |
-| resize | the handles. A text block only has side handles: its width is where its lines break |
+| resize | the handles, on one element or round a selection of several. **Text scales**: with the chain on (the default) every handle scales the type, its box and its spacing together, so the lines break where they did and it follows the pointer 1:1; with the chain off the side handles change the box only and re-wrap the lines. Corners always scale. A picture keeps its shape from every handle; a box keeps its ratio when its chain is on, or with ⇧ |
+| link size and box | the chain under Layout: on a text block, **Size and box scale together** (W scales the type; Aa scales a box that has a set width); on a box, **Keep width and height in ratio**. Remembered in this browser |
+| change several at once | the inspector shows only what they share (type only if all are words, fit and shape only if all are pictures). A value that differs shows **Mixed**. Typing sets it on all; dragging a field's label moves each by the same amount from its own value; **%** scales everything in place |
 | reorder | drag rows in **Layers**, or "earlier / later" in the inspector |
 | replace a picture or clip | select it → **Replace…** → pick a file in Finder |
 | set what stays in frame | click the preview in the inspector (the focal point) |
 | add something | **Insert after ▾**: a paragraph, heading, label, picture or clip, or a hole |
-| copy / remove | ⌘D / ⌫. Delete also offers "hide on this page only" |
+| copy / remove | ⌘D / ⌫ (⌫ on several asks once for all of them). Delete also offers "hide on this page only" |
 | paper and ink colours | click empty space, so that nothing is selected: the inspector shows the page's colours |
 | FIG. 2's backlight colours | on the USB sheet, with nothing selected: six colours and two presets (Apple Intelligence, Vivid). The light is shown in full while the panel is open, because on the page it follows the reader's scroll |
 | try the page as a visitor | tick **Preview** |

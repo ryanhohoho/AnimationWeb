@@ -46,6 +46,7 @@
 // because the number is a pure function of scroll position.
 
 import { createGlow } from "./glow.js";
+import { afterArrival } from "../utils/arrival.js";
 
 const STAGE = "[data-usb-stage]";
 
@@ -150,7 +151,7 @@ const KEEP = 240;
  * @param world  the engine's world: `scroll.y`, and `recollect` / `resize`.
  * @param root   document, or a detached tree in the router harness.
  */
-export function mountUsbDemo({ scope, world, root = document }) {
+export function mountUsbDemo({ scope, world, root = document, settled = null, onLeave = null }) {
   const stage = root.querySelector(STAGE);
   if (!stage) return null;
 
@@ -167,7 +168,12 @@ export function mountUsbDemo({ scope, world, root = document }) {
   // site/glowField.js); all this file owes it is the progress number and a
   // teardown. Null when there is no WebGL, and then the stylesheet's still
   // version stands in and nothing here needs to know.
-  const glow = createGlow({ host: stage.querySelector("[data-usb-light]"), root, reduced });
+  //
+  // IT IS BUILT ONCE THE PAGE HAS ARRIVED (utils/arrival.js), not at commit:
+  // a WebGL context and its shader compile are exactly the kind of work that
+  // took frames out of the transition going into this sheet.
+  let glow = null;
+  const ctx = { scope, settled };
 
   // ── THE TRACK, MEASURED ONCE ─────────────────────────────────────────────
   // `offsetTop` up the offsetParent chain, and NOT getBoundingClientRect: a
@@ -330,6 +336,14 @@ export function mountUsbDemo({ scope, world, root = document }) {
      * anything, so a few hundred milliseconds of patience costs it nothing and
      * buys the page its first frames back. The timeout is the guarantee: on a
      * page that never goes idle, it starts anyway.
+     *
+     * ...AND IT WAS NOT THE WHOLE FIX. An idle gap inside a transition is
+     * still inside the transition: Chrome found gaps between the crossing's
+     * frames, and Safari, which has no idle callback at all, fell back to the
+     * 300 ms timeout -- the middle of the paper closing. MEASURED on a phone-
+     * sized, 4x-throttled window: 1.4 s of long tasks and a 408 ms frame going
+     * into this sheet. So this observer is not armed until the page has
+     * ARRIVED (afterArrival, below), and the idle wait starts from there.
      */
     const view = root.defaultView;
     if (typeof view.requestIdleCallback === "function") {
@@ -338,7 +352,15 @@ export function mountUsbDemo({ scope, world, root = document }) {
       view.setTimeout(() => { if (!disposed) start(); }, 300);
     }
   }, { rootMargin: "150% 0px" });
-  io.observe(stage);
+
+  afterArrival(ctx, () => {
+    glow = createGlow({ host: stage.querySelector("[data-usb-light]"), root, reduced });
+    glow?.setProgress(p);
+    io.observe(stage);
+  });
+  // ...and as the next move starts, the light stops: the page is about to be
+  // covered, and the transition wants the frames
+  onLeave?.(() => glow?.hold?.());
 
   async function start() {
     stage.dataset.usbLoad = "loading";

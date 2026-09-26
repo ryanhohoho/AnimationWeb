@@ -19,6 +19,7 @@ npm-debug.log*
 # secrets, if any are ever added (none are used today)
 .env
 .env.*
+.recovery_codes
 # personal agent permissions (.claude/launch.json IS shared: the preview configs)
 .claude/settings.local.json
 
