@@ -1,130 +1,110 @@
 // pages/motion-graphics.js — EXPERIMENTAL MOTION GRAPHICS
 //
 // The one page on this site that does not wear the site's clothes, by
-// instruction (2026-09-25): it dresses in the PIECE's -- "let me be a flower"
-// (../VisualAudialExperience) -- a dark ground, its blue grade, its dithers
-// and scanlines, its computer-vision boxes. The portfolio's paper, die-cuts
-// and riso sky stop at the door.
+// instruction (2026-09-25): it dresses in the look of the work on it -- a dark
+// ground, the blue grade, dithers and scanlines, computer-vision boxes. The
+// portfolio's paper, die-cuts and riso sky stop at the door.
 //
-// WHAT IS ON IT, top to bottom:
+// IT IS A SHOWCASE OF WORKS (2026-09-26), top to bottom:
 //
-//   · the head, and the film standing beside it as the largest frame;
-//   · THE CUT: the whole film as one strip, every scene as a segment as long as
-//     it lasts in the film -- the "A flower." flicker is a run of hairlines,
-//     the angels a long bar -- so the piece's pacing is legible at a glance,
-//     and pressing a segment opens the film at that moment;
-//   · the scenes, by the piece's own four parts. Two runs of the piece are one
-//     gesture each and are laid out as one: the 21 cuts of "A flower." as a
-//     single strip of film, and the devices montage as a flurry of small
-//     frames that LANDS on four larger ones, the way the cut holds on them;
-//   · behind the scenes, and the credits as one long list at the foot.
+//   · the head: the title and one line, nothing else;
+//   · THE WALL: the longest, most developed works, large, in columns that
+//     drift against each other as the page scrolls -- then everything else,
+//     scattered smaller under it. No headings, no counts, no dividers. Each
+//     tile is as big as its clip is long;
+//   · THE FLOWER: every cut of "A flower." as one frame that stays put while
+//     the scroll steps it through the effects, in order (site/motionBloom.js);
+//   · behind the scenes;
+//   · the conclusion: the whole film, centred, then its own timeline, then the
+//     credits.
+//
+// Nothing relates a work to the film but the film itself.
 //
 // Every frame is boxed the way the piece's own computer vision boxes what it
-// sees (m_angels.js: thin translucent lines, a label above; cyan while it
-// tracks, deep red once it has locked). The page's ground is the scene you are
-// looking at, dithered (site/motionAmbient.js).
+// sees (m_angels.js there: thin translucent lines, the label above; cyan while
+// it tracks, deep red once it has locked -- here, the tile your pointer is on).
+// The page's ground is a still of the pixelated flower, dithered, until you
+// point at a tile, and then it is that tile (site/motionAmbient.js).
 //
-// THE MECHANICS are unchanged by the look: every cell plays from ONE video
-// (site/motionSheet.js); the viewer opens out of the cell and closes back into
-// it, with the Photos app's gestures on a phone (site/motionViewer.js).
+// THE MECHANICS: every tile plays from ONE video (site/motionSheet.js); the
+// layout of the wall, which needs each clip's length, is laid when the page's
+// code arrives (site/motionLayout.js) -- until then the wall is a plain grid,
+// which is also what it stays if that code never comes. The viewer opens out
+// of a tile and closes back into it (site/motionViewer.js).
 //
 // THE WORDS: the headline, the lead and the process notes are strings in this
-// file; the scenes' names are in site/motion.js. Both are the editor's to
+// file; the works' names are in site/motion.js. Both are the editor's to
 // change. The behind-the-scenes figures are ordinary capture() slots: select
 // one in the editor and Replace… takes a picture or a clip from Finder.
 
 import { capture } from "../media.js";
-import { ACTS, FILM, GROUPS, SCENES } from "../motion.js";
-// the viewer, the sheet's drawing, the ground and the credits are fetched when
-// the page mounts (site/motionPage.js), not with the site
+import { ACTS, CUT, FILM, WORKS, worksOn } from "../motion.js";
+// the viewer, the sheet's drawing, the layout, the ground and the credits are
+// fetched when the page mounts (site/motionPage.js), not with the site
 
 
 const esc = (v) => String(v ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;")
   .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-/** m:ss, which is how a running time is written everywhere */
-export const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-const two = (n) => String(n).padStart(2, "0");
+const nameOf = (id) => (id === FILM.id ? FILM.name : WORKS.find((w) => w.id === id)?.name ?? id);
 
-// A scene's tile on the contact sheet is its place in the order (the film is
-// 0), which is how tools/bake_motion.mjs lays the sheet out -- so the markup
-// needs no asset table, and the table (106 hashed URLs) stays out of the
-// site's first chunk with the rest of this page's code.
-function cell(sc, no, cls = "") {
+// a tile: the frame, its box, and its name hanging above the box as the
+// piece's vision labels what it has found
+function tile(w) {
   return `
-          <li class="mg-cell${cls}">
-            <a class="mg-cell-a" href="#${esc(sc.id)}" data-scene="${esc(sc.id)}"
-               aria-label="${esc(sc.name)}">
-              <span class="mg-tag" aria-hidden="true"><span class="mg-no">${esc(two(no))}</span></span>
-              <span class="mg-frame-cut"><canvas class="mg-cv" data-cell="${no}" aria-hidden="true"></canvas><i class="mg-box" aria-hidden="true"></i></span>
-              <span class="mg-name">${esc(sc.name)}</span>
+          <div class="mg-tile" role="listitem" data-id="${esc(w.id)}">
+            <a class="mg-cell-a" href="#${esc(w.id)}" data-scene="${esc(w.id)}" aria-label="${esc(w.name)}">
+              <span class="mg-frame-cut"><canvas class="mg-cv" aria-hidden="true"></canvas><i class="mg-box" aria-hidden="true"></i></span>
+              <span class="mg-name" aria-hidden="true">${esc(w.name)}</span>
             </a>
-          </li>`;
+          </div>`;
 }
 
-export function html(p) {
-  const total = FILM.film[1];
-  let no = 0;
+export function html() {
+  const flower = worksOn("flower");
 
-  // the scenes, by part; a group is one row of its own
-  const acts = ACTS.map((a, ai) => {
-    const own = SCENES.filter((s) => s.act === ai);
-    let out = `
-      <li class="mg-act" role="presentation">
-        <span class="mg-act-n">${esc(a.n)}</span>
-        <span class="mg-act-name">${esc(a.name)}</span>
-      </li>`;
-    for (let k = 0; k < own.length;) {
-      const g = own[k].group;
-      if (!g) { out += cell(own[k], ++no); k++; continue; }
-      const run = [];
-      while (k < own.length && own[k].group === g) run.push(own[k++]);
-      out += `
-      <li class="mg-group mg-group-${esc(g)}" role="presentation">
-        <p class="mg-group-h"><span>${esc(GROUPS[g].name)}</span> <span class="mg-group-note">${esc(GROUPS[g].note)}</span></p>
-        <ol class="mg-run"${g === "flower" ? " data-noswipe" : ""}>${run.map((s) => cell(s, ++no, s.land ? " is-land" : "")).join("")}
-        </ol>
-      </li>`;
-    }
-    return out;
-  }).join("");
-
-  // THE CUT: every scene as long as it lasts in the film; the gaps are the
-  // piece's own black (the warning it opens on, the silence before the end)
+  // THE FILM'S TIMELINE: every stretch as long as it lasts, coloured by the
+  // film's four parts; the gaps are its own black. Pressing one opens the film
+  // at that moment.
+  const total = FILM.dur;
   let t = 0;
   const segs = [];
-  for (const s of SCENES) {
-    if (s.film[0] > t + .01) segs.push(`<span class="mg-seg is-black" style="flex-grow:${(s.film[0] - t).toFixed(3)}"></span>`);
-    segs.push(`<a class="mg-seg a${s.act}" href="#film" data-scene="film" data-film-at="${s.film[0]}" style="flex-grow:${(s.film[1] - s.film[0]).toFixed(3)}" aria-label="${esc(s.name)}, at ${clock(s.film[0])}" title="${esc(s.name)}"></a>`);
-    t = s.film[1];
+  for (const [id, act, from, to] of CUT) {
+    if (from > t + .01) segs.push(`<span class="mg-seg is-black" style="flex-grow:${(from - t).toFixed(3)}"></span>`);
+    segs.push(`<a class="mg-seg a${act}" href="#film" data-scene="film" data-film-at="${from}" style="flex-grow:${(to - from).toFixed(3)}" aria-label="${esc(nameOf(id))}" title="${esc(nameOf(id))}"></a>`);
+    t = to;
   }
   if (total > t + .01) segs.push(`<span class="mg-seg is-black" style="flex-grow:${(total - t).toFixed(3)}"></span>`);
-  const ticks = Array.from({ length: Math.floor(total / 30) + 1 }, (_, k) =>
-    `<span style="left:${(100 * k * 30 / total).toFixed(3)}%">${clock(k * 30)}</span>`).join("");
 
   return `
   <section class="plate mg" id="p0">
     <canvas class="mg-ground" aria-hidden="true"></canvas>
     <div class="mg-in">
       <header class="mg-head">
-        <div class="mg-head-t">
-          <p class="mg-kicker">${esc(p.n)} · ${esc(p.year)}</p>
-          <h1 class="mg-h">experimental<br /><em>motion graphics</em></h1>
-          <p class="mg-lead">A vertical piece made for phones, cut here into every one of its scenes. Each one is drawn live in the browser by its own shader and scored by code.</p>
-          <p class="mg-hud"><span>${SCENES.length}&nbsp;scenes</span><span>${clock(total)}</span><span>9:19.5</span><span>30&nbsp;fps</span></p>
-        </div>
-        <ul class="mg-film" role="list">${cell(FILM, 0, " is-film")}
-        </ul>
+        <h1 class="mg-h">experimental<br /><em>motion graphics</em></h1>
+        <p class="mg-lead">Short vertical pieces made for phones. Each one is drawn live in the browser by its own shader and scored by code.</p>
       </header>
 
-      <div class="mg-cut">
-        <div class="mg-cut-bar">${segs.join("")}</div>
-        <div class="mg-cut-ticks" aria-hidden="true">${ticks}</div>
+      <div class="mg-wall mg-top" role="list" aria-label="Featured works" data-list="works">${worksOn("top").map(tile).join("")}
       </div>
 
-      <ol class="mg-sheet" aria-label="Every scene">${acts}
-      </ol>
+      <div class="mg-wall mg-mix" role="list" aria-label="More works" data-list="works">${worksOn("mix").map(tile).join("")}
+      </div>
+
+      <section class="mg-bloom" data-list="flower" data-noswipe aria-label="A flower, one effect at a time" style="--n:${flower.length}">
+        <div class="mg-bloom-pin">
+          <ol class="mg-bloom-list">${flower.map((w, k) => `
+            <li><button type="button" class="mg-bloom-name${k ? "" : " on"}" data-step="${k}">${esc(w.name)}</button></li>`).join("")}
+          </ol>
+          <a class="mg-bloom-frame" href="#${esc(flower[0].id)}" data-scene="${esc(flower[0].id)}" aria-label="${esc(flower[0].name)}">
+            <span class="mg-frame-cut"><img class="mg-bloom-img" alt="" decoding="async" /><i class="mg-box" aria-hidden="true"></i></span>
+            <span class="mg-name mg-bloom-now" aria-hidden="true">${esc(flower[0].name)}</span>
+          </a>
+          <div class="mg-bloom-rail" aria-hidden="true">${flower.map((_, k) => `<i${k ? "" : ' class="on"'}></i>`).join("")}</div>
+        </div>
+        <div class="mg-bloom-steps" aria-hidden="true">${flower.map((_, k) => `<i style="--k:${k}"></i>`).join("")}</div>
+      </section>
 
       <section class="mg-bts" aria-labelledby="mg-bts-h">
         <h2 class="mg-bts-h" id="mg-bts-h">behind the scenes</h2>
@@ -137,9 +117,21 @@ export function html(p) {
         </div>
       </section>
 
+      <section class="mg-end" data-list="film" aria-label="${esc(FILM.name)}">
+        <div class="mg-tile mg-film">
+          <a class="mg-cell-a" href="#${esc(FILM.id)}" data-scene="${esc(FILM.id)}" aria-label="${esc(FILM.name)}">
+            <span class="mg-frame-cut"><canvas class="mg-cv" aria-hidden="true"></canvas><i class="mg-box" aria-hidden="true"></i></span>
+          </a>
+        </div>
+        <p class="mg-end-name">${esc(FILM.name)}</p>
+        <div class="mg-cut" role="group" aria-label="${esc(FILM.name)}, by part: ${ACTS.map(esc).join(", ")}">
+          <div class="mg-cut-bar">${segs.join("")}</div>
+        </div>
+      </section>
+
       <section class="mg-credits" aria-label="Credits">
-        <p class="mg-credits-h">credits · <span data-credits-n></span> sources</p>
-        <p class="mg-credits-note">Everything not listed was made for the piece procedurally, in code: the shaders, the score, the typography and the pixel flowers. Faces: Bodoni Moda (Owen Earl), Instrument Serif, JetBrains Mono, Silkscreen, Noto Sans JP, Noto Serif SC and VT323, under the SIL Open Font License 1.1.</p>
+        <p class="mg-credits-h">credits</p>
+        <p class="mg-credits-note">Everything not listed was made for the pieces procedurally, in code: the shaders, the score, the typography and the pixel flowers. Faces: Bodoni Moda (Owen Earl), Instrument Serif, JetBrains Mono, Silkscreen, Noto Sans JP, Noto Serif SC and VT323, under the SIL Open Font License 1.1.</p>
         <ul class="mg-credits-list" data-credits></ul>
       </section>
 

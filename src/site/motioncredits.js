@@ -364,8 +364,7 @@ export const CREDITS = [
   "licence": "own work",
   "url": null,
   "in": [
-   "firmament",
-   "turn"
+   "firmament"
   ]
  },
  {
@@ -376,8 +375,7 @@ export const CREDITS = [
   "licence": "CC BY-SA 3.0",
   "url": "https://commons.wikimedia.org/wiki/File:Altocumulus_cloud.jpg",
   "in": [
-   "firmament",
-   "turn"
+   "firmament"
   ]
  },
  {
@@ -388,8 +386,7 @@ export const CREDITS = [
   "licence": "CC BY-SA 4.0",
   "url": "https://commons.wikimedia.org/wiki/File:A_scattering_of_small_white_cumulus_clouds_in_the_blue_sky.jpg",
   "in": [
-   "firmament",
-   "turn"
+   "firmament"
   ]
  },
  {
@@ -400,8 +397,7 @@ export const CREDITS = [
   "licence": "uploaded to the Internet Archive, no licence stated",
   "url": "https://archive.org/details/MVI1348",
   "in": [
-   "firmament",
-   "turn"
+   "firmament"
   ]
  },
  {
@@ -412,8 +408,7 @@ export const CREDITS = [
   "licence": "free to use",
   "url": "http://mocap.cs.cmu.edu/",
   "in": [
-   "firmament",
-   "turn"
+   "firmament"
   ]
  },
  {
@@ -424,8 +419,7 @@ export const CREDITS = [
   "licence": "Attribution",
   "url": "https://commons.wikimedia.org/wiki/File:Portrait_of_Pope_Francis_(2021",
   "in": [
-   "firmament",
-   "turn"
+   "firmament"
   ]
  },
  {
@@ -1168,7 +1162,7 @@ export const CREDITS = [
    "like",
    "wings",
    "credits",
-   "turn",
+   "firmament",
    "tower",
    "providence",
    "particles",

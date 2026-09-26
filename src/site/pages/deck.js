@@ -124,7 +124,7 @@ function projects() {
       </li>`;
   }).join("");
   return shell("p-projects", "03", "22:45", "PROJECTS", "What I've built",
-    `<ul class="cards">${cards}\n    </ul>`);
+    `<ul data-e="cards-0frh" class="cards">${cards}\n    </ul>`);
 }
 
 // ── 04 · CONTACT ────────────────────────────────────────────────────────────

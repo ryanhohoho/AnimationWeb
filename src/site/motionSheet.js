@@ -1,10 +1,10 @@
-// motionSheet.js — EVERY SCENE PLAYING AT ONCE, ON ONE DECODER
+// motionSheet.js — EVERY TILE PLAYING AT ONCE, ON ONE DECODER
 //
-// The contact sheet on the motion-graphics page has a cell for every scene, and
-// every cell plays. Fifty-odd <video> elements would be fifty-odd decoders: a
+// The motion-graphics page has a tile for every work on its wall, and every
+// tile plays. Forty-odd <video> elements would be forty-odd decoders: a
 // desktop grinds and a phone simply refuses (iOS will run a handful of video
 // elements at once and leaves the rest on their posters). So the cells are
-// baked into ONE video, a grid of 200x434 tiles on a shared 5-second loop
+// baked into ONE video, a grid of 240x520 tiles on a shared 5-second loop
 // (tools/bake_motion.mjs, sheet.mp4), and each cell is a small canvas that the
 // right tile is copied into.
 //
@@ -15,14 +15,19 @@
 // scrolled away, or the viewer covering it, the cost is zero.
 //
 // Reduced motion: the sheet is the still (sheet.webp), drawn once, and nothing
-// plays until the reader opens a scene and presses play.
+// plays until the reader opens a work and presses play.
 
-import { SHEET } from "./motionassets.js";
+import { SHEET, CLIPS } from "./motionassets.js";
 import { reducedMotion } from "../utils/motion.js";
 
-export function mountSheet(scope, root, { ambient } = {}) {
+export function mountSheet(scope, root) {
+  // a tile finds its place on the sheet by its work's id, so the page can lay
+  // its tiles out in any order and the sheet never has to be re-baked for it
   const cvs = [...root.querySelectorAll("canvas.mg-cv")];
-  const cells = cvs.map((cv) => ({ cv, ctx: cv.getContext("2d"), n: Number(cv.dataset.cell), on: false }));
+  const cells = cvs.map((cv) => {
+    const id = cv.closest("[data-scene]")?.dataset.scene;
+    return { cv, ctx: cv.getContext("2d"), n: CLIPS[id]?.cell ?? -1, on: false };
+  });
   let paused = false;          // the viewer is covering the page
 
   const video = document.createElement("video");
@@ -108,38 +113,7 @@ export function mountSheet(scope, root, { ambient } = {}) {
   const onResize = () => { clearTimeout(rt); rt = setTimeout(() => { cells.forEach((c) => c.on && size(c)); paint(); }, 150); };
   window.addEventListener("resize", onResize);
 
-  // ── THE GROUND FOLLOWS THE EYE ───────────────────────────────────────
-  // The page's ground (motionAmbient.js) is whichever scene the reader is on:
-  // the one under the pointer, or else the one crossing the middle of the
-  // screen as they scroll (a thin band in the middle, watched by an observer,
-  // so nothing on the scroll path reads layout), or else the film.
-  const filmCv = root.querySelector('[data-scene="film"] canvas');
-  let hovered = null, centred = null;
-  const ground = () => ambient?.setSource(hovered || centred || filmCv);
-  const mid = new IntersectionObserver((entries) => {
-    for (const e of entries) {
-      if (e.isIntersecting) centred = e.target;
-      else if (centred === e.target) centred = null;
-    }
-    ground();
-  }, { rootMargin: "-46% 0px -46% 0px" });
-  cvs.forEach((cv) => mid.observe(cv));
-  const over = (e) => {
-    const a = e.target.closest?.(".mg-cell-a canvas, .mg-cell-a");
-    const cv = a?.matches?.("canvas") ? a : a?.querySelector?.("canvas");
-    if (cv && cv !== hovered) { hovered = cv; ground(); }
-  };
-  const out = (e) => {
-    if (hovered && !e.relatedTarget?.closest?.(".mg-cell-a")) { hovered = null; ground(); }
-  };
-  root.addEventListener("pointerover", over);
-  root.addEventListener("pointerout", out);
-  ground();
-
   scope?.add(() => {
-    mid.disconnect();
-    root.removeEventListener("pointerover", over);
-    root.removeEventListener("pointerout", out);
     io.disconnect(); unschedule(); clearTimeout(rt);
     document.removeEventListener("visibilitychange", vis);
     window.removeEventListener("resize", onResize);
@@ -148,10 +122,6 @@ export function mountSheet(scope, root, { ambient } = {}) {
 
   return {
     /** the viewer is up (true) or down: nothing under it needs to play */
-    cover(on) { paused = on; update(); if (!on) ground(); },
-    /** a cell's canvas, for the viewer to fly out of and back into */
-    cellOf(id) { return root.querySelector(`[data-scene="${CSS.escape(id)}"] .mg-frame-cut`); },
-    /** the current picture of a cell, so the viewer's first frame matches it */
-    canvasOf(id) { return root.querySelector(`[data-scene="${CSS.escape(id)}"] canvas`); }
+    cover(on) { paused = on; update(); }
   };
 }

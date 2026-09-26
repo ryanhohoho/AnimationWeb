@@ -12,10 +12,12 @@ shape exists so the work survives being skimmed; the sheet it is cut from has no
 changed. Mew stays on the four cards.
 
 One of the three sheets is not on the sheet at all: **experimental motion
-graphics** shows "let me be a flower", a vertical piece rendered live in the
-browser, as every one of its scenes -- a contact sheet that plays them all at
-once from one video, and a viewer that opens out of a scene with the Photos app's
-gestures. It is dressed in the piece's look rather than the site's.
+graphics** is a showcase of short vertical works rendered live in the browser --
+a drifting wall of every one of them playing at once from one video, the
+longest first, a flower stepped through 21 techniques as you scroll, and the
+whole film they were cut from as the conclusion. A viewer opens out of any of
+them with the Photos app's gestures. It is dressed in the works' look rather
+than the site's.
 
 Vite and Three.js. No framework, no CSS library, no component library. Real
 routes via the History API, because Mew is a live WebGL context with physics and
@@ -44,7 +46,7 @@ hashed URLs, `public/`, the SPA fallback — for checking the bundle as a bundle
 | `src/site/deck.js` | the mask: geometry, the crossing, the two draws. |
 | `src/site/router.js` | going through the hole. Page scopes, generation-guarded watchdogs, the swipe. |
 | `src/site/pages/sheet.js` | the two-plate trim the USB and iClicker sheets are cut to. Their page files are only the **words**. |
-| `src/site/pages/motion-graphics.js` | the motion-graphics page: markup here, the viewer (`motionViewer.js`), the contact sheet (`motionSheet.js`) and the dithered ground (`motionAmbient.js`) fetched only when it opens. Its media: `tools/bake_motion.mjs`, `tools/motion/README.md`. |
+| `src/site/pages/motion-graphics.js` | the motion-graphics page: markup here; the works and where each is shown in `motion.js`; the wall's layout (`motionLayout.js`), the tiles' drawing (`motionSheet.js`), the flower (`motionBloom.js`), the viewer (`motionViewer.js`) and the dithered ground (`motionAmbient.js`) fetched only when it opens. Its media: `tools/bake_motion.mjs`, `tools/motion/README.md`. |
 | `src/site/usbDemo.js` | FIG. 2 on the USB sheet: a terminal and the interface built over it, one rectangle, wiped between by the scroll. |
 | `src/engine/**` | Mew: physics, a small brain, pose layers, and effects whose maths is headless-testable. |
 | `src/mew.js` | the engine, behind a dynamic import. The sheet is a finished page without it. |

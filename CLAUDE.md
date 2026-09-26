@@ -61,18 +61,22 @@ sky** seen through **die-cut apertures**, with **Mew** — a procedurally animat
 3D character — loose on the page as the only unprinted thing on it.
 
 It reads as a **deck of four cards** — summary, experience, projects, contact —
-reached from a small nav bar at the top middle (the arrow keys and a swipe still
-turn it, unadvertised), with three project sheets hanging off the projects card.
+reached from a small nav bar at the top middle -- no box, a hairline over the
+four names, out of the way while scrolling down (the arrow keys and a swipe
+still turn it, unadvertised), with three project sheets hanging off the projects card.
 The deck shape exists so the work survives being skimmed; the sheet it is cut
 from has not changed. **Mew is on the four cards only**: she leaves through the
 crossing into a project sheet, sleeps there, and comes back by the side
 entrance. Every word is set in **Darker Grotesque**.
 
 One project page is not cut to the site's trim: **experimental motion graphics**
-(`pages/motion-graphics.js`), "let me be a flower" from `../VisualAudialExperience`
-shown as every one of its scenes. By instruction it wears the PIECE's look, not
-the site's — a dark ground that is the scene you are on, dithered blue, and the
-piece's inks.
+(`pages/motion-graphics.js`), a showcase of short vertical works -- most cut from
+"let me be a flower" (`../VisualAudialExperience`), with more to come. By
+instruction it wears the works' look, not the site's: a dark ground (a dithered
+still of the pixelated flower, or the work under the pointer), the pieces' inks.
+The works and where each is shown are data, one line each, in `site/motion.js`.
+**No spec notes on any page** (counts, running times, ratios, frame rates): the
+owner asked for none, and nothing here may say to add them.
 
 Vite + Three.js, no framework, no CSS library. Real routes via the History API,
 because Mew is a live WebGL context with physics and a brain: a real navigation
@@ -100,7 +104,7 @@ two are checked against each other on the GPU.
 ```bash
 npm run dev            # localhost:5173 — the owner tests here, in his own browser
 npm run edit           # localhost:5275/editor/ — the visual editor (see below)
-npm test               # 1044 checks: the headless sim + the router harness
+npm test               # 1057 checks: the headless sim + the router harness
 npm run test:sim       # just the engine/behaviour suite
 npm run test:router    # just the router + page-swap harness (needs a fake DOM)
 npm run build          # production bundle
@@ -159,17 +163,20 @@ FIG. 2's backlight is NOT vendored: `src/site/glowField.js` is its model and
 transcription of `shadeAt` in `glowField.js` — change one, change the other,
 and check them against each other on the GPU (STATE.md says how).
 
-The motion-graphics page's video (only if the piece, or which part of it is
-shown, changes). Rendered in a SCRATCH COPY of `../VisualAudialExperience`, never
-in it; `tools/motion/README.md` is the whole procedure:
+The motion-graphics page's video (only if a work is added or re-cut). Renders of
+"let me be a flower" are made in a SCRATCH COPY of `../VisualAudialExperience`,
+never in it; `tools/motion/README.md` is the whole procedure:
 
 ```bash
-node tools/bake_motion.mjs --renders <sandbox>/renders   # -> src/assets/motion/, the card, site/motionassets.js
+node tools/bake_motion.mjs --add <video> --id <id>        # a new work from any video, then one line in site/motion.js
+node tools/bake_motion.mjs --sheet                        # rebuild the contact sheet from the site's own clips
+node tools/bake_motion.mjs --renders <sandbox>/renders    # re-cut every work from the piece's renders
 node tools/motion/credits.mjs ../VisualAudialExperience/CREDITS.md   # -> site/motioncredits.js
 ```
 
 `src/site/motionassets.js` and `src/site/motioncredits.js` are **generated — do
-not edit them.** The scenes' names are `src/site/motion.js`, which is hand-written.
+not edit them.** The works' names, and where each is shown, are
+`src/site/motion.js`, which is hand-written.
 
 Tab mark and link card (only if the mark, the palette or the pitch changes):
 
@@ -352,6 +359,14 @@ when only the numbers were.
   it while open.** `#doc` is a stacking context under the grain; a canvas moved
   in the DOM keeps its WebGL context, so the ground travels rather than being
   drawn twice.
+- **The motion wall is placed in COLUMN WIDTHS, never measured.** A
+  percentage margin or padding resolves against the containing block's WIDTH,
+  so `--dy`, `--x`, `--w` and `--top` from `motionLayout.js` place every tile
+  with no layout read. Give a column a width-dependent height any other way
+  (a `vh`, a `px`) and the greedy estimate no longer matches the page.
+- **The ground stops when it rests on a still.** `motionAmbient.js` draws a
+  still until it has faded in and then not at all; a loop redrawing it re-rolls
+  the grain every frame, which is a shimmer across the whole window.
 - **A scanner strict enough to be useful catches documentation about itself.**
   The redaction check failed on `STATE.md` for spelling out a volume path while
   explaining the rule. Prose about those patterns must name them, not spell
@@ -395,7 +410,7 @@ source. Read `editor/README.md` before touching it. What it writes:
   (FIG. 2's six backlight colours are `--glow-1`..`--glow-6` among them);
 - **media** encoded into `src/assets/media/` the way `bake_captures.mjs` does.
 
-On the motion-graphics page the scenes' names resolve to `src/site/motion.js`
+On the motion-graphics page the works' names resolve to `src/site/motion.js`
 (plugin.js, `DATA`), and the behind-the-scenes figures are ordinary capture
 slots. The nav bar is fixed chrome and locked.
 

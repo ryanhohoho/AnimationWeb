@@ -84,8 +84,15 @@
      the greys that carry LINES stayed grey. */
   --n3:   #3D392F;   /* labels, captions, annotation — text, so it is nearly ink.
                         9.8:1 on bone. */
-  --n4:   #9A9384;   /* hairlines, ticks, inactive marks — NEVER A WORD.
-                        2.6:1 on bone, which is the whole reason for the rule. */
+  --n4:   #9E9789;   /* hairlines, ticks, inactive marks — NEVER A WORD.
+                        2.9:1 on the white paper (2.6 on bone), under even the
+                        3:1 large-text floor, which is the whole reason for the
+                        rule. It was #9A9384 until the paper went white on
+                        purpose, which put it at 3.05:1 -- over that floor, so
+                        a hairline grey that read as faint text. 4% lighter,
+                        same hue, and back under. */
+  --nav-here: #6F6A5E;   /* the nav bar's page-you-are-on, set LIGHTER than the
+                            ink by instruction, but a word: 5.4:1 on white, 4.8 on bone */
   /* ...AND THE RULE ABOVE WAS ONLY HALF TRUE UNTIL IT WAS MEASURED.
      The paragraph before this describes a refactor that moved the greys
      carrying words up to near-black, and it was done for --n3 and then not
@@ -609,40 +616,43 @@ pre.sr { white-space:pre; }
 #chrome { position:fixed; inset:0; z-index:25; pointer-events:none; }
 #chrome > * { pointer-events:auto; }
 /* ── THE NAV BAR ───────────────────────────────────────────────────────────
-   By instruction: small, top middle, about a third of the window wide. It is
-   the site's label register -- the same 11 px caps as every annotation on the
-   sheet -- on a strip of the stock itself, ruled with a hairline, so it reads
-   as a label pasted on the paper rather than as an app's toolbar. Four names,
-   spread across the width they are given.
+   By instruction: small, top middle, about a third of the window wide, and
+   (2026-09-26) with no box round it -- one hairline across the top of the four
+   names, the way a running head is ruled on a printed page. It is the site's
+   label register, the same 11 px caps as every annotation on the sheet.
 
-   WHERE YOU ARE is a thread under the name in cerulean, the one ink no project
-   may own (it was the stitch chart's thread, and before that the progress
-   rule's): the bar is the site's own furniture, so it does not change colour
-   with the page. On a project sheet the same thread marks PROJECTS, because a
-   project sheet is inside card three. */
+   WHERE YOU ARE is the word set LIGHTER, by instruction: the other three are
+   ink, and the page you are on steps back to a warm grey, because it is the
+   one name there is no point pressing. The grey is its own token, --nav-here,
+   chosen to clear 4.5:1 on white and on bone (5.4 and 4.8): this sheet's rule
+   is that a word is never faded below the floor (see --n4), and a name set
+   lighter is still a word. On a project sheet PROJECTS is the one set lighter,
+   because a project sheet is inside card three.
+
+   WITHOUT A BOX, THE PAGE WOULD RUN UNDER IT, so the bar gets out of the way:
+   it slides up and out while the reader scrolls down and comes back the
+   moment they scroll up, or reach the top (chrome.js). A keyboard that tabs
+   into it brings it back too (:focus-within). */
 .topnav {
   position:fixed; top:var(--nav-top); left:50%; transform:translateX(-50%);
   height:var(--nav-h); min-width:33.333vw; max-width:calc(100vw - 2 * var(--pad));
   display:flex; align-items:center; justify-content:space-between; gap:1.4rem;
-  padding:0 1.1rem;
-  background:var(--paper); border:1px solid var(--n4);
+  padding:0;
+  border-top:1px solid var(--n4);
+  transition:transform var(--t2) var(--e), opacity var(--t2) var(--e);
+}
+.topnav.is-away:not(:focus-within) {
+  transform:translate(-50%, calc(-100% - var(--nav-top) - 4px)); opacity:0; pointer-events:none;
 }
 .t.topnav-a {
   position:relative; line-height:1; white-space:nowrap;
-  color:var(--n3); text-decoration:none;
-  padding:.55rem 0;
+  color:var(--ink); text-decoration:none;
+  padding:.7rem 0 .55rem;
   transition:color var(--t1) var(--e);
 }
-/* the thread: drawn under the word, not an underline, so it can sit at its own
-   distance and weight and fade in without moving anything */
-.t.topnav-a::after {
-  content:""; position:absolute; left:0; right:.15em; bottom:.3rem; height:2px;
-  background:var(--blue); opacity:0; transition:opacity var(--t2) var(--e);
-}
-.t.topnav-a.on { color:var(--ink); }
-.t.topnav-a.on::after { opacity:1; }
+.t.topnav-a.on { color:var(--nav-here); }
 @media (hover:hover) {
-  .t.topnav-a:hover { color:var(--blue); }
+  .t.topnav-a:not(.on):hover { color:var(--blue); }
 }
 .topnav-a:focus-visible { outline-offset:3px; }
 
@@ -1289,8 +1299,8 @@ pre.sr { white-space:pre; }
      middle, still one strip, no menu. The names keep their size: they are the
      only navigation a phone has now (with the swipe), and 11 px is already the
      floor. Each gets a 44 px tall target through its padding. */
-  .topnav { min-width:0; gap:1.05rem; padding:0 .9rem; }
-  .t.topnav-a { padding:.9rem 0; letter-spacing:.11em; }
+  .topnav { min-width:0; gap:1.05rem; }
+  .t.topnav-a { padding:.95rem 0 .85rem; letter-spacing:.11em; }
 
   /* ── AND THE CARD FITS THE VISIBLE WINDOW ────────────────────────────
      100lvh is the height with the browser toolbars RETRACTED, so on an iPhone
@@ -1342,25 +1352,22 @@ pre.sr { white-space:pre; }
   .row-role { width:100%; }
 }
 
-/* ══ EXPERIMENTAL MOTION GRAPHICS ════════════════════════════════════════
-   The one project page not cut to the two-plate trim (pages/motion-graphics.js
-   says why): a head, a contact sheet of every scene, the process, the
-   credits. Everything is still this sheet -- the paper, one die-cut in the
-   project's pair, the registration ticks, the two type sizes, the labels. */
 /* Mew is not on the project sheets: asleep, her canvas is hidden (mew.js) */
 #stage.asleep { visibility:hidden; }
 
 /* ══ EXPERIMENTAL MOTION GRAPHICS ════════════════════════════════════════
    The one page that does not wear the site's clothes, by instruction: it wears
-   the PIECE's ("let me be a flower"). A dark ground that is the scene you are
-   looking at, dithered blue (site/motionAmbient.js); the piece's inks; its
-   misregistered titles; its computer vision's boxes round every frame. See
-   pages/motion-graphics.js for the page and why each part of it is there.
+   the look of the work on it. A dark ground that is, at rest, a still of the
+   pixelated flower and, under the pointer, the work pointed at -- dithered
+   blue (site/motionAmbient.js); the pieces' inks; their misregistered titles;
+   their computer vision's boxes round every frame. See pages/motion-graphics.js
+   for the page and why each part of it is there.
 
-   The colours are the piece's own, lifted from its story.js and scenes:
-   the lift it grades its dark into, its navy, ultramarine and periwinkle (the
-   blue grade and the whale's dither), its cream paper, its crimson ink, and
-   the computer vision's cyan (tracking) and deep red (locked) from m_angels. */
+   The colours are the pieces' own, lifted from "let me be a flower"'s story.js
+   and scenes: the lift it grades its dark into, its navy, ultramarine and
+   periwinkle (the blue grade and the whale's dither), its cream paper, its
+   crimson ink, and the computer vision's cyan (tracking) and deep red (locked)
+   from m_angels. */
 .mg {
   --mg-black:#03040c; --mg-navy:#0a1440; --mg-ultra:#1f24d6; --mg-peri:#8f9ae6;
   --mg-cream:#f1ecde; --mg-crimson:#b3122e; --mg-cyan:#7ee8ff; --mg-red:#e0161b;
@@ -1373,12 +1380,12 @@ pre.sr { white-space:pre; }
 /* the whole window goes dark with it: the overscroll, and the bar at the top */
 body:has(#doc[data-page="project:motion-graphics"]) { background:#03040c; }
 body:has(#doc[data-page="project:motion-graphics"])::before { opacity:.08; mix-blend-mode:screen; }
-body:has(#doc[data-page="project:motion-graphics"]) .topnav {
-  background:rgba(3,4,12,.72); border-color:rgba(143,154,230,.35); backdrop-filter:blur(6px);
-}
-body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a { color:rgba(241,236,222,.66); }
+body:has(#doc[data-page="project:motion-graphics"]) .topnav { border-top-color:rgba(143,154,230,.42); }
+body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a { color:rgba(241,236,222,.62); }
 body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a.on { color:#f1ecde; }
-body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a::after { background:#8f9ae6; }
+@media (hover:hover) {
+  body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a:hover { color:#8f9ae6; }
+}
 
 /* THE GROUND: a third of the window, scaled up with no smoothing, so every
    dither cell is three pixels of hard edge */
@@ -1388,16 +1395,14 @@ body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a::after { backgro
   position:relative; z-index:1;
   width:100%; max-width:88rem; margin:0 auto; flex:1;
   padding:max(var(--deck-top), var(--nav-clear)) var(--pad) calc(var(--pad) * 2);
-  display:flex; flex-direction:column; gap:clamp(2.6rem, 6vw, 5rem);
+  display:flex; flex-direction:column; gap:clamp(4rem, 10vw, 9rem);
 }
 .mg-in > * { animation:deck-fade .6s cubic-bezier(0.16,1,0.3,1) both; }
 .mg a { color:inherit; }
 
-/* ── THE HEAD ─────────────────────────────────────────────────────────── */
-.mg-head { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:clamp(1.6rem, 4vw, 4rem); align-items:end; }
-.mg-head-t { display:flex; flex-direction:column; gap:1.3rem; align-items:flex-start; min-width:0; }
-.mg-kicker, .mg-hud { font-size:11px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:var(--mg-peri); }
-/* the piece's titles are printed with their inks out of register -- red one
+/* ── THE HEAD: the title and one line ─────────────────────────────────── */
+.mg-head { display:flex; flex-direction:column; gap:1.5rem; align-items:flex-start; }
+/* the pieces' titles are printed with their inks out of register -- red one
    way, cyan the other (story.js, CHROMA and the flower's split prints) */
 .mg-h {
   font-weight:200; font-size:clamp(52px, 8.6vw, 148px); line-height:.82; letter-spacing:-.045em;
@@ -1406,84 +1411,109 @@ body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a::after { backgro
 }
 .mg-h em { font-style:normal; font-weight:800; letter-spacing:-.055em; }
 .mg-lead { max-width:40ch; font-size:14px; line-height:1.7; color:var(--mg-dim); }
-.mg-hud { display:flex; flex-wrap:wrap; gap:.4rem 1.6rem; }
-.mg-film { list-style:none; }
-.mg-film .mg-cell { width:calc(min(64vh, 42rem) * 9 / 19.5); }
 
-/* ── THE CUT ──────────────────────────────────────────────────────────────
-   The whole film as one strip, each scene as long as it lasts. Coloured by the
-   piece's four parts, in its own inks. */
-.mg-cut { display:grid; gap:.45rem; }
-.mg-cut-bar { display:flex; height:34px; background:var(--mg-black); outline:1px solid rgba(143,154,230,.3); outline-offset:3px; }
-.mg-seg { display:block; min-width:0; flex-basis:0; box-shadow:inset 1px 0 0 var(--mg-black); transition:filter .15s; }
-.mg-seg.a0 { background:var(--mg-ultra); }
-.mg-seg.a1 { background:var(--mg-peri); }
-.mg-seg.a2 { background:var(--mg-cream); }
-.mg-seg.a3 { background:var(--mg-crimson); }
-.mg-seg.is-black { background:transparent; }
-.mg-seg:hover, .mg-seg:focus-visible { background:var(--mg-cyan); outline:none; }
-.mg-cut-ticks { position:relative; height:14px; font-size:10px; letter-spacing:.12em; color:var(--mg-peri);
-                font-variant-numeric:tabular-nums; }
-.mg-cut-ticks span { position:absolute; top:0; transform:translateX(-50%); }
-.mg-cut-ticks span:first-child { transform:none; }
-
-/* ── THE SCENES ───────────────────────────────────────────────────────────
-   Every frame is boxed the way the piece's computer vision boxes what it
-   sees: a thin translucent line with a label hanging above it, cyan while it
-   tracks, deep red once it has locked -- which here is the frame your pointer
+/* ── A TILE ───────────────────────────────────────────────────────────────
+   Boxed the way the piece's computer vision boxes what it sees: a thin
+   translucent line, the name hanging above it as the label, cyan while it
+   tracks, deep red once it has locked -- which here is the tile your pointer
    is on. */
-.mg-sheet { list-style:none; display:grid; grid-template-columns:repeat(auto-fill, minmax(118px, 1fr));
-            gap:2rem 1.1rem; align-items:start; }
-.mg-act { grid-column:1 / -1; display:flex; align-items:baseline; gap:1.2rem;
-          border-top:1px solid rgba(143,154,230,.22); padding-top:1rem; margin-top:1.4rem; }
-.mg-act:first-child { margin-top:0; }
-.mg-act-n { font-size:clamp(40px, 5vw, 72px); font-weight:200; line-height:.8; color:var(--mg-peri); letter-spacing:-.02em; }
-.mg-act-name { font-size:clamp(22px, 2.4vw, 34px); font-weight:300; letter-spacing:-.02em; }
-.mg-cell { list-style:none; min-width:0; }
-.mg-cell-a { display:grid; gap:.4rem; text-decoration:none; color:inherit; }
-.mg-tag { font-size:10px; font-weight:600; letter-spacing:.14em; color:var(--mg-cyan); line-height:1; }
+.mg-tile { min-width:0; }
+.mg-cell-a { position:relative; display:block; text-decoration:none; color:inherit; }
 .mg-frame-cut { position:relative; display:block; aspect-ratio:9 / 19.5; background:#000; }
 .mg-cv { position:absolute; inset:0; width:100%; height:100%; display:block; }
 .mg-box { position:absolute; inset:-4px; border:1px solid rgba(126,232,255,.32); pointer-events:none;
           box-shadow:0 0 12px rgba(126,232,255,.08); transition:border-color .15s, box-shadow .15s; }
-.mg-name { font-size:12px; font-weight:600; letter-spacing:.01em; line-height:1.25; color:var(--mg-dim);
-           overflow-wrap:anywhere; transition:color .15s; }
+.mg-name { position:absolute; left:-4px; bottom:calc(100% + 7px); max-width:calc(100% + 3rem);
+           font-size:11px; font-weight:600; letter-spacing:.02em; line-height:1.15; color:var(--mg-dim);
+           transition:color .15s; pointer-events:none; }
 @media (hover:hover) {
   .mg-cell-a:hover .mg-box { border-color:var(--mg-red); box-shadow:0 0 16px rgba(224,22,27,.35); }
-  .mg-cell-a:hover .mg-tag { color:var(--mg-red-t); }
-  .mg-cell-a:hover .mg-name { color:var(--mg-cream); }
+  .mg-cell-a:hover .mg-name { color:var(--mg-red-t); }
 }
 .mg-cell-a:focus-visible { outline:none; }
 .mg-cell-a:focus-visible .mg-box { border-color:var(--mg-red); border-width:2px; }
-.mg-film .mg-name { font-size:15px; color:var(--mg-cream); }
 .mg-sheet-src { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
 
-/* the two runs that are one gesture each */
-.mg-group { grid-column:1 / -1; display:grid; gap:.8rem; list-style:none; align-self:center; min-width:0; }
-/* a run shares its row with the scenes either side of it, the way it sits
-   between them in the film: the hallway | the flicker | the eye, and the
-   montage | the stares it ends on */
-.mg-group-flower { grid-column:2 / -2; }
-.mg-group-devices { grid-column:1 / -2; align-self:start; }
-.mg-group-h { display:flex; flex-wrap:wrap; align-items:baseline; gap:.3rem 1rem; }
-.mg-group-h > span:first-child { font-size:18px; font-weight:700; letter-spacing:-.01em; }
-.mg-group-note { font-size:10px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--mg-peri); }
-.mg-run { list-style:none; display:grid; gap:1.1rem .8rem; }
-/* "A flower.": one strip of film, the cuts side by side and small, only their
-   numbers on them -- it scrolls sideways where it will not fit */
-.mg-group-flower .mg-run { grid-template-columns:repeat(21, minmax(30px, 1fr)); gap:.45rem; overflow-x:auto;
-  padding:6px 4px 10px; scroll-snap-type:x proximity; scrollbar-width:thin; }
-.mg-group-flower .mg-cell { scroll-snap-align:start; }
-.mg-group-flower .mg-name { display:none; }
-.mg-group-flower .mg-box { inset:-2px; }
-/* the devices montage: a flurry of frames that lands on four larger ones */
-.mg-group-devices .mg-run { grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); }
-.mg-group-devices .is-land { grid-column:span 2; grid-row:span 2; }
-.mg-group-devices .is-land .mg-name { color:var(--mg-cream); font-size:14px; }
+/* ── THE WALL ─────────────────────────────────────────────────────────────
+   Before the page's code arrives it is a plain grid (and it stays one if the
+   code never comes). Laid (site/motionLayout.js says how), it is a broken
+   grid: columns that start at their own depths, tiles at their own widths
+   pushed left, centre or right, with their own air above. Every length is in
+   COLUMN WIDTHS, because a percentage margin or padding resolves against the
+   containing block's width -- so --dy, --x, --w and --top need no measuring. */
+.mg-wall { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:3rem 1.4rem; align-items:start; }
+.mg-wall > .mg-tile { padding-top:1.6rem; }
+.mg-mix { grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); }
+.mg-wall.is-laid { grid-template-columns:repeat(var(--cols), minmax(0, 1fr)); gap:0 clamp(1.2rem, 3.4vw, 3.6rem); }
+/* a column no wider than keeps a full-width featured tile inside the window:
+   36vh wide is 78vh tall at 9:19.5 */
+.mg-top.is-laid { width:100%; max-width:calc(var(--cols) * 36vh + (var(--cols) - 1) * 3.6rem); margin-inline:auto; }
+.mg-col { display:flex; flex-direction:column; align-items:flex-start; min-width:0; padding-top:calc(var(--top) * 100%); }
+.mg-wall.is-laid .mg-tile { width:calc(var(--w) * 100%); margin-left:calc(var(--x) * 100%);
+                            margin-top:calc(var(--dy) * 100% + 1.7rem); }
+.mg-top .mg-name { font-size:12.5px; }
 
-/* ── BEHIND THE SCENES, AND THE CREDITS ───────────────────────────────── */
-.mg-bts { display:flex; flex-direction:column; gap:1.2rem; align-items:flex-start;
-          border-top:1px solid rgba(143,154,230,.22); padding-top:1.4rem; }
+/* THE COLUMNS DRIFT, AND EACH TILE LOCKS ON AS IT ARRIVES. Both are CSS
+   scroll-driven animations (animation-timeline: view(), Chrome 115, Safari
+   26, Firefox 159): the compositor runs them off the scroll position with no
+   script and no layout read, so the cost is a transform per column. Each
+   column slides by its own --drift against the scroll, so the columns pass
+   each other like layers at different depths; each tile's box snaps in from
+   larger and faint to its rest, the way the piece's vision locks onto a find.
+   Where the property is unknown, or less motion was asked for, the wall is
+   simply still -- nothing is hidden waiting for an animation to show it. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .mg-wall.is-laid .mg-col {
+      animation:mg-drift linear both; animation-timeline:view(); animation-range:cover;
+      will-change:transform;
+    }
+    .mg-wall.is-laid .mg-box, .mg-bloom .mg-box {
+      animation:mg-lock linear both; animation-timeline:view(); animation-range:entry 5% entry 85%;
+    }
+    .mg-wall.is-laid .mg-name {
+      animation:mg-label linear both; animation-timeline:view(); animation-range:entry 40% entry 100%;
+    }
+    .mg-wall.is-laid .mg-cv {
+      animation:mg-come linear both; animation-timeline:view(); animation-range:entry 0% entry 70%;
+    }
+  }
+}
+@keyframes mg-drift { from { transform:translateY(var(--drift, 0px)); } to { transform:translateY(calc(var(--drift, 0px) * -1)); } }
+@keyframes mg-lock { from { transform:scale(1.16); opacity:0; } 60% { opacity:1; } to { transform:none; opacity:1; } }
+@keyframes mg-label { from { opacity:0; } to { opacity:1; } }
+@keyframes mg-come { from { opacity:.2; } to { opacity:1; } }
+
+/* ── THE FLOWER ───────────────────────────────────────────────────────────
+   One frame, pinned in the middle of the window, stepped through the 21 cuts
+   by the scroll (site/motionBloom.js). The section is as tall as the window
+   plus one --step per cut after the first; the steps are invisible bands laid
+   down it, the first centred on the window's middle when the pin catches and
+   the last when it lets go. */
+.mg-bloom { --step:15svh; position:relative; height:calc(100svh + (var(--n) - 1) * var(--step)); }
+.mg-bloom-pin { position:sticky; top:0; height:100svh; display:grid; grid-template-columns:1fr auto 1fr;
+                align-items:center; gap:clamp(1.6rem, 5vw, 5rem); }
+.mg-bloom-list { justify-self:end; list-style:none; display:grid; gap:.05rem; text-align:right; }
+.mg-bloom-name { position:relative; font:inherit; font-size:13px; font-weight:600; letter-spacing:.01em; line-height:1.25;
+                 color:var(--mg-dim); background:none; border:0; padding:.14rem 1.1rem .14rem 0; cursor:pointer; transition:color .2s; }
+/* the lit one: cream, and a short cyan tick beside it, the vision's cursor */
+.mg-bloom-name.on { color:var(--mg-cream); }
+.mg-bloom-name::after { content:""; position:absolute; right:0; top:50%; width:.6rem; height:1px; background:var(--mg-cyan);
+                        opacity:0; transform:scaleX(.2); transform-origin:right; transition:opacity .2s, transform .2s; }
+.mg-bloom-name.on::after { opacity:1; transform:none; }
+@media (hover:hover) { .mg-bloom-name:hover { color:var(--mg-red-t); } }
+.mg-bloom-name:focus-visible { outline:1px solid var(--mg-cyan); outline-offset:2px; }
+.mg-bloom-frame { position:relative; display:block; width:calc(min(80svh, 58rem) * 9 / 19.5); text-decoration:none; }
+.mg-bloom-img, .mg-bloom-vid { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+.mg-bloom-vid { opacity:0; transition:opacity .25s; }
+.mg-bloom-vid.live { opacity:1; }
+.mg-bloom-now, .mg-bloom-rail { display:none; }
+.mg-bloom-steps { position:absolute; inset:0; pointer-events:none; }
+.mg-bloom-steps i { position:absolute; left:0; right:0; height:var(--step);
+                    top:calc(50svh - var(--step) / 2 + var(--k) * var(--step)); }
+
+/* ── BEHIND THE SCENES ────────────────────────────────────────────────── */
+.mg-bts { display:flex; flex-direction:column; gap:1.2rem; align-items:flex-start; }
 .mg-bts-h { font-size:clamp(28px, 3.4vw, 52px); font-weight:300; letter-spacing:-.03em; line-height:1; }
 .mg-body { max-width:62ch; font-size:14px; line-height:1.75; color:var(--mg-dim); }
 .mg-bts-figs { width:100%; display:grid; gap:1.6rem;
@@ -1492,7 +1522,25 @@ body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a::after { backgro
 .mg .fig-in::before, .mg .fig-in::after { border-color:var(--mg-cyan); }
 .mg .fig-wait { border-color:rgba(143,154,230,.4); color:var(--mg-peri); }
 .mg .fig-wait .t { color:var(--mg-peri); }
-.mg-credits { border-top:1px solid rgba(143,154,230,.22); padding-top:1rem; display:grid; gap:.8rem; }
+
+/* ── THE CONCLUSION: the film, centred, and its own timeline ──────────── */
+.mg-end { display:flex; flex-direction:column; align-items:center; gap:1.1rem; }
+.mg-end .mg-film { width:min(62vw, calc(min(78svh, 58rem) * 9 / 19.5)); }
+.mg-end-name { font-size:15px; font-weight:600; letter-spacing:.02em; color:var(--mg-cream); }
+/* the timeline: every stretch as long as it lasts, coloured by the film's four
+   parts in the piece's own inks */
+.mg-cut { width:100%; margin-top:clamp(1.6rem, 4vw, 3rem); }
+.mg-cut-bar { display:flex; height:30px; background:var(--mg-black); outline:1px solid rgba(143,154,230,.3); outline-offset:3px; }
+.mg-seg { display:block; min-width:0; flex-basis:0; box-shadow:inset 1px 0 0 var(--mg-black); transition:filter .15s; }
+.mg-seg.a0 { background:var(--mg-ultra); }
+.mg-seg.a1 { background:var(--mg-peri); }
+.mg-seg.a2 { background:var(--mg-cream); }
+.mg-seg.a3 { background:var(--mg-crimson); }
+.mg-seg.is-black { background:transparent; }
+.mg-seg:hover, .mg-seg:focus-visible { background:var(--mg-cyan); outline:none; }
+
+/* ── THE CREDITS ──────────────────────────────────────────────────────── */
+.mg-credits { display:grid; gap:.8rem; }
 .mg-credits-h { font-size:10px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:var(--mg-peri); }
 .mg-credits-note { max-width:80ch; font-size:10.5px; line-height:1.6; color:var(--mg-dim); }
 .mg-credits-list { list-style:none; columns:3 16rem; column-gap:2rem; font-size:10px; line-height:1.5; color:var(--mg-dim); }
@@ -1503,19 +1551,19 @@ body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a::after { backgro
 .mg-back a { text-decoration:underline; text-underline-offset:.24em; text-decoration-color:rgba(241,236,222,.4); }
 
 /* ── THE VIEWER ────────────────────────────────────────────────────────────
-   On <body>, above the grain. The ground is the page's own -- the scene,
+   On <body>, above the grain. The ground is the page's own -- the work,
    dithered, spilling past its frame -- under a dark veil; nothing on it but the
-   frame, the scene's name and one bar. */
+   frame, the work's name, one bar, and on a computer a drawn X. */
 .mgv { position:fixed; inset:0; z-index:60; touch-action:none; overscroll-behavior:contain; color:#f1ecde; }
 .mgv[hidden] { display:none; }
 .mgv:focus { outline:none; }
-/* the ground (moved in while open) under a light veil: the scene's own light,
+/* the ground (moved in while open) under a light veil: the work's own light,
    dimmed just enough that the frame stands forward of it */
 .mgv > .mg-ground { position:absolute; }
-.mgv-bg { position:absolute; inset:0; background:rgba(3,4,12,.32); }
-.mgv-track { position:absolute; inset:0; }
+.mgv-bg { position:absolute; inset:0; background:rgba(3,4,12,.32); cursor:zoom-out; }
+.mgv-track { position:absolute; inset:0; pointer-events:none; }
 .mgv-slot { position:absolute; transform-origin:0 0; overflow:hidden; background:#000;
-            box-shadow:0 0 60px rgba(31,36,214,.25); }
+            box-shadow:0 0 60px rgba(31,36,214,.25); pointer-events:auto; }
 .mgv:not(.is-paging) .mgv-slot:not([data-k="0"]) { display:none; }
 .mgv-poster, .mgv-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
 .mgv-video { opacity:0; }
@@ -1535,7 +1583,7 @@ body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a::after { backgro
 .mgv-bottom > * { pointer-events:auto; }
 .mgv-bar { flex:1; }
 .mgv-title { left:var(--fx); width:var(--fw); top:calc(var(--fy) + var(--fh) + 14px);
-             font-size:15px; font-weight:600; letter-spacing:.02em; line-height:1.2; text-align:center; }
+             font-size:15px; font-weight:600; letter-spacing:.02em; line-height:1.2; text-align:center; pointer-events:none; }
 .mgv-bar { display:flex; align-items:center; gap:.6rem; }
 .mgv-scrub { flex:1; height:22px; position:relative; cursor:ew-resize; touch-action:none; }
 .mgv-scrub:focus-visible { outline:1px solid var(--mg-cyan, #7ee8ff); outline-offset:2px; }
@@ -1552,43 +1600,51 @@ body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a::after { backgro
 .mgv-snd .off, .mgv-snd.is-muted .on { display:none; }
 .mgv-snd.is-muted .off { display:inline; }
 
-/* the frame's two sides are the way to its neighbours */
-.mgv-side { position:absolute; top:var(--fy); height:var(--fh); border:0; padding:0; background:none; cursor:pointer;
+/* the neighbours: a chevron just beside each side of the frame. Only that
+   strip pages; the rest of the dark around the frame puts the work back. */
+.mgv-side { position:absolute; top:var(--fy); height:var(--fh); width:92px; border:0; padding:0; background:none; cursor:pointer;
             color:#f1ecde; display:grid; place-items:center; }
-.mgv-side[data-step="-1"] { left:0; width:var(--fx); }
-.mgv-side[data-step="1"] { left:calc(var(--fx) + var(--fw)); right:0; }
+.mgv-side[data-step="-1"] { left:calc(var(--fx) - 92px); }
+.mgv-side[data-step="1"] { left:calc(var(--fx) + var(--fw)); }
 .mgv-side:disabled { display:none; }
-.mgv-side svg { width:30px; height:30px; fill:none; stroke:currentColor; stroke-width:1.4; opacity:0; transition:opacity .2s, transform .2s; }
-.mgv-side[data-step="-1"] svg { justify-self:end; margin-right:1.4rem; }
-.mgv-side[data-step="1"] svg { justify-self:start; margin-left:1.4rem; }
-.mgv-side:hover svg, .mgv-side:focus-visible svg { opacity:.75; }
+.mgv-side svg { width:30px; height:30px; fill:none; stroke:currentColor; stroke-width:1.4; opacity:.3; transition:opacity .2s; }
+.mgv-side:hover svg, .mgv-side:focus-visible svg { opacity:.9; }
 .mgv-side:focus-visible { outline:none; }
-/* the close is for a keyboard, and only shows when a keyboard reaches it */
-.mgv-close { position:absolute; top:12px; right:12px; width:36px; height:36px; border:1px solid rgba(241,236,222,.5);
-             background:rgba(3,4,12,.6); color:#f1ecde; font-size:20px; line-height:1; cursor:pointer; opacity:0; pointer-events:none; }
-.mgv-close:focus-visible { opacity:1; pointer-events:auto; }
+/* the X, top left, drawn in the bar's own line weight */
+.mgv-close { position:absolute; top:18px; left:18px; width:40px; height:40px; padding:8px; border:0; background:none;
+             color:#f1ecde; cursor:pointer; opacity:.72; transition:opacity .2s; }
+.mgv-close:hover { opacity:1; }
+.mgv-close svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; }
+.mgv-close:focus-visible { outline:1px solid var(--mg-cyan, #7ee8ff); outline-offset:2px; }
 
 /* ── A PHONE: THE SCENE IS THE SCREEN ──────────────────────────────────── */
 .mgv.is-full .mgv-side { display:none; }
+/* no X on a phone: the swipe away is the close there, as in Photos (it still
+   shows for a keyboard that reaches it) */
+.mgv.is-full .mgv-close { opacity:0; pointer-events:none; }
+.mgv.is-full .mgv-close:focus-visible { opacity:1; pointer-events:auto; }
 .mgv.is-full .mgv-bottom { left:0; right:0; width:auto; top:auto; bottom:0; height:auto;
   padding:3.2rem 1rem calc(env(safe-area-inset-bottom, 0px) + .8rem);
   background:linear-gradient(to top, rgba(3,4,12,.72), rgba(3,4,12,0)); }
 .mgv.is-full .mgv-title { left:1rem; right:1rem; width:auto; top:auto; text-align:left; z-index:1;
   bottom:calc(env(safe-area-inset-bottom, 0px) + 2.6rem); }
 
-@media (max-width:860px){
-  .mg-head { grid-template-columns:1fr; }
-  .mg-film .mg-cell { width:min(100%, calc(62svh * 9 / 19.5)); }
-  .mg-sheet { grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:1.6rem .8rem; }
-}
 @media (max-width:560px){
-  /* four across on a phone: the sheet is the summary */
-  .mg-sheet { grid-template-columns:repeat(4, minmax(0, 1fr)); gap:1.3rem .55rem; }
-  .mg-group-devices .mg-run { grid-template-columns:repeat(4, minmax(0, 1fr)); gap:1.1rem .55rem; }
   .mg-name { font-size:10px; }
-  .mg-cut-bar { height:26px; }
-  /* too narrow to share a row: the runs take the whole width */
-  .mg-group-flower, .mg-group-devices { grid-column:1 / -1; }
+  .mg-top .mg-name { font-size:11px; }
+  .mg-cut-bar { height:24px; }
+  .mg-end .mg-film { width:min(72vw, calc(66svh * 9 / 19.5)); }
+  /* the flower on a phone: the frame alone in the middle, the effect's name
+     under it and a rail of 21 ticks for where the scroll is -- a list of 21
+     beside a frame does not fit 390 px */
+  .mg-bloom { --step:11svh; }
+  .mg-bloom-pin { grid-template-columns:1fr; grid-template-rows:1fr auto auto 1fr; justify-items:center; gap:.9rem; }
+  .mg-bloom-list { display:none; }
+  .mg-bloom-frame { grid-row:2; width:min(calc(64svh * 9 / 19.5), 100vw - 5rem); }
+  .mg-bloom-now { display:block; position:static; margin-top:.9rem; font-size:13px; color:var(--mg-cream); text-align:center; }
+  .mg-bloom-rail { display:flex; grid-row:4; align-self:start; gap:4px; }
+  .mg-bloom-rail i { width:5px; height:1px; background:rgba(241,236,222,.3); transition:background .2s, transform .2s; }
+  .mg-bloom-rail i.on { background:var(--mg-cyan); transform:scaleY(3); }
 }
 
 /* ══ REDUCED MOTION ══════════════════════════════════════════════════════

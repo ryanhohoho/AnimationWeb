@@ -2080,8 +2080,69 @@ x-rayed in the Photo Viewer as its card.
   markup and names.
 
 ### Open
-- `test/sim.test.js` fails ONE check that was already failing before this
-  session: the paper is `#FFFFFF` (saved through the editor), which puts `--n4`
-  at 3.05:1 and trips "control: --n4 is under even the large-text floor". Either
-  the paper goes back to bone, `--n4` darkens, or the control's bound changes --
-  the owner's call, not made here.
+- (Resolved 2026-09-26, §14.) The white paper is deliberate; `--n4` went
+  `#9A9384` → `#9E9789` to get back under 3:1 on it.
+
+# 14 · The motion page becomes a showcase; the bar loses its box (2026-09-26)
+
+By instruction, after one round of questions. Supersedes §13 where they differ.
+
+### The nav bar
+No box: one hairline over the four names (`border-top`, `--n4`; on the motion
+page the piece's periwinkle). The page you are on is set LIGHTER, by
+instruction -- the other three are ink -- in its own token, `--nav-here`
+`#6F6A5E`, which clears 4.5:1 on white and on bone (5.4 / 4.8), because this
+sheet does not fade words below the floor. On the dark page "lighter" is the
+full cream against the others' dim. With no box the page would run under it,
+so `chrome.js` slides it away while scrolling down (40 px of travel) and back
+on scrolling up (10 px) or near the top; `:focus-within` brings it back for a
+keyboard. One `scrollY` read per frame, a transform on the compositor.
+
+### The motion page is a showcase of works
+- **Data**: `site/motion.js` is one line per work -- id, name, and `on`:
+  `"top"` (the featured wall, in order), `"mix"` (the scatter), `"flower"` (the
+  flower's run). A work can be in two places. The film's own cut (`CUT`,
+  `ACTS`) is used by its timeline and scrub ticks and nowhere else.
+- **Featured** (owner's list): the heavens tiled (the sky tiles as ONE take, see
+  below), liquid chrome, the undercroft, science., the pool, the angels, and of
+  the flower cuts only stripes. Lines, the real one, halftone, kaleidoscope and
+  one bit are also in the scatter. All 21 flower cuts are in the flower's run.
+- **The wall** (`site/motionLayout.js`, pure, tested): a broken grid -- 3
+  featured columns / 5 scatter columns on a desktop (2 / 4 under 860 px,
+  2 / 3 on a phone). Width follows clip length (3 s → 13 s, clamped), order is
+  priority (shortest column first), the scatter is seeded. Every length is in
+  column widths, so CSS percentages place it with no measuring. The columns
+  drift and the tiles lock on with `animation-timeline: view()`; unsupported or
+  reduced motion is a still wall. Before the page's code arrives the wall is a
+  plain grid.
+- **The flower** (`site/motionBloom.js`): a sticky 100svh stage, 21 invisible
+  steps of 15svh (11 on a phone) watched by one IntersectionObserver band at
+  mid-window. Posters swap while scrolling; after 0.4 s at rest the cut's clip
+  plays in the frame (one decoder, only on screen).
+- **The ground** rests on flower-13's poster (`GROUND`) and follows only a
+  MOVING mouse onto a tile (never the scroll: that was the flicker). A still
+  stops the draw loop once it has faded in -- no grain shimmer, zero cost.
+- **The viewer** pages within the list it was opened from (wall / flower /
+  film). A mouse closes it by clicking the dark around the frame (the chevron
+  targets are now 92 px strips beside the frame, not the whole side) or the
+  drawn X, top left, which a phone does not show.
+- **The sky, whole**: the firmament and the montage's turn were one take shown
+  twice. `?takes=sky` (sandbox) renders it straight through: 5 s of clouds, the
+  jerk to the portrait at 5 s, to the frame before the scene's own cut to black
+  (6.7 s). Sound: the firmament's mic without its whale J-cut, then the turn's
+  sound as the montage plays it. `turn` is gone.
+- **Bake**: the contact sheet is now cut from the site's own clips, not the
+  renders, so a new work needs only its video: `node tools/bake_motion.mjs --add
+  <video> --id <id>`, then one line in `motion.js`. The sheet holds only tiles
+  that play (film + top + mix = 37, 8x5 of 240x520, 4.1 MB). Total video
+  94.0 MB.
+- **No spec notes**: the stats line and the "02 · 2026" kicker are gone, and
+  RYAN.txt V and DESIGN.md §4 now say not to add such notes.
+
+### --n4 on the white paper
+The paper is `#FFFFFF` on purpose (the owner, 2026-09-26). That put the
+hairline grey at 3.05:1 -- over the 3:1 large-text floor, so it could pass for
+faint text, which is what "control: --n4 is under even the large-text floor"
+exists to forbid (the editor's inspector warns on the same bound). `--n4` is now
+`#9E9789`: the same hue 4% toward white, 2.90:1 on white, 2.57 on bone. The
+test was not touched; the token moved back under it.

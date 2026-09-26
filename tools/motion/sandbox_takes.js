@@ -4,6 +4,7 @@
 //   ?takes=montage    each devices-montage scene alone, at a take length, words stripped (SCIENCE. kept), with that
 //                     scene's own part of the score sized to the take
 //   ?takes=flower     every cut of "A flower." alone, extended, at the moment of the film it comes from
+//   ?takes=sky        the sky tiles as one whole take: the firmament's clouds, then the turn to Francis
 import { STORY } from './story.js';
 import { CUES } from './audio/cues.js';
 import { MONTAGE } from './timing.js';
@@ -99,10 +100,32 @@ function flowerPart(k, shots, off) {
 }
 const FLOWER_TAKE = 4;
 
+// ── the sky, whole: ONE take of m_skytiles from the first cloud to the black after Francis ─────────────────
+// The piece shows this take twice and never whole: the firmament is its first 5 s (clouds only, cut before the
+// turn), and the devices montage re-shows its start and the jerk round to the portrait. Here it runs straight
+// through: the firmament's 5 s, the turn at exactly 5 s, and on until the frame before the scene's own cut to black
+// (TURN.end after the turn). Sound: the firmament's digicam mic in the wind (without its J-cut to the whale, which
+// belongs to the cut that follows it in the film), then the turn's sound exactly as the montage plays it.
+const SKY = { turnAt: 5, len: 5 + 1.7 };
+function skyPart(a, t0) {
+  const quiet = new Proxy(a, { get: (o, k) => (k === 'sample' ? () => {} : typeof o[k] === 'function' ? o[k].bind(o) : o[k]) });
+  CUES.firmament(quiet, t0, SKY.turnAt);
+  const TA = t0 + SKY.turnAt, K0 = TA - MONTAGE.turnAt, E = t0 + SKY.len;
+  a.noise(K0, TA - K0 + .05, { filter: 'lowpass', freq: 260, gain: .12, buf: 'brown', attack: .05 });
+  a.impact(TA, { gain: .45 });
+  a.noise(TA, .42, { filter: 'bandpass', freq: 900, freqTo: 3800, q: .8, gain: .3, attack: .02, curve: 'lin' });
+  a.noise(TA + .05, .6, { filter: 'lowpass', freq: 400, freqTo: 120, gain: .25, buf: 'brown', attack: .01 });
+  a.sub(29, TA + .12, E - TA - .12, { gain: .3 });
+  a.pad([41, 42, 53], TA + .15, E - TA - .15, { gain: .08, type: 'sawtooth', cutoff: 420, attack: .25, release: .05, voices: 2, detune: 12, out: 'dirt' });
+  a.click(TA + MONTAGE.seen, { gain: .25 }); a.impact(TA + MONTAGE.seen, { gain: .35 });
+}
+
 const which = url.get('takes');
 if (which) {
   const takes = [];
-  if (which === 'montage') {
+  if (which === 'sky') {
+    takes.push({ id: 'take_sky', cue: skyPart, shot: { dur: SKY.len, scene: 'm_skytiles', params: { turnAt: SKY.turnAt } } });
+  } else if (which === 'montage') {
     const dev = STORY.beats.find((b) => b.id === 'devices');
     dev.shots.forEach((s) => {
       const T = MONTAGE_TAKES[s.scene];

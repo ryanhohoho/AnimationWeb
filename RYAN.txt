@@ -156,6 +156,12 @@ metadata in every corner ("ver.7.2 angel // not updated", "Opacity = 969%",
 measurement and callout, and it is the same instinct as the error-dialog
 register in section IV: describe the ineffable thing with instrumentation.
 
+  (THE OWNER'S CORRECTION, 2026-09-26. This paragraph describes the images
+  the owner SAVES. It is not a direction for the portfolio's own pages: no
+  spec notes on them -- counts, running times, aspect ratios, frame rates,
+  "52 scenes · 2:23 · 9:19.5 · 30 fps" -- and nothing may tell a future
+  session to add them. Do not.)
+
 
 VI. THE COMPUTER AS A PLACE, AND IT IS A KIND PLACE
 ----------------------------------------------------

@@ -9,17 +9,18 @@
 // (story.js, BLUE and the whale's dither), and put through a 4x4 ordered
 // dither in four inks, with a CRT's scanlines and film grain over it.
 //
-// So as you move across the contact sheet the whole page quietly becomes the
-// scene under your pointer (or, on a phone, the scene passing the middle of
-// the screen), and when a scene is open the frame stands in a field of its own
-// light. The source is always something already decoded -- a cell's canvas, or
-// the viewer's own video -- so this adds no decoder, only a 48x104 copy and one
-// small draw.
+// At rest the ground is a still (the pixelated flower, motion.js GROUND); as
+// you point at a tile the whole page quietly becomes that work, and when one
+// is open its frame stands in a field of its own light. Scrolling alone never
+// changes it (by instruction: it flickered when it followed the scroll). The
+// source is always something already decoded -- a tile's canvas, a poster, or
+// the viewer's own video -- so this adds no decoder, only a 48x104 copy and
+// one small draw.
 //
 // COST. The canvas is a third of the window's size and scaled up pixelated, so
 // a dither cell is three CSS pixels and the fragment count is a ninth; it draws
-// at most 24 times a second, only while the page is in front, and not at all
-// under reduced motion beyond one still frame per change.
+// at most 24 times a second, only while the page is in front and the source
+// moves, and not at all under reduced motion beyond one still frame per change.
 
 import { reducedMotion } from "../utils/motion.js";
 
@@ -146,10 +147,19 @@ export function createAmbient(canvas) {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
+  // A STILL IS DRAWN UNTIL IT HAS FADED IN, AND THEN NOT AT ALL. The page's
+  // resting ground is a still (motion.js, GROUND), and a loop re-drawing it
+  // at 24 fps would re-roll the grain every frame -- a shimmer across the
+  // whole window with nothing on it moving, which is exactly the flicker the
+  // resting page must not have. So once the crossfade is done and the picture
+  // has actually loaded, the loop stops: zero cost, and a ground that is quiet.
+  const isStill = (el) => el instanceof HTMLImageElement;
+  const settled = () => isStill(src) && mix >= 1 && src.complete && src.naturalWidth > 0;
   function frame(now) {
     raf = 0;
     if (!alive) return;
     if (!document.hidden && now - last >= 1000 / FPS - 2) { last = now; draw(now); }
+    if (settled()) return;
     if (!reducedMotion) raf = requestAnimationFrame(frame);
   }
   const kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
@@ -170,6 +180,8 @@ export function createAmbient(canvas) {
       src = el;
       mixFrom = performance.now();
       if (reducedMotion) mixFrom -= 1e4;
+      // a still that has not loaded yet draws as black: draw it again when it has
+      if (isStill(el) && !el.complete) el.addEventListener("load", () => { if (src === el) kick(); }, { once: true });
       kick();
     },
     dispose() {

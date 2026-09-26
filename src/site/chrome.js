@@ -15,8 +15,16 @@
 // Every control is a real <a href>. The router already delegates clicks on
 // a[data-route] from the document, so the bar needs no reference to it, works
 // under a middle click and a right click like any other link, and is a correct
-// page for a reader with no JavaScript at all. The only thing this file writes
-// is which of the four is the page the reader is on.
+// page for a reader with no JavaScript at all. This file writes two things:
+// which of the four is the page the reader is on, and whether the bar is out
+// of the way.
+//
+// IT GETS OUT OF THE WAY (2026-09-26). The bar lost its box -- it is a hairline
+// over four names now -- so a long page scrolling up under it would run its
+// words through them. It slides away while the reader scrolls DOWN (they are
+// reading) and comes back the moment they scroll UP (they are looking for
+// something) or reach the top: the pattern every long-form reading site uses.
+// A little hysteresis on each side, so a trackpad's jitter does not flap it.
 
 import { DECK } from "./router.js";
 
@@ -40,7 +48,34 @@ export function createChrome({ scope } = {}) {
     }
     document.body.classList.toggle("on-project", name === "project");
     document.body.classList.toggle("off-deck", !here);
+    // a new page starts with the bar showing
+    lastY = window.scrollY; acc = 0; away(false);
   }
+
+  // ── OUT OF THE WAY ─────────────────────────────────────────────────────
+  // One read of scrollY per frame, from the scroll event: nothing here reads
+  // layout, and the bar moves on the compositor (a transform).
+  const bar = root.querySelector?.(".topnav") ?? null;
+  const TOP = 48, HIDE = 24, SHOW = 10;
+  let lastY = window.scrollY, acc = 0, rid = 0, isAway = false;
+  function away(on) {
+    if (on === isAway || !bar) return;
+    isAway = on;
+    bar.classList.toggle("is-away", on);
+  }
+  function check() {
+    rid = 0;
+    const y = window.scrollY, d = y - lastY;
+    lastY = y;
+    if (y < TOP) { acc = 0; away(false); return; }
+    // accumulate travel in one direction; a change of direction starts over
+    acc = d > 0 ? Math.max(0, acc) + d : d < 0 ? Math.min(0, acc) + d : acc;
+    if (acc > HIDE) away(true);
+    else if (acc < -SHOW) away(false);
+  }
+  const onScroll = () => { if (!rid) rid = requestAnimationFrame(check); };
+  window.addEventListener("scroll", onScroll, { passive: true });
+  scope?.add?.(() => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(rid); });
 
   return { setPage, scope };
 }

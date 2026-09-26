@@ -14,7 +14,9 @@
    #doc[data-page="..."] scopes a rule to one page (site/router.js sets it). */
 
 /* @bp base */
-
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(1) { order:2; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(2) { order:1; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(3) { order:3; }
 
 /* @bp 860 */
 @media (max-width:860px) {

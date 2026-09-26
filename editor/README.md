@@ -10,7 +10,7 @@ the site's own source files, then `npm test` runs. Nothing is committed to git.
 
 Mew, the sky, the fixed chrome (the nav bar) and FIG. 2 on the USB sheet are
 locked. FIG. 2's backlight colours are not: see below. On the motion-graphics
-page the scenes' names are in `src/site/motion.js` and edit like any other words;
+page the works' names are in `src/site/motion.js` and edit like any other words;
 its behind-the-scenes figures take **Replace…**.
 
 ## Using it

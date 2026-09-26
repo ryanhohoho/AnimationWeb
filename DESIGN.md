@@ -176,11 +176,14 @@ the obvious way and is both broken on iOS and a repaint on every scroll tick.
 
 ## 4. Every element, and why it is there
 
-Nothing here is decorated. Everything is **labelled**, and every label is
-**true** — the screen angles, the ruling, the misregistration, the hole count
-and the percentages are the constants the renderer actually uses. Fake metadata
-as composition is his move (`RYAN.txt` V); real metadata as composition is the
-same move, kept honest.
+Nothing here is decorated. What is labelled is labelled **truly**. But spec
+notes are not a style to add: the owner does not want them (2026-09-26, "I do
+not wish for these stylistic notes to be in theme with my portfolio"). Do not
+add counts, running times, aspect ratios, frame rates, "PLATE"/"FIG." tallies or
+dates as decoration to any page; a label names a thing a reader needs, and that
+is all. The annotation register in `RYAN.txt` V is what the owner SAVES, not
+a direction for these pages. (What is already on the older sheets stays until
+the owner says otherwise; nothing new of that kind is added.)
 
 ### THE IDENTITY SYSTEM
 
@@ -669,21 +672,38 @@ environment never runs the deck's rAF.
 
 ## 10. Experimental motion graphics — the page that is not on the sheet
 
-By instruction, one page leaves the sheet behind. "let me be a flower" is a
-vertical piece made for phones, and the page shows it the way the piece looks,
-not the way this site looks: a near-black ground that IS the scene you are on
-(dithered in the piece's four blues, with its scanlines and grain), its inks,
-its misregistered titles, its computer vision's boxes round every frame.
+By instruction, one page leaves the sheet behind and wears the look of the work
+on it: a near-black ground, the blue grade and ordered dither, misregistered
+titles, computer-vision boxes round every frame. Since 2026-09-26 it is a
+**showcase of works**, not a breakdown of one film: most of the works were cut
+from "let me be a flower", but nothing relates a work to that film except the
+film itself, at the foot of the page. More experiments will be added, so the
+page is data (`site/motion.js`: one line per work, and where it is shown).
 
-The shape is two documented techniques combined: a photo lab's **contact
-sheet** (every scene, numbered, playing at once) and a **viewer** that opens out
-of the scene you press and closes back into it with the Photos app's gestures.
-Two runs of the piece are one gesture each and are laid out as one: the 21 cuts
-of "A flower." as a single strip of film, and the devices montage as a flurry of
-small frames that lands on four larger ones, the way the cut holds on them. The
-whole film is also a strip (THE CUT), every scene as long as it lasts in it, so
-the pacing is legible before anything is opened.
+Top to bottom, and why each part is where it is:
 
-The viewer shows the scene, its name and one bar laid in the scene, and nothing
-else: everything else is done the way a hand already knows how.
+- **The head**: the title and one line. No counts or specs (§4).
+- **The wall.** The longest, most developed works first and large, then
+  everything else scattered smaller. It is a **broken grid** (the editorial
+  layout whose columns do not share a baseline): each column starts at its own
+  depth, each tile is as wide as its clip is long, and pushed left, centre or
+  right with its own air. Order is priority (a tile goes to the shortest
+  column, so the first written land highest); the scatter is seeded, so it is
+  the same on every visit and re-dealt when a work is added. The columns
+  **drift** against each other as the page scrolls and each tile's box **locks
+  on** as it arrives -- CSS scroll-driven animations, run by the compositor,
+  so the motion costs no script. No headings, notes or dividers.
+- **The flower.** "A flower." is one flower through 21 techniques, so it is
+  shown as that: one frame pinned mid-window while the scroll steps it through
+  the cuts in order, the effects listed beside it with the current one lit
+  (the scrollytelling pattern: a sticky stage and steps scrolling past it).
+- **Behind the scenes.**
+- **The conclusion**: the whole film, centred, then its own timeline (every
+  stretch as long as it lasts, coloured by the film's four parts; press one to
+  open the film there), then the credits in one small list.
 
+The ground rests on a still of the pixelated pink flower and becomes the work
+under the pointer -- only a pointer that moves; following the scroll made it
+flicker. The viewer shows the work, its name and one bar laid in the work; on a
+computer a drawn X in the corner and a click on the dark around the frame put
+it back, and it pages within whatever it was opened from.
