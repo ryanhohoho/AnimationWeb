@@ -2146,3 +2146,26 @@ faint text, which is what "control: --n4 is under even the large-text floor"
 exists to forbid (the editor's inspector warns on the same bound). `--n4` is now
 `#9E9789`: the same hue 4% toward white, 2.90:1 on white, 2.57 on bone. The
 test was not touched; the token moved back under it.
+
+# 15 · Ready to host (2026-09-26)
+
+- **What is committed** is exactly what `npm ci && npm run build` needs, plus
+  the tools, tests and docs (`.gitignore` says why for every exclusion).
+  Checked by building from ONLY those files in a clean folder: all 140 output
+  files matched the local build byte for byte. Nothing is read from
+  `../VisualAudialExperience` or `../USB-UI` at build time.
+- **HTML comments are stripped from the build** (`buildNotesOut` in
+  `vite.config.js`): `index.html` 15.4 → 3.5 KB, the main chunk −2.8 KB, zero
+  comment nodes in the live DOM. Checked against the previous build on all
+  eight routes (the four cards, the three sheets, a 404): the page, the bar,
+  the head and the visible text fingerprint identically.
+- **The editor cannot reach the host**: it runs only under `npm run edit`
+  (its own vite config); nothing in `src/` refers to it; no editor code or
+  source offsets appear in `dist/`. `edits.css` is the saved result and ships.
+- **Vercel**: `vercel.json` builds with `npm run build` into `dist/` and
+  rewrites unknown paths to `index.html`; the filesystem takes precedence over
+  rewrites (Vercel docs), so assets are never rewritten.
+- Open: `og:image`/`og:url` are relative until the domain is known (link
+  previews on LinkedIn and others want absolute URLs); `npm audit` reports 4
+  advisories, all in build-time tools (esbuild's dev server, postcss, nanoid),
+  none in what visitors download.

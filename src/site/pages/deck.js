@@ -30,7 +30,7 @@ const esc = (v) => String(v ?? "")
 /** the shared shell. An eyebrow, a heading, and the thing itself. */
 function shell(id, node, hour, eyebrow, heading, body) {
   return `<section class="plate deckpage" id="${id}" data-node="${node}">
-  <div class="corner tr deck-hour"><p class="t dim">${esc(node)}</p><p class="t">${esc(hour)}</p></div>
+  <div class="corner tr deck-hour"></div>
   <div class="deck-in">
     <!-- ONE SMALL ROUND CUT, ABOVE EVERYTHING ELSE ON THE CARD.
          Without a hole a card is all paper, and the night walking across the

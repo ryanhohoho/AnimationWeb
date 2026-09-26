@@ -46,6 +46,45 @@ const spaFallback = () => ({
   }
 });
 
+// ── THE NOTES STAY IN THE SOURCE, NOT IN WHAT SHIPS ────────────────────────
+// The source is commented heavily on purpose (CLAUDE.md, rule 8), and the
+// minifier already drops every JS and CSS comment. HTML comments it does not
+// touch: they were 11 KB of the 15 KB index.html, and seven more ride inside
+// the page templates into the live DOM, where anyone opening DevTools reads
+// the working notes. This removes them from the BUILD only -- the dev server
+// and the editor keep the files exactly as written (the editor maps every
+// element back to its source offset, so it must see the real file).
+//
+// A comment node renders nothing, and nothing on the site reads one (the one
+// child walk, colliders.js hasOwnText, looks only at text nodes). A comment
+// alone on its lines goes with its line, so no blank lines are left; one
+// inside a line goes alone, so the whitespace either side of it -- which is
+// what separates two words -- is exactly what it was. A match may not run
+// past the first "-->", so a comment followed by markup on the same line can
+// never swallow that markup looking for a later one. The vendored demo's chunk
+// is left alone (it is generated elsewhere and builds its own comment nodes).
+// If a chunk still has "<!--" afterwards, the build stops rather than ship it.
+const NOTE = String.raw`<!--(?:(?!-->)[\s\S])*-->`;
+const stripNotes = (s) => s
+  .replace(new RegExp(String.raw`^[ \t]*${NOTE}[ \t]*\r?\n`, "gm"), "")
+  .replace(new RegExp(NOTE, "g"), "");
+const buildNotesOut = () => ({
+  name: "strip-html-notes",
+  apply: "build",
+  transformIndexHtml: { order: "post", handler: (html) => stripNotes(html) },
+  renderChunk: {
+    order: "post",
+    handler(code, chunk) {
+      // (the main chunk carries the demo's recordings as URLs, so it is the
+      // demo's own CODE that marks a chunk as the vendor's, not the folder)
+      if (!code.includes("<!--") || Object.keys(chunk.modules).some((id) => /\/src\/vendor\/.*\.(js|css)(\?|$)/.test(id))) return null;
+      const out = stripNotes(code);
+      if (out.includes("<!--")) this.error(`an HTML comment in ${chunk.fileName} could not be removed safely`);
+      return { code: out, map: null };
+    }
+  }
+});
+
 // normal build for hosting, `--mode single` bundles everything (glb included)
 // into one html file that works over file:// for quick visual checks
 export default defineConfig(({ mode }) => ({
@@ -54,7 +93,7 @@ export default defineConfig(({ mode }) => ({
   // routes and no server, so it keeps the relative base.
   base: mode === "single" ? "./" : "/",
   appType: "spa",
-  plugins: mode === "single" ? [viteSingleFile()] : [spaFallback()],
+  plugins: mode === "single" ? [viteSingleFile()] : [buildNotesOut(), spaFallback()],
   build: {
     assetsInlineLimit: mode === "single" ? 100000000 : 4096,
     chunkSizeWarningLimit: 2000

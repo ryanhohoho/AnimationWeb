@@ -367,6 +367,11 @@ when only the numbers were.
 - **The ground stops when it rests on a still.** `motionAmbient.js` draws a
   still until it has faded in and then not at all; a loop redrawing it re-rolls
   the grain every frame, which is a shimmer across the whole window.
+- **HTML comments never ship.** `vite.config.js` (`buildNotesOut`) strips
+  every `<!-- -->` from `index.html` and from the page templates in the BUILD
+  only; dev and the editor see the files as written. So no code may depend on
+  a comment node, and a note meant for a reader of the source goes in a
+  comment, never in visible markup. The build stops if one cannot be removed.
 - **A scanner strict enough to be useful catches documentation about itself.**
   The redaction check failed on `STATE.md` for spelling out a volume path while
   explaining the rule. Prose about those patterns must name them, not spell
