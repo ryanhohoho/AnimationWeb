@@ -5,7 +5,7 @@
 // through it is that project's own sky. A hole needs an alpha channel and the
 // three source files do not have one between them.
 //
-//   icon-closet.png            PNG,  440x439, RGBA but alpha fully opaque
+//   icon-motion-graphics.png   PNG,  520x520, grey: white art pixels on black
 //   icon-iclicker.jpg          JPEG, 1024x1024, no alpha
 //   icon-usb-provisioning.jpg  JPEG, 1024x1024, no alpha
 //
@@ -54,7 +54,11 @@ import ffmpeg from "ffmpeg-static";
 // spare cells cost 16 KB of a greyscale image.
 const CELLS = [
   { slug: "usb-provisioning", src: "tools/icons/icon-usb-provisioning.jpg" },
-  { slug: "closet",           src: "tools/icons/icon-closet.png" },
+  // the hallway's pixel flower, from "let me be a flower": its shape evaluated
+  // off the piece's own shader (hallway.js, flower(), seed .55, no wind) on its
+  // 26-cell art grid, as white cells on black. The FILL only: with the sprite's
+  // one-pixel outline ring included the silhouette read as a blob, not a flower
+  { slug: "motion-graphics",  src: "tools/icons/icon-motion-graphics.png" },
   { slug: "iclicker",         src: "tools/icons/icon-iclicker.jpg" }
   // THERE IS NO "back" CELL ANY MORE. The back control was an arrow-shaped hole
   // and is now a disc of sky with a drawn arrow on top of it, because a hole

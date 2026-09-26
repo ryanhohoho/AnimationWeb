@@ -11,7 +11,7 @@
 
 import * as iclicker from "./pages/iclicker.js";
 import * as usbProvisioning from "./pages/usb-provisioning.js";
-import * as closet from "./pages/closet.js";
+import * as motionGraphics from "./pages/motion-graphics.js";
 import { renderDeckPage } from "./pages/deck.js";
 import { mountCards } from "./cards.js";
 import { mountMedia } from "./media.js";
@@ -22,7 +22,7 @@ export { renderDeckPage };
 
 // A project with its own sheet is registered here. Everything else falls back
 // to the shared chrome below, which says plainly that it is not printed yet.
-const SHEETS = { iclicker, closet, "usb-provisioning": usbProvisioning };
+const SHEETS = { iclicker, "motion-graphics": motionGraphics, "usb-provisioning": usbProvisioning };
 
 export function sheetFor(slug) { return SHEETS[slug] || null; }
 

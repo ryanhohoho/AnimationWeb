@@ -41,37 +41,27 @@ export const PROJECTS = [
     inkWhy: "the colour of the hardware it writes to"
   },
   {
-    slug: "closet",
+    // "let me be a flower" (../VisualAudialExperience), shown by instruction as
+    // a page named for what it is rather than for the film: no title of its own
+    // on the site, every scene named instead (pages/motion-graphics.js). It took
+    // closet's slot, which was scrapped on 2026-09-25.
+    slug: "motion-graphics",
     n: "02",
-    title: "closet",
-    sub: "outfit generation engine · learned aesthetic judge",
-    kind: "ONGOING · ALGORITHM",
-    year: "2026—",
-    line: "Outfit generation that optimises for interest rather than similarity, because maximising similarity collapses a wardrobe to one shawl in 24 of 24 outfits.",
-    skills: "CLIP IMAGE EMBEDDINGS · DEEPSETS SET ENCODER · CONSTRAINT SEARCH · VLM INTAKE · PGVECTOR · FASTAPI · SWIFTUI",
-    // TWO NEUTRAL GREYS THAT ARE NOT NEUTRAL IN THE CAN, for the same reason
-    // the home sheet's blue is not a blue in the can: the press puts the paper
-    // into everything it prints. Bone is warm — OKLCh h 94, C 0.0096 — and it is
-    // the LIGHTEST PIXEL OF EVERY SKY on this site, because zero coverage is
-    // bare stock. On the three blue sheets that is a warm ground under a cool
-    // ink and it is the whole reason they look printed rather than rendered.
-    //
-    // On this one there is no cool ink to play against. Measured, the greyscale
-    // page came out warm from end to end — highlights C 0.0094 at h 94, mids
-    // 0.0074 at h 95, shadows 0.0043 at h 98 — which is not greyscale, it is
-    // cream monochrome, and the paper was the only thing colouring it.
-    //
-    // So the greys are pulled a few points cool to spend the paper's warmth
-    // rather than sit in it. Measured after: mids 0.0046, shadows 0.0028. Pulled
-    // FURTHER and it overshoots — at twice this the shadows come back at 0.0081
-    // in blue, which is a split tone and a different page again.
-    inkA: "#2C2D31",   // prints as near-neutral black
-    ink: "#78797B",    // prints as near-neutral mid grey
-    inkName: "TWO&nbsp;GREYS",
-    // No colour at all, and that is the accurate one: his own wardrobe board
-    // measures 0.106 mean saturation. The project about how clothes go together
-    // is printed in the value range he actually dresses in.
-    inkWhy: "no chroma — the value range his own wardrobe measures at"
+    title: "experimental motion graphics",
+    sub: "a vertical visual-audio piece · rendered live in the browser",
+    kind: "MOTION GRAPHICS · WEBGL + WEB AUDIO",
+    year: "2026",
+    // PLACEHOLDER PROSE, like the other two: the owner rewrites it in the editor
+    line: "A vertical piece for phones, every frame drawn live by its own shader and scored by code — shown here as each of its scenes, and the whole of it.",
+    skills: "WEBGL2 · GLSL · RAYMARCHING · POST-EFFECT CHAINS · WEB AUDIO · BLENDER CYCLES · PHOTOGRAMMETRY · OPENCV TRACKING",
+    // THE TWO INKS THE PIECE ENGRAVES IN. Its eye and its flower are cut as burin
+    // lines in ultramarine with a second ink in crimson laid out of register on
+    // the wet rims (iris.js, story.js ENGRAVE): the piece's own pair, and the only
+    // red this site prints.
+    inkA: "#1F24D6",   // ultramarine
+    ink: "#B3122E",    // crimson
+    inkName: "ULTRAMARINE&nbsp;+&nbsp;CRIMSON",
+    inkWhy: "the two inks the piece engraves its eye and its flower in"
   },
   {
     slug: "iclicker",

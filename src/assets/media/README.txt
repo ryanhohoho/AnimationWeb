@@ -6,8 +6,6 @@ name — .mp4 .webm .mov .gif .webp .avif .png .jpg, in that order.
 
   usb-hero          the filled hub, mid-run
   usb-side          a generated tray opened in xTool Studio
-  closet-hero       VLM intake reading a garment
-  closet-side       a generated set with its interest score
   iclicker-hero     the join response in the network panel
   iclicker-side     the poll as a student sees it
 

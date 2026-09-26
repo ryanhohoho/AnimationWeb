@@ -87,12 +87,14 @@ globalThis.document = {
 // NOTHING FIRES `scroll` HERE, and that is the point: the browser dispatches it
 // asynchronously, so anything reading a cached scroll offset during the swap
 // reads the old one.
+const winListeners = {};
 globalThis.window = {
   innerWidth: VW, innerHeight: VH, devicePixelRatio: 1,
   get scrollY() { return scrollY; },
   scrollTo: (o) => { scrollY = Math.min(o.top ?? 0, maxScroll()); },
   matchMedia: () => ({ matches: false }),
-  addEventListener: () => {}
+  // KEPT, so a check can dispatch popstate the way the browser would
+  addEventListener: (type, fn) => { (winListeners[type] ||= []).push(fn); }
 };
 globalThis.location = { pathname: "/", hash: "" };
 globalThis.history = {
@@ -135,7 +137,10 @@ const deck = {
 };
 
 const { createRouter, RAMP, keyScrollsFirst } = await import("../src/site/router.js");
-const router = createRouter({ deck, world: { emit() {} }, onPage() {} });
+// every committed page is counted: a check below needs to know whether a
+// popstate re-rendered the sheet or left it alone
+let commits = 0;
+const router = createRouter({ deck, world: { emit() {} }, onPage() { commits++; } });
 
 /** pump n frames at 60 Hz, recording where the top of the viewport sits in the
     SKY's own coordinates: doc position + however far the plate is wound on. */
@@ -237,6 +242,18 @@ console.log("\n== the transition matrix: which pairs cross, and which just turn"
     return crossCalls;
   };
 
+  // THE RULE SINCE THE NAV BAR (2026-09-25): a move crosses if it leaves or
+  // arrives at the summary, or leaves or arrives at a project sheet. The bar
+  // reaches any card from any card, so the summary's own pairs are no longer
+  // only its neighbour.
+  ok(move("/", "/projects") > 0,
+    "summary -> projects OPENS: every move off the summary goes out through its window");
+  ok(move("/contact", "/") > 0,
+    "contact -> summary closes back into it, from the far end of the deck too");
+  ok(move("/projects/motion-graphics", "/contact") > 0,
+    "a project sheet -> contact crosses: leaving a sheet is a journey wherever it goes");
+  ok(move("/experience", "/contact") === 0,
+    "control: experience -> contact, two cards and neither of them the summary, just turns");
   ok(move("/", "/experience") > 0,
     "summary -> experience OPENS (it is where the window is explained)");
   ok(move("/experience", "/") > 0,
@@ -247,11 +264,11 @@ console.log("\n== the transition matrix: which pairs cross, and which just turn"
     "projects -> contact just turns");
   ok(move("/contact", "/projects") === 0,
     "...and turns back the other way");
-  ok(move("/projects", "/projects/closet") > 0,
+  ok(move("/projects", "/projects/motion-graphics") > 0,
     "projects -> a project OPENS, out of the icon that was clicked");
-  ok(move("/projects/closet", "/projects") > 0,
+  ok(move("/projects/motion-graphics", "/projects") > 0,
     "a project -> projects closes back");
-  ok(move("/projects/closet", "/projects/iclicker") === 0,
+  ok(move("/projects/motion-graphics", "/projects/iclicker") === 0,
     "project -> project turns: they are siblings, not a journey");
 }
 
@@ -319,7 +336,7 @@ console.log("\n== the night settles correctly through a CROSSING too");
   router.go("/projects", { push: false }); coverAfter = frameNo + 20; pump(160);
 
   const rec = [snap()];
-  router.go("/projects/closet");
+  router.go("/projects/motion-graphics");
   coverAfter = frameNo + 20;
   pump(200, rec);
   ok(page === "project", "the crossing landed on the project sheet");
@@ -571,7 +588,7 @@ console.log("\n== what a shared link says it is");
 // ONE DOCUMENT THAT SWAPS ITS OWN CONTENTS HAS ONE <meta description>, written
 // for the summary, and without this it stays that way through every navigation.
 // Invisible to a reader, and the whole of what a link preview and a search
-// result quote: a shared /projects/closet advertised the front page.
+// result quote: a shared /projects/motion-graphics advertised the front page.
 {
   const desc = () => META['meta[name="description"]'].content;
   const ogd = () => META['meta[property="og:description"]'].content;
@@ -584,10 +601,10 @@ console.log("\n== what a shared link says it is");
   ok(atHome.length > 40, `the summary describes itself (${atHome.length} chars)`);
 
   coverAfter = frameNo + 20;
-  router.go("/projects/closet"); pump(400);
+  router.go("/projects/motion-graphics"); pump(400);
   const atSheet = desc();
   ok(atSheet !== atHome, "a project sheet does not advertise the front page");
-  ok(atSheet === PROJECTS.find((p) => p.slug === "closet").line,
+  ok(atSheet === PROJECTS.find((p) => p.slug === "motion-graphics").line,
     "...it quotes the card's own written sentence, so there is one copy of it");
   ok(ogd() === atSheet && ogt() === document.title,
     "and og:title / og:description travel with it");
@@ -607,147 +624,103 @@ console.log("\n== what a shared link says it is");
     "control: it is the ROUTE that decides, and coming back restores the summary's");
 }
 
-console.log("\n== a way home from every page but home");
-// THE CHART WAS ALWAYS A LINK AND THAT WAS NOT THE SAME THING. Its first cell
-// has always pointed at "/", so "is home reachable" was technically true on
-// every page and useless: a stitch chart is read as a POSITION, not as an exit,
-// and it is 19 px of hairline in the opposite corner from where a reader looks
-// for a way out. The disc is the exit. This section is about which pages carry
-// one, and about the one page that must not.
+console.log("\n== the nav bar says where you are");
+// THE BAR REPLACED EVERY OTHER PIECE OF NAVIGATION (2026-09-25): the two sky
+// discs, the stitch chart and its counter, the phone's arrows and the keycaps.
+// What is left for chrome.js to get right is one thing -- which of the four
+// names is marked -- and the two places that is easy to get wrong: a project
+// sheet (it is INSIDE card three, so Projects is marked, as a location rather
+// than as the page) and a 404 (it is not in the piece, so nothing is).
 {
-  const mk = (attrs) => ({
-    attrs, hidden: false, textContent: "",
-    classList: { toggle() {}, add() {}, remove() {} },
+  const mk = (nav) => ({
+    dataset: { nav }, attrs: {}, on: false,
+    classList: { toggle(c, v) { if (c === "on") this.owner.on = !!v; } },
     setAttribute(k, v) { this.attrs[k] = v; },
     removeAttribute(k) { delete this.attrs[k]; }
   });
-  const back = mk({ "data-back": "" });
-  const home = mk({ "data-home": "" });
-  // TWO OF EACH, because there are two of each on the page now: the phone's bar
-  // and the desktop's keycaps are one control in two costumes, and the whole
-  // point of them carrying the same attribute is that one rule drives both.
-  // A fixture with one of each would pass while the second costume did nothing.
-  const prev = mk({ "data-prev": "" });
-  const next = mk({ "data-next": "" });
-  const capPrev = mk({ "data-prev": "" });
-  const capNext = mk({ "data-next": "" });
-  const keysSay = mk({ "data-keys-say": "" });
-  const count = mk({ "data-count": "" });
-  const dots = [0, 1, 2, 3].map(() => mk({ "data-dot": "" }));
-  const chromeRoot = {
-    classList: { toggle() {} },
-    querySelector: (sel) =>
-      sel.includes("data-back") ? back :
-      sel.includes("data-home") ? home :
-      sel.includes("data-prev") ? prev :
-      sel.includes("data-next") ? next :
-      sel.includes("data-keys-say") ? keysSay :
-      sel.includes("data-count") ? count : null,
-    querySelectorAll: (sel) =>
-      sel.includes("data-dot") ? dots :
-      sel.includes("data-prev") ? [prev, capPrev] :
-      sel.includes("data-next") ? [next, capNext] : []
-  };
+  const links = ["home", "experience", "projects", "contact"].map((n) => {
+    const l = mk(n); l.classList.owner = l; return l;
+  });
+  const chromeRoot = { querySelectorAll: (sel) => (sel.includes("data-nav") ? links : []) };
   const byId = document.getElementById;
   document.getElementById = (id) => (id === "chrome" ? chromeRoot : byId(id));
-  let onProject = false;
-  document.body.classList.toggle = (c, v) => { if (c === "on-project") onProject = !!v; };
+  const flags = {};
+  const toggle0 = document.body.classList.toggle;
+  document.body.classList.toggle = (c, v) => { flags[c] = !!v; };
 
-  let remeasures = 0;
   const { createChrome } = await import("../src/site/chrome.js");
   const { PROJECTS } = await import("../src/site/projects.js");
-  const chrome = createChrome({ scope: null, deck: { remeasure() { remeasures++; } } });
+  const chrome = createChrome({ scope: null });
+  const marked = () => links.filter((l) => l.on).map((l) => `${l.dataset.nav}:${l.attrs["aria-current"]}`);
 
-  const walk = (routes) => routes.map((r) => {
-    chrome.setPage(r);
-    return { n: r.name, home: !home.hidden, back: !back.hidden, proj: onProject };
-  });
-  const seen = walk([
-    { name: "home" }, { name: "experience" }, { name: "projects" }, { name: "contact" },
-    { name: "project", project: PROJECTS[0] }, { name: "project", project: PROJECTS[1] }
-  ]);
+  const cards = ["home", "experience", "projects", "contact"].map((n) => { chrome.setPage({ name: n }); return marked(); });
+  ok(cards.every((m, k) => m.length === 1 && m[0] === `${links[k].dataset.nav}:page`),
+    `each card marks its own name, and only its own (${cards.map((m) => m.join()).join(" | ")})`);
 
-  ok(seen[0].home === false,
-    "card 01 carries no control back to itself — that is furniture, not navigation");
-  ok(seen.slice(1).every((s) => s.home),
-    `and every other page carries one (${seen.length - 1} of ${seen.length - 1})`);
-  const sheets = seen.filter((s) => s.n === "project");
-  ok(sheets.length === 2 && sheets.every((s) => s.back && s.home && s.proj),
-    "a project sheet carries BOTH discs: one step out, and all the way out");
-
-  // ── THE LEGEND SAYS WHAT THE CHART CANNOT, AND ONLY THAT ─────────────
-  // The chart doubles the cell you are standing inside, so "03 / 04" beside it
-  // is the same fact twice -- and it was 168 px of a 320 px phone bar, which
-  // overflowed the viewport once the counter was told not to break after its
-  // slash. Measured: a 447 px page on a 320 px screen.
-  chrome.setPage({ name: "project", project: PROJECTS[0] });
-  const sheetLegend = count.textContent;
-  ok(/^\d\d of \d\d$/.test(sheetLegend),
-    `inside a sheet the legend says only which of the three (${sheetLegend})`);
-  ok(!sheetLegend.includes("/"),
-    "...and does not repeat the deck position the doubled cell already carries");
-  chrome.setPage({ name: "projects" });
-  ok(count.textContent === "03 / 04",
-    `on the deck it counts the deck (${count.textContent})`);
-
-  // THE PAIRED CONTROL, and it is the whole point of adding a second disc. If
-  // home were tied to the same condition the back arrow is, the three middle
-  // cards would have exactly what they had before: no visible way to the start.
-  const middle = seen.filter((s) => s.n !== "home" && s.n !== "project");
-  ok(middle.length === 3 && middle.every((s) => s.home && !s.back),
-    "control: the back arrow is still sheets-only, so the three middle cards " +
-    "would have had nothing — they are the gap this closed");
-
-  // REVEAL, THEN MEASURE. A hidden element has no rectangle, so a disc that is
-  // unhidden without a remeasure behind it is a disc whose sky is never drawn.
-  const before = remeasures;
-  chrome.setPage({ name: "home" });          // home disc goes
-  const afterHide = remeasures;
-  chrome.setPage({ name: "experience" });    // ...and comes back
-  ok(afterHide > before && remeasures > afterHide,
-    `every change of visibility is followed by a remeasure (${remeasures - before} for 2 changes)`);
-  const settled = remeasures;
-  chrome.setPage({ name: "projects" });      // nothing about the discs changes
-  ok(remeasures === settled,
-    "control: a move that changes neither disc does not pay for a layout read");
-
-
-  // ── A 404 IS NOT CARD 01 ─────────────────────────────────────────────
-  // `Math.max(0, onDeck)` clamped every off-deck route onto the first cell, so
-  // the chart said the reader was standing on the summary and marked it
-  // aria-current="page". A chart that names the wrong cell is the loudest
-  // possible exception to "every label on this sheet is true".
-  chrome.setPage({ name: "404", path: "/nothing/was/pulled/here" });
-  ok(dots.every((d) => !d.attrs["aria-current"]),
-    "off the deck, no cell is the one you are standing on");
-  ok(count.textContent.startsWith("——"),
-    `and the legend says so rather than counting (${count.textContent})`);
-  ok(!home.hidden, "a 404 still carries the way home — it needs it most");
-  ok(!prev.attrs.href && !next.attrs.href && !capPrev.attrs.href && !capNext.attrs.href,
-    "and the deck's arrows go inert: the reader is not at position zero of anything");
-  ok(capPrev.attrs["aria-disabled"] === "true" && capNext.attrs["aria-disabled"] === "true",
-    "...both costumes of them — the keycap says it as loudly as the phone's button");
-
-  // THE PAIRED CONTROL. On a real deck card all four of those flip.
-  chrome.setPage({ name: "home" });
-  ok(dots.some((d) => d.attrs["aria-current"] === "page") &&
-     count.textContent.startsWith("01") && next.attrs.href,
-    "control: on card 01 the chart names a cell, the legend counts, and next steps");
-  ok(capNext.attrs.href === next.attrs.href && !capPrev.attrs.href,
-    "and the keycaps agree with the bar exactly: → live, ← inert on the first card");
-
-  // ── THE LEGEND NAMES WHAT THE KEYS MOVE ──────────────────────────────
-  // It said "navigate" on every page, which is a category rather than an
-  // action and is the same word whether the keys are stepping cards or
-  // projects. Two routes, two truths.
-  ok(keysSay.textContent === "browse the cards",
-    `on the deck the arrows browse the cards ("${keysSay.textContent}")`);
   chrome.setPage({ name: "project", project: PROJECTS[1] });
-  ok(keysSay.textContent === "browse the projects",
-    `control: inside a project sheet they browse the projects ("${keysSay.textContent}")`);
-  chrome.setPage({ name: "home" });
+  const onSheet = marked();
+  ok(onSheet.length === 1 && onSheet[0] === "projects:location",
+    `a project sheet marks Projects as where you are, not as the page (${onSheet.join()})`);
+  ok(flags["on-project"] === true, "and the page is told it is on a project sheet");
 
+  chrome.setPage({ name: "404", path: "/nothing/was/pulled/here" });
+  ok(marked().length === 0 && flags["off-deck"] === true,
+    "off the deck nothing is marked: the reader is not in the piece");
+
+  // THE PAIRED CONTROL: the same bar on a card marks one name, so the empty
+  // 404 above is the rule speaking and not a bar that never marks anything
+  chrome.setPage({ name: "contact" });
+  ok(marked().join() === "contact:page" && flags["off-deck"] === false && flags["on-project"] === false,
+    "control: on a card exactly one name is marked and neither flag is set");
+
+  document.body.classList.toggle = toggle0;
   document.getElementById = byId;
+}
+
+console.log("\n== a change of hash is not a change of page");
+// A link to /projects/motion-graphics#pool followed from that same page is a
+// fragment navigation, and the browser fires popstate for it. Treated as a
+// move, it re-rendered the sheet it was already on -- which threw the page's
+// own state away, and the very hash it had been asked for with it.
+{
+  const pop = () => (winListeners.popstate || []).forEach((fn) => fn());
+  coverAfter = frameNo + 20;
+  router.go("/projects/motion-graphics"); pump(400);
+  const before = commits;
+  pop(); pump(200);                        // same path: only the hash moved
+  ok(commits === before, `a hash-only popstate leaves the sheet alone (${commits - before} commits)`);
+  // THE PAIRED CONTROL: Back to a different path is a real move, and commits
+  location.pathname = "/projects";
+  coverAfter = frameNo + 20;
+  pop(); pump(400);
+  ok(commits === before + 1 && page === "projects",
+    `control: a popstate to another path still navigates (${commits - before} commit, on ${page})`);
+}
+
+console.log("\n== mew is on the four cards, and not on the project sheets");
+{
+  const { createMewPresence } = await import("../src/site/mewPresence.js");
+  const { PROJECTS } = await import("../src/site/projects.js");
+  const run = (routes, reduced = false) => {
+    const said = [], boots = [];
+    const on = createMewPresence({ world: { emit: (t, e) => t === "mewsleep" && said.push(e.sleep) },
+      boot: (o) => boots.push(o), reduced });
+    routes.forEach((n) => on(n === "project" ? { name: n, project: PROJECTS[0] } : { name: n }));
+    return { said, boots };
+  };
+  const a = run(["home", "projects", "project", "project", "projects", "contact"]);
+  ok(a.said.join() === "false,false,true,true,false,false",
+    `she is told she is away on each project sheet and back on each card (${a.said.join()})`);
+  ok(a.boots.length === 1 && a.boots[0].enter === false,
+    "the engine boots ONCE, on the first card, where she simply appears as she always has");
+  const b = run(["project", "project", "projects", "home"]);
+  ok(b.boots.length === 1 && b.boots[0].enter === true,
+    "a visit that starts on a project sheet boots her on the first card, entering from the side");
+  // THE PAIRED CONTROL: the same visit with less motion asked for never boots
+  // her, so the boots above are the rule and not a module that always boots
+  const c = run(["project", "projects", "home"], true);
+  ok(c.boots.length === 0 && b.boots.length === 1,
+    "control: with reduced motion the same visit never fetches the engine at all");
 }
 
 // ---------------------------------------------------------------------------

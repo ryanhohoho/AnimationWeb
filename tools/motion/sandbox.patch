@@ -1,0 +1,64 @@
+--- <project>/src/main.js	2026-09-25 01:35:55
++++ src/main.js	2026-09-25 19:47:42
+@@ -1,5 +1,6 @@
+ // Boot: wires renderer + director + text + audio, handles input, HUD, crop guides and recording.
+ import { STORY } from './story.js';
++import './sandbox_takes.js';   // (sandbox only)
+ import { Renderer } from './engine/renderer.js';
+ import { Director } from './engine/director.js';
+ import { TextLayer } from './engine/text.js';
+@@ -291,6 +292,7 @@
+     i++;
+     if (director.shot.beat === 'fin' && t - director.shotStart > tail) break;
+     if (t > maxSeconds - 1) break;
++    if (+(url.get('stop') || 0) && t >= +url.get('stop')) break;   // (sandbox only)
+     if (i % 30 === 0) hud.textContent = `rendering ${director.shot.beat} · ${t.toFixed(1)} s · ${(i / ((performance.now() - t0) / 1000)).toFixed(1)} frames/s`;
+   }
+   hud.textContent = 'rendering audio…';
+--- <project>/src/audio/cues.js	2026-09-25 01:35:55
++++ src/audio/cues.js	2026-09-25 19:47:42
+@@ -23,6 +23,7 @@
+ 
+ // the narrator is a machine: every letter it types clicks (matches the text layer's 18 characters/second)
+ function typing(a, t, text, gain = .07, speed = 1) {
++  if (globalThis.__CLEAN) return;   // (sandbox only: clean takes have no words, so no keys)
+   [...text].forEach((c, i) => { if (c !== ' ' && c !== '\n') a.key(t + i / (18 * speed) + Math.random() * .008, { gain: gain * 6 * (.7 + Math.random() * .6) }); });
+ }
+ 
+@@ -336,7 +337,7 @@
+     // the same children, remembered: far away, underwater, gone before you're sure you heard them
+     a.sample('kids', OUT + 1.6, { gain: .14, offset: 12.4, dur: 3.6, attack: 1.4, release: 1.8, lp: 700, hp: 200, verb: 1 });
+     // "we were lonely." backspaced away: the same keys, one per letter, taking it back
+-    for (let i = 0; i < 'we were lonely.'.length; i++) a.key(t0 + LONELY.untype + i / 16 + Math.random() * .006, { gain: .3 * (.7 + Math.random() * .6) });
++    if (!globalThis.__CLEAN) for (let i = 0; i < 'we were lonely.'.length; i++) a.key(t0 + LONELY.untype + i / 16 + Math.random() * .006, { gain: .3 * (.7 + Math.random() * .6) });
+   },
+ 
+   // "so we made company." — a hum, a fan, the flower's melody played perfectly by something that was never a flower;
+--- <project>/tools/render.py	2026-09-22 18:47:26
++++ tools/render.py	2026-09-25 19:48:33
+@@ -13,6 +13,8 @@
+ ap.add_argument('--out', default='renders/let-me-be-a-flower.mp4')
+ ap.add_argument('--bitrate', type=int, default=14_000_000)
+ ap.add_argument('--port', type=int, default=5173)
++ap.add_argument('--extra', default='')   # (sandbox only)
++ap.add_argument('--noencode', action='store_true')   # (sandbox only)
+ a = ap.parse_args()
+ 
+ root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+@@ -20,7 +22,7 @@
+ if os.path.exists('renders/meta.json'):
+     os.remove('renders/meta.json')
+ 
+-url = f'http://localhost:{a.port}/?render&fps={a.fps}&w={a.w}&h={a.h}&beat={a.beat}'
++url = f'http://localhost:{a.port}/?render&fps={a.fps}&w={a.w}&h={a.h}&beat={a.beat}' + a.extra
+ with sync_playwright() as p:
+     browser = p.chromium.launch(channel='chrome', headless=True, args=[
+         '--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu',
+@@ -41,6 +43,7 @@
+ 
+ meta = json.load(open('renders/meta.json'))
+ print('frames', meta['frames'], 'in', round(time.time() - t0), 's; encoding…', flush=True)
++if a.noencode: sys.exit(0)
+ enc = os.path.join(root, 'tools', 'encode')
+ if not os.path.exists(enc):
+     subprocess.check_call(['swiftc', '-O', 'tools/encode.swift', '-o', enc])

@@ -62,6 +62,10 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     entrySide: 0,        // ...and this is the way she comes in when it lifts
     step,
     triggerStartle,
+    /** the side entrance, for an engine that boots after the reader has already
+        moved (mew.js, `enter`): she was never on this page, so she arrives the
+        way she arrives on every new sheet rather than appearing mid-window */
+    enterFromSide: () => enterFromSide(),
     panicFrom,
     startlePredicate,
     pathfinder,           // exposed for tests + debugging

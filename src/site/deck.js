@@ -683,8 +683,8 @@ export function createDeck({ scope }) {
      * project sheets costs one frame instead of 300 ms.
      */
     /** BOTH inks. A project sheet owns its whole sky now, not just the second
-        plate: closet is greyscale, the CLI is navy and black, iClicker is blue
-        and teal, and none of them is a recolour of the home sheet's pair. Two
+        plate: the CLI is navy and black, the motion graphics ultramarine and
+        crimson, iClicker is blue and teal, and none of them is a recolour of the home sheet's pair. Two
         uniforms, no reprint. */
     /** The gate: one hole on the home sheet pulled in a project's own pair.
         Costs two uniforms and an index — no second press, no canvas, and it

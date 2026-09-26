@@ -214,171 +214,28 @@
   <p id="say" class="sr" aria-live="polite" aria-atomic="true"></p>
 
   <div id="chrome">
-    <!-- ══ THE TWO DISCS ═══════════════════════════════════════════════════
-         FIRST IN THE CHROME, because they are first on the screen. Everything
-         in here is fixed furniture, so DOM order IS tab order, and a reader on
-         a keyboard leaves the page and arrives at the top-left corner before
-         the bar at the foot. They used to be last: the sheet, then the chart in
-         the bottom-left, then back up to the discs.
+    <!-- ══ THE NAV BAR ══════════════════════════════════════════════════════
+         By instruction (2026-09-25): a small bar at the top middle, about a
+         third of the window wide, naming the four cards. It replaced every
+         other piece of navigation furniture the sheet carried -- the two sky
+         discs (home, and back to the work), the cross-stitch chart and its
+         counter, the phone's arrow buttons and the corner keycaps. The arrow
+         keys and the swipe still turn the deck; they are simply not advertised.
 
-         Both are the same object: a small circle of sky, painted into its own
-         canvas by the scissored pass in deck.js, with a white mark drawn ON it.
+         No dropdown: a project sheet is reached from the Projects card, and on
+         a project sheet the bar says you are inside PROJECTS by marking it.
 
-         WHY THEY ARE NOT HOLES, which was the first design and the wrong one.
-         A hole is cut in #sheet at z1, UNDER the type -- so every figure and
-         paragraph a sheet happened to lay over the control went straight on top
-         of it, and no z-index can fix that: the pixels are in a layer that is
-         beneath the words by construction. Painting the sky up here instead
-         keeps the material argument (it is still a window onto somewhere else)
-         and puts the control where a control has to be.
-
-         data-fixed says measure it in the viewport and mount it to the document
-         every frame. data-cross-target -- and it may only ever be on ONE
-         element, because firstHole() takes the first in the document -- says
-         the paper closes back into the back arrow when you arrive on a sheet.
-         Neither of those belongs on home: going home DISSOLVES rather than
-         opens (router.js), so a start point would never be read.
-
-         THE CORNER IS ALWAYS THE NEAREST EXIT. On a project sheet that is the
-         back arrow, and home stands one place inward; on a deck card there is
-         nothing to go back to, so home takes the corner itself. One rule, and
-         it is why home is never in the same absolute place twice and never has
-         to be: it is always the last disc in the row.
-
-         BOTH ARE AT THE SAME HOUR, and they are told apart by the mark on them
-         rather than by their colour. The first version gave home a paler sky --
-         it is a window onto the summary, which is printed at 19:00 -- and it
-         was measured and thrown away: at that depth the disc is 2.7:1 against
-         its own white mark, where the back arrow's is 4.2:1. The pale hour is
-         the shallow end of exactly the range where a sky disc stops being
-         readable at all, which is why SKY_BTN_DEPTH exists in the first place.
-         Two circles of the same night with different marks on them is what
-         every transport control in the world already is.
-
-         AND HOME'S MARK IS "SKIP TO THE START", not a house and not a numeral.
-         "01" was tried, because the deck numbers its own cards and the reader
-         has met the numbering by the time they can see this control -- but two
-         small figures need about twice the contrast a chunky glyph does, and at
-         56 px it was mush. The number moved into the label, where it has room.
-         A bar with a triangle against it is also the more precise statement:
-         this is a deck of four in a row, and home is the FIRST of them. -->
-    <a class="disc homedisc" href="/" data-route data-home aria-label="Home">
-      <span class="disc-sky" data-sky data-fixed><canvas aria-hidden="true"></canvas></span>
-      <!-- A HOUSE. It was a skip-to-start transport mark -- a bar with a
-           triangle against it -- which is the more precise statement about a
-           deck of four in a row, and which nobody reads as "home" without being
-           told. A roof and four walls is the one pictogram that needs no
-           caption in any language, and this control's whole job is to be
-           obvious. Filled roof over stroked walls, because that is the weight
-           the back arrow beside it already has: a stroked curve with a filled
-           head. -->
-      <svg class="disc-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M12 3.8 L21.6 12.6 H2.4 Z" fill="currentColor"
-              stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
-        <path d="M6.2 12.4 V19.8 H17.8 V12.4" fill="none" stroke="currentColor"
-              stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-      <span class="t disc-tag" aria-hidden="true">HOME</span>
-    </a>
-
-    <a class="disc backarrow" href="/projects" data-route data-back hidden aria-label="Back to projects">
-      <span class="disc-sky" data-sky data-fixed data-cross-target data-cross-from><canvas aria-hidden="true"></canvas></span>
-      <svg class="disc-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M10 8.5 H14.5 A5.5 5.5 0 1 1 14.5 19.5 H10.5"
-              fill="none" stroke="currentColor" stroke-width="3.1"
-              stroke-linecap="round" stroke-linejoin="round" />
-        <path d="M2.6 8.5 L10.4 3.6 V13.4 Z" fill="currentColor" />
-      </svg>
-      <span class="t disc-tag" aria-hidden="true">03&nbsp;·&nbsp;PROJECTS</span>
-    </a>
-
-    <!-- ══ THE CHART ═══════════════════════════════════════════════════════
-         A cross-stitch pattern chart: four cells on a grid, the one you are on
-         WORKED with an X, the ones behind you worked and faded, the ones ahead
-         left as bare canvas. A legend names the thread.
-
-         It replaces a row of stretching pills, which was somebody else's idea
-         and looked like it. This one is the sheet's own: RYAN.txt III is a
-         continuous thing made visible by many small discrete identical marks --
-         which is what the halftone this whole site is printed in IS, and a
-         stitch chart is the same object with the marks counted instead of
-         resolved. A chart is also the right shape for the job, because it
-         already means "here is the whole of it, and here is how far you have
-         got", which a dot cannot say.
-
-         The thread is CERULEAN, the one ink no project may own -- so the
-         counter is worked in the site's constant while the cards around it
-         change colour. -->
-    <nav class="nav" aria-label="Sections">
-      <span class="chart">
-        <a class="stitch" href="/"           data-route data-dot="home"       aria-label="Summary"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
-        <a class="stitch" href="/experience" data-route data-dot="experience" aria-label="Experience"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
-        <a class="stitch" href="/projects"   data-route data-dot="projects"   aria-label="Projects"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
-        <a class="stitch" href="/contact"    data-route data-dot="contact"    aria-label="Contact"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3 L11 11 M11 3 L3 11" /></svg></a>
-      </span>
-      <span class="t dim legend"><i class="legend-key" aria-hidden="true"></i><span data-count>01&nbsp;/&nbsp;04</span></span>
-
-      <!-- ON A PHONE THESE LIVE IN THE BAR, and on a desktop they do not exist.
-           They used to float at the right edge, vertically centred, which put
-           them on top of every project card's artwork and let the container
-           swallow taps meant for the card underneath. A control that sits on
-           the content is a control that competes with it.
-
-           A swipe does the same job (site/router.js) and is what a thumb
-           reaches for first, but a gesture nobody is told about is a gesture
-           some visitors never find -- so the buttons stay, out of the way. -->
-      <span class="mob">
-        <a class="mob-b" data-route data-prev href="/" aria-label="Previous">&#8249;</a>
-        <a class="mob-b" data-route data-next href="/experience" aria-label="Next">&#8250;</a>
-      </span>
+         Every control is a real <a href>. The router already delegates clicks
+         on a[data-route], so this needs no JavaScript to work, survives a middle
+         click, and is a correct page before a single module has loaded. The
+         router decides the move (router.js, transitionFor): anything to or from
+         the summary, or to or from a project sheet, crosses; the rest turn. -->
+    <nav class="topnav" aria-label="Sections">
+      <a class="t topnav-a" href="/"           data-route data-nav="home">Summary</a>
+      <a class="t topnav-a" href="/experience" data-route data-nav="experience">Experience</a>
+      <a class="t topnav-a" href="/projects"   data-route data-nav="projects">Projects</a>
+      <a class="t topnav-a" href="/contact"    data-route data-nav="contact">Contact</a>
     </nav>
-
-    <!-- ── THE ARROW KEYS, DRAWN AS KEYS AND WIRED AS CONTROLS ───────────────
-         This was `<kbd>←</kbd><kbd>→</kbd> navigate`: two 9 px boxes in --n4,
-         the hairline grey, saying a word that names a category rather than an
-         action. The single strongest signifier on the page was the smallest and
-         faintest thing on it, and it did nothing when you pointed at it.
-
-         Four changes, and each one is a different rule:
-
-         AFFORDANCE. A thing that says "press me" should look pressable and BE
-         pressable. These are real links now, so a reader who never touches the
-         keyboard has a next/previous control on the desktop for the first time
-         -- and they carry the same data-prev/data-next as the phone's bar, so
-         they are one control in two costumes rather than two controls.
-
-         VISIBILITY. The cap is 20 px with the glyph in ink; --n4 is a hairline
-         colour and may not carry a mark anyone has to read.
-
-         CONSTRAINT MADE VISIBLE. chrome.js makes the cap at the end of the deck
-         inert, exactly as it already did for the phone's arrows: you can SEE
-         that ← does nothing on card 01 before you press it and wonder whether
-         the page is broken.
-
-         AND IT SAYS WHAT IT MOVES. "navigate" is a category. On the deck these
-         browse the cards, on a project sheet they browse the projects, and the
-         label says whichever is true (chrome.js, data-keys-say).
-
-         The glyph is drawn rather than typed: at 20 px the ← and → characters
-         of this face are thin, off-centre in their em box, and land on a
-         different baseline in every fallback. A path is the same shape on every
-         machine, and it is the same drawing as the chart's cross.
-
-         AND IT IS AN ARROW, WITH A STEM, not a chevron. Drawn side by side at
-         eight times the size, the chevron reads as a pagination button and the
-         arrow reads as the KEY -- because that is the difference on the
-         keyboard itself. The phone's circles keep their chevrons for the same
-         reason: they are buttons and there is no key to point at. -->
-    <p class="keys">
-      <a class="keycap" data-route data-prev href="/" aria-label="Previous card">
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.5 8H4.5M8 4.5 4.5 8 8 11.5" /></svg>
-      </a>
-      <a class="keycap" data-route data-next href="/experience" aria-label="Next card">
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h8M8 4.5 11.5 8 8 11.5" /></svg>
-      </a>
-      <span class="t dim keys-say" data-keys-say>browse the cards</span>
-    </p>
-
   </div>
 
   <canvas id="stage" aria-hidden="true"></canvas>

@@ -2010,3 +2010,78 @@ the short version, and the traps:
 - **The shell has no vite client on purpose**: it is served raw, so a save
   reloads the site in the frame and never the editor holding the history.
 
+
+# 13 · The nav bar, the face, Mew off the sheets, and the motion-graphics page (2026-09-25)
+
+All by instruction, and each consulted before it was built.
+
+### The chrome is one bar
+`#chrome` holds a small bar at the top middle, a third of the window wide (the
+width its four names need on a phone), naming the four cards. It replaced the
+two sky discs, the stitch chart and its counter, the phone's arrow buttons and
+the corner keycaps. The arrow keys and the swipe still turn the deck,
+unadvertised. `chrome.js` marks the card you are on (`aria-current="page"`), and
+Projects on a project sheet as `location`; a 404 marks nothing. The deck's
+`skyBtns` pass (`[data-sky]`) is intact and simply has nothing to draw. The
+summary's "press → to continue" and the two "← back to …" links are left for
+the owner to delete in the editor.
+
+### The crossing rule
+A move crosses if it leaves or arrives at the summary, or leaves or arrives at a
+project sheet; everything else turns; project ↔ project turns
+(`transitionFor`). A hash-only `popstate` is no longer a navigation.
+
+### Every word is Darker Grotesque
+One variable woff2, 40 KB, 300–900. Sizes are unchanged: `body` carries
+`font-size-adjust:0.511`, the old mono's x-height, so the new face's lowercase
+stands where the old one did (x1.265, off both OS/2 tables). Its zero adjusted is
+0.610 em against the mono's 0.616, so every `ch` column keeps its width to 1%.
+FIG. 2's terminal, the unused `.term`/`.doc` and the vendored demo's shadow root
+keep IBM Plex Mono and set `font-size-adjust:none`.
+
+### Mew is not on the project sheets
+`site/mewPresence.js` is the rule: every commit says whether she is away; the
+engine is fetched on the first card of a visit and never for a visit that stays
+on sheets; booted late, she enters from the side. `mew.js` stops her loop and
+hides her canvas (`#stage.asleep`) on the first frame she is out of sight, and
+restarts it on the way back, where the swap's own `recollect` has already given
+her the side entrance. Checked in the router harness, with a paired control.
+
+### closet is gone; slot 02 is experimental motion graphics
+`/projects/motion-graphics`: "let me be a flower" (`../VisualAudialExperience`),
+52 scenes and the film, ultramarine + crimson, the hallway's pixel flower as its
+icon (the shape evaluated off the piece's shader, fill only), the pool rhino
+x-rayed in the Photo Viewer as its card.
+
+- **Renders** come from a scratch copy of the piece, never the piece:
+  `tools/motion/README.md`. Story beats are cut from a word-free re-render of the
+  whole piece; the devices montage's scenes and the 21 cuts of "A flower." are
+  standalone takes (the flower cuts hold the bloom at their own moment of the
+  film -- letting it keep opening blew five of them out to white).
+- **Budget:** 92 MB of video in `src/assets/motion/`, 720x1560 H.264, capped
+  CRF (2 Mbps; the wings' per-frame colour noise came out at 13.7 MB for 8 s at
+  pure CRF), a keyframe every half second so scrubbing never stalls.
+- **The contact sheet is one video** (sheet.mp4, 9x6 tiles of 200x434, each a
+  2.5 s boomerang on a shared 5 s loop), drawn into each visible cell's canvas
+  on `requestVideoFrameCallback`. Fifty videos would be fifty decoders.
+- **The look is the piece's, not the site's**: a near-black ground that is the
+  scene under the pointer, or crossing the middle of the screen, or open in the
+  viewer -- shrunk to 48x104, graded blue and put through a 4x4 ordered dither in
+  four inks with scanlines and grain, on a canvas a third of the window's size at
+  24 fps (`motionAmbient.js`, YouTube's ambient mode printed the piece's way).
+  Frames are boxed like its computer vision (cyan tracking, red locked).
+- **The viewer** carries the scene's name and one bar, in the scene, and nothing
+  else: Photos' gestures on touch; beside the frame, click, arrow keys and Esc
+  with a mouse; the wheel or a trackpad scrubs frames. Credits are one list at
+  the foot of the page, generated from the piece's CREDITS.md.
+- **Cost to everyone else:** the page's code is its own chunk (64 KB), fetched
+  when the page mounts. The site's first chunk went 118.9 → 127.9 KB (53.0 →
+  57.0 KB gzipped) for the bar, the presence rule, the router and this page's
+  markup and names.
+
+### Open
+- `test/sim.test.js` fails ONE check that was already failing before this
+  session: the paper is `#FFFFFF` (saved through the editor), which puts `--n4`
+  at 3.05:1 and trips "control: --n4 is under even the large-text floor". Either
+  the paper goes back to bone, `--n4` darkens, or the control's bound changes --
+  the owner's call, not made here.

@@ -196,7 +196,7 @@ than a palette.
 | project | pair | why |
 |---|---|---|
 | usb-provisioning | `#16305C` navy + `#23262B` near-black | the colour of the hardware it writes to |
-| closet | `#2C2D31` + `#78797B`, two greys | no chroma — the value range his own wardrobe measures at |
+| motion-graphics | `#1F24D6` + `#B3122E`, ultramarine + crimson | the two inks the piece engraves its eye and flower in |
 | iclicker | `#3576C4` blue + `#4FAEA6` teal | the system's own colour, used to describe the system |
 
 (These are the three in `site/projects.js`. A project owns its whole sky now, not
@@ -378,6 +378,10 @@ through each project card, and the two discs in the top-left corner are all the
 same idea — the field showing through where something opens onto it.
 
 ### The two discs — the nearest exit is always at the corner
+
+**Superseded (2026-09-25).** The discs, the stitch chart, the phone's arrows and
+the keycaps were replaced by one small nav bar at the top middle, by
+instruction; STATE.md §13. What follows is the record of why they were built.
 
 Top-left, both of them: a small circle of sky with a white mark on it, painted
 into its own canvas by a scissored pass of the same press. **Not holes.** A hole
@@ -662,3 +666,24 @@ render dashed and italic so the page never claims a link it does not have.
 `paint(t, scrollY)`, which draws one frame by hand. That last one is how every
 visual claim in `STATE.md` was measured, because the preview pane in this
 environment never runs the deck's rAF.
+
+## 10. Experimental motion graphics — the page that is not on the sheet
+
+By instruction, one page leaves the sheet behind. "let me be a flower" is a
+vertical piece made for phones, and the page shows it the way the piece looks,
+not the way this site looks: a near-black ground that IS the scene you are on
+(dithered in the piece's four blues, with its scanlines and grain), its inks,
+its misregistered titles, its computer vision's boxes round every frame.
+
+The shape is two documented techniques combined: a photo lab's **contact
+sheet** (every scene, numbered, playing at once) and a **viewer** that opens out
+of the scene you press and closes back into it with the Photos app's gestures.
+Two runs of the piece are one gesture each and are laid out as one: the 21 cuts
+of "A flower." as a single strip of film, and the devices montage as a flurry of
+small frames that lands on four larger ones, the way the cut holds on them. The
+whole film is also a strip (THE CUT), every scene as long as it lasts in it, so
+the pacing is legible before anything is opened.
+
+The viewer shows the scene, its name and one bar laid in the scene, and nothing
+else: everything else is done the way a hand already knows how.
+

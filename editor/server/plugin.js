@@ -42,6 +42,10 @@ const read = (f) => readFileSync(R(f), "utf8");
 // capture({ e }) instead (see setCaptureId below).
 const MARKED = /\/src\/site\/(pages\/[a-z0-9-]+|pages)\.js$/;
 
+// a sheet whose words are kept in a data file of their own, beside its page
+// file: the motion-graphics page names its fifty-odd scenes in site/motion.js
+const DATA = { "motion-graphics": ["src/site/motion.js"] };
+
 /** the files a route's words can live in, in the order the renderer reads them */
 function filesFor(page) {
   if (page === "home") return ["index.html"];
@@ -50,7 +54,7 @@ function filesFor(page) {
   if (page?.startsWith("project:")) {
     const slug = page.slice(8);
     const own = `src/site/pages/${slug}.js`;
-    return [...(existsSync(R(own)) ? [own] : []), "src/site/projects.js",
+    return [...(existsSync(R(own)) ? [own] : []), ...(DATA[slug] || []), "src/site/projects.js",
       "src/site/pages/sheet.js", "src/site/pages.js", "src/site/media.js"];
   }
   return ["src/site/pages.js"];

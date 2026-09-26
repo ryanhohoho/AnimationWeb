@@ -56,11 +56,9 @@ const SHEET = [
   { id: "stand-usb-side", w: 900,
     src: "698128379785715134_ASCII GRAPHIC DESIGN.png" },
 
-  // closet · TWO GREYS
-  { id: "stand-closet-hero", w: 1400,
-    src: "698128379785451482.jpg" },
-  { id: "stand-closet-side", w: 900,
-    src: "698128379785906006_Armageddon of Ends and Beginnings.png" },
+  // (closet · TWO GREYS was here: the project was scrapped on 2026-09-25 and its
+  // slot went to the motion-graphics page, whose media is baked by
+  // tools/bake_motion.mjs rather than by this tool.)
 
   // iclicker · BLUE + TEAL
   { id: "stand-iclicker-hero", w: 1400,

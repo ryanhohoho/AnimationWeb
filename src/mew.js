@@ -40,8 +40,11 @@ import { lerp } from "./utils/math.js";
  * @param world  the shared world -- one bus, one pointer, one scroll
  * @param deck   the press, already up and printing
  * @param scope  the site scope, so the renderer dies with the page
+ * @param enter  the reader has already navigated before this booted (they
+ *               arrived on a project sheet, where she is not): come in from the
+ *               side like on any new sheet, instead of appearing mid-window
  */
-export function bootMew({ world, deck, scope }) {
+export function bootMew({ world, deck, scope, enter = false }) {
   // ONE canvas for the whole session (index.html explains the layer contract).
   // It is never recreated -- not on navigation, not on resize -- because every
   // WebGLRenderer that gets thrown away leaks a GPU context that the browser
@@ -191,6 +194,39 @@ export function bootMew({ world, deck, scope }) {
   const brain = createBrain({
     body, world,
     config: cfg.behavior, pathConfig: cfg.path, attackConfig: cfg.attack
+  });
+  if (enter) {
+    // off the window first, so the entrance is the teleport it assumes it is
+    body.pos.x = -10 * body.radius;
+    body.prevPos.x = body.pos.x;
+    brain.enterFromSide();
+  }
+
+  // ── SHE IS NOT ON THE PROJECT SHEETS ─────────────────────────────────────
+  // By instruction (2026-09-25): a project sheet is the work, and she stays on
+  // the four cards. Nothing new had to be written for the leaving or the coming
+  // back, because both already exist. Going IN is always a crossing, and the
+  // crossing already sends her out of the window and holds the swap until she
+  // is gone (router.js, mewIsClear). Coming BACK, the swap's `recollect` finds
+  // her off screen and gives her the side entrance, the same one every new
+  // sheet gets.
+  //
+  // So all this does is stop the clock while she is away, and only once she is
+  // out of sight: `sleep` is a wish, and it is granted by the first frame on
+  // which world.mewClear is true. Stopped means stopped -- no sim, no draw, no
+  // GPU -- and the canvas is hidden (a class, not an inline style: the editor hides
+  // her with the inline one, and waking must not overrule it) so nothing she left behind (a spark, the
+  // tail of a beam) hangs over the work. world.time stops with her, so every
+  // timer in the brain resumes exactly where it was.
+  let asleep = false;
+  let wantSleep = false;
+  world.on("mewsleep", (e) => {
+    wantSleep = !!(e && e.sleep);
+    if (!wantSleep && asleep) {
+      asleep = false;
+      canvas.classList.remove("asleep");
+      if (rig) loop.start();
+    }
   });
 
   // pressing on the character starts a grab: the brain resolves it into a PET
@@ -430,6 +466,12 @@ export function bootMew({ world, deck, scope }) {
     },
     renderFrame(dt, alpha) {
       if (!rig || !poser) return;
+      if (wantSleep && !asleep && world.mewClear !== false) {
+        asleep = true;
+        loop.stop();
+        canvas.classList.add("asleep");
+        return;
+      }
       // interpolate the fixed-step DOC position, then convert to viewport px by
       // subtracting the live scroll offset (native-smooth under scrolling)
       const ix = lerp(body.prevPos.x, body.pos.x, alpha);

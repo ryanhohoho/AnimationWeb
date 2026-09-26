@@ -12,12 +12,12 @@ import ATLAS_URL from "../assets/media/icon-atlas.png?url";
 const URL_ = ATLAS_URL || null;
 
 export const hasIconAtlas = !!URL_;
-export const CELLS = ["usb-provisioning","closet","iclicker"];
+export const CELLS = ["usb-provisioning","motion-graphics","iclicker"];
 export const CELL_PX = 128;
 export const COVER = 0.82;
 
 import g0 from "../assets/media/glyph-usb-provisioning.png?url";
-import g1 from "../assets/media/glyph-closet.png?url";
+import g1 from "../assets/media/glyph-motion-graphics.png?url";
 import g2 from "../assets/media/glyph-iclicker.png?url";
 
 /** the glyph plates, by slug -- the white icon you see at rest, and the CSS mask
@@ -31,7 +31,7 @@ import g2 from "../assets/media/glyph-iclicker.png?url";
     lines, and a cell added to CELLS cannot be silently missing its plate. */
 const GLYPHS = {
   "usb-provisioning": g0,
-  "closet": g1,
+  "motion-graphics": g1,
   "iclicker": g2
 };
 export const glyphUrl = (slug) => GLYPHS[slug] || null;

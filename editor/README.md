@@ -8,8 +8,10 @@ The real site runs in the middle, at the width of the screen size you pick. Clic
 anything to select it, change it, press **Save**. The changes are written into
 the site's own source files, then `npm test` runs. Nothing is committed to git.
 
-Mew, the sky, the fixed controls (discs, stitch chart, arrow keys) and FIG. 2 on
-the USB sheet are locked. FIG. 2's backlight colours are not: see below.
+Mew, the sky, the fixed chrome (the nav bar) and FIG. 2 on the USB sheet are
+locked. FIG. 2's backlight colours are not: see below. On the motion-graphics
+page the scenes' names are in `src/site/motion.js` and edit like any other words;
+its behind-the-scenes figures take **Replace…**.
 
 ## Using it
 

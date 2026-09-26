@@ -18,7 +18,7 @@ export const TYPES = ["text", "media", "hole", "box"];
 /** why something cannot be edited, or null */
 export function lockReason(el) {
   if (!el || el.nodeType !== 1) return "nothing";
-  if (el.closest("#chrome")) return "The fixed controls (discs, stitch chart, arrow keys) are locked.";
+  if (el.closest("#chrome")) return "The nav bar is locked, like the rest of the fixed chrome.";
   if (el.closest("#stage")) return "Mew is locked.";
   if (el.closest("#sheet, #eat")) return "The sky is locked.";
   if (el.closest("[data-usb-stage]")) return "FIG. 2 is locked. Its backlight colours are in the panel with nothing selected.";

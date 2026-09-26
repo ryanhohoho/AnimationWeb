@@ -74,7 +74,7 @@ export const RAMP = {
 // One document that swaps its own contents has ONE <meta name="description">,
 // written for the summary, and it stays that way through every navigation. That
 // is invisible to a reader and it is the whole of what a link preview and a
-// search result quote -- so a shared /projects/closet advertised the front page.
+// search result quote -- so a shared /projects/iclicker advertised the front page.
 //
 // Kept short and kept TRUE, which is the same rule the labels on the sheet
 // follow. A project sheet does not appear here at all: it already has a written
@@ -86,8 +86,8 @@ const DESC = {
   experience: "Where Ryan Ho has worked: systems and tooling for the RCMP, and " +
         "computer science and biology at UBC.",
   projects: "Three pieces of work — a commissioned provisioning and engraving " +
-        "pipeline, an outfit engine with a learned judge, and a case study of a " +
-        "standardised attendance system.",
+        "pipeline, a vertical motion-graphics piece rendered live in the browser, " +
+        "and a case study of a standardised attendance system.",
   contact: "How to reach Ryan Ho.",
   404: "Nothing was pulled here."
 };
@@ -199,6 +199,8 @@ export function createRouter({ scope, deck, world, onPage }) {
   // const is in its temporal dead zone until its own line runs and calling it
   // above would throw at construction.
   let current = routeOf(location.pathname);
+  // the path whose sheet is on screen, for telling a hash change from a move
+  let shownPath = location.pathname;
 
   // ── WHICH SHEET IS PRINTED, WRITTEN ON THE SHEET ─────────────────────────
   // `data-page` on #doc: "home", "experience", "projects", "contact",
@@ -214,6 +216,7 @@ export function createRouter({ scope, deck, world, onPage }) {
 
   function commit(route, { carry = true } = {}) {
     current = route;
+    shownPath = location.pathname;
     const { html, title, desc, ink, inkA } = render(route);
     // ── READ THE OFFSET BEFORE THE SHEET CHANGES ─────────────────────────
     // How far down the OLD sheet the reader was is the number the plate winds
@@ -382,26 +385,31 @@ export function createRouter({ scope, deck, world, onPage }) {
   //
   //   a CROSSING is going somewhere. The paper opens and you go through it.
   //
-  // So: stepping off the deck into a project crosses, and coming back crosses.
-  // The first step of the deck, home -> experience, also crosses - once - because
-  // that is where the reader is taught what the window in the middle of the
-  // summary is FOR. Every later step is a page turn, because by then they know,
-  // and a four-second event between two lists of text is a toll booth.
+  // THE RULE, by instruction (2026-09-25), now that the nav bar can reach any
+  // card from any card: a move CROSSES if it leaves or arrives at the summary,
+  // or leaves or arrives at a project sheet. Everything else turns.
   //
-  // Moving between two project sheets fades: they are siblings, and an opening
-  // that eats the screen to show you the next of the same kind is a lie about
-  // the distance travelled.
+  //   summary <-> any card          crosses: out through the summary's window,
+  //                                 and back into it. It used to be only the
+  //                                 first step, summary -> experience, because
+  //                                 that was the only way off the summary; the
+  //                                 window is still where the reader is taught
+  //                                 what a hole in this sheet is FOR, whichever
+  //                                 card they leave for.
+  //   card <-> project sheet        crosses, opening out of the icon clicked
+  //   experience/projects/contact   turn, because a four-second event between
+  //                                 two lists of text is a toll booth
+  //   project <-> project           turns: they are siblings, and an opening
+  //                                 that eats the screen to show you the next of
+  //                                 the same kind is a lie about the distance
   function transitionFor(from, to) {
     const f = from?.name, t = to.name;
-    if (f === "projects" && t === "project") return "cross";
-    if (f === "project" && t === "projects") return "return";
+    if (f === t) return "fade";
     if (f === "project" && t === "project") return "fade";
-    if (t === "project") return "cross";           // a deep link from anywhere
+    if (t === "project") return "cross";           // from a card, or a deep link
     if (f === "project") return "return";
-    const fi = DECK.indexOf(f), ti = DECK.indexOf(t);
-    if (fi < 0 || ti < 0 || fi === ti) return "fade";
-    if (fi === 0 && ti === 1) return "cross";      // out through the summary window
-    if (fi === 1 && ti === 0) return "return";     // and back into it
+    if (f === "home") return "cross";              // out through the summary window
+    if (t === "home") return "return";             // and back into it
     return "fade";
   }
 
@@ -948,14 +956,10 @@ export function createRouter({ scope, deck, world, onPage }) {
     if ((e.key === " " || e.key === "Enter") && t?.closest?.("a,button")) return;
     // ...and then to the page, if the page still has somewhere to go
     if (scrolls && keyScrollsFirst(d)) return;
-    if (step(d)) {
-      e.preventDefault();
-      // ONLY A PRESS THAT MOVED SOMETHING LIGHTS A CAP. Everything above this
-      // line is a reason the key was not a navigation, and the chrome cannot
-      // know any of them -- so it is told here rather than listening for
-      // keydown itself (site/chrome.js).
-      world?.emit("deckstep", { d });
-    }
+    // (a page that owns these keys for itself -- the motion-graphics viewer
+    // steps its scenes with them -- listens on the document, which hears the
+    // key before this window listener does, and prevents the default)
+    if (step(d)) e.preventDefault();
   }, { signal: scope?.signal });
 
   // The crossing starts AT the thing you clicked, so a link inside a hole opens
@@ -994,7 +998,14 @@ export function createRouter({ scope, deck, world, onPage }) {
   // the default can be, and both were. There is a check that this line ran.
   if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 
+  // A CHANGE OF HASH IS NOT A CHANGE OF PAGE. A fragment navigation (a link to
+  // /projects/motion-graphics#pool followed from that same page, or Back over
+  // one) fires popstate too, and treating it as a navigation re-rendered the
+  // sheet it was already on -- which threw away the page's own state and the
+  // very hash it had been asked for. The page listens for hashchange itself if
+  // it cares (the motion-graphics viewer does).
   window.addEventListener("popstate", () => {
+    if ((location.pathname.replace(/\/+$/, "") || "/") === (shownPath.replace(/\/+$/, "") || "/")) return;
     go(location.pathname, { push: false });
   }, { signal: scope?.signal });
 

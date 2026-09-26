@@ -61,9 +61,18 @@ sky** seen through **die-cut apertures**, with **Mew** — a procedurally animat
 3D character — loose on the page as the only unprinted thing on it.
 
 It reads as a **deck of four cards** — summary, experience, projects, contact —
-driven by the arrow keys, with three project sheets hanging off the projects card
-as long scrolling documents. The deck shape exists so the work survives being
-skimmed; the sheet it is cut from has not changed.
+reached from a small nav bar at the top middle (the arrow keys and a swipe still
+turn it, unadvertised), with three project sheets hanging off the projects card.
+The deck shape exists so the work survives being skimmed; the sheet it is cut
+from has not changed. **Mew is on the four cards only**: she leaves through the
+crossing into a project sheet, sleeps there, and comes back by the side
+entrance. Every word is set in **Darker Grotesque**.
+
+One project page is not cut to the site's trim: **experimental motion graphics**
+(`pages/motion-graphics.js`), "let me be a flower" from `../VisualAudialExperience`
+shown as every one of its scenes. By instruction it wears the PIECE's look, not
+the site's — a dark ground that is the scene you are on, dithered blue, and the
+piece's inks.
 
 Vite + Three.js, no framework, no CSS library. Real routes via the History API,
 because Mew is a live WebGL context with physics and a brain: a real navigation
@@ -80,10 +89,9 @@ Read in this order when picking it up cold:
 | `CLAUDE.md` | this file | how to work |
 
 Three files carry more than their name suggests. `src/site/pages/sheet.js` is the
-two-plate trim every project sheet is cut to — the three project files are only
-the WORDS. `src/site/chrome.js` is everything that does not turn when the page
-does (the stitch chart, the phone bar, the back control), and it lives outside
-`#doc` so a page swap cannot flicker it. `src/engine/fx/sweatGeometry.js` is the
+two-plate trim the USB and iClicker sheets are cut to — their page files are only
+the WORDS. `src/site/chrome.js` is the nav bar, the one thing that does not turn
+when the page does, and it lives outside `#doc` so a page swap cannot flicker it. `src/engine/fx/sweatGeometry.js` is the
 sweat's maths, pure and headless; its `sdDrop` is a twin of the shader's, and the
 two are checked against each other on the GPU.
 
@@ -92,7 +100,7 @@ two are checked against each other on the GPU.
 ```bash
 npm run dev            # localhost:5173 — the owner tests here, in his own browser
 npm run edit           # localhost:5275/editor/ — the visual editor (see below)
-npm test               # 998 checks: the headless sim + the router harness
+npm test               # 1044 checks: the headless sim + the router harness
 npm run test:sim       # just the engine/behaviour suite
 npm run test:router    # just the router + page-swap harness (needs a fake DOM)
 npm run build          # production bundle
@@ -150,6 +158,18 @@ FIG. 2's backlight is NOT vendored: `src/site/glowField.js` is its model and
 `src/site/glow.js` draws it. The fragment shader in `glow.js` is a
 transcription of `shadeAt` in `glowField.js` — change one, change the other,
 and check them against each other on the GPU (STATE.md says how).
+
+The motion-graphics page's video (only if the piece, or which part of it is
+shown, changes). Rendered in a SCRATCH COPY of `../VisualAudialExperience`, never
+in it; `tools/motion/README.md` is the whole procedure:
+
+```bash
+node tools/bake_motion.mjs --renders <sandbox>/renders   # -> src/assets/motion/, the card, site/motionassets.js
+node tools/motion/credits.mjs ../VisualAudialExperience/CREDITS.md   # -> site/motioncredits.js
+```
+
+`src/site/motionassets.js` and `src/site/motioncredits.js` are **generated — do
+not edit them.** The scenes' names are `src/site/motion.js`, which is hand-written.
 
 Tab mark and link card (only if the mark, the palette or the pitch changes):
 
@@ -315,6 +335,23 @@ when only the numbers were.
   card paths in `index.html` are absolute — and why `dist/404.html` has to be
   written by the build rather than dropped in `public/`: it carries the hashed
   script tags.
+- **`[data-at]` is the scroll readout's.** `deck.js` writes
+  `"<scroll> / <height>"` into every element carrying it, on every measure. A
+  page that puts its own `data-at` on something gets that text printed into it.
+- **A hash change is not a page change.** A fragment navigation fires
+  `popstate`; the router ignores one whose path is the sheet already shown (it
+  used to re-render the page and throw the hash away). A page that wants the
+  hash listens for `hashchange` itself.
+- **`font-size-adjust` is inherited, into shadow roots too.** `body` carries
+  `font-size-adjust:0.511` (Darker Grotesque set at the old mono's x-height);
+  anything in another face -- FIG. 2's terminal, the vendored demo's shadow
+  root -- sets `font-size-adjust:none` or it is scaled 1.265x.
+- **Mew sleeps with a CLASS, not an inline style** (`#stage.asleep`). The editor
+  hides her with the inline visibility; waking must not overrule it.
+- **The motion page's viewer lives on `<body>`, and its ground canvas moves into
+  it while open.** `#doc` is a stacking context under the grain; a canvas moved
+  in the DOM keeps its WebGL context, so the ground travels rather than being
+  drawn twice.
 - **A scanner strict enough to be useful catches documentation about itself.**
   The redaction check failed on `STATE.md` for spelling out a volume path while
   explaining the rule. Prose about those patterns must name them, not spell
@@ -357,6 +394,10 @@ source. Read `editor/README.md` before touching it. What it writes:
 - **colours** into `site/palette.js` + the `:root` tokens in `site.css`
   (FIG. 2's six backlight colours are `--glow-1`..`--glow-6` among them);
 - **media** encoded into `src/assets/media/` the way `bake_captures.mjs` does.
+
+On the motion-graphics page the scenes' names resolve to `src/site/motion.js`
+(plugin.js, `DATA`), and the behind-the-scenes figures are ordinary capture
+slots. The nav bar is fixed chrome and locked.
 
 Nothing in `editor/` is reachable from `index.html`; the build never sees it.
 

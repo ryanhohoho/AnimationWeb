@@ -16,23 +16,31 @@
                        sheet and the animal is on it, not behind glass
 */
 
-/* OVERPASS MONO, and the reason is not taste.
-   IBM Plex Mono is now the tell of a generated site — it, JetBrains Mono and
-   Geist ship as the default of every scaffold, so a page set in one reads as
-   a template before anyone has read a word of it. This is Red Hat's mono,
-   drawn off Highway Gothic: it comes from SIGNAGE rather than from an IDE,
-   which is the right ancestry for a sheet whose whole job is labelling things
-   accurately.
+/* DARKER GROTESQUE, by instruction (2026-09-25), for every word on the site
+   except the machines talking (FIG. 2's terminal and the vendored demo keep
+   theirs, below and in their own shadow root).
 
-   One variable file, 22 KB, every weight from 300 to 700 — a third of what the
-   two static Plex cuts cost, and it buys a real middle weight, which is what
-   the small text was missing. */
+   It replaced Overpass Mono, and the sheet's sizes were all set in THAT face:
+   a grotesque with a short lowercase (x-height 0.404 em, against the mono's
+   0.511) set at the same numbers reads about three sizes smaller. So the sizes
+   are left exactly as they are and `font-size-adjust` on body scales the face
+   until its lowercase stands where the mono's did -- x1.265, measured off both
+   files' OS/2 tables. One declaration instead of a hundred edited sizes, and
+   the editor's size fields keep meaning what they meant.
+
+   The `ch` measures come through almost untouched: this face's zero, adjusted,
+   is 0.610 em against the mono's 0.616, so every column keeps its width to 1%.
+   What changes is how many words fit in it -- a proportional lowercase averages
+   0.50 em adjusted where every mono glyph was 0.62.
+
+   One variable file, 40 KB, weights 300 to 900 (converted from the TTF in
+   Darker_Grotesque/, which is the family as downloaded; OFL beside it). */
 @font-face {
-  font-family: "Mono";
-  font-weight: 300 700;
+  font-family: "Grotesque";
+  font-weight: 300 900;
   font-style: normal;
   font-display: swap;
-  src: url("../assets/fonts/OverpassMono-var.woff2") format("woff2");
+  src: url("../assets/fonts/DarkerGrotesque-var.woff2") format("woff2");
 }
 
 /* IBM PLEX MONO, KEPT FOR EXACTLY ONE JOB.
@@ -120,25 +128,17 @@
   --e: cubic-bezier(0.2,0.6,0.2,1);
   --t1:140ms; --t2:340ms; --t3:900ms;
   --pad: clamp(18px, 3.4vw, 60px);
-  /* the phone bar's height, so pages can reserve room for it in one place.
-     44px of control, plus its padding, plus the 1px rule along its top edge --
-     which the first version left out, so the page reserved 60 and the bar was
-     61 and the last pixel of the last line went under it. The safe-area inset is
-     added here rather than where it is used, because it is zero on everything
-     that is not a notched phone and a token that is sometimes complete is worse
-     than one that always is. */
-  --bar: calc(44px + 1rem + 1px + env(safe-area-inset-bottom, 0px));
-  /* the exit discs, top-left. On :root and not on #chrome because the PAGE has
-     to know how big they are: a project sheet indents its top-left cluster past
-     them and a deck card's column starts below them, and neither is inside the
-     chrome to inherit from it. */
-  --ba: clamp(42px, 4.4vw, 56px);
-  --disc-gap: .5rem;
-  /* a deck card's column starts below the disc that is fixed over its top-left
-     corner. TWO tokens rather than one max() in place, because card 01 is the
-     one card the disc is not on and it has to be able to say so. */
+  /* THE NAV BAR, top middle (#chrome .topnav). On :root because the PAGE has
+     to know where it ends: a deck card's column and a project sheet's column
+     start below it rather than under it, and neither is inside the chrome to
+     inherit from it. --nav-top is where it hangs, --nav-h its height. */
+  --nav-top: calc(var(--pad) * .55 + env(safe-area-inset-top, 0px));
+  --nav-h: 34px;
+  /* a deck card's column starts below the bar. TWO tokens rather than one
+     max() in place: --deck-top is the composition's own air, --nav-clear the
+     floor under the bar, and the column takes whichever is lower. */
   --deck-top: clamp(3rem, 11vh, 8rem);
-  --disc-clear: calc(var(--ba) + 1.1rem);
+  --nav-clear: calc(var(--nav-top) + var(--nav-h) + 1.2rem - var(--pad));
 
   /* FIG. 2'S BACKLIGHT — the six colours the light round the USB figure is
      mixed from (site/glowField.js, site/glow.js). These are Apple
@@ -150,12 +150,12 @@
      searching this file for its name followed by a hex value, takes the first
      match, and writes a saved change back to that same spot — so a comment
      above this spelling one out would be the thing that got edited. */
-  --glow-1: #BC82F3;
-  --glow-2: #F5B9EA;
-  --glow-3: #8D9FFF;
-  --glow-4: #FF6778;
-  --glow-5: #FFBA71;
-  --glow-6: #C686FF;
+  --glow-1: #2D94C8;
+  --glow-2: #2D68C8;
+  --glow-3: #2D94C8;
+  --glow-4: #2D68C8;
+  --glow-5: #2D68C8;
+  --glow-6: #2D85C8;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -199,7 +199,9 @@ html { overscroll-behavior-y:none; }
    and it reads as grey no matter what colour it is. The light cut is now
    reserved for the display sizes, where it belongs. */
 body {
-  font-family:"Mono", ui-monospace, Menlo, monospace;
+  font-family:"Grotesque", ui-sans-serif, system-ui, sans-serif;
+  /* the mono's x-height, 0.511 em: see the @font-face above */
+  font-size-adjust:0.511;
   font-weight:400; color:var(--ink);
   background:var(--paper);
   overflow-x:hidden; -webkit-text-size-adjust:100%; -webkit-font-smoothing:antialiased;
@@ -365,13 +367,8 @@ pre.sr { white-space:pre; }
 .deckpage { display:flex; flex-direction:column; min-height:100lvh;
             padding:var(--pad); }
 .deck-in { width:100%; max-width:60rem; margin:0 auto;
-           padding-top:max(var(--deck-top), var(--disc-clear)); flex:1;
+           padding-top:max(var(--deck-top), var(--nav-clear)); flex:1;
            display:flex; flex-direction:column; gap:1.6rem; align-items:flex-start; }
-/* CARD 01 KEEPS ITS OWN AIR. The home disc is hidden on the summary -- a
-   control that leads where you already are is furniture -- so the clearance
-   that every other card needs would be 20 px of nothing on the landing page,
-   on a composition that is already settled. */
-#s0 { --disc-clear:0px; }
 .deck-hour { text-align:right; }
 
 /* ── THE LENS ──────────────────────────────────────────────────────────────
@@ -611,262 +608,62 @@ pre.sr { white-space:pre; }
    Fixed furniture, outside #doc, so the page swap cannot flicker it. */
 #chrome { position:fixed; inset:0; z-index:25; pointer-events:none; }
 #chrome > * { pointer-events:auto; }
-/* THE CHROME NEEDS ITS OWN MARGIN. It is fixed, so on a long project sheet any
-   scroll position can put a display headline directly underneath the counter --
-   measured, on the closet sheet, where "02 / 03" landed inside the word "it".
-   Reserving space is not an option (the sheet's corners are absolutely placed by
-   the composition), so the paper comes back up instead: a short fade to the
-   stock's own colour, under the controls and over nothing else. It is the same
-   sheet, so it reads as margin rather than as a bar. */
-#chrome::after {
-  content:""; position:absolute; left:0; right:0; bottom:0; height:88px;
-  background:linear-gradient(to top, var(--paper) 34%, transparent);
-  pointer-events:none; z-index:-1;
-}
+/* ── THE NAV BAR ───────────────────────────────────────────────────────────
+   By instruction: small, top middle, about a third of the window wide. It is
+   the site's label register -- the same 11 px caps as every annotation on the
+   sheet -- on a strip of the stock itself, ruled with a hairline, so it reads
+   as a label pasted on the paper rather than as an app's toolbar. Four names,
+   spread across the width they are given.
 
-/* THE PROGRESS RULE IS GONE. It was the same borrowed idea as the pills it sat
-   above, and with a chart in the corner the site was saying how far you had got
-   in two places at once. The chart says it better, because it also says how far
-   there is left. */
-
-.nav { position:absolute; left:var(--pad); bottom:calc(var(--pad) * .8);
-       display:flex; align-items:center; gap:.85rem; }
-
-/* ── THE CHART ─────────────────────────────────────────────────────────────
-   Four cells of squared canvas with a shared grid. The borders overlap by a
-   pixel so the rule between two cells is ONE line, the way a chart is ruled --
-   two abutting borders would draw it at double weight and the grid would read
-   as a row of separate boxes instead of as one piece of canvas. */
-.chart { display:flex; align-items:center; }
-.stitch {
-  display:block; width:19px; height:19px; flex:none;
-  border:1px solid var(--n4); margin-left:-1px;
-  text-decoration:none;
-  transition:background var(--t2) var(--e);
+   WHERE YOU ARE is a thread under the name in cerulean, the one ink no project
+   may own (it was the stitch chart's thread, and before that the progress
+   rule's): the bar is the site's own furniture, so it does not change colour
+   with the page. On a project sheet the same thread marks PROJECTS, because a
+   project sheet is inside card three. */
+.topnav {
+  position:fixed; top:var(--nav-top); left:50%; transform:translateX(-50%);
+  height:var(--nav-h); min-width:33.333vw; max-width:calc(100vw - 2 * var(--pad));
+  display:flex; align-items:center; justify-content:space-between; gap:1.4rem;
+  padding:0 1.1rem;
+  background:var(--paper); border:1px solid var(--n4);
 }
-.stitch:first-child { margin-left:0; }
-.stitch svg { display:block; width:100%; height:100%; overflow:visible; }
-/* the stitch itself: two crossed threads, in the one ink no project may own */
-.stitch path {
-  fill:none; stroke:var(--blue); stroke-width:2; stroke-linecap:round;
-  opacity:0;
-  transition:opacity var(--t2) var(--e);
+.t.topnav-a {
+  position:relative; line-height:1; white-space:nowrap;
+  color:var(--n3); text-decoration:none;
+  padding:.55rem 0;
+  transition:color var(--t1) var(--e);
 }
+/* the thread: drawn under the word, not an underline, so it can sit at its own
+   distance and weight and fade in without moving anything */
+.t.topnav-a::after {
+  content:""; position:absolute; left:0; right:.15em; bottom:.3rem; height:2px;
+  background:var(--blue); opacity:0; transition:opacity var(--t2) var(--e);
+}
+.t.topnav-a.on { color:var(--ink); }
+.t.topnav-a.on::after { opacity:1; }
 @media (hover:hover) {
-  .stitch:hover { background:rgba(0,0,0,.05); }
-  .stitch:hover path { opacity:.3; }
+  .t.topnav-a:hover { color:var(--blue); }
 }
-.stitch.done path { opacity:.42; }          /* worked, and behind you */
-.stitch.on path   { opacity:1; }            /* worked, and where you are */
-/* ...and the one you are standing INSIDE is doubled: a second thread, offset,
-   which is what a chart does to say a cell carries more than one pass */
-.stitch.deep { background:rgba(0,90,125,.10); }
-.stitch.deep svg { transform:scale(.78); }
-.stitch.deep path { opacity:1; }
+.topnav-a:focus-visible { outline-offset:3px; }
 
-/* nowrap, because "03 / 04" is one thing. At 320 px the bar's flex row got
-   tight enough to break it after the slash, which put the counter on two lines
-   and made the whole bar taller than the page had reserved for it. */
-.legend { display:flex; align-items:center; gap:.45rem; white-space:nowrap;
-          font-variant-numeric:tabular-nums; color:var(--n3); }
-/* the legend's own key mark, drawn the same way the worked cell is */
-.legend-key {
-  display:block; width:9px; height:9px; flex:none;
-  background:
-    linear-gradient(to bottom right, transparent 44%, var(--blue) 44%, var(--blue) 56%, transparent 56%),
-    linear-gradient(to bottom left,  transparent 44%, var(--blue) 44%, var(--blue) 56%, transparent 56%);
-}
-
-.keys { position:absolute; right:var(--pad); bottom:calc(var(--pad) * .8);
-        color:var(--n3); display:flex; align-items:center; gap:.36rem; }
-/* step() returns false for a route that is not in the deck, so on a 404 the
-   arrow keys do nothing -- and a label naming a key that does nothing is the
-   one kind of label this sheet does not carry. */
-body.off-deck .keys { display:none; }
-.keys-say { margin-left:.2rem; }
-
-/* ── A KEY, DRAWN AS A KEY ──────────────────────────────────────────────────
-   20 px square, because a keycap is square and a rectangle reads as a button.
-   The outline is --n3 rather than --n4: this is a mark somebody has to read at
-   a glance, and --n4 is 2.61:1 and belongs to hairlines. The glyph is ink.
-
-   `place-items:center` on a grid rather than padding, so the drawing sits on
-   the cap's own centre at any size -- the old version padded a text arrow and
-   the two glyphs were visibly at different heights, because ← and → do not
-   share a baseline offset in this face. */
+/* the keycap drawn inside the summary's "press → to continue" line. The corner
+   keycaps it was the twin of are gone with the rest of the old chrome; this one
+   stays until that line is deleted (by its owner, in the editor). */
 .keycap {
   display:grid; place-items:center; width:20px; height:20px; flex:none;
   border:1px solid var(--n3); border-radius:3px;
   color:var(--ink); text-decoration:none;
-  transition:border-color var(--t1) var(--e), background-color var(--t1) var(--e),
-             color var(--t1) var(--e);
 }
 .keycap svg { width:13px; height:13px; display:block; }
 .keycap svg path { fill:none; stroke:currentColor; stroke-width:1.6;
                    stroke-linecap:round; stroke-linejoin:round; }
-
-/* AN END IS AN END, AND YOU CAN SEE IT COMING. The same rule the phone's
-   arrows have had: the control stays where it is and goes quiet, so reaching
-   the last card reads as an edge rather than as a key that stopped working. */
-/* ...and it dims with OPACITY, the way .mob-b already does, rather than by
-   repainting the glyph in --n4. Two reasons, and the second is the real one:
-   the check on the stylesheet cannot tell an inactive mark from a word, so
-   --n4 in a `color:` is a violation whatever it is drawing -- and opacity is
-   what the other costume of this same control has always used, so the two
-   cannot drift. .32 rather than .2 because this cap is 20 px against a 44 px
-   circle, and the point of leaving it there is that it can still be seen. */
-.keycap[aria-disabled="true"] { opacity:.32; pointer-events:none; }
-@media (hover:hover) {
-  .keys .keycap:hover { border-color:var(--blue); color:var(--blue); }
-}
-.keycap:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
-
-/* ── AND IT ANSWERS THE KEYBOARD ────────────────────────────────────────────
-   Nielsen's first heuristic, and the cheapest possible version of it: press the
-   key and the cap it belongs to inverts for a moment. It confirms the mapping
-   the first time and then never needs to be read again -- which is what a good
-   signifier does, teach itself and get out of the way. Driven from the router
-   through the world bus, so the only thing that can light a cap is a keypress
-   the router actually acted on (site/chrome.js). */
-.keycap.hit { background:var(--blue); border-color:var(--blue); color:var(--paper);
-              transition:none; }
-
-/* the one inside a sentence sits ON the line rather than beside it, and takes
-   the link's colour with it so the whole phrase reads as one object */
 .keycap-in { display:inline-grid; vertical-align:-.42em; margin:0 .06em;
              width:19px; height:19px; color:inherit; border-color:currentColor; }
 /* THE WORDS ARE UNDERLINED, THE KEY IS NOT. On the anchor the rule runs
-   straight through the cap and the key looks struck out; taken off entirely,
-   colour alone is left saying "this is a link", which on a page with one other
-   blue thing on it is not enough. */
+   straight through the cap and the key looks struck out. */
 .hint-a { text-decoration:none; }
 .hint-a .hint-w { text-decoration:underline; text-underline-offset:.24em;
                   text-decoration-thickness:1px; }
-
-/* the phone's arrow keys. Hidden on anything with a keyboard. */
-.mob { position:absolute; right:var(--pad); top:50%; transform:translateY(-50%);
-       display:none; flex-direction:column; gap:.6rem; }
-.mob-b { display:grid; place-items:center; width:40px; height:40px;
-         border:1px solid var(--n4); border-radius:50%;
-         text-decoration:none; font-size:15px; background:var(--paper); }
-.mob-b[aria-disabled="true"] { opacity:.2; pointer-events:none; }
-
-/* ── THE DISCS ─────────────────────────────────────────────────────────────
-   TOP LEFT, where an exit belongs, and always on top. The back arrow used to be
-   at the middle of the left edge because that was the one band free of the
-   project sheets' own four-corner compositions -- a workaround for the real
-   problem, which was that the control was a HOLE and holes live under the type.
-   Now that they paint their own sky above the page they can go where they
-   should be, and the sheets make room for them instead (body.on-project).
-
-   A disc is opaque, so it needs no registration ticks: a tick says "there is a
-   cut here" for a hole that might be nearly the colour of the paper, and these
-   can never be -- and for the same reason they need no glyph-atlas fallback,
-   because they paint their own sky and do not read the atlas at all.
-
-   THE ROW STACKS FROM THE CORNER, NEAREST EXIT FIRST. On a project sheet that
-   is the back arrow at the corner and home one place inward; on a deck card
-   there is nothing to go back to, so home takes the corner. --ba is on #chrome
-   rather than on either control because the offset below has to know it. */
-.disc {
-  position:fixed; left:var(--pad); top:var(--pad);
-  width:var(--ba); height:var(--ba); z-index:26;
-  display:block; text-decoration:none; color:#fff;
-  transition:transform var(--t2) var(--e);
-}
-.disc[hidden] { display:none; }
-@media (hover:hover) { .disc:hover { transform:translateX(-3px); } }
-/* THE DISC KEEPS THE RING. It used to drop it for the same 3 px nudge the
-   hover has, plus the label -- and the label is `display:none` on a narrow
-   screen, so on a small window with a keyboard the entire focus indicator was a
-   three-pixel shift. The ring sits at 5 px of offset, which is out on the paper
-   and clear of the sky, so it costs the disc nothing. */
-.disc:focus-visible { transform:translateX(-3px); }
-
-/* HOME STANDS ASIDE WHEN THERE IS A BACK ARROW, and only then. It is a pure
-   `left`, which is a layout property -- but it changes on a ROUTE, not on a
-   hover or a scroll, and every route already remeasures the whole sheet. */
-body.on-project .homedisc { left:calc(var(--pad) + var(--ba) + var(--disc-gap)); }
-
-/* the die is CSS: the canvas is square and border-radius cuts the circle out of
-   it, so the shader never has to know the control is round */
-.disc-sky {
-  position:absolute; inset:0; border-radius:50%; overflow:hidden;
-  /* UNTIL THE FIRST PAINT LANDS -- and on a machine with no WebGL at all, for
-     good. Verified by forcing both contexts to fail: the site is still a
-     complete portfolio (paper, type, cards, chart, navigation), every die-cut
-     reads as an empty cut with its hairline ring, and these two are the only
-     things that have to stand in for a picture. Cerulean rather than --ink,
-     because a near-black disc on bone is the one element on the page that
-     would not belong to it; this is the colour the disc becomes anyway. */
-  background:var(--ink-a);
-  box-shadow:0 0 0 1px rgba(0,0,0,.14);
-  pointer-events:none;
-}
-.disc-sky canvas { display:block; width:100%; height:100%; }
-/* the mark, on the sky rather than cut out of it. The drop shadow is what keeps
-   a white glyph off a bright gap in the cloud: the halftone is high-contrast at
-   the dot scale, so a hairline of shadow is doing more work here than it would
-   on a flat ground. */
-.disc-ico {
-  position:absolute; inset:22%; width:56%; height:56%;
-  pointer-events:none;
-  filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45));
-}
-
-/* THE LABEL, WHICH IS THE PART THAT MAKES EITHER DISC LEGIBLE THE FIRST TIME.
-   A mark on a circle is a rebus until somebody tells you what it means, and the
-   number it carries is the deck's own -- 01 and 03 are the cards these two go
-   to, and every card prints its number in the opposite corner.
-
-   IT HANGS BELOW THE DISC, NOT BESIDE IT. Beside was the first version and it
-   was measured and thrown away: on a project sheet the back arrow's label ran
-   from x 104 straight under the home disc at 108. Below, the two labels are
-   side by side under two discs and neither can reach the other.
-
-   Absolutely positioned inside the anchor, so it adds nothing to the rect the
-   deck measured for the sky, and it moves with transform and opacity only --
-   nothing on a hover path may read layout. */
-.t.disc-tag {
-  position:absolute; left:0; top:calc(100% + .35rem); line-height:1;
-  font-size:9px; letter-spacing:.13em;
-  transform:translateY(-4px); transform-origin:left top;
-  white-space:nowrap; pointer-events:none;
-  color:var(--n3); background:var(--paper);
-  padding:.28rem .45rem; border:1px solid var(--n4);
-  opacity:0; transition:opacity var(--t2) var(--e), transform var(--t2) var(--e);
-}
-@media (hover:hover) { .disc:hover .disc-tag { opacity:1; transform:translateY(0); } }
-.disc:focus-visible .disc-tag { opacity:1; transform:translateY(0); }
-
-/* THE SHEET MAKES ROOM, TOP AND BOTTOM. A set sheet is a four-corner
-   composition and the chrome lives in three of those corners: the discs
-   top-left, the chart bottom-left, the key legend bottom-right. Indenting the
-   sheet's own clusters is cheaper and more honest than moving the controls
-   somewhere they do not belong -- and the bottom lift also gets the headline
-   out from under the paper fade that gives the chart its margin. Measured: the
-   chart was sitting on the word "serial".
-
-   IT IS KEYED ON THE PLATE, NOT ON THE ROUTE, and that is a bug already paid
-   for. These were `body.on-project` rules, so the 404 -- the other page built
-   out of .corner clusters, and the one a reader is most likely to arrive on
-   cold -- got none of it: the home disc sat on top of the words NOT PRINTED,
-   and "← back to the sheet" ran straight through the key legend. Every .plate
-   has the discs over its top-left corner, so every .plate indents. */
-.plate .corner.tl { padding-left:calc(var(--ba) + 1.1rem); }
-/* ...and a project sheet has TWO of them, because it can also go back one */
-body.on-project .plate .corner.tl {
-  padding-left:calc(var(--ba) * 2 + var(--disc-gap) + 1.1rem);
-}
-.plate .corner.bl,
-.plate .corner.br { bottom:calc(var(--pad) + 2.9rem); }
-
-/* ...AND SO DOES A DECK CARD, which never had to before: home is fixed over the
-   top-left corner of every card now and the lens is the first thing in the
-   column, so the column's top padding is a FLOOR against the disc rather than a
-   hope that 11vh is enough. It is set with --deck-top / --disc-clear where the
-   column is defined; this note is here because the reason lives here. Measured
-   on a 900x400 window, where 11vh is 44 px and the disc reaches 73. */
 
 
 /* ══ A PROJECT SHEET ═════════════════════════════════════════════════════
@@ -881,7 +678,7 @@ body.on-project .plate .corner.tl {
 .sheet { display:flex; flex-direction:column; }
 .sheet-in {
   width:100%; max-width:66rem; margin:0 auto; flex:1;
-  padding-top:max(var(--deck-top), var(--disc-clear));
+  padding-top:max(var(--deck-top), var(--nav-clear));
   display:flex; flex-direction:column;
   gap:clamp(1.6rem, 3.4vw, 2.8rem);
 }
@@ -1002,13 +799,7 @@ body.on-project .plate .corner.tl {
    nudge is not one, which is the fix below. */
 :focus-visible { outline:2px solid var(--blue); outline-offset:5px; }
 
-/* THE CHART IS EIGHTEEN PIXELS PER CELL and its cells abut by design (their
-   borders overlap by a pixel so the rule between two of them is ONE line). A
-   ring at 5 px of offset is 10 px wider than the cell it belongs to, so it
-   would cross both neighbours and the reader could not tell which cell had the
-   focus -- which is the whole job of the ring. Tight to the cell instead: the
-   chart is a grid, so a ring on the grid line IS the cell. */
-.stitch:focus-visible { outline-offset:0; outline-width:2px; }
+
 
 
 /* ══ PROJECT SHEETS ══════════════════════════════════════════════════════
@@ -1034,7 +825,7 @@ body.on-project .plate .corner.tl {
 
 /* a fragment of the system's own answer, annotated the way he annotates: a box
    drawn on the thing itself, with the label in clear space beside it. */
-.doc { font-family:"PlexMono", ui-monospace, Menlo, monospace;
+.doc { font-family:"PlexMono", ui-monospace, Menlo, monospace; font-size-adjust:none;
        border:1px solid var(--n4); background:var(--paper);
        padding:1.1rem 1.3rem; font-size:11.5px; line-height:2.05;
        letter-spacing:.01em; max-width:52ch; overflow-x:auto; }
@@ -1089,7 +880,7 @@ body.on-project .plate .corner.tl {
    the type is sized off the VIEWPORT so the widest line in the transcript (88
    columns) fits the measure instead of the measure breaking the line. 0.95vw
    is that fit, capped at 12px so it stops growing once it is comfortable. */
-.term { font-family:"PlexMono", ui-monospace, Menlo, monospace;
+.term { font-family:"PlexMono", ui-monospace, Menlo, monospace; font-size-adjust:none;
         width:min(52vw, 800px);
         font-size:min(12.5px, 0.98vw); line-height:1.95; letter-spacing:.01em;
         height:clamp(21rem, 56vh, 34rem);
@@ -1279,6 +1070,9 @@ body.on-project .plate .corner.tl {
 
 /* ── THE TWO HALVES, ONE RECTANGLE ──────────────────────────────────────── */
 .usb-ui, .usb-cli { position:absolute; inset:0; }
+/* the demo keeps its own face: body's font-size-adjust is inherited, and an
+   inherited property crosses into the shadow root the app is mounted in */
+.usb-ui { font-size-adjust:none; }
 
 /* THE WIPE. One compositor-friendly property, no layout, and a pure function
    of scroll — which is why scrolling back up runs it backwards for free. */
@@ -1288,7 +1082,7 @@ body.on-project .plate .corner.tl {
   display:flex; flex-direction:column;
   background:var(--ink);
   color:var(--paper);
-  font-family:"PlexMono", ui-monospace, Menlo, monospace;
+  font-family:"PlexMono", ui-monospace, Menlo, monospace; font-size-adjust:none;
 }
 
 /* A TERMINAL, NOT TEXT ON THE SHEET.
@@ -1465,12 +1259,13 @@ body.on-project .plate .corner.tl {
   .dlg-body { grid-template-columns:auto 1fr; }
 
   /* ── THE DECK ON A PHONE ─────────────────────────────────────────────── */
-  /* the same floor against the phone's own smaller numbers: the disc sits at
-     0.55 of the plate's padding and is 44 px tall, so the column has to start
-     below that or the lens comes up underneath it */
-  :root { --deck-top:clamp(1.4rem,4vh,2.4rem); --disc-clear:calc(var(--ba) + .5rem); }
+  /* the same floor against the phone's own smaller numbers: the column starts
+     below the nav bar or the lens comes up underneath it */
+  :root { --deck-top:clamp(1.4rem,4vh,2.4rem); }
   .deck-in { gap:1.2rem; }
-  .deck-hour { position:absolute; top:var(--pad); right:var(--pad);
+  /* the hour hangs under the bar's right end: at this width the bar is most of
+     the window, and the corner it used to have is under it */
+  .deck-hour { position:absolute; top:calc(var(--nav-top) + var(--nav-h) + .6rem); right:var(--pad);
                text-align:right; width:auto; }
   /* THE SELECTOR HAS TO BE .ap.deck-hole, and the narrow rule has to restate
      the width. `.ap:not(.icon)` above is (0,2,0) -- :not() takes its argument's
@@ -1488,38 +1283,14 @@ body.on-project .plate .corner.tl {
   .pcard-media { --icon:clamp(58px, 22%, 96px); }
   .row-loc { margin-left:0; width:100%; }
 
-  /* ── THE BAR ─────────────────────────────────────────────────────────
-     On a phone the navigation stops floating and becomes a bar. Everything
-     that used to hang over the content -- the two arrow circles at the right
-     edge, the counter sitting on the last line of the page -- moves into one
-     band at the foot, on its own ground, out of the way of everything.
-
-     It is also the only place a control can live on a phone without competing:
-     a fixed thing anywhere else is a fixed thing on top of the reading. */
-  .nav {
-    left:0; right:0; bottom:0;
-    padding:.5rem var(--pad);
-    padding-bottom:calc(.5rem + env(safe-area-inset-bottom, 0px));
-    padding-left:calc(var(--pad) + env(safe-area-inset-left, 0px));
-    padding-right:calc(var(--pad) + env(safe-area-inset-right, 0px));
-    background:var(--paper);
-    border-top:1px solid var(--n4);
-    justify-content:space-between;
-    gap:.6rem;
-  }
-  /* the bar IS the ground now, so the fade that used to stand in for one is
-     just a veil over the bottom tenth of every screen */
-  #chrome::after { display:none; }
-
-  .mob { position:static; display:flex; flex-direction:row; gap:.45rem;
-         transform:none; margin-left:auto; }
-  .keys { display:none; }
-
-  /* ── ROOM FOR IT ─────────────────────────────────────────────────────
-     Reserved rather than overlaid. A fixed bar over a scrolling page hides the
-     last line of every card, and "scroll a bit further" is not an answer when
-     the last line is a link. */
-  .plate, .deckpage { padding-bottom:calc(var(--bar) + var(--pad)); }
+  /* ── THE NAV BAR ON A PHONE ────────────────────────────────────────────
+     A third of 390 px is 130, and four names do not fit in it. So here the bar
+     takes the width its names need and no more, closer together -- still top
+     middle, still one strip, no menu. The names keep their size: they are the
+     only navigation a phone has now (with the swipe), and 11 px is already the
+     floor. Each gets a 44 px tall target through its padding. */
+  .topnav { min-width:0; gap:1.05rem; padding:0 .9rem; }
+  .t.topnav-a { padding:.9rem 0; letter-spacing:.11em; }
 
   /* ── AND THE CARD FITS THE VISIBLE WINDOW ────────────────────────────
      100lvh is the height with the browser toolbars RETRACTED, so on an iPhone
@@ -1530,31 +1301,8 @@ body.on-project .plate .corner.tl {
      and a resize remeasures every aperture on the page. */
   .deckpage { min-height:100svh; }
 
-  /* THE DISCS PULL INTO THE CORNER on a phone, where every pixel of --pad is a
-     pixel of reading. The row still stacks from the corner, so the offset has
-     to be restated against the same reduced left edge. */
-  :root { --ba:44px; --disc-gap:.4rem; }   /* 44 is the touch minimum, and on
-                                              a phone the disc IS the target */
-  .disc { left:calc(var(--pad) * .55 + env(safe-area-inset-left, 0px));
-          top:calc(var(--pad) * .55 + env(safe-area-inset-top, 0px)); }
-  body.on-project .homedisc {
-    left:calc(var(--pad) * .55 + env(safe-area-inset-left, 0px)
-              + var(--ba) + var(--disc-gap));
-  }
-  /* the tag is a hover affordance and there is no hover here; a phone gets the
-     bar and the chart instead */
-  .disc-tag { display:none; }
-
   /* ── TOUCH TARGETS ───────────────────────────────────────────────────
-     A chart cell was 19 px of canvas, which is a fine mark and an impossible
-     target. The cell keeps its drawn size and grows a transparent pad around
-     it, so the chart still reads as a chart and the thing you press is 44 px.
-     Same for the inline links, which were a 20 px line box. */
-  .stitch { width:26px; height:26px; }
-  .chart { position:relative; }
-  .stitch::after { content:""; position:absolute; top:50%; left:0;
-                   width:100%; height:44px; transform:translateY(-50%); }
-  .mob-b { width:44px; height:44px; font-size:19px; }
+     The inline links were a 20 px line box. */
   .hint .link, .back-hint .link { padding:.7rem 0; display:inline-block; }
 
   /* a fixed 6rem label column is 28% of a 375 px row for a five-letter word */
@@ -1594,6 +1342,255 @@ body.on-project .plate .corner.tl {
   .row-role { width:100%; }
 }
 
+/* ══ EXPERIMENTAL MOTION GRAPHICS ════════════════════════════════════════
+   The one project page not cut to the two-plate trim (pages/motion-graphics.js
+   says why): a head, a contact sheet of every scene, the process, the
+   credits. Everything is still this sheet -- the paper, one die-cut in the
+   project's pair, the registration ticks, the two type sizes, the labels. */
+/* Mew is not on the project sheets: asleep, her canvas is hidden (mew.js) */
+#stage.asleep { visibility:hidden; }
+
+/* ══ EXPERIMENTAL MOTION GRAPHICS ════════════════════════════════════════
+   The one page that does not wear the site's clothes, by instruction: it wears
+   the PIECE's ("let me be a flower"). A dark ground that is the scene you are
+   looking at, dithered blue (site/motionAmbient.js); the piece's inks; its
+   misregistered titles; its computer vision's boxes round every frame. See
+   pages/motion-graphics.js for the page and why each part of it is there.
+
+   The colours are the piece's own, lifted from its story.js and scenes:
+   the lift it grades its dark into, its navy, ultramarine and periwinkle (the
+   blue grade and the whale's dither), its cream paper, its crimson ink, and
+   the computer vision's cyan (tracking) and deep red (locked) from m_angels. */
+.mg {
+  --mg-black:#03040c; --mg-navy:#0a1440; --mg-ultra:#1f24d6; --mg-peri:#8f9ae6;
+  --mg-cream:#f1ecde; --mg-crimson:#b3122e; --mg-cyan:#7ee8ff; --mg-red:#e0161b;
+  /* the same red lifted for WORDS: the box's #e0161b is 4.2:1 on this black */
+  --mg-red-t:#ff4a4a;
+  --mg-dim:rgba(241,236,222,.58);
+  position:relative; display:flex; flex-direction:column;
+  background:var(--mg-black); color:var(--mg-cream);
+}
+/* the whole window goes dark with it: the overscroll, and the bar at the top */
+body:has(#doc[data-page="project:motion-graphics"]) { background:#03040c; }
+body:has(#doc[data-page="project:motion-graphics"])::before { opacity:.08; mix-blend-mode:screen; }
+body:has(#doc[data-page="project:motion-graphics"]) .topnav {
+  background:rgba(3,4,12,.72); border-color:rgba(143,154,230,.35); backdrop-filter:blur(6px);
+}
+body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a { color:rgba(241,236,222,.66); }
+body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a.on { color:#f1ecde; }
+body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a::after { background:#8f9ae6; }
+
+/* THE GROUND: a third of the window, scaled up with no smoothing, so every
+   dither cell is three pixels of hard edge */
+.mg-ground { position:fixed; inset:0; width:100vw; height:100vh; display:block;
+             image-rendering:pixelated; z-index:0; pointer-events:none; }
+.mg-in {
+  position:relative; z-index:1;
+  width:100%; max-width:88rem; margin:0 auto; flex:1;
+  padding:max(var(--deck-top), var(--nav-clear)) var(--pad) calc(var(--pad) * 2);
+  display:flex; flex-direction:column; gap:clamp(2.6rem, 6vw, 5rem);
+}
+.mg-in > * { animation:deck-fade .6s cubic-bezier(0.16,1,0.3,1) both; }
+.mg a { color:inherit; }
+
+/* ── THE HEAD ─────────────────────────────────────────────────────────── */
+.mg-head { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:clamp(1.6rem, 4vw, 4rem); align-items:end; }
+.mg-head-t { display:flex; flex-direction:column; gap:1.3rem; align-items:flex-start; min-width:0; }
+.mg-kicker, .mg-hud { font-size:11px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:var(--mg-peri); }
+/* the piece's titles are printed with their inks out of register -- red one
+   way, cyan the other (story.js, CHROMA and the flower's split prints) */
+.mg-h {
+  font-weight:200; font-size:clamp(52px, 8.6vw, 148px); line-height:.82; letter-spacing:-.045em;
+  color:var(--mg-cream);
+  text-shadow:-.035em 0 rgba(224,22,27,.55), .035em 0 rgba(126,232,255,.45);
+}
+.mg-h em { font-style:normal; font-weight:800; letter-spacing:-.055em; }
+.mg-lead { max-width:40ch; font-size:14px; line-height:1.7; color:var(--mg-dim); }
+.mg-hud { display:flex; flex-wrap:wrap; gap:.4rem 1.6rem; }
+.mg-film { list-style:none; }
+.mg-film .mg-cell { width:calc(min(64vh, 42rem) * 9 / 19.5); }
+
+/* ── THE CUT ──────────────────────────────────────────────────────────────
+   The whole film as one strip, each scene as long as it lasts. Coloured by the
+   piece's four parts, in its own inks. */
+.mg-cut { display:grid; gap:.45rem; }
+.mg-cut-bar { display:flex; height:34px; background:var(--mg-black); outline:1px solid rgba(143,154,230,.3); outline-offset:3px; }
+.mg-seg { display:block; min-width:0; flex-basis:0; box-shadow:inset 1px 0 0 var(--mg-black); transition:filter .15s; }
+.mg-seg.a0 { background:var(--mg-ultra); }
+.mg-seg.a1 { background:var(--mg-peri); }
+.mg-seg.a2 { background:var(--mg-cream); }
+.mg-seg.a3 { background:var(--mg-crimson); }
+.mg-seg.is-black { background:transparent; }
+.mg-seg:hover, .mg-seg:focus-visible { background:var(--mg-cyan); outline:none; }
+.mg-cut-ticks { position:relative; height:14px; font-size:10px; letter-spacing:.12em; color:var(--mg-peri);
+                font-variant-numeric:tabular-nums; }
+.mg-cut-ticks span { position:absolute; top:0; transform:translateX(-50%); }
+.mg-cut-ticks span:first-child { transform:none; }
+
+/* ── THE SCENES ───────────────────────────────────────────────────────────
+   Every frame is boxed the way the piece's computer vision boxes what it
+   sees: a thin translucent line with a label hanging above it, cyan while it
+   tracks, deep red once it has locked -- which here is the frame your pointer
+   is on. */
+.mg-sheet { list-style:none; display:grid; grid-template-columns:repeat(auto-fill, minmax(118px, 1fr));
+            gap:2rem 1.1rem; align-items:start; }
+.mg-act { grid-column:1 / -1; display:flex; align-items:baseline; gap:1.2rem;
+          border-top:1px solid rgba(143,154,230,.22); padding-top:1rem; margin-top:1.4rem; }
+.mg-act:first-child { margin-top:0; }
+.mg-act-n { font-size:clamp(40px, 5vw, 72px); font-weight:200; line-height:.8; color:var(--mg-peri); letter-spacing:-.02em; }
+.mg-act-name { font-size:clamp(22px, 2.4vw, 34px); font-weight:300; letter-spacing:-.02em; }
+.mg-cell { list-style:none; min-width:0; }
+.mg-cell-a { display:grid; gap:.4rem; text-decoration:none; color:inherit; }
+.mg-tag { font-size:10px; font-weight:600; letter-spacing:.14em; color:var(--mg-cyan); line-height:1; }
+.mg-frame-cut { position:relative; display:block; aspect-ratio:9 / 19.5; background:#000; }
+.mg-cv { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.mg-box { position:absolute; inset:-4px; border:1px solid rgba(126,232,255,.32); pointer-events:none;
+          box-shadow:0 0 12px rgba(126,232,255,.08); transition:border-color .15s, box-shadow .15s; }
+.mg-name { font-size:12px; font-weight:600; letter-spacing:.01em; line-height:1.25; color:var(--mg-dim);
+           overflow-wrap:anywhere; transition:color .15s; }
+@media (hover:hover) {
+  .mg-cell-a:hover .mg-box { border-color:var(--mg-red); box-shadow:0 0 16px rgba(224,22,27,.35); }
+  .mg-cell-a:hover .mg-tag { color:var(--mg-red-t); }
+  .mg-cell-a:hover .mg-name { color:var(--mg-cream); }
+}
+.mg-cell-a:focus-visible { outline:none; }
+.mg-cell-a:focus-visible .mg-box { border-color:var(--mg-red); border-width:2px; }
+.mg-film .mg-name { font-size:15px; color:var(--mg-cream); }
+.mg-sheet-src { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+
+/* the two runs that are one gesture each */
+.mg-group { grid-column:1 / -1; display:grid; gap:.8rem; list-style:none; align-self:center; min-width:0; }
+/* a run shares its row with the scenes either side of it, the way it sits
+   between them in the film: the hallway | the flicker | the eye, and the
+   montage | the stares it ends on */
+.mg-group-flower { grid-column:2 / -2; }
+.mg-group-devices { grid-column:1 / -2; align-self:start; }
+.mg-group-h { display:flex; flex-wrap:wrap; align-items:baseline; gap:.3rem 1rem; }
+.mg-group-h > span:first-child { font-size:18px; font-weight:700; letter-spacing:-.01em; }
+.mg-group-note { font-size:10px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--mg-peri); }
+.mg-run { list-style:none; display:grid; gap:1.1rem .8rem; }
+/* "A flower.": one strip of film, the cuts side by side and small, only their
+   numbers on them -- it scrolls sideways where it will not fit */
+.mg-group-flower .mg-run { grid-template-columns:repeat(21, minmax(30px, 1fr)); gap:.45rem; overflow-x:auto;
+  padding:6px 4px 10px; scroll-snap-type:x proximity; scrollbar-width:thin; }
+.mg-group-flower .mg-cell { scroll-snap-align:start; }
+.mg-group-flower .mg-name { display:none; }
+.mg-group-flower .mg-box { inset:-2px; }
+/* the devices montage: a flurry of frames that lands on four larger ones */
+.mg-group-devices .mg-run { grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); }
+.mg-group-devices .is-land { grid-column:span 2; grid-row:span 2; }
+.mg-group-devices .is-land .mg-name { color:var(--mg-cream); font-size:14px; }
+
+/* ── BEHIND THE SCENES, AND THE CREDITS ───────────────────────────────── */
+.mg-bts { display:flex; flex-direction:column; gap:1.2rem; align-items:flex-start;
+          border-top:1px solid rgba(143,154,230,.22); padding-top:1.4rem; }
+.mg-bts-h { font-size:clamp(28px, 3.4vw, 52px); font-weight:300; letter-spacing:-.03em; line-height:1; }
+.mg-body { max-width:62ch; font-size:14px; line-height:1.75; color:var(--mg-dim); }
+.mg-bts-figs { width:100%; display:grid; gap:1.6rem;
+               grid-template-columns:repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); align-items:start; }
+.mg .fig-in { background:rgba(10,20,64,.5); }
+.mg .fig-in::before, .mg .fig-in::after { border-color:var(--mg-cyan); }
+.mg .fig-wait { border-color:rgba(143,154,230,.4); color:var(--mg-peri); }
+.mg .fig-wait .t { color:var(--mg-peri); }
+.mg-credits { border-top:1px solid rgba(143,154,230,.22); padding-top:1rem; display:grid; gap:.8rem; }
+.mg-credits-h { font-size:10px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:var(--mg-peri); }
+.mg-credits-note { max-width:80ch; font-size:10.5px; line-height:1.6; color:var(--mg-dim); }
+.mg-credits-list { list-style:none; columns:3 16rem; column-gap:2rem; font-size:10px; line-height:1.5; color:var(--mg-dim); }
+.mg-credits-list li { break-inside:avoid; margin-bottom:.45rem; }
+.mg-credits-list a { color:var(--mg-cream); text-decoration:underline; text-decoration-color:rgba(241,236,222,.3); text-underline-offset:.2em; }
+.mg-credits-list span { display:block; opacity:.75; }
+.mg-back { font-size:12px; letter-spacing:.04em; }
+.mg-back a { text-decoration:underline; text-underline-offset:.24em; text-decoration-color:rgba(241,236,222,.4); }
+
+/* ── THE VIEWER ────────────────────────────────────────────────────────────
+   On <body>, above the grain. The ground is the page's own -- the scene,
+   dithered, spilling past its frame -- under a dark veil; nothing on it but the
+   frame, the scene's name and one bar. */
+.mgv { position:fixed; inset:0; z-index:60; touch-action:none; overscroll-behavior:contain; color:#f1ecde; }
+.mgv[hidden] { display:none; }
+.mgv:focus { outline:none; }
+/* the ground (moved in while open) under a light veil: the scene's own light,
+   dimmed just enough that the frame stands forward of it */
+.mgv > .mg-ground { position:absolute; }
+.mgv-bg { position:absolute; inset:0; background:rgba(3,4,12,.32); }
+.mgv-track { position:absolute; inset:0; }
+.mgv-slot { position:absolute; transform-origin:0 0; overflow:hidden; background:#000;
+            box-shadow:0 0 60px rgba(31,36,214,.25); }
+.mgv:not(.is-paging) .mgv-slot:not([data-k="0"]) { display:none; }
+.mgv-poster, .mgv-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+.mgv-video { opacity:0; }
+.mgv-video.ready { opacity:1; }
+/* paused: the one mark a player needs, drawn rather than written */
+.mgv.is-paused .mgv-slot[data-k="0"]::after {
+  content:""; position:absolute; left:50%; top:50%; width:22px; height:26px; margin:-13px 0 0 -9px;
+  background:rgba(241,236,222,.85); clip-path:polygon(0 0, 100% 50%, 0 100%); pointer-events:none;
+}
+.mgv-ui { position:absolute; transition:opacity var(--t2) var(--e); }
+
+/* the bar is IN the scene, along its foot over a fade to dark; the name hangs
+   under the frame */
+.mgv-bottom { left:var(--fx); width:var(--fw); top:calc(var(--fy) + var(--fh) - 58px); height:58px;
+              display:flex; align-items:flex-end; padding:0 12px 10px;
+              background:linear-gradient(to top, rgba(3,4,12,.62), rgba(3,4,12,0)); pointer-events:none; }
+.mgv-bottom > * { pointer-events:auto; }
+.mgv-bar { flex:1; }
+.mgv-title { left:var(--fx); width:var(--fw); top:calc(var(--fy) + var(--fh) + 14px);
+             font-size:15px; font-weight:600; letter-spacing:.02em; line-height:1.2; text-align:center; }
+.mgv-bar { display:flex; align-items:center; gap:.6rem; }
+.mgv-scrub { flex:1; height:22px; position:relative; cursor:ew-resize; touch-action:none; }
+.mgv-scrub:focus-visible { outline:1px solid var(--mg-cyan, #7ee8ff); outline-offset:2px; }
+.mgv-rail { position:absolute; left:0; right:0; top:50%; height:2px; margin-top:-1px; background:rgba(241,236,222,.22); }
+.mgv-fill { position:absolute; inset:0; background:#f1ecde; transform:scaleX(0); transform-origin:left; }
+.mgv-head { position:absolute; top:-5px; width:2px; height:12px; margin-left:-1px; background:#f1ecde;
+            box-shadow:0 0 8px rgba(241,236,222,.6); transition:height .12s, top .12s; }
+.mgv.is-scrubbing .mgv-head { top:-9px; height:20px; }
+.mgv-ticks i { position:absolute; top:-3px; width:1px; height:8px; background:rgba(126,232,255,.7); }
+.mgv-snd { flex:none; width:24px; height:24px; padding:0; border:0; background:none; color:#f1ecde; cursor:pointer; opacity:.8; }
+.mgv-snd:hover { opacity:1; }
+.mgv-snd svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.mgv-snd .spk { fill:currentColor; }
+.mgv-snd .off, .mgv-snd.is-muted .on { display:none; }
+.mgv-snd.is-muted .off { display:inline; }
+
+/* the frame's two sides are the way to its neighbours */
+.mgv-side { position:absolute; top:var(--fy); height:var(--fh); border:0; padding:0; background:none; cursor:pointer;
+            color:#f1ecde; display:grid; place-items:center; }
+.mgv-side[data-step="-1"] { left:0; width:var(--fx); }
+.mgv-side[data-step="1"] { left:calc(var(--fx) + var(--fw)); right:0; }
+.mgv-side:disabled { display:none; }
+.mgv-side svg { width:30px; height:30px; fill:none; stroke:currentColor; stroke-width:1.4; opacity:0; transition:opacity .2s, transform .2s; }
+.mgv-side[data-step="-1"] svg { justify-self:end; margin-right:1.4rem; }
+.mgv-side[data-step="1"] svg { justify-self:start; margin-left:1.4rem; }
+.mgv-side:hover svg, .mgv-side:focus-visible svg { opacity:.75; }
+.mgv-side:focus-visible { outline:none; }
+/* the close is for a keyboard, and only shows when a keyboard reaches it */
+.mgv-close { position:absolute; top:12px; right:12px; width:36px; height:36px; border:1px solid rgba(241,236,222,.5);
+             background:rgba(3,4,12,.6); color:#f1ecde; font-size:20px; line-height:1; cursor:pointer; opacity:0; pointer-events:none; }
+.mgv-close:focus-visible { opacity:1; pointer-events:auto; }
+
+/* ── A PHONE: THE SCENE IS THE SCREEN ──────────────────────────────────── */
+.mgv.is-full .mgv-side { display:none; }
+.mgv.is-full .mgv-bottom { left:0; right:0; width:auto; top:auto; bottom:0; height:auto;
+  padding:3.2rem 1rem calc(env(safe-area-inset-bottom, 0px) + .8rem);
+  background:linear-gradient(to top, rgba(3,4,12,.72), rgba(3,4,12,0)); }
+.mgv.is-full .mgv-title { left:1rem; right:1rem; width:auto; top:auto; text-align:left; z-index:1;
+  bottom:calc(env(safe-area-inset-bottom, 0px) + 2.6rem); }
+
+@media (max-width:860px){
+  .mg-head { grid-template-columns:1fr; }
+  .mg-film .mg-cell { width:min(100%, calc(62svh * 9 / 19.5)); }
+  .mg-sheet { grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:1.6rem .8rem; }
+}
+@media (max-width:560px){
+  /* four across on a phone: the sheet is the summary */
+  .mg-sheet { grid-template-columns:repeat(4, minmax(0, 1fr)); gap:1.3rem .55rem; }
+  .mg-group-devices .mg-run { grid-template-columns:repeat(4, minmax(0, 1fr)); gap:1.1rem .55rem; }
+  .mg-name { font-size:10px; }
+  .mg-cut-bar { height:26px; }
+  /* too narrow to share a row: the runs take the whole width */
+  .mg-group-flower, .mg-group-devices { grid-column:1 / -1; }
+}
+
 /* ══ REDUCED MOTION ══════════════════════════════════════════════════════
    The router already commits instantly rather than crossing when this is set
    (see `reduced` in site/router.js), so what is left here is everything CSS
@@ -1603,7 +1600,6 @@ body.on-project .plate .corner.tl {
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto;}
   #doc,#sheet{transition:none;}
-  .stitch path{transition:none;}
   .deck-in > *, .rows > li, .cards > li, .socks > li {
     animation:none; opacity:1; transform:none;
   }
@@ -1687,7 +1683,7 @@ body.on-project .plate .corner.tl {
   pre.sr {
     position:static; width:auto; height:auto; margin:0; overflow:visible;
     clip-path:none; white-space:pre-wrap;
-    font-family:"PlexMono", ui-monospace, Menlo, monospace;
+    font-family:"PlexMono", ui-monospace, Menlo, monospace; font-size-adjust:none;
     font-size:6.6pt; line-height:1.45;
   }
 

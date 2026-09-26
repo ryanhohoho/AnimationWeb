@@ -26,6 +26,7 @@ import { createDeck } from "./site/deck.js";
 import { createChrome } from "./site/chrome.js";
 import { createRouter } from "./site/router.js";
 import { mountPage } from "./site/pages.js";
+import { createMewPresence } from "./site/mewPresence.js";
 import "./styles/site.css";
 // AFTER site.css, and it has to be: it is the editor's output (editor/), a
 // generated layer of overrides that wins by coming later. Empty until the
@@ -59,6 +60,18 @@ siteScope.add(() => pageScope?.dispose());
 // below cannot destroy and rebuild them once per navigation.
 const chrome = createChrome({ scope: siteScope, deck, world });
 
+// ── THE ANIMAL IS ONLY ON THE FOUR CARDS ─────────────────────────────────
+// Declared before the router, because the router calls onPage for the first
+// page as it is created. The rule is site/mewPresence.js; how she leaves and
+// comes back is src/mew.js ("SHE IS NOT ON THE PROJECT SHEETS").
+const mewFor = createMewPresence({
+  world,
+  reduced: reducedMotion,
+  boot: ({ enter }) => import("./mew.js")
+    .then((m) => m.bootMew({ world, deck, scope: siteScope, enter }))
+    .catch((err) => console.error("[mew] engine failed to boot:", err))
+});
+
 createRouter({
   scope: siteScope,
   deck,
@@ -74,6 +87,7 @@ createRouter({
     // after mountPage: the cards clear the masked hole as they are disposed, and
     // on a project sheet the back arrow is the thing that claims it next
     chrome.setPage(route);
+    mewFor(route);
   }
 });
 document.body.classList.remove("pre");
@@ -94,7 +108,10 @@ window.addEventListener("beforeprint", () => {
 
 // ── AND THE ANIMAL ARRIVES SECOND, which it now genuinely does ─────────────
 // Not awaited, not blocking, and its failure is caught: the sheet does not need
-// her to be a finished page.
+// her to be a finished page. It is asked for by mewFor() above, on the first
+// page that is one of the four cards -- so a shared link to a project sheet,
+// where she is not, never downloads the 800 KB engine at all, and she arrives
+// from the side the first time the reader steps back onto the deck.
 //
 // ...AND SHE DOES NOT ARRIVE AT ALL FOR A READER WHO ASKED FOR LESS MOTION.
 // She wanders, flees the pointer, flails and sprays: an autonomously moving
@@ -103,8 +120,3 @@ window.addEventListener("beforeprint", () => {
 // rejected, are in utils/motion.js. This is the same path as the chunk failing
 // to load, which the paragraph at the top of this file says is a correct page —
 // so it is a branch that was already tested by construction.
-if (!reducedMotion) {
-  import("./mew.js")
-    .then((m) => m.bootMew({ world, deck, scope: siteScope }))
-    .catch((err) => console.error("[mew] engine failed to boot:", err));
-}
