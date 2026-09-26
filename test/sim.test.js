@@ -3484,6 +3484,258 @@ section("the command line crosses over exactly where it is supposed to");
 }
 
 // ---------------------------------------------------------------------------
+section("FIG. 2's backlight is light, it has no seam, and the editor owns its colours");
+// site/glowField.js is the whole model of the light round the figure; site/
+// glow.js is the WebGL that draws it and its shader is a transcription of
+// `shadeAt`. The two are held to each other on the GPU (STATE.md says how),
+// which a headless run cannot do. What CAN be held here is every claim the
+// model makes about itself -- and every one of them is a claim about the whole
+// loop or the whole track, which is exactly what a look at the page cannot
+// check, because a page shows one moment of one scroll position.
+{
+  const G = await import("../src/site/glowField.js");
+  const fs = (await import("node:fs")).promises;
+  const read = async (p) => fs.readFile(new URL(p, import.meta.url), "utf8");
+
+  // A 1440x900 window's frame, as measured on the real page, and the corner
+  // radius site.css gives it.
+  const W = 938, H = 630, R = 10;
+  const bx = W / 2, by = H / 2, hx = bx - R, hy = by - R;
+  const P = 4 * hx + 4 * hy + 2 * Math.PI * R;
+  const colours = G.APPLE_GLOW.map(G.hexToLinear);
+
+  // A point on the boundary at arc length `s` from the right-hand midpoint,
+  // clockwise on screen, pushed `off` px outward along the normal -- walked
+  // by hand, piece by piece, so it shares no code with perimeterU.
+  const q = (Math.PI / 2) * R;
+  function onEdge(s, off = 0) {
+    s = ((s % P) + P) % P;
+    const segs = [
+      [hy, (t) => [bx, t, 1, 0]],
+      [q, (t) => { const a = t / R; return [hx + R * Math.cos(a), hy + R * Math.sin(a), Math.cos(a), Math.sin(a)]; }],
+      [2 * hx, (t) => [hx - t, by, 0, 1]],
+      [q, (t) => { const a = Math.PI / 2 + t / R; return [-hx + R * Math.cos(a), hy + R * Math.sin(a), Math.cos(a), Math.sin(a)]; }],
+      [2 * hy, (t) => [-bx, hy - t, -1, 0]],
+      [q, (t) => { const a = Math.PI + t / R; return [-hx + R * Math.cos(a), -hy + R * Math.sin(a), Math.cos(a), Math.sin(a)]; }],
+      [2 * hx, (t) => [-hx + t, -by, 0, -1]],
+      [q, (t) => { const a = 1.5 * Math.PI + t / R; return [hx + R * Math.cos(a), -hy + R * Math.sin(a), Math.cos(a), Math.sin(a)]; }],
+      [hy, (t) => [bx, -hy + t, 1, 0]]
+    ];
+    for (const [len, f] of segs) {
+      if (s <= len) { const [x, y, nx, ny] = f(s); return [x + nx * off, y + ny * off]; }
+      s -= len;
+    }
+    return [bx + off, 0];
+  }
+  const state = (t, p, scale = G.bandScale(W)) =>
+    ({ w: W, h: H, r: R, scale, reach: G.reachAt(p), blobs: G.blobsAt(t), breath: G.breathAt(t), colours });
+  // canvas px of a frame-centred point
+  const px = ([x, y]) => [x + G.MARGIN + bx, y + G.MARGIN + by];
+
+  // ── 1. POSITION IS ARC LENGTH ───────────────────────────────────────────
+  // Equal steps along the edge must be equal steps of u, everywhere, corners
+  // included. That is the whole reason a band keeps its length as it goes
+  // round a corner and does not squeeze through it.
+  let worstArc = 0, worstAng = 0;
+  for (let i = 0; i < 2000; i++) {
+    const s = (i / 2000) * P;
+    const [x, y] = onEdge(s, 6);
+    const want = s / P;
+    const got = G.perimeterU(x, y, bx, by, R);
+    worstArc = Math.max(worstArc, G.circDist(got, want));
+    const ang = ((Math.atan2(y, x) / (2 * Math.PI)) + 1) % 1;
+    worstAng = Math.max(worstAng, G.circDist(ang, want));
+  }
+  ok(worstArc < 1e-9, `position round the frame is arc length, corners included (worst ${worstArc.toExponential(1)})`);
+  ok(worstAng > 0.02, `control: the angle an angular gradient would use is not (off by ${(worstAng * 100).toFixed(1)}% of the loop)`);
+  ok(Math.abs(G.perimeterU(-bx - 5, 0, bx, by, R) - 0.5) < 1e-12,
+    "the left-hand midpoint is exactly half way round");
+
+  // ── 2. NO SEAM ──────────────────────────────────────────────────────────
+  // Walk a ring of pixels 4px out from the edge, all the way round, at many
+  // moments. Neighbours 1px apart may differ by the slope of the light and
+  // nothing more -- and the step across u = 0, where the loop is joined, must
+  // be no bigger than any other step.
+  const ringStep = (fn) => {
+    let worst = 0, atJoin = 0;
+    for (const t of [0, 1.7, 3.7, 9.1, 40]) {
+      const st = state(t, 1.3);
+      let prev = null;
+      for (let s = -40; s <= P + 40; s += 1) {
+        const c = fn(px(onEdge(s, 4)), st);
+        if (prev) {
+          const d = Math.max(...c.map((v, k) => Math.abs(v - prev[k])));
+          worst = Math.max(worst, d);
+          if (Math.abs(s) < 1.5) atJoin = Math.max(atJoin, d);
+        }
+        prev = c;
+      }
+    }
+    return { worst, atJoin };
+  };
+  const real = ringStep(([x, y], st) => G.shadeAt(x, y, st));
+  ok(real.worst < 0.02, `no step between neighbouring pixels round the loop is over ${(real.worst * 255).toFixed(2)} of 255`);
+  ok(real.atJoin <= real.worst && real.atJoin < 1 / 255,
+    `...and the join at u = 0 is under one 8-bit step (${(real.atJoin * 255).toFixed(3)})`);
+  // CONTROL: the same colour field with the distance taken straight rather
+  // than the short way round. A blob near u = 0 is then lit on one side of the
+  // join and dark on the other -- the seam every quick build has.
+  const straight = (u, b) => {
+    let r = 0, g = 0, bl = 0, k = 0;
+    for (let i = 0; i < 6; i++) {
+      const x = Math.abs(u - (((b.centre[i] % 1) + 1) % 1)) / b.width[i];
+      const w = Math.exp(-x * x);
+      r += w * colours[i][0]; g += w * colours[i][1]; bl += w * colours[i][2]; k += w;
+    }
+    return [r, g, bl].map((v) => v / Math.max(k, 1e-4));
+  };
+  const naive = ringStep(([x, y], st) => straight(G.perimeterU(x - G.MARGIN - bx, y - G.MARGIN - by, bx, by, R), st.blobs));
+  ok(naive.atJoin > 5 / 255, `control: taken the long way round, the join is a visible seam (${(naive.atJoin * 255).toFixed(1)} steps)`);
+
+  // ── 3. THE LIGHT IS GONE BEFORE THE CANVAS ENDS ─────────────────────────
+  // The canvas reaches MARGIN px past the window. A light still one level
+  // above zero at that edge draws a faint rectangle round the whole figure.
+  // This runs on WHOLE PIXELS round the canvas border, over the whole track
+  // and at the largest band scale -- the entry's travelling wave included,
+  // which is how a ray to the canvas edge got through once, when only the
+  // bands were checked.
+  const cw = W + 2 * G.MARGIN, ch = H + 2 * G.MARGIN;
+  const border = [];
+  for (let x = 0; x < cw; x += 3) border.push([x, 0.5], [x, ch - 0.5]);
+  for (let y = 0; y < ch; y += 3) border.push([0.5, y], [cw - 0.5, y]);
+  let edgeMax = 0;
+  for (let p = 0; p <= 1.3001; p += 0.05) {
+    for (const t of [0, 0.7, 1.9, 3.7, 6.4, 11.2]) {
+      const st = state(t, p, 1.1);
+      for (const [x, y] of border) edgeMax = Math.max(edgeMax, G.shadeAt(x, y, st)[3]);
+    }
+  }
+  ok(edgeMax < 0.5 / 255, `at the canvas's edge the light is under half an 8-bit step at any point of the track (${(edgeMax * 255).toFixed(4)})`);
+  // CONTROL: the same scan half as far out does find light, so the check can
+  // fail -- MARGIN is doing the work, not the scan missing everything.
+  let halfMax = 0;
+  const st1 = state(0, 1.3, 1.1);
+  for (let s = 0; s < P; s += 7) halfMax = Math.max(halfMax, G.shadeAt(...px(onEdge(s, G.MARGIN / 2)), st1)[3]);
+  ok(halfMax > 1 / 255, `control: half as far out there is still light to see (${(halfMax * 255).toFixed(2)} steps)`);
+
+  // ── 4. IT FALLS OFF, AND THE EDGE IS LIT ─────────────────────────────────
+  let falls = true, prevP = Infinity;
+  for (let d = 0; d <= G.MARGIN; d += 0.5) {
+    const v = G.profile(d, 1, 1);
+    if (v > prevP + 1e-12) falls = false;
+    prevP = v;
+  }
+  ok(falls, "the light only ever falls with distance from the window");
+  const edgeA = G.shadeAt(...px(onEdge(P * 0.1, 0)), state(3.7, 1.3))[3];
+  ok(edgeA > 0.9, `at the window's edge it is near full (${edgeA.toFixed(3)})`);
+  ok(G.shadeAt(G.MARGIN + bx, G.MARGIN + by, state(3.7, 1.3))[3] === 0,
+    "behind the window there is nothing, so the canvas costs nothing where it cannot be seen");
+
+  // ── 5. IT ARRIVES FROM THE RIGHT, AND CLOSES BY THE END OF THE WIPE ─────
+  // The interface is uncovered from the right, so the light starts there and
+  // spreads both ways round; by p = 1 the loop is whole.
+  const litLoop = (p) => Array.from({ length: 400 }, (_, i) => G.litAt(i / 400, G.reachAt(p)));
+  ok(litLoop(0).every((v) => v === 0), "before the track starts, none of the loop is lit");
+  const mid = litLoop(0.35);
+  ok(mid[0] === 1 && mid[200] === 0, "part way in, the right-hand side is lit and the left is not yet");
+  ok(litLoop(1).every((v) => v === 1), "by the end of the wipe the whole loop is lit");
+  let grows = true;
+  for (let i = 0; i < 400; i += 7) {
+    let prev = -1;
+    for (let p = 0; p <= 1.3; p += 0.02) {
+      const v = G.litAt(i / 400, G.reachAt(p));
+      if (v < prev - 1e-12) grows = false;
+      prev = v;
+    }
+  }
+  ok(grows, "scrolling down never takes light away from any part of the loop");
+  // ...and it spreads the same both ways: up and down from its start
+  ok(mid.every((v, i) => Math.abs(v - mid[(400 - i) % 400]) < 1e-12),
+    "it spreads round the top and the bottom at the same rate");
+  // THE WAVE at the front is a bright band while it travels, and must be gone
+  // once the loop is closed: a standing bright line on a finished frame is a
+  // defect, not a feature.
+  const waveAtEnd = Math.max(...Array.from({ length: 400 }, (_, i) => G.waveAt(i / 400, G.reachAt(1))));
+  const waveMid = Math.max(...Array.from({ length: 400 }, (_, i) => G.waveAt(i / 400, G.reachAt(0.4))));
+  ok(waveAtEnd === 0, "once the loop is closed, the travelling wave is gone entirely");
+  ok(waveMid > 0.3, `control: while the light is still arriving, it is there (${waveMid.toFixed(2)})`);
+
+  // ── 6. IT MOVES, AND IT DOES NOT SPIN ───────────────────────────────────
+  // A rotation keeps every gap between neighbouring colours the same; the
+  // light Apple ships does not -- bands grow, shrink and slide into each
+  // other. So the gaps must vary, and the whole must travel slowly.
+  const gaps = [];
+  for (let t = 0; t < 60; t += 0.25) {
+    const c = G.blobsAt(t).centre;
+    gaps.push(c[1] - c[0]);
+  }
+  const spread = Math.max(...gaps) - Math.min(...gaps);
+  ok(spread > 0.1, `the colours slide into and away from each other (a gap varies by ${(spread * 100).toFixed(0)}% of the loop)`);
+  const turn = (t) => ({ centre: G.blobsAt(0).centre.map((c) => c + t / 26), width: G.blobsAt(0).width });
+  const rigid = [0, 5, 13].map((t) => turn(t).centre[1] - turn(t).centre[0]);
+  ok(Math.max(...rigid) - Math.min(...rigid) < 1e-12, "control: a plain rotation keeps every gap the same");
+  const mean = (b) => b.centre.reduce((a, c) => a + c, 0) / 6;
+  const lapS = 60 / (mean(G.blobsAt(60)) - mean(G.blobsAt(0)));
+  ok(lapS > 20, `the whole drifts round no faster than a lap every twenty seconds (${lapS.toFixed(0)}s)`);
+  ok(JSON.stringify(G.blobsAt(12.34)) === JSON.stringify(G.blobsAt(12.34)),
+    "a moment is a moment: the same time draws the same light, so the GPU twin check can be repeated");
+  const glowSrc = await read("../src/site/glow.js");
+  ok(/reduced\s*\?\s*STILL_T/.test(glowSrc),
+    "under reduced motion the light is one still moment, not a slower loop");
+
+  // ── 7. COLOURS: SIX TOKENS, WHERE THE EDITOR READS AND WRITES THEM ──────
+  // The six colours are :root tokens so the editor changes them like any
+  // other colour. It loads each from the FIRST `--name: #RRGGBB;` in site.css
+  // and saves by replacing that same match -- so the definition has to be
+  // that first match, in :root, and six-digit hex. The VALUES are not checked:
+  // the editor runs these tests after every save, and any six colours are a
+  // valid choice.
+  const css = await read("../src/styles/site.css");
+  const rootEnd = css.indexOf("}", css.indexOf(":root"));
+  const LOAD = (tok) => new RegExp(`(${tok}):\\s*(#[0-9A-Fa-f]{6})\\s*;`).exec(css);
+  for (const tok of G.GLOW_TOKENS) {
+    const m = LOAD(tok);
+    ok(m && m.index > css.indexOf(":root") && m.index < rootEnd,
+      `${tok} is a six-digit hex colour in :root, where the editor reads and writes it`);
+  }
+  ok(!LOAD("--glow-7"), "control: a token that is not there is not found");
+  // A preset written the way the editor's save writes, then read back the way
+  // it loads: the round trip changes exactly six lines and nothing else.
+  let written = css;
+  for (const [i, tok] of G.GLOW_TOKENS.entries()) {
+    const m = new RegExp(`(${tok}:\\s*)(#[0-9A-Fa-f]{6})`).exec(written);
+    const s = m.index + m[1].length;
+    written = written.slice(0, s) + G.VIVID_GLOW[i] + written.slice(s + 7);
+  }
+  const before = css.split("\n"), after = written.split("\n");
+  const changed = after.filter((l, i) => l !== before[i]).length;
+  const back = G.GLOW_TOKENS.map((tok) => new RegExp(`${tok}:\\s*(#[0-9A-Fa-f]{6})`).exec(written)[1]);
+  const already = G.GLOW_TOKENS.filter((tok, i) => LOAD(tok)[2].toUpperCase() === G.VIVID_GLOW[i]).length;
+  ok(back.join() === G.VIVID_GLOW.join() && changed === 6 - already,
+    `a saved preset reads back as itself, and only its own lines change (${changed})`);
+  // every consumer names the same six, from the one list
+  const inspector = await read("../editor/client/inspector.js");
+  ok(/GLOW_TOKENS/.test(glowSrc) && /GLOW_TOKENS/.test(inspector),
+    "the renderer and the editor both take the six names from glowField.js");
+  ok(G.GLOW_TOKENS.every((tok) => css.includes(`var(${tok})`)),
+    "the no-WebGL fallback is mixed from the same six, so it follows an edit too");
+  for (const [name, set] of [["Apple Intelligence", G.APPLE_GLOW], ["Vivid", G.VIVID_GLOW]]) {
+    ok(set.length === 6 && set.every((c) => /^#[0-9A-F]{6}$/.test(c) && G.hexToLinear(c)),
+      `the ${name} preset is six colours the editor can save as they are`);
+  }
+  ok(G.hexToLinear("#FFFFFF").every((v) => v === 1) && G.hexToLinear("#000").every((v) => v === 0)
+    && G.hexToLinear("var(--glow-1)") === null,
+    "a colour is read as a colour, and anything else is refused rather than drawn black");
+  // THE SHADER'S NUMBERS COME FROM THE MODEL. The bands are uploaded from
+  // BANDS, not written into the GLSL a second time where they could drift.
+  const glsl = glowSrc.slice(glowSrc.indexOf("uniform vec2  uPx"), glowSrc.indexOf("export function createGlow"));
+  ok(!G.BANDS.some((b) => new RegExp(`\\b${String(b.sigma).replace(".", "\\.")}\\b`).test(glsl)),
+    "no band width is written into the shader by hand; they are all uploaded from the model");
+  ok(/uniform4f\(U\.uSigma,\s*\.\.\.BANDS/.test(glowSrc),
+    "...they are uploaded from it instead");
+}
+
+// ---------------------------------------------------------------------------
 section("FIG. 2 is a real run too, and nothing real is in it either");
 // The section above scans every committed text file for five SHAPES. That is
 // the right tool for prose and for source, and it is the wrong tool for the

@@ -146,6 +146,11 @@ non-zero if either rewrite stops matching. `test/sim.test.js` re-checks the
 vendored recordings from this side rather than trusting the other repository's
 gate. See STATE.md, "FIG. 2 — the command line becoming the interface".
 
+FIG. 2's backlight is NOT vendored: `src/site/glowField.js` is its model and
+`src/site/glow.js` draws it. The fragment shader in `glow.js` is a
+transcription of `shadeAt` in `glowField.js` — change one, change the other,
+and check them against each other on the GPU (STATE.md says how).
+
 Tab mark and link card (only if the mark, the palette or the pitch changes):
 
 ```bash
@@ -349,7 +354,8 @@ source. Read `editor/README.md` before touching it. What it writes:
   three sections (all widths / ≤860 / ≤560). Do not hand-edit its format;
 - **ids** as `data-e="…"` in markup (and `capture({ e })` for figures), which is
   what `edits.css` selectors key on. Leave them in place when editing markup;
-- **colours** into `site/palette.js` + the `:root` tokens in `site.css`;
+- **colours** into `site/palette.js` + the `:root` tokens in `site.css`
+  (FIG. 2's six backlight colours are `--glow-1`..`--glow-6` among them);
 - **media** encoded into `src/assets/media/` the way `bake_captures.mjs` does.
 
 Nothing in `editor/` is reachable from `index.html`; the build never sees it.

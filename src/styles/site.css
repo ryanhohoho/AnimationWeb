@@ -139,6 +139,23 @@
      one card the disc is not on and it has to be able to say so. */
   --deck-top: clamp(3rem, 11vh, 8rem);
   --disc-clear: calc(var(--ba) + 1.1rem);
+
+  /* FIG. 2'S BACKLIGHT — the six colours the light round the USB figure is
+     mixed from (site/glowField.js, site/glow.js). These are Apple
+     Intelligence's six, as the public reconstructions of it sample them, and
+     the editor changes them: select the figure, or nothing, on the USB sheet.
+
+     KEEP EACH ONE A PLAIN SIX-DIGIT HEX, AND KEEP THIS THE FIRST PLACE EACH
+     NAME APPEARS WITH A COLON AFTER IT. The editor finds a colour token by
+     searching this file for its name followed by a hex value, takes the first
+     match, and writes a saved change back to that same spot — so a comment
+     above this spelling one out would be the thing that got edited. */
+  --glow-1: #BC82F3;
+  --glow-2: #F5B9EA;
+  --glow-3: #8D9FFF;
+  --glow-4: #FF6778;
+  --glow-5: #FFBA71;
+  --glow-6: #C686FF;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -1179,95 +1196,85 @@ body.on-project .plate .corner.tl {
      every machine and this does not need a second value that could drift
      out of step with it. */
   background:#FFF;
-  box-shadow:0 1px 2px rgb(0 0 0 / .18), 0 12px 38px rgb(0 0 0 / .14);
+  /* no shadow of its own: it is .usb-glow::before, behind the light */
 }
 
-/* ── THE BACKLIGHT ──────────────────────────────────────────────────────
-   A screen that is on spills light onto what is behind it. It ramps from
-   nothing and reaches full at 120% of the track, which is 20% AFTER the
-   reader takes control — so the figure is still arriving at the moment it
-   becomes theirs, rather than announcing it in advance.
-
-   SQUARED, not linear: a linear opacity ramp reads as a dimmer being turned
-   up. Light blooms late. 1.44 is 1.2², so the curve reaches exactly 1 at the
-   moment the ramp ends and holds there for the rest of the track.
-
-   Only opacity and transform follow the scroll. The blur is a static raster —
-   animating `box-shadow` instead would re-blur the whole layer every frame,
-   which is the one thing this site does not have the budget for. */
 /* ── THE BACKLIGHT ────────────────────────────────────────────────────────
-   The light a screen spills onto what is behind it, and the reference is the
-   glow round the edge of an iPhone when Siri is listening: a band of hue that
-   travels round the bezel, brightest at the edge and falling away OUTWARD.
+   The light Apple Intelligence runs round an iPhone's edge when Siri is
+   listening, turned inside out: there it lives on the glass and falls inward,
+   here it lives behind a window on the page and falls OUTWARD onto the paper.
+   site/glowField.js is the model and says where every part of it came from;
+   site/glow.js draws it into a canvas this element holds.
 
-   HOW IT IS BUILT. A conic gradient the exact size of the window, blurred, and
-   painted BEFORE the window in source order — so the window's own opaque
-   surface covers the middle and what is left is a rim. That is what makes the
-   fade outward without a mask: there is nothing to fade inward, because the
-   inside is behind the screen.
+   HOW MUCH OF IT THERE IS follows the scroll: nothing at the top of the track,
+   full at 120%, and held there. The canvas takes this as its opacity, which
+   the compositor does without a redraw. WHERE round the frame the light has
+   got to is the shader's, and that is what carries the entry (glowField.js):
+   it kindles at the right, where the interface is first uncovered, and closes
+   the loop by the end of the wipe.
 
-   ONE HUE SWEEP, NOT A RAINBOW. Apple's runs blue through indigo and magenta
-   into warm, with the warm arc short — a full spectrum reads as a gaming
-   keyboard. These are the system colours at full chroma, ordered the way the
-   reference runs them, and the two blues at either end close the circle so
-   there is no seam.
+   LINEAR, AND IT WAS SQUARED. The squared curve was there when the light came
+   up everywhere at once, because a uniform glow on a linear ramp reads as a
+   dimmer being turned up. The spread fixes that on its own -- and on top of it
+   the square hid it: at 40% of the track the light was at a ninth of its
+   strength, and the entry the whole shape of it is built round could not be
+   seen. The growth now comes from where the light has reached, not from how
+   late its brightness starts.
 
-   IT DOES NOT ANIMATE ON ITS OWN. Both the blur and the gradient are a static
-   raster: only opacity and scale follow the scroll, which are the two things a
-   compositor can do without repainting. Rotating the gradient would re-render
-   and re-blur the whole layer every frame, and this site cannot spend that. */
+   The editor's preview sets data-glow-preview on the stage, which lights it
+   fully wherever the scroll happens to be, so a colour can be judged while
+   it is being changed. */
 .usb-glow {
-  --glow:clamp(0, calc(var(--p) * var(--p) / 1.44), 1);
+  --glow-lit:clamp(0, calc(var(--p) / 1.2), 1);
   position:relative;
-  overflow:hidden;
-  filter:blur(clamp(10px, 1.25vw, 20px));
-  opacity:calc(var(--glow) * .95);
-  /* Just proud of the window, so the rim is a light leak at the bezel rather
-     than a second rectangle behind it. */
-  transform:scale(calc(1 + .022 * var(--glow)));
-  will-change:opacity, transform;
+  pointer-events:none;
+}
+.usb-stage[data-glow-preview] .usb-glow { --glow-lit:1; }
+
+/* The canvas is positioned by glow.js (how far it reaches past the window
+   lives in glowField.js, once). Only its opacity is the stylesheet's. */
+.usb-glow-gl {
+  opacity:var(--glow-lit);
+  will-change:opacity;
   pointer-events:none;
 }
 
-/* ── AND IT TURNS ─────────────────────────────────────────────────────────
-   The hue travels round the bezel the way Siri's does.
+/* ── THE WINDOW'S SHADOW, WHICH GIVES WAY TO THE LIGHT ────────────────────
+   It used to sit on .usb-frame itself, and a grey drop shadow painted over a
+   coloured glow is the one thing that turns light into dirt: it lands exactly
+   on the band where the light is brightest. So it is its own layer, BEHIND
+   the light, and it fades as the light comes up -- down to a fifth, not to
+   nothing, because a lit window still sits on a page.
 
-   IT IS A CHILD THAT ROTATES, NOT THE GRADIENT, and that is the whole
-   performance argument. Animating the gradient itself — a `from` angle, or a
-   hue-rotate filter — re-rasterises AND re-blurs the entire layer on every
-   frame, which is precisely the cost this figure has already been in trouble
-   for. A child with a transform on it is compositor work: the blurred rim is
-   one raster that gets re-composited, not redrawn.
-
-   The child is a SQUARE at 170% of the box and centred, because a rectangle
-   rotated about its centre sweeps its corners out of the frame — at 170% the
-   shortest side still covers the box's diagonal at every angle, so no corner
-   ever goes bare. The parent clips it back to the window's rounded rect and
-   the blur softens that edge outward. */
+   Its opacity is on a layer of its own (will-change) so the scroll changes a
+   compositor property rather than repainting a 38 px blur every frame. */
 .usb-glow::before {
   content:"";
-  position:absolute; left:50%; top:50%;
-  width:170%; aspect-ratio:1;
-  margin:0;
-  translate:-50% -50%;
-  background:conic-gradient(
-    from 128deg,
-    #0A84FF, #5E5CE6, #7D3CF8, #BF5AF2, #E845C4,
-    #FF375F, #FF6A3D, #FF9F0A, #FF375F, #BF5AF2, #5E5CE6, #0A84FF);
-  /* Paused by default. usbDemo.js turns it on when the backlight is actually
-     visible, so a figure sitting at --p:0 is not spending frames on a hue
-     nobody can see. */
-  animation:usb-glow-turn 18s linear infinite paused;
-  will-change:transform;
+  position:absolute; inset:0;
+  border-radius:inherit;
+  box-shadow:0 1px 2px rgb(0 0 0 / .18), 0 12px 38px rgb(0 0 0 / .14);
+  opacity:calc(1 - var(--glow-lit) * .8);
+  will-change:opacity;
 }
-.usb-stage[data-usb-glow="on"] .usb-glow::before { animation-play-state:running; }
 
-@keyframes usb-glow-turn { to { rotate:360deg; } }
-
-@media (prefers-reduced-motion:reduce){
-  /* A slow full-viewport-adjacent colour cycle is exactly the kind of thing
-     the preference is asking about. The rim stays; it stops travelling. */
-  .usb-stage[data-usb-glow="on"] .usb-glow::before { animation-play-state:paused; }
+/* ── AND WITHOUT WEBGL ────────────────────────────────────────────────────
+   glow.js sets data-gl on this element while it is drawing, and removes it if
+   the context is lost. Whenever it is missing -- no WebGL, a lost context, the
+   print stylesheet, the router harness -- this stands in: the same six colours
+   round the frame, blurred and still. It is the figure's first backlight
+   with the rotation taken out, kept because a figure that loses its light when
+   a GPU resets is a figure that looks broken. */
+.usb-glow:not([data-gl])::after {
+  content:"";
+  position:absolute; inset:0;
+  border-radius:inherit;
+  background:conic-gradient(from 90deg,
+    var(--glow-1), var(--glow-2), var(--glow-3),
+    var(--glow-4), var(--glow-5), var(--glow-6), var(--glow-1));
+  filter:blur(clamp(10px, 1.25vw, 20px));
+  transform:scale(1.02);
+  opacity:calc(var(--glow-lit) * .9);
+  will-change:opacity;
 }
 
 /* ── THE TWO HALVES, ONE RECTANGLE ──────────────────────────────────────── */
@@ -1398,10 +1405,9 @@ body.on-project .plate .corner.tl {
    scroll, answered — rather than motion the page decided to make, and taking
    it away would leave a figure that cannot be operated at all. What goes is
    the RUN: mountDemo is given `settled`, and both halves show a batch that is
-   already finished. The backlight stops travelling and simply sits on. */
-@media (prefers-reduced-motion:reduce){
-  .usb-glow { transform:none; opacity:.34; }
-}
+   already finished. The backlight follows the scroll for the same reason the
+   wipe does, but it holds still: glow.js draws one moment of it and never runs
+   a loop. None of that needs a rule here -- both halves decide it in JS. */
 
 /* ══ CAPTURES ════════════════════════════════════════════════════════════
    A screenshot or a screen recording of the tool actually running. Mounted the

@@ -9,7 +9,7 @@ anything to select it, change it, press **Save**. The changes are written into
 the site's own source files, then `npm test` runs. Nothing is committed to git.
 
 Mew, the sky, the fixed controls (discs, stitch chart, arrow keys) and FIG. 2 on
-the USB sheet are locked.
+the USB sheet are locked. FIG. 2's backlight colours are not: see below.
 
 ## Using it
 
@@ -27,6 +27,7 @@ the USB sheet are locked.
 | add something | **Insert after ▾**: a paragraph, heading, label, picture or clip, or a hole |
 | copy / remove | ⌘D / ⌫. Delete also offers "hide on this page only" |
 | paper and ink colours | click empty space, so that nothing is selected: the inspector shows the page's colours |
+| FIG. 2's backlight colours | on the USB sheet, with nothing selected: six colours and two presets (Apple Intelligence, Vivid). The light is shown in full while the panel is open, because on the page it follows the reader's scroll |
 | try the page as a visitor | tick **Preview** |
 | undo / redo | ⌘Z / ⇧⌘Z (everything, including text and media, until you save) |
 
@@ -55,6 +56,7 @@ You can still save them.
 | paper | `site/palette.js` + `--paper` in `site.css` + `<meta name="theme-color">` |
 | sky inks | `site/palette.js` (home), `projects.js` (each project) |
 | text colours | the `:root` tokens in `site.css` |
+| FIG. 2's backlight colours | `--glow-1` to `--glow-6` in `:root` in `site.css` |
 | a figure's picture | `src/assets/media/<id>.webp` (or `.mp4` + `-still.webp`), and its `ratio` in `capture()` |
 | a card's picture / hover clip | `src/assets/media/card-<slug>.webp` / `.mp4` |
 | a card's icon | `tools/icons/icon-<slug>.*`, then `tools/bake_icons.mjs` runs |

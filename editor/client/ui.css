@@ -211,6 +211,8 @@ button.danger:hover { background: #FBEDEC; }
 .menu button small { margin-left: auto; color: var(--faint); font-size: 10.5px; }
 
 .pal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.glow-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.glow-presets button.on { border-color: var(--acc); color: var(--acc); }
 .pal-lab { font-size: 11px; color: var(--dim); margin: 8px 0 4px; }
 .proj { margin-top: 8px; }
 .proj .t { font: 11px var(--mono); margin-bottom: 4px; }

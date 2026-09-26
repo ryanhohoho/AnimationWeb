@@ -446,15 +446,65 @@ and scrollHeight are all "the space it was given" rather than "the space it
 needs" — subtracting that is circular, and the grid duly collapsed to a 45px
 column. Its children's heights are what it actually needs.
 
-**The backlight turns.** The hue travels round the bezel the way Siri's does,
-and it is a CHILD that rotates rather than the gradient: animating a `from`
-angle or a `hue-rotate` re-rasterises and re-blurs the whole layer every frame,
-which is the cost this figure had already been in trouble for. A child with a
-transform on it is compositor work. The child is a square at 170% of the box so
-no corner ever swings out of frame, the parent clips it to the window's rounded
-rect, and the blur softens that edge outward. It is paused until `--p` clears
-0.02, so a figure nobody has scrolled to is not cycling a colour behind an
-opacity of zero.
+**The backlight is a reconstruction of Apple Intelligence's edge light, turned
+inside out.** On the phone the light lives on the glass and falls inward; here
+it lives behind the window and falls OUTWARD onto the paper. Apple publishes no
+source for it, so it is built from the public reconstructions, and it keeps the
+four things they agree on. `site/glowField.js` is the whole model, pure;
+`site/glow.js` is one WebGL fragment shader that is a transcription of the
+model's `shadeAt`.
+
+- **It does not spin.** The rotating conic gradient it replaced is the build
+  every write-up names as the one that looks cheap. Six soft blobs of colour sit
+  on the perimeter, each wandering on its own two clocks and swelling on a
+  third, all incommensurate; the whole drifts one lap in 26 s, under the pace a
+  rotation reads AS rotation. A gap between two colours varies by 46% of the
+  loop over a minute, where a rotation holds it fixed.
+- **It has depth.** Four Gaussian bands — a core, two blooms and a wash — in the
+  ratios of the phone's four stacked strokes, so there is no blur pass: the
+  falloff is the formula. Colours mix in LINEAR light, because these are lights
+  overlapping; mixed in sRGB, two blobs meet in a dark grey-mauve seam.
+- **It has no seam and no corners.** Position round the frame is ARC LENGTH on
+  the rounded rectangle, not angle — an angle is out by 2.5% of the loop on this
+  window, which squeezes every band through the corners. Every distance along
+  it is taken the short way round, so the loop has no start.
+- **It arrives from somewhere.** The interface is uncovered from the right, so
+  the light starts at the right-hand midpoint and spreads both ways round,
+  closing the loop exactly as the wipe ends at `p = 1`. A brighter band leads
+  it in and is gone once the loop closes. Its opacity ramps linearly with `--p`
+  to full at 1.2 — it was squared, and a squared ramp put 11% of the light on
+  screen at `p = 0.4`, which hid the entry it was meant to show.
+
+**The travelling wave is a GAIN on the rim's light, not light of its own.** The
+first version added it to the total, which has no outward falloff, so at the
+front's position it shone at every distance from the window: a faint ray from
+the frame to the canvas edge through the middle of the track. A check on the
+bands alone could not see it. The check now runs on WHOLE PIXELS round the
+canvas border, over the whole track at the largest band scale: the brightest is
+**0.011 of an 8-bit step**.
+
+**Verified on the GPU against the model.** `glow.debugSample(t, p, points)`
+draws one chosen moment and reads the named pixels back with `readPixels`; the
+same points through `shadeAt` agree to **half an 8-bit step, the rounding,
+worst case over five moments and 1,048 pixels each**. A colour set in the editor
+was followed the same way, root style to uniform to pixel. Everything else the
+model claims is about the whole loop or the whole track, which a page showing
+one moment cannot demonstrate, so it is in `test/sim.test.js` with a control
+for each.
+
+**Cost.** The canvas is drawn at half the device pixel ratio, held between
+0.75 and 1 backing pixel per CSS pixel, and capped at 30 fps — a soft light has
+nothing at full resolution to lose. It stops entirely when the figure is off
+screen, the tab is hidden, or the reader is not yet 2% into the track; under
+reduced motion it draws one still moment and never runs a loop. With no WebGL, or a lost context, a static blurred conic
+gradient of the same six colours stands in.
+
+**The colours are the editor's.** `--glow-1` to `--glow-6` in `:root`, read by
+the renderer on mount and whenever the root's style changes — which is how the
+editor previews. The default is Apple's six, pastel because they were sampled
+off a screen where the light is emitted; on white paper a colour cannot be
+brighter than the paper, so the editor also offers a Vivid preset of Apple's
+system colours at full chroma.
 
 **The jig stopped re-zooming mid-run, and the cause was two layout leaks
 rather than anything pressing Fit.** The viewer refits when its container

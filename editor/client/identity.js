@@ -21,7 +21,7 @@ export function lockReason(el) {
   if (el.closest("#chrome")) return "The fixed controls (discs, stitch chart, arrow keys) are locked.";
   if (el.closest("#stage")) return "Mew is locked.";
   if (el.closest("#sheet, #eat")) return "The sky is locked.";
-  if (el.closest("[data-usb-stage]")) return "FIG. 2 is a vendored, generated figure and is locked.";
+  if (el.closest("[data-usb-stage]")) return "FIG. 2 is locked. Its backlight colours are in the panel with nothing selected.";
   if (!el.closest("#doc")) return "Only the page itself can be edited.";
   if (el.closest(".sr")) return "Screen-reader text is not visible.";
   return null;

@@ -45,6 +45,8 @@
 // nothing seized from the scroller, and scrolling back up runs it backwards
 // because the number is a pure function of scroll position.
 
+import { createGlow } from "./glow.js";
+
 const STAGE = "[data-usb-stage]";
 
 /**
@@ -161,6 +163,12 @@ export function mountUsbDemo({ scope, world, root = document }) {
   const reduced = root.defaultView?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
     ?? false;
 
+  // THE BACKLIGHT. Its own module (site/glow.js, and the model in
+  // site/glowField.js); all this file owes it is the progress number and a
+  // teardown. Null when there is no WebGL, and then the stylesheet's still
+  // version stands in and nothing here needs to know.
+  const glow = createGlow({ host: stage.querySelector("[data-usb-light]"), root, reduced });
+
   // ── THE TRACK, MEASURED ONCE ─────────────────────────────────────────────
   // `offsetTop` up the offsetParent chain, and NOT getBoundingClientRect: a
   // rect includes transforms, and #doc is carrying the page-turn transform at
@@ -183,33 +191,25 @@ export function mountUsbDemo({ scope, world, root = document }) {
   // Arithmetic only. No layout is read here, ever: this runs on the scroll
   // path, and this site's one hard rule is that it cannot drop a frame.
   let p = -1;
-  let glowing = false;
   function onScroll() {
     // Rounded inside progressAt, so a sub-pixel scroll does not write a custom
     // property that resolves to the same paint.
     const next = progressAt(scrollY(), top, travel);
     if (next === p) return;
-    p = next;
-    stage.style.setProperty("--p", String(p));
-
-    lightWhenVisible();
+    setProgress(next);
   }
 
   /**
-   * The backlight only turns while it can be seen.
-   *
-   * One attribute write on a threshold crossing, rather than a colour cycle
-   * running behind an opacity of zero for as long as the page is open. Its own
-   * function because `debugScrollTo` has to do it too — the first version set
-   * it in the scroll handler alone, so every headless check of the figure was
-   * looking at a glow that never turned.
+   * The one place progress changes, so the wipe and the light cannot disagree
+   * about where the reader is. `debugScrollTo` goes through here as well: the
+   * first version of the light was switched on from the scroll handler alone,
+   * and every headless check of the figure was looking at a glow that never
+   * turned.
    */
-  function lightWhenVisible() {
-    const lit = p > 0.02;
-    if (lit === glowing) return;
-    glowing = lit;
-    if (lit) stage.dataset.usbGlow = "on";
-    else delete stage.dataset.usbGlow;
+  function setProgress(next) {
+    p = next;
+    stage.style.setProperty("--p", String(p));
+    glow?.setProgress(p);
   }
 
   const scrollY = () => world?.scroll?.y ?? root.defaultView?.scrollY ?? 0;
@@ -422,6 +422,7 @@ export function mountUsbDemo({ scope, world, root = document }) {
     for (const un of off) un();
     handle?.destroy();
     handle = null;
+    glow?.destroy();
   });
 
   return {
@@ -431,13 +432,21 @@ export function mountUsbDemo({ scope, world, root = document }) {
         in a headless DOM and none in a hidden preview pane either. */
     debugScrollTo(y) {
       const at = progressAt(y, top, travel);
-      if (at === p) return p;
-      p = at;
-      stage.style.setProperty("--p", String(p));
-      lightWhenVisible();
+      if (at !== p) setProgress(at);
       return p;
     },
-    debugMeasure() { return { top, travel }; }
+    debugMeasure() { return { top, travel }; },
+    /**
+     * Light the whole loop, wherever the scroll is. The editor calls this while
+     * its backlight colours are on screen, so a colour can be judged as it is
+     * changed instead of on a figure the reader has not scrolled to yet.
+     */
+    previewGlow(on) {
+      if (on) stage.dataset.glowPreview = "";
+      else delete stage.dataset.glowPreview;
+      glow?.preview(on);
+    },
+    get glow() { return glow; }
   };
 }
 

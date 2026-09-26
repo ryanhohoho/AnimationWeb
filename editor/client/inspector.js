@@ -10,6 +10,9 @@
 
 import { h, toast, contrastOf, parseColor, ratio, toHex, modal } from "./util.js";
 import { classesOf, nameOf, lockReason } from "./identity.js";
+// The backlight's tokens and presets, from the site's own model rather than
+// copied here: the page and the editor must agree on which six names exist.
+import { GLOW_TOKENS, APPLE_GLOW, VIVID_GLOW } from "../../src/site/glowField.js";
 
 const WEIGHTS = [300, 400, 500, 600, 700];
 
@@ -173,6 +176,7 @@ export function createInspector(ed, mount) {
     closePop();
     if (!ed.doc) { mount.replaceChildren(h("div", { class: "note" }, "Loading the site…")); return; }
     if (!ed.sel) return renderPage();
+    glowPreview(false);
     const el = ed.sel.el;
     const kind = ed.kind(el);
     const cls = classesOf(el);
@@ -469,6 +473,18 @@ export function createInspector(ed, mount) {
     };
     const val = (v) => () => ({ value: v, from: ed.bp, computed: v });
 
+    // ── FIG. 2's backlight ─────────────────────────────────────────────────
+    // Six :root tokens, so each colour goes through setTok like any other and
+    // gets the same live preview, undo and save. A preset sets all six as ONE
+    // step, so one undo takes it back.
+    const onUsb = ed.page === "project:usb-provisioning";
+    glowPreview(onUsb);
+    const setGlow = (label, colours) => {
+      const after = () => { ed.frame.applyPalette(ed.store.palette, ed.store.tokens, ed.store.inks); render(); };
+      ed.store.global(label, (st) => { GLOW_TOKENS.forEach((tok, i) => { st.tokens[tok] = colours[i]; }); }, after);
+    };
+    const same = (a) => GLOW_TOKENS.every((tok, i) => (T[tok] || "").toUpperCase() === a[i]);
+
     const warn = [];
     const paper = parseColor(T["--paper"]);
     const rr = (tok) => ratio(parseColor(T[tok]), paper);
@@ -476,6 +492,11 @@ export function createInspector(ed, mount) {
     if (rr("--n3") < 4.5) warn.push(`Label grey on paper is ${rr("--n3").toFixed(2)}:1, under 4.5:1 — every label would fail.`);
     if (rr("--ink-a") < 4.5) warn.push(`Cerulean on paper is ${rr("--ink-a").toFixed(2)}:1, under 4.5:1 — every link would fail.`);
     if (rr("--n4") >= 3) warn.push(`Hairline grey is now ${rr("--n4").toFixed(2)}:1; the tests expect it to stay under 3:1 (it must not look like text).`);
+    // A light can be no brighter than the paper it falls on, so a colour this
+    // close to it only tints the paper -- it is in the mix, and nobody can see it.
+    if (onUsb) GLOW_TOKENS.forEach((tok, i) => {
+      if (T[tok] && rr(tok) < 1.3) warn.push(`Backlight colour ${i + 1} is ${rr(tok).toFixed(2)}:1 against the paper — close enough to it that it will barely show.`);
+    });
 
     mount.replaceChildren(
       h("div", { class: "insp-head" }, h("div", { class: "insp-kind" }, h("span", { class: "badge" }, "page"), pageName()),
@@ -491,6 +512,14 @@ export function createInspector(ed, mount) {
         h("div", { class: "proj" }, h("div", { class: "t" }, slug), h("div", { class: "pal-row" },
           colorField({ label: "", get: val(p.inkA), set: setInk(slug, "inkA"), allowVars: false, allowNone: false }),
           colorField({ label: "", get: val(p.ink), set: setInk(slug, "ink"), allowVars: false, allowNone: false }))))),
+      onUsb ? sec("FIG. 2 — the backlight", [
+        h("div", { class: "pal-row" }, ...GLOW_TOKENS.map((tok, i) =>
+          colorField({ label: `Colour ${i + 1}`, get: val(T[tok]), set: setTok(tok), allowVars: false, allowNone: false }))),
+        h("div", { class: "glow-presets" },
+          h("button", { class: `ghost${same(APPLE_GLOW) ? " on" : ""}`, onclick: () => setGlow("Backlight: Apple Intelligence", APPLE_GLOW) }, "Apple Intelligence"),
+          h("button", { class: `ghost${same(VIVID_GLOW) ? " on" : ""}`, onclick: () => setGlow("Backlight: Vivid", VIVID_GLOW) }, "Vivid")),
+        h("div", { style: { fontSize: "10.5px", color: "var(--faint)", marginTop: "8px", lineHeight: 1.5 } },
+          "The six colours the light round the figure is mixed from. They drift round the frame and blend where they meet, so it is the set that matters more than the order. Lit in full while this panel is open. Saved to --glow-1…6 in site.css.")]) : null,
       sec("Type and line colours", [h("div", { class: "pal-row" },
         colorField({ label: "Ink (--ink)", get: val(T["--ink"]), set: setTok("--ink"), allowVars: false, allowNone: false }),
         colorField({ label: "Labels (--n3)", get: val(T["--n3"]), set: setTok("--n3"), allowVars: false, allowNone: false }),
@@ -501,6 +530,28 @@ export function createInspector(ed, mount) {
         "Click select · double-click edit words · drag move (⌥ no snap, ⇧ one axis) · arrows nudge (⇧ ×10) · ⌘Z / ⇧⌘Z · ⌘D duplicate · ⌫ delete · Esc deselect · ⌘S save")])
     );
   }
+  /**
+   * Light FIG. 2's backlight fully while its colours are on screen.
+   *
+   * Without it the colours would be changed on a figure the page shows unlit
+   * -- the light follows the reader's scroll, and in the editor nobody has
+   * scrolled. The site's handle can arrive a moment after this panel does
+   * (the figure mounts on commit, the panel on ready), so it is retried
+   * briefly rather than assumed to be there.
+   */
+  let previewWanted = false, previewTimer = 0;
+  function glowPreview(on) {
+    previewWanted = on;
+    clearTimeout(previewTimer);
+    let tries = 0;
+    const apply = () => {
+      const demo = ed.win?.__USBDEMO__;
+      if (demo?.previewGlow) { demo.previewGlow(previewWanted); return; }
+      if (previewWanted && ++tries < 20) previewTimer = setTimeout(apply, 150);
+    };
+    apply();
+  }
+
   const pageName = () => ({ home: "Summary", experience: "Experience", projects: "Projects", contact: "Contact" }[ed.page]
     || (ed.page?.startsWith("project:") ? ed.page.slice(8) : ed.page));
 

@@ -70,7 +70,7 @@ export function html(p) {
          plate 1, below this, and it does not move. -->
     <div class="usb-stage" data-usb-stage>
       <div class="usb-pin">
-        <div class="usb-glow" aria-hidden="true"></div>
+        <div class="usb-glow" data-usb-light aria-hidden="true"></div>
         <!-- data-noswipe: a shadow root retargets its events to this element,
              so the router's page-swipe would otherwise read a drag across the
              figure as a request to turn the page. -->
