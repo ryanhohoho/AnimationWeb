@@ -22,7 +22,7 @@ npm-debug.log*
 .recovery_codes
 # personal agent permissions (.claude/launch.json IS shared: the preview configs)
 .claude/settings.local.json
- 
+  
 # Python bytecode (tools/*.py)
 __pycache__/
 *.pyc
