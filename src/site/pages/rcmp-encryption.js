@@ -7,8 +7,8 @@
 // me if you'd like to chat!"). The structure is that one; the look is this
 // site's -- the same two-plate trim as the USB sheet it sits beside
 // (pages/sheet.js), and the locked block drawn in the print's own language: a
-// square hairline box and a padlock on a pixel grid (site/padlock.js), not a
-// rounded card.
+// flat tint of the sheet's plate, a square of paper out of register with it,
+// and a padlock on a pixel grid (site/padlock.js), not a rounded card.
 //
 // THE WORDS ARE DRAFTS, and every fact in them is one the site already
 // states (content.js EXPERIENCE, projects.js, the USB sheet): the roles and
@@ -65,8 +65,8 @@ export function html(p) {
         </ul>
       </div>
 
-      <div class="conf-lock" role="note">
-        ${padlockSvg("conf-lock-mark")}
+      <div class="conf-lock" role="note" style="--lock:${esc(p.inkA || "#16305C")}">
+        <div class="conf-lock-badge">${padlockSvg("conf-lock-mark")}</div>
         <div class="conf-lock-t">
           <p class="t body conf-lock-h">This work is confidential.</p>
           <p class="t body conf-lock-s"><span>Please</span> <a class="link" href="${esc(MAIL)}">email me</a> <span>if you'd like to chat!</span></p>

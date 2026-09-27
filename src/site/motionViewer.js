@@ -51,6 +51,7 @@ const NAMES = new Map([[FILM.id, FILM.name], ...WORKS.map((w) => [w.id, w.name])
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 const OPEN_MS = reducedMotion ? 0 : 380;
 const PAGE_MS = reducedMotion ? 0 : 300;
+const TURN_MS = reducedMotion ? 0 : 280;
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 
 const SPEAKER = `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/><path class="on" d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/><path class="off" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>`;
@@ -93,6 +94,7 @@ export function mountViewer(scope, root, { lists, ambient, cover = () => {}, clo
   let playing = true;
   let muted = true;
   let busy = false;          // an animation owns the frame
+  let turning = false;       // ...and it is a turn (a chevron or a key)
 
   // ── THE MARKUP ─────────────────────────────────────────────────────────
   const el = document.createElement("div");
@@ -123,7 +125,14 @@ export function mountViewer(scope, root, { lists, ambient, cover = () => {}, clo
 
   const $ = (s) => el.querySelector(s);
   const bg = $(".mgv-bg"), track = $(".mgv-track");
-  const slots = [...el.querySelectorAll(".mgv-slot")];
+  // the three frames, left to right. The ARRAY turns, not the pictures in it:
+  // after a page the neighbour that slid in IS the middle frame, and only the
+  // one that fell off the far side is given a new poster, out of sight. This
+  // used to leave the frames where they were and re-point all three posters
+  // at once, and a poster that has not decoded yet shows the picture it had --
+  // so every page ended by flashing the scenes it had just left, in order,
+  // from the side it had come from.
+  let slots = [...el.querySelectorAll(".mgv-slot")];
   const slot = (k) => slots[k + 1];
   const scrub = $(".mgv-scrub"), fill = $(".mgv-fill"), head = $(".mgv-head"), ticks = $(".mgv-ticks");
   const title = $(".mgv-title"), snd = $(".mgv-snd");
@@ -172,11 +181,21 @@ export function mountViewer(scope, root, { lists, ambient, cover = () => {}, clo
       x = (W - w) / 2; y = top;
     }
     box = { x, y, w, h, gap: full ? 12 : 36 };
-    for (const k of [-1, 0, 1]) {
-      Object.assign(slot(k).style, { left: `${x + k * (w + box.gap)}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
-    }
+    place();
     el.style.setProperty("--fx", `${x}px`); el.style.setProperty("--fw", `${w}px`);
     el.style.setProperty("--fy", `${y}px`); el.style.setProperty("--fh", `${h}px`);
+  }
+
+  function place() {
+    const { x, y, w, h, gap } = box;
+    slots.forEach((s, n) => {
+      s.dataset.k = String(n - 1);
+      Object.assign(s.style, { left: `${x + (n - 1) * (w + gap)}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
+    });
+  }
+  function rotate(d) {
+    slots = d > 0 ? [slots[1], slots[2], slots[0]] : [slots[2], slots[0], slots[1]];
+    place();
   }
 
   // ── WHAT IS ON SHOW ───────────────────────────────────────────────────
@@ -380,7 +399,7 @@ export function mountViewer(scope, root, { lists, ambient, cover = () => {}, clo
   }
 
   function close(fromTransform = "none", fromBg = 1) {
-    if (!open) return;
+    if (!open || turning) return;
     busy = true;
     const id = ids[i];
     // keep the cell it lands in on the screen, the way Photos keeps the grid
@@ -414,7 +433,18 @@ export function mountViewer(scope, root, { lists, ambient, cover = () => {}, clo
   }
 
   // ── PAGING ───────────────────────────────────────────────────────────
+  // TWO MOVES, ONE FOR EACH HAND. A finger drags the strip, so the strip
+  // follows it and the neighbour is where the finger left it, as in Photos.
+  // A chevron or an arrow key has no drag to continue, and sliding the whole
+  // strip for it swept the scene on the far side across the screen too:
+  // three pictures going by for one step. There it is a TURN -- the scene
+  // steps a little the way you went and fades, the next steps in from the
+  // same side and fades up over it, and nothing else moves. Between the two
+  // the ground shows through for a moment, already changing to the next
+  // scene (it crossfades on its own), so the light moves before the picture.
+  let queued = 0;            // a step asked for while a turn was running
   function go(k, { fromX = 0 } = {}) {
+    if (busy && turning && !fromX && k !== i) { queued = Math.sign(k - i); return; }
     if (busy || k === i || k < 0 || k >= ids.length) {
       if (fromX) {
         track.style.transform = "";
@@ -426,23 +456,66 @@ export function mountViewer(scope, root, { lists, ambient, cover = () => {}, clo
     const d = Math.sign(k - i);
     const neighbour = Math.abs(k - i) === 1;
     const settle = () => {
-      i = k; track.style.transform = ""; busy = false;
+      i = k;
+      if (neighbour) rotate(d);
+      track.style.transform = ""; busy = false;
       el.classList.remove("is-paging");
       fillSlots(); describe(); load(true);
       history.replaceState(history.state, "", `${location.pathname}#${ids[i]}`);
       list.reveal(ids[i]);
+      if (queued) { const q = queued; queued = 0; go(i + q); }
     };
     if (!neighbour || !PAGE_MS) { settle(); return; }
     busy = true;
-    el.classList.add("is-paging");
     video?.pause();
-    track.animate([{ transform: `translateX(${fromX}px)` }, { transform: `translateX(${-d * (box.w + box.gap)}px)` }],
-      { duration: PAGE_MS, easing: EASE, fill: "forwards" })
-      .finished.then(() => { track.getAnimations().forEach((a) => a.cancel()); settle(); }, settle);
+    if (fromX) {
+      el.classList.add("is-paging");
+      track.animate([{ transform: `translateX(${fromX}px)` }, { transform: `translateX(${-d * (box.w + box.gap)}px)` }],
+        { duration: PAGE_MS, easing: EASE, fill: "forwards" })
+        .finished.then(() => { track.getAnimations().forEach((a) => a.cancel()); settle(); }, settle);
+      return;
+    }
+    turn(d, settle);
+  }
+
+  function turn(d, settle) {
+    const out = slot(0), inc = slot(d), img = inc.querySelector("img");
+    const span = d * (box.w + box.gap);           // where the neighbour stands
+    const step = d * Math.min(72, box.w * .14);   // how far each one moves
+    turning = true;
+    const run = () => {
+      if (!open) { turning = false; busy = false; return; }
+      el.classList.add("is-turning");
+      inc.classList.add("is-in");
+      if (!full) ambient?.setSource(img);
+      const a = out.animate([{ transform: "none", opacity: 1 }, { transform: `translateX(${-step}px)`, opacity: 0 }],
+        { duration: TURN_MS * .8, easing: "cubic-bezier(.4,0,.8,.6)", fill: "forwards" });
+      const b = inc.animate([{ transform: `translateX(${step - span}px)`, opacity: 0 }, { transform: `translateX(${-span}px)`, opacity: 1 }],
+        { duration: TURN_MS, delay: TURN_MS * .12, easing: EASE, fill: "both" });
+      const fin = () => {
+        // in one go, so no frame sees it half done: the neighbour becomes the
+        // middle frame where it already stands, then its animation is let go
+        turning = false;
+        inc.classList.remove("is-in"); el.classList.remove("is-turning");
+        settle();
+        a.cancel(); b.cancel();
+      };
+      Promise.all([a.finished, b.finished]).then(fin, fin);
+    };
+    // the picture coming in is decoded before it is shown: a hidden frame's
+    // poster may never have been drawn, and an undecoded one shows as black
+    // for a frame. Capped, so a slow disk never holds a click back for long.
+    Promise.race([img?.decode?.() ?? null, new Promise((r) => setTimeout(r, 140))]).then(run, run);
   }
 
   // ── THE HAND ─────────────────────────────────────────────────────────
   let g = null;
+  // A TOUCH IS ANSWERED ONCE. The browser follows a tap with a click, and
+  // iOS Safari's click is a plain MouseEvent with no pointerType, so the
+  // check below let it through: the tap paused the scene and its click
+  // played it again in the same instant -- on a phone a tap never paused
+  // anything. Any click that soon after a touch here is that touch's echo.
+  let touchAt = -1e9;
   el.addEventListener("pointerdown", (e) => {
     if (!open || busy || e.pointerType === "mouse" || !e.isPrimary) return;
     if (e.target.closest("button, .mgv-scrub, a")) return;
@@ -498,6 +571,7 @@ export function mountViewer(scope, root, { lists, ambient, cover = () => {}, clo
     // the last recorded position is where the finger left it
     if (dragRaf) { cancelAnimationFrame(dragRaf); applyDrag(); }
     const s = g; g = null;
+    touchAt = performance.now();
     el.classList.remove("is-lifting");
     const pts = s.last, a = pts[0], b = pts[pts.length - 1];
     const dt = a && b ? Math.max(1, b[0] - a[0]) : 1;
@@ -538,7 +612,7 @@ export function mountViewer(scope, root, { lists, ambient, cover = () => {}, clo
       else if (b.dataset.step) go(i + Number(b.dataset.step));
       return;
     }
-    if (e.pointerType && e.pointerType !== "mouse") return;   // touch is handled above
+    if ((e.pointerType && e.pointerType !== "mouse") || performance.now() - touchAt < 800) return;   // touch is handled above
     if (e.target.closest(".mgv-slot")) setPlaying(!playing);
     else if (!e.target.closest(".mgv-ui")) close();
   });

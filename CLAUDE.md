@@ -388,6 +388,14 @@ when only the numbers were.
   tiles, their video, the flower's clip stop BEFORE the frame grows and start
   again only once it has landed back; on a phone the ground stops too (the
   frame covers it). Waking the page at the start of a lift was the 5 fps drag.
+- **The viewer's frames turn; their pictures are not re-pointed.** After a
+  page the neighbour that slid in becomes the middle frame where it stands
+  (`rotate`); re-pointing all three posters at once flashed the scenes just
+  left, because an undecoded poster shows its old picture. A chevron or key is
+  a TURN (two frames, step and fade), a finger drags the strip.
+- **A touch in the viewer is answered once.** iOS follows a tap with a click
+  that has no `pointerType`, so a click soon after a touch is ignored; without
+  that, a tap paused and its click played again, and a phone never paused.
 - **HTML comments never ship.** `vite.config.js` (`buildNotesOut`) strips
   every `<!-- -->` from `index.html` and from the page templates in the BUILD
   only; dev and the editor see the files as written. So no code may depend on
