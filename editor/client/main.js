@@ -103,6 +103,14 @@ function fit() {
   dev.style.width = w + "px";
   dev.style.height = availH / scale + "px";
   dev.style.transform = scale < 1 ? `scale(${scale})` : "";
+  // A scaled frame is centred HERE, not by the grid. A transform leaves the
+  // layout box at full width, and a grid item wider than its cell is pushed
+  // to the start edge rather than centred -- so scaling about its top centre
+  // put the picture half a frame to the right (measured: 1512 wide at 63%).
+  // Anchored at its top-left, the margin is simply what is left over, halved.
+  dev.style.transformOrigin = scale < 1 ? "top left" : "";
+  dev.style.justifySelf = scale < 1 ? "start" : "";
+  dev.style.marginLeft = scale < 1 ? `${Math.max(0, (availW - w * scale) / 2)}px` : "";
   dev.dataset.size = `${w} px${scale < 1 ? ` · shown at ${Math.round(scale * 100)}%` : ""}`;
 }
 addEventListener("resize", fit);

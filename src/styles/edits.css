@@ -19,6 +19,7 @@
 #doc[data-page="home"] [data-e="t-kxel"] { translate:228px -27px; }
 #doc[data-page="home"] [data-e="t-wxlk"] { translate:228px -31px; }
 #doc[data-page="home"] [data-e="t-zx0b"] { translate:176px 136px; }
+#doc[data-page="project:iclicker"] [data-e="sheet-in-ta8h"] { display:none; }
 
 /* @bp 860 */
 @media (max-width:860px) {
