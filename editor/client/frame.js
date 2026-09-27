@@ -13,6 +13,7 @@
 // Preview mode takes all of that away and the page is simply the page.
 
 import { toCss } from "../shared/editsCss.js";
+import { designPx } from "../../src/styles/designPx.js";
 
 const BLOCK = ["pointerdown", "pointerup", "pointermove", "pointerover", "pointerout", "mousedown", "mouseup",
   "mousemove", "click", "dblclick", "auxclick", "contextmenu", "keydown", "keyup", "touchstart", "touchend", "dragstart"];
@@ -126,8 +127,9 @@ export function createFrame({ iframe, onReady, onPage, onEvent }) {
 
   function applyStyles(nextCss) {
     css = nextCss;
-    const live = ctx.doc?.getElementById("__ed_live");
-    if (live && live.textContent !== css) { live.textContent = css; remeasure(); }
+    // the same rewrite Vite gives the saved file: the model is in design px
+    const live = ctx.doc?.getElementById("__ed_live"), text = designPx(css);
+    if (live && live.textContent !== text) { live.textContent = text; remeasure(); }
   }
 
   async function applyPalette(p, t, i) {

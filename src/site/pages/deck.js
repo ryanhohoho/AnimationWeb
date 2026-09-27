@@ -1,4 +1,4 @@
-// pages/deck.js — THE THREE CARDS THAT ARE NOT THE SUMMARY
+// pages/deck.js — THE FOUR CARDS THAT ARE NOT THE SUMMARY
 //
 // One file rather than three, and that is a judgement about substance: these are
 // one-screen cards whose renderers are a dozen lines each, sharing one shell and
@@ -22,6 +22,8 @@ import { EXPERIENCE, SOCIALS } from "../content.js";
 import { PROJECTS } from "../projects.js";
 import { glyphUrl } from "../iconatlas.js";
 import { cardStill, cardVideo } from "../content.js";
+import { REEL, PHOTOGRAPHY } from "../photoassets.js";
+import { reelHTML, hangHTML } from "../photos.js";
 
 const esc = (v) => String(v ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -127,7 +129,23 @@ function projects() {
     `<ul data-e="cards-0frh" class="cards">${cards}\n    </ul>`);
 }
 
-// ── 04 · CONTACT ────────────────────────────────────────────────────────────
+// ── 04 · PHOTOS ─────────────────────────────────────────────────────────────
+// Added 2026-09-27, by instruction: pictures of his life, and his photography,
+// on a card of their own rather than inside Projects. The heading carries on
+// the deck's own sentence -- where I've worked, what I've built, what I've
+// seen. The strip of life runs across the whole window, past the column, the
+// way a strip of film lies across a desk; the photography hangs in the column
+// under a label of its own. Everything about how either is drawn is in
+// site/photos.js; the pictures are tools/bake_photos.mjs's.
+function photos() {
+  const reel = REEL.length ? reelHTML(REEL, 3) : "";
+  const hang = PHOTOGRAPHY.length ? `
+    <p class="t dim eye ph-eye" style="--i:4">PHOTOGRAPHY</p>
+    ${hangHTML(PHOTOGRAPHY, 5)}` : "";
+  return shell("p-photos", "04", "23:30", "PHOTOS", "What I've seen", `${reel}${hang}`);
+}
+
+// ── 05 · CONTACT ────────────────────────────────────────────────────────────
 // No heading, on purpose: there is nothing to introduce. A label, a value, and
 // a way to reach it.
 function contact() {
@@ -139,12 +157,12 @@ function contact() {
           <span class="sock-arrow" aria-hidden="true">→</span>
         </a>
       </li>`).join("");
-  return shell("p-contact", "04", "00:15", "CONTACT", "",
+  return shell("p-contact", "05", "00:15", "CONTACT", "",
     `<ul class="socks">${rows}\n    </ul>
     <p class="t dim back-hint" style="--i:6"><a class="link" href="/" data-route>← back to the start</a></p>`);
 }
 
-const PAGES = { experience, projects, contact };
+const PAGES = { experience, projects, photos, contact };
 
 /** @param name one of the deck route names other than "home" */
 export function renderDeckPage(name) {

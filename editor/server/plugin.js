@@ -49,7 +49,7 @@ const DATA = { "motion-graphics": ["src/site/motion.js"] };
 /** the files a route's words can live in, in the order the renderer reads them */
 function filesFor(page) {
   if (page === "home") return ["index.html"];
-  if (page === "experience" || page === "contact") return ["src/site/content.js", "src/site/pages/deck.js"];
+  if (page === "experience" || page === "photos" || page === "contact") return ["src/site/content.js", "src/site/pages/deck.js"];
   if (page === "projects") return ["src/site/projects.js", "src/site/pages/deck.js"];
   if (page?.startsWith("project:")) {
     const slug = page.slice(8);

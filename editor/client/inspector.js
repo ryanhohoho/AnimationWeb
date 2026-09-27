@@ -849,7 +849,7 @@ export function createInspector(ed, mount) {
     apply();
   }
 
-  const pageName = () => ({ home: "Home", experience: "Experience", projects: "Projects", contact: "Contact" }[ed.page]
+  const pageName = () => ({ home: "Home", experience: "Experience", projects: "Projects", photos: "Photos", contact: "Contact" }[ed.page]
     || (ed.page?.startsWith("project:") ? ed.page.slice(8) : ed.page));
 
   return { render, closePop };

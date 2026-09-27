@@ -167,6 +167,32 @@
 
 * { margin:0; padding:0; box-sizing:border-box; }
 html { scroll-behavior:smooth; }
+/* THE DESIGN PIXEL. Every px in this file and in edits.css is a pixel of the
+   owner's 1512 px window, rewritten to calc(n * var(--u)) as it is served
+   (src/styles/designPx.js, which says why). Up to the tablet breakpoint a
+   design pixel is a pixel, so the phone and tablet layouts are exactly what
+   they were. Above it the page is one composition scaled by the window's
+   WIDTH -- the horizontal first, by instruction -- with the height holding it
+   only on a window so wide and short that the width would push it off the
+   bottom (640 is the tallest the home composition needs, at 1512 wide). Never
+   under .8: below 1210 px a smaller page is better than type under 9 px. */
+:root { --u:1px; }
+@media (min-width:861px) {
+  :root { --u:clamp(.8px, min(100vw / 1512, 100vh / 640), 3px);
+          /* the column's air, 11% of the reference window's 867 px height:
+             11vh was a different share of a differently shaped window */
+          --deck-top:95px; }
+  /* THE HOME WINDOW, the same shape on every screen. Its --y and --h are
+     percentages of the page's HEIGHT while its --w is of the WIDTH, so a 2:1
+     monitor drew it squatter than the laptop it was placed on (measured:
+     0.75 against 0.65, width over height). On a desktop its top and height
+     are those percentages of the reference window instead -- 14% and 62% of
+     867 -- in design pixels. An edit made in the editor still wins (edits.css
+     comes later, at the same specificity). */
+  #s0 > .ap.tall { top:121px; height:538px; }
+}
+/* so a rem is a design unit too (a gap of 1.6rem grows with the words) */
+html { font-size:16px; }
 html,body { height:100%; }
 
 /* ── THE PAGE MAY NOT BOUNCE, BECAUSE THE PRINT CANNOT BOUNCE WITH IT ──────
@@ -793,6 +819,78 @@ pre.sr { white-space:pre; }
 .conf-photos { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap:1.4rem; }
 .sheet-in .conf-photos .fig { width:100%; }
 
+/* ── THE PHOTOS CARD (pages/deck.js, site/photos.js) ──────────────────────
+   The strip runs past the column to both edges of the window, like film laid
+   across a desk; the card clips it sideways (clip, not hidden: nothing here
+   may become a scroll container). Each frame is its picture's own shape at
+   one height, the PRINT until you look at it, the photograph while you do.
+   Frames are spaced by a margin, not a flex gap, so half the track is exactly
+   one copy and its spacing -- the length the drift moves before it starts
+   again, with no half-gap jump at the seam. */
+#p-photos { overflow-x:clip; }
+.reel { width:100vw; margin:1rem 0 0 calc(50% - 50vw); height:240px; overflow:hidden;
+        touch-action:pan-y; cursor:grab; user-select:none; -webkit-user-select:none; }
+.reel.is-held { cursor:grabbing; }
+.reel-track { display:flex; width:max-content; height:100%;
+              animation:reel-drift var(--reel-t, 60s) linear infinite; will-change:transform; }
+@keyframes reel-drift { to { transform:translate3d(-50%, 0, 0); } }
+@media (hover:hover) { .reel:hover .reel-track { animation-play-state:paused; } }
+.reel-f { position:relative; flex:none; height:100%; aspect-ratio:var(--a); margin:0 6px 0 0;
+          padding:0; border:0; background:var(--paper); cursor:inherit; }
+.reel-f img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
+              pointer-events:none; -webkit-user-drag:none; }
+.reel-photo { opacity:0; transition:opacity var(--t2) var(--e); }
+@media (hover:hover) { .reel-f:hover .reel-photo { opacity:1; } }
+.reel-f:focus-visible { outline:1px solid var(--blue); outline-offset:3px; }
+.reel-f:focus-visible .reel-photo { opacity:1; }
+@media (prefers-reduced-motion:reduce) {
+  .reel { overflow-x:auto; }
+  .reel-track { animation:none; }
+}
+
+/* the photography: rows of one or two, one height per row (site/photos.js
+   works the rows out; here a width is a flex share and a height is the
+   picture's own aspect, so nothing is measured and nothing shifts) */
+.t.dim.ph-eye { margin-top:3.2rem; }
+/* more paper between rows than between the two pictures of a pair: a pair
+   reads as a spread, and the next row as a turn of the page */
+.hang { width:100%; display:grid; gap:72px; }
+.hang-row { display:flex; gap:24px; }
+.hang-row.is-one { width:var(--w); }
+.hang-row.is-r { margin-left:auto; }
+.hang-f { flex:var(--a) 1 0%; aspect-ratio:var(--a); padding:0; border:0; overflow:hidden;
+          background:color-mix(in srgb, var(--n4) 14%, var(--paper)); cursor:zoom-in; }
+.hang-f img { width:100%; height:100%; object-fit:cover; display:block; }
+.hang-f:focus-visible { outline:1px solid var(--blue); outline-offset:3px; }
+
+/* the viewer: one picture on the paper (site/photos.js, makeViewer) */
+.phv { position:fixed; inset:0; z-index:60; touch-action:none; overscroll-behavior:contain; }
+.phv[hidden] { display:none; }
+.phv:focus { outline:none; }
+.phv-bg { position:absolute; inset:0; background:var(--paper); cursor:zoom-out; }
+.phv-img { position:absolute; display:block; object-fit:cover; transform-origin:0 0;
+           background-size:cover; background-position:center; }
+.phv-close { position:absolute; top:18px; left:18px; width:40px; height:40px; padding:8px; border:0;
+             background:none; color:var(--ink); cursor:pointer; opacity:.7; z-index:1; }
+.phv-close:hover { opacity:1; }
+.phv-close svg, .phv-side svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.4; stroke-linecap:round; }
+.phv-side { position:absolute; top:50%; width:44px; height:64px; margin-top:-32px; padding:12px 8px; border:0;
+            background:none; color:var(--ink); cursor:pointer; opacity:.35; z-index:1; }
+.phv-side:hover, .phv-side:focus-visible { opacity:.9; }
+.phv-side[data-step="-1"] { left:10px; }
+.phv-side[data-step="1"] { right:10px; }
+.phv-side:disabled { display:none; }
+
+/* a phone: a shorter strip, the photography one picture to a row at full
+   width, and the viewer edge to edge with no X or arrows (a swipe does both) */
+@media (max-width:560px){
+  .reel { height:160px; }
+  .hang { gap:40px; }
+  .hang-row { gap:14px; }
+  .hang-row, .hang-row.is-one { display:grid; width:100%; margin:0; }
+  .phv-side, .phv-close { display:none; }
+}
+
 @media (max-width:860px){
   .sheet-in { max-width:none; gap:1.4rem; }
   .sheet-ap { aspect-ratio:5/2; }
@@ -1025,6 +1123,14 @@ pre.sr { white-space:pre; }
   height:min(70lvh, calc((100vw - var(--pad) * 2) * 860 / 1280));
   width:auto;
   border-radius:10px;
+}
+/* ...and on a desktop, 70% of the REFERENCE window (607 of 867 design px):
+   the app inside it is in design pixels (usbDemo.js), so a frame sized by
+   this window's height grew 1.47x on a 2:1 monitor while its contents grew
+   1.69x, and the console crushed its own lines. Never over 90% of a window
+   that is short for its width. */
+@media (min-width:861px){
+  .usb-glow, .usb-frame { height:min(607px, 90lvh, calc((100vw - var(--pad) * 2) * 860 / 1280)); }
 }
 
 /* THE FIGURE'S OWN BOUNDS. A window, at the proportions the real one opens at
@@ -1345,8 +1451,11 @@ pre.sr { white-space:pre; }
      middle, still one strip, no menu. The names keep their size: they are the
      only navigation a phone has now (with the swipe), and 11 px is already the
      floor. Each gets a 44 px tall target through its padding. */
-  .topnav { min-width:0; gap:1.05rem; }
-  .t.topnav-a { padding:.95rem 0 .85rem; letter-spacing:.11em; }
+  /* five words since Photos joined: measured at 390 px, the fourth card's
+     name pushed CONTACT to 4 px from the edge at the old spacing */
+  .topnav { min-width:0; gap:.7rem; }
+  .t.topnav-a { padding:.95rem 0 .85rem; letter-spacing:.08em; }
+  @media (max-width:360px){ .topnav { gap:.4rem; } .t.topnav-a { letter-spacing:.02em; } }
 
   /* ── AND THE CARD FITS THE VISIBLE WINDOW ────────────────────────────
      100lvh is the height with the browser toolbars RETRACTED, so on an iPhone

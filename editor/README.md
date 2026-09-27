@@ -37,7 +37,13 @@ its behind-the-scenes figures take **Replace…**.
 | undo / redo | ⌘Z / ⇧⌘Z (everything, including text and media, until you save) |
 
 **Screen sizes.** Desktop, Tablet (≤860 px) and Phone (≤560 px) are the site's
-own breakpoints. A change made on Desktop carries down to the smaller sizes
+own breakpoints. **Desktop is always 1512 px wide** (the owner's 14" MacBook
+Pro), shown smaller when the pane is narrower: every px the editor writes is a
+DESIGN pixel -- a pixel of that window -- and the site scales it with the
+window above 860 px (`src/styles/designPx.js`), so what is placed here lands
+in the same place, at the same size, on a 27" monitor. Only at exactly 1512
+wide does a pixel dragged on screen store one design pixel, which is why the
+width is fixed. A change made on Desktop carries down to the smaller sizes
 until you change it there. Each field shows where its value comes from:
 a filled dot means set at this size; a hollow dot means set at a larger size;
 no dot means it comes from `site.css`, and the grey placeholder shows what it

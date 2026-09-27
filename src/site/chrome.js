@@ -20,7 +20,7 @@
 // of the way.
 //
 // IT GETS OUT OF THE WAY (2026-09-26). The bar lost its box -- it is a hairline
-// over four names now -- so a long page scrolling up under it would run its
+// over the card names now -- so a long page scrolling up under it would run its
 // words through them. It slides away while the reader scrolls DOWN (they are
 // reading) and comes back the moment they scroll UP (they are looking for
 // something) or reach the top: the pattern every long-form reading site uses.

@@ -60,9 +60,9 @@ A personal portfolio site that is **one document**, printed as a **two-ink riso
 sky** seen through **die-cut apertures**, with **Mew** — a procedurally animated
 3D character — loose on the page as the only unprinted thing on it.
 
-It reads as a **deck of four cards** — home, experience, projects, contact —
-reached from a small nav bar at the top middle -- no box, a hairline over the
-four names, out of the way while scrolling down (the arrow keys and a swipe
+It reads as a **deck of five cards** — home, experience, projects, photos,
+contact — reached from a small nav bar at the top middle -- no box, a hairline
+over the five names, out of the way while scrolling down (the arrow keys and a swipe
 still turn it, unadvertised), with four project sheets hanging off the projects card.
 The deck shape exists so the work survives being skimmed; the sheet it is cut
 from has not changed. **Mew is on Home only**: she leaves through the crossing
@@ -177,6 +177,19 @@ node tools/motion/credits.mjs ../VisualAudialExperience/CREDITS.md   # -> site/m
 `src/site/motionassets.js` and `src/site/motioncredits.js` are **generated — do
 not edit them.** The works' names, and where each is shown, are
 `src/site/motion.js`, which is hand-written.
+
+The photos card's pictures (only when pictures are added or removed). Drop
+them straight off the iPhone -- HEIC is fine -- into `photos-source/reel/`
+(the strip of life) or `photos-source/photography/`, which git ignores:
+
+```bash
+node tools/bake_photos.mjs       # -> src/assets/photos/, src/site/photoassets.js
+```
+
+It strips every picture's metadata (an iPhone writes its GPS position into
+each one), turns it upright, converts P3 to sRGB, and prints the reel's frames
+with the sky's own press. `src/site/photoassets.js` is **generated — do not
+edit it.** The folder is the list: a picture removed there is removed here.
 
 Tab mark and link card (only if the mark, the palette or the pitch changes):
 
@@ -396,6 +409,23 @@ when only the numbers were.
 - **A touch in the viewer is answered once.** iOS follows a tap with a click
   that has no `pointerType`, so a click soon after a touch is ignored; without
   that, a tap paused and its click played again, and a phone never paused.
+- **A px in `site.css` and `edits.css` is a DESIGN pixel** -- a pixel of the
+  owner's 1512 px window. `src/styles/designPx.js` rewrites each one to
+  `calc(n * var(--u))` as the file is served and built (Vite plugin in
+  `vite.config.js`, and the editor's live preview), and `--u` is 1px up to
+  860 wide and the window's width over 1512 above it. So the page is one
+  composition on every desktop; before it, a 27" monitor showed the laptop's
+  words at a third of the size. Hairlines (≤1px), breakpoints and `--u`
+  itself are left alone. A length that must NOT scale needs another unit; a
+  vertical size that must match the laptop is a design px, not a `vh`
+  (the home window and the USB figure had to be moved off `vh` for exactly
+  this). The editor's Desktop frame is therefore fixed at 1512.
+- **FIG. 2's app is zoomed, not rewritten.** Its console places rows at a
+  pixel height from script, which a stylesheet rewrite cannot reach, so
+  `usbDemo.js` sets `zoom` on the shadow host to the design pixel -- and
+  re-cuts the app's CSS for the three things zoom does not reach (a `rem` is
+  the page's root size, media queries ask the window, and its font-size is
+  inherited from the already-scaled figure).
 - **HTML comments never ship.** `vite.config.js` (`buildNotesOut`) strips
   every `<!-- -->` from `index.html` and from the page templates in the BUILD
   only; dev and the editor see the files as written. So no code may depend on

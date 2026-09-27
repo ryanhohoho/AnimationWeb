@@ -380,6 +380,45 @@ export function mountUsbDemo({ scope, world, root = document, settled = null, on
       const mountPoint = root.createElement("div");
       mountPoint.id = "root";   // the app's own stylesheet sizes #root
       shadow.append(style, mountPoint);
+      // THE APP IS DRAWN AT THE SITE'S SCALE. The site's px are design pixels
+      // (styles/designPx.js) and the frame grows with them; the app's own px
+      // did not, so on a 27" monitor its words were laptop-sized in a frame
+      // 1.7x larger. Rewriting its stylesheet the way the site's is was tried
+      // and rejected: its console is a virtual list that places each row at a
+      // pixel height from SCRIPT, so the words grew and the rows did not, and
+      // they overprinted. `zoom` on this one host scales both. The factor is
+      // the design pixel itself, read off the root's font-size (16 design px,
+      // site.css). The pointer it reports is measured with
+      // getBoundingClientRect on both ends, which a zoomed box reports in
+      // screen pixels (standardised zoom: Chrome 128, Firefox 126).
+      //
+      // THINGS ZOOM DOES NOT REACH. Two are in the stylesheet, so it is re-cut
+      // for the factor (the vendored file itself is never touched):
+      //   · a `rem` inside a shadow root is the PAGE's root size, which is in
+      //     design pixels already -- zoomed on top it counted twice (the
+      //     button came out half again too big). Each becomes 16px first.
+      //   · a media query is asked of the WINDOW, so at 2560 the app chose
+      //     its widest layout (96rem, 1536px) while at the reference 1512 it
+      //     did not. Its breakpoints are multiplied by the factor, so it
+      //     picks the layout it picks on the owner's own screen.
+      let k = 0;
+      const scale = () => {
+        const next = parseFloat(getComputedStyle(root.documentElement).fontSize) / 16 || 1;
+        if (next === k) return;
+        k = next;
+        uiHost.style.zoom = String(k);
+        // ...and a third: the app's text INHERITS the figure's font-size,
+        // which is in design pixels too. Handed down unscaled, so the zoom
+        // is the only thing that scales it.
+        uiHost.style.fontSize = "";
+        uiHost.style.fontSize = `${parseFloat(getComputedStyle(uiHost).fontSize) / k}px`;
+        style.textContent = css
+          .replace(/@media[^{]*\{/g, (q) => q.replace(/(\d*\.?\d+)(rem|px)/g, (m, n, unit) => `${(Number(n) * (unit === "rem" ? 16 : 1) * k).toFixed(1)}px`))
+          .replace(/(^|[^\w.@-])(\d*\.?\d+)rem\b/g, (m, pre, n) => `${pre}${Number(n) * 16}px`);
+      };
+      scale();
+      window.addEventListener("resize", scale);
+      scope?.add?.(() => window.removeEventListener("resize", scale));
 
       handle = await mountDemo(mountPoint, {
         recordings: RECORDINGS,

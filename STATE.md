@@ -2251,3 +2251,51 @@ By instruction, after one question round.
 - **A canvas drag no longer starts a text selection** in the page (mousedown's
   default is prevented while not typing).
 - The arithmetic is `editor/shared/scale.js`, pure, checked in sim.test.js.
+
+# 18 · One composition on every screen; the photos card (2026-09-27)
+
+By instruction, after one question round (reference screen: 14" MacBook Pro;
+photos on a card of their own; the reel is a film strip; placement applied for
+the owner to adjust).
+- **The mismatch, measured** on the owner's two screenshots: the home window
+  was a percentage of the screen and sat at the same fraction on both; the
+  words were px and the nudges were px, so on 2560 wide they were a third
+  smaller and drifted inward. Now every px in the site's stylesheets is a
+  design pixel (CLAUDE.md invariants, `src/styles/designPx.js`). Measured
+  after: at 1512x867, 2560x1277, 1920x969 and 1280x720 every horizontal
+  fraction on home, experience and projects is identical to three places;
+  vertical fractions differ with the window's shape, by instruction (the
+  horizontal first).
+- **The home window's height** was 62% of the window and its width 23% of
+  it, so a 2:1 monitor drew it squatter (0.75 against 0.65). On a desktop its
+  top and height are those shares of the reference, in design px.
+- **The home placement** (edits.css, the owner's to adjust in the editor):
+  the column starts at 1/3 of the window, where the nav's hairline starts; the
+  window starts at 2/3, where it ends; the name is set so its width equals the
+  window's (110 px -> 348.1 of 348, measured), so the row reads column 348 |
+  gap 156 | window 348 | margin 156; and the greeting hangs from the window's
+  top edge (a Swiss hanging line), so the name is the first thing on the
+  Z the eye takes. The two near misses it replaced (29.9% against the
+  hairline's 33.3%, 63% against 66.7%) read as accidents.
+- **The USB figure** is 70% of the reference window's height on a desktop
+  (it was 70lvh), and its app is zoomed by the design pixel (CLAUDE.md).
+  Measured after: the app's words sit at the same fractions of the frame at
+  both sizes, to three places.
+- **The photos card** (`pages/deck.js`, `site/photos.js`,
+  `tools/bake_photos.mjs`): card 04, before Contact, 23:30 on the sky. A
+  strip of life across the whole window, printed with the sky's own press
+  (45 and 15 degree screens, 5.2 ruling, the same misregistration, the home
+  inks) until the pointer is on a frame; it drifts as a CSS animation, pauses
+  under the pointer, and can be pulled either way (read once at the grab, one
+  write a frame, a negative delay to hand back without a jump -- measured
+  0 px). The photography hangs in the column paced like a photobook: a pair,
+  one alone to a side (never over 62% of the column), a pair. A pale viewer
+  (the motion viewer's hands: turn, Esc, X, click the paper, swipe) opens and
+  closes out of the picture. Checked headless with stand-ins (removed): drift
+  20 px/s, hover pauses and shows the photograph, a pull does not open, a
+  click and a tap do, arrows page, Esc and the paper close, no errors.
+- **The nav on a phone** was re-spaced for five words (CONTACT reached 4 px
+  from the edge at 390; a narrower step below 360).
+- NOT verified: Safari (no WebKit here) -- in particular FIG. 2's pointer
+  position under `zoom`, which rests on getBoundingClientRect reporting
+  screen pixels inside a zoomed box.

@@ -19,7 +19,7 @@
 // a person can still read it in a diff.
 
 export const BPS = [
-  { key: "base", label: "Desktop", query: null,                   width: 1440 },
+  { key: "base", label: "Desktop", query: null,                   width: 1512 },
   { key: "860",  label: "Tablet",  query: "(max-width:860px)",    width: 768 },
   { key: "560",  label: "Phone",   query: "(max-width:560px)",    width: 390 }
 ];

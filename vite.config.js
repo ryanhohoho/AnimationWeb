@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 import { copyFileSync } from "node:fs";
 import { join } from "node:path";
+import { designPx } from "./src/styles/designPx.js";
 
 // ── THE DEEP LINK PROBLEM, AND THE SMALLEST HONEST FIX ──────────────────────
 // This site has real routes. /projects/closet is a URL somebody can send to
@@ -85,6 +86,19 @@ const buildNotesOut = () => ({
   }
 });
 
+// A px in the site's own stylesheets is a pixel of the owner's 1512 px window
+// (src/styles/designPx.js says why); this is where that is made true, as the
+// file is served and as it is built. `pre`, so it sees the source before Vite's
+// own CSS handling does.
+const designPixels = () => ({
+  name: "design-px",
+  enforce: "pre",
+  transform(code, id) {
+    if (!/\/src\/styles\/(site|edits)\.css(\?|$)/.test(id)) return null;
+    return { code: designPx(code), map: null };
+  }
+});
+
 // normal build for hosting, `--mode single` bundles everything (glb included)
 // into one html file that works over file:// for quick visual checks
 export default defineConfig(({ mode }) => ({
@@ -93,7 +107,7 @@ export default defineConfig(({ mode }) => ({
   // routes and no server, so it keeps the relative base.
   base: mode === "single" ? "./" : "/",
   appType: "spa",
-  plugins: mode === "single" ? [viteSingleFile()] : [buildNotesOut(), spaFallback()],
+  plugins: mode === "single" ? [designPixels(), viteSingleFile()] : [designPixels(), buildNotesOut(), spaFallback()],
   build: {
     assetsInlineLimit: mode === "single" ? 100000000 : 4096,
     chunkSizeWarningLimit: 2000

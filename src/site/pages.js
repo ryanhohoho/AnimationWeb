@@ -16,6 +16,8 @@ import * as rcmpEncryption from "./pages/rcmp-encryption.js";
 import { renderDeckPage } from "./pages/deck.js";
 import { mountCards } from "./cards.js";
 import { mountMedia } from "./media.js";
+import { mountPhotos } from "./photos.js";
+import { REEL, PHOTOGRAPHY } from "./photoassets.js";
 export { afterArrival } from "../utils/arrival.js";
 
 // the three deck cards that are not the summary. The summary ships as markup in
@@ -37,8 +39,10 @@ export function prefetchPage(route) {
 /** Called after the router has committed a page. */
 export function mountPage(route, ctx) {
   const sheet = route.name === "project" && sheetFor(route.project.slug);
-  // the projects card is the only deck page with anything live on it
+  // the projects card has something live on it
   if (route.name === "projects") mountCards(ctx);
+  // ...and the photos card, whose strip can be pulled and whose pictures open
+  if (route.name === "photos") mountPhotos(ctx, { REEL, PHOTOGRAPHY });
   // ...and every project sheet carries figures. ONE call here rather than an
   // identical three-line mount() in each of the three sheet files: mountMedia
   // returns immediately when a page has no <video> in a figure, and it puts its

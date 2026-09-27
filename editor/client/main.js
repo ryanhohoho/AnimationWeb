@@ -49,6 +49,7 @@ const PAGES = [
   { path: "/", key: "home", label: "Home" },
   { path: "/experience", key: "experience", label: "Experience" },
   { path: "/projects", key: "projects", label: "Projects" },
+  { path: "/photos", key: "photos", label: "Photos" },
   { path: "/contact", key: "contact", label: "Contact" },
   ...state.projects.map((p) => ({ path: `/projects/${p.slug}`, key: `project:${p.slug}`, label: p.title, sub: true })),
   { path: "/not-printed", key: "404", label: "404", sub: true }
@@ -91,8 +92,12 @@ function fit() {
   const dev = $("device"), cv = $("canvas");
   const availW = cv.clientWidth - 32, availH = cv.clientHeight - 40;
   const b = BPS.find((x) => x.key === ed.bp);
-  // desktop takes the room there is, but never so little that it stops being desktop
-  const w = ed.bp === "base" ? Math.max(1024, Math.min(1600, availW)) : b.width;
+  // desktop is ALWAYS the owner's own window, 1512 wide, shown smaller when the
+  // pane is narrower. It used to take the room there was (1024-1600), which
+  // was harmless while a px was a px; now a px is 1/1512 of the window
+  // (src/styles/designPx.js), and only at exactly that width does a drag of
+  // one pixel on screen store one pixel of design.
+  const w = b.width;
   const scale = Math.min(1, availW / w);
   dev.dataset.bp = ed.bp;
   dev.style.width = w + "px";

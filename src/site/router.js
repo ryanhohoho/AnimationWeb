@@ -31,15 +31,17 @@ import { renderProject, renderNotFound, renderDeckPage } from "./pages.js";
 
 
 // ── THE DECK ─────────────────────────────────────────────────────────────────
-// Four cards, in reading order, and the order is an argument: who this is, what
-// he has done, what he has made, how to reach him. A hiring manager reads it in
-// that order or reads the first card and leaves, and either is a complete visit.
+// Five cards, in reading order, and the order is an argument: who this is, what
+// he has done, what he has made, what he has seen, how to reach him. A hiring
+// manager reads it in that order or reads the first card and leaves, and
+// either is a complete visit. (Photos joined on 2026-09-27, before Contact:
+// the way to reach him stays the last thing on the deck.)
 //
 // Project sheets are NOT on the deck. They hang off card three, which is why
 // they get a back arrow and the deck cards do not.
-export const DECK = ["home", "experience", "projects", "contact"];
+export const DECK = ["home", "experience", "projects", "photos", "contact"];
 export const PATH = {
-  home: "/", experience: "/experience", projects: "/projects", contact: "/contact"
+  home: "/", experience: "/experience", projects: "/projects", photos: "/photos", contact: "/contact"
 };
 
 // ── AND WHAT TIME IT IS ON EACH ──────────────────────────────────────────────
@@ -63,6 +65,7 @@ export const RAMP = {
   home:       0,             // 19:00  - unchanged from the sheet it came from
   experience: Math.round(HOUR * 1.8),   // ~20:50
   projects:   Math.round(HOUR * 3.75),  // ~22:45
+  photos:     Math.round(HOUR * 4.5),   // ~23:30
   contact:    Math.round(HOUR * 5.25),  // ~00:15
   // a project sheet is still a tall document and still walks its own night
   // down its own length, exactly as it does today
@@ -88,6 +91,7 @@ const DESC = {
   projects: "Three pieces of work — a commissioned provisioning and engraving " +
         "pipeline, a vertical motion-graphics piece rendered live in the browser, " +
         "and a case study of a standardised attendance system.",
+  photos: "Pictures of Ryan Ho's life, and his photography.",
   contact: "How to reach Ryan Ho.",
   404: "Nothing was pulled here."
 };
@@ -162,6 +166,7 @@ export function createRouter({ scope, deck, world, onPage }) {
     if (p === "/") return { name: "home" };
     if (p === "/experience") return { name: "experience" };
     if (p === "/projects") return { name: "projects" };
+    if (p === "/photos") return { name: "photos" };
     if (p === "/contact") return { name: "contact" };
     const m = p.match(/^\/projects\/([a-z0-9-]+)$/i);
     const pr = m && bySlug(m[1]);
