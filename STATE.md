@@ -2316,3 +2316,16 @@ length). Only those three clips, their posters, the contact sheet and the genera
 - `tools/motion/credits.mjs` maps the new CREDITS.md rows (the pigeon clip → tower, NASA's maps → earth).
 - NOT redone: `film.mp4` (the whole film on the page) still carries the old credits/tower/radar for the
   0.1–0.35 s each appears in it; re-render the film to bring it in step.
+
+# 20 · No music; the Earth engraved; roots under the dish (2026-09-27)
+
+By instruction, in the piece first (its HANDOFF.md, round 11), then every work re-baked from fresh sandbox renders
+(clean, montage, flower, sky and the film), so every clip on the page now carries the piece's sound design with no
+music at all (the owner will score it later). `tools/motion/sandbox_takes.js` lost its music too (the flower cuts'
+pads, bells, plucks and choir; the sky take's hum). Clips that were only music are now near silent ("clouds").
+- **earth**: a black-and-white globe engraved on its own surface, fixed dead centre and spinning about its own
+  axes, against photographic star trails. **tower**: a real dug-up root system (Datura, CC BY-SA) hangs under the
+  dish, creeping. The credits list gained the root photo and lost the unused music recordings (CREDITS.md now marks
+  them "no longer in the cut", which `credits.mjs` skips).
+- Because every clip was re-cut from current renders, the other works show the piece as it is now, and `film.mp4`
+  is the current film (same timeline: CUT unchanged).

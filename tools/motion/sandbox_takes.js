@@ -71,31 +71,22 @@ const MONTAGE_TAKES = {
   m_angels: { len: 12.7 },
 };
 
-// ── "A flower.": one cut's own sound, from the flower cue, sized to the take ───────────────────────────────
+// ── "A flower.": one cut's own sound, from the flower cue, sized to the take (its sound only: no music since round 11)
 function flowerPart(k, shots, off) {
   return (a, t0, dur) => {
     const nChain = 4, nFlick = shots.length - nChain - 1;
-    const up12 = [62, 69, 73, 76, 78];            // Dmaj9 an octave up (cues.js CH.Dmaj9 + 12)
     if (k < nChain) {
-      a.pad(up12, t0, dur, { gain: .06, cutoff: 2000, cutoffTo: 6000, attack: Math.min(2, dur * .5), release: .3, voices: 2, verb: .6, out: 'bus' });
       if (k > 0) a.shutter(t0, { gain: .13 });
       // the ticks the film plays under this cut (they multiply as the chain goes on), held at that rate
       let t = .05, gap = .2; while (t < off) { t += gap; gap = Math.max(gap * .86, .03); }
       for (let u = t0 + .05; u < t0 + dur - .1; u += gap) a.tone(u, 2000 + Math.random() * 3000, .03, { type: 'square', gain: .022, pan: Math.random() * 1.2 - .6, verb: .2 });
-      if (k === nChain - 1) { a.bell(74, t0 + .05, { gain: .08, decay: 3, verb: .7 }); a.bell(81, t0 + .35, { gain: .07, decay: 3, verb: .7 }); }
     } else if (k < nChain + nFlick) {
       const i = k - nChain, d = shots[k].dur;
       if (i === 0) a.impact(t0, { gain: 1.1 });
-      a.pad(up12, t0, dur, { gain: .2, cutoff: 7000, cutoffTo: 1600, attack: .01, release: .3, voices: 4, detune: 20, out: 'bus' });
-      a.sub(38, t0, dur, { gain: .3, out: 'bus' });
       if (i === 0 || d > .12) a.kick(t0, { gain: .75 + d, pump: 0 });
       a.hat(t0, { gain: .06 + d * .2, pan: (i % 2 ? .35 : -.35) });
-      a.pluck([50, 57, 61, 64, 66][1 + (i % 4)] + 24 + (i % 8 > 3 ? 12 : 0), t0, { gain: .06, decay: .12 + d, cutoff: 5000, out: 'bus', pan: Math.sin(i) * .6 });
       if (d < .08) a.glitch(t0, d, { density: .5, gain: .07 });
-    } else {
-      a.choir(up12, t0, dur, { gain: .2, attack: .03, release: 1.4 });
-      a.bell(86, t0 + .03, { gain: .06, decay: 4, verb: .9 });
-    }
+    }   // (the last cut, the engraving, was the choir: music, gone in round 11 — it is silent)
   };
 }
 const FLOWER_TAKE = 4;
@@ -115,8 +106,6 @@ function skyPart(a, t0) {
   a.impact(TA, { gain: .45 });
   a.noise(TA, .42, { filter: 'bandpass', freq: 900, freqTo: 3800, q: .8, gain: .3, attack: .02, curve: 'lin' });
   a.noise(TA + .05, .6, { filter: 'lowpass', freq: 400, freqTo: 120, gain: .25, buf: 'brown', attack: .01 });
-  a.sub(29, TA + .12, E - TA - .12, { gain: .3 });
-  a.pad([41, 42, 53], TA + .15, E - TA - .15, { gain: .08, type: 'sawtooth', cutoff: 420, attack: .25, release: .05, voices: 2, detune: 12, out: 'dirt' });
   a.click(TA + MONTAGE.seen, { gain: .25 }); a.impact(TA + MONTAGE.seen, { gain: .35 });
 }
 

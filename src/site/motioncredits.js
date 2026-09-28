@@ -434,6 +434,17 @@ export const CREDITS = [
  },
  {
   "kind": "image",
+  "used": "the devices montage: the roots under the radio telescope — keyed out of the photograph by colour (tools/prep_roots.py → assets/roots/roots.png)",
+  "work": "Datura metel 'Fastuosa' stem base & exposed root system",
+  "author": "Flobbadob, 2020",
+  "licence": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Datura_metel_%27Fastuosa%27_stem_base_%26_exposed_root_system.jpg",
+  "in": [
+   "tower"
+  ]
+ },
+ {
+  "kind": "image",
   "used": "the devices montage: the pigeons the telescope broadcasts — one rock dove, matted frame by frame with BiRefNet, 98 frames of its flight (tools/prep_pigeon.py → assets/pigeon/pigeon_frames.png)",
   "work": "Pigeon take off",
   "author": "Karthik Easvur, 2017",
@@ -1183,56 +1194,6 @@ export const CREDITS = [
  },
  {
   "kind": "sound",
-  "used": "\"we were lonely.\" (the flower's motif on a real piano)",
-  "work": "Piano G (68448)",
-  "author": "pinkyfinger (freesound)",
-  "licence": "CC BY 2.5",
-  "url": "https://commons.wikimedia.org/wiki/File:68448_pinkyfinger_Piano_G.ogg",
-  "in": [
-   "lonely"
-  ]
- },
- {
-  "kind": "sound",
-  "used": "\"watch\" / \"a world.\" / \"and with eyes like mine\" / \"they took my devices\" / \"we were lonely.\" (god's voice, cut off)",
-  "work": "Thomas Tallis, Lamentations of Jeremiah I",
-  "author": "The Tudor Consort",
-  "licence": "CC BY 2.5",
-  "url": "https://commons.wikimedia.org/wiki/File:Thomas_Tallis_Lamentations_I_(The_Tudor_Consort",
-  "in": [
-   "watch",
-   "world",
-   "like",
-   "wings",
-   "credits",
-   "firmament",
-   "tower",
-   "providence",
-   "particles",
-   "chrome",
-   "moire",
-   "topo",
-   "earth",
-   "poster",
-   "pool",
-   "desktop",
-   "angels",
-   "lonely"
-  ]
- },
- {
-  "kind": "sound",
-  "used": "\"we built above his heavens.\" (the choir)",
-  "work": "Palestrina, Sicut lilium inter spinas (\"as a lily among thorns\")",
-  "author": "The Tudor Consort",
-  "licence": "CC BY 3.0",
-  "url": "https://commons.wikimedia.org/wiki/File:The_Tudor_Consort_-_01_-_Palestrina_-_Sicut_lilium_inter_spinas.ogg",
-  "in": [
-   "towers"
-  ]
- },
- {
-  "kind": "sound",
   "used": "\"we end.\" (god's faces laughing: one)",
   "work": "Laugh",
   "author": "Abduhlamidala",
@@ -1306,17 +1267,6 @@ export const CREDITS = [
   "url": "https://commons.wikimedia.org/wiki/File:Light_Rain_Distant_Thunder_July_5th_2016.wav",
   "in": [
    "poppies"
-  ]
- },
- {
-  "kind": "sound",
-  "used": "\"we were lonely.\"",
-  "work": "Church bells evening, parish church Waidring",
-  "author": "Braveheart",
-  "licence": "CC BY-SA 4.0",
-  "url": "https://commons.wikimedia.org/wiki/File:Church_bells_evening,_parish_church_Waidring.wav",
-  "in": [
-   "lonely"
   ]
  }
 ];
