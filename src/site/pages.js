@@ -111,7 +111,7 @@ export function renderNotFound(path) {
         <p class="t dim">${esc(path || "")}</p>
       </div>
       <div class="corner bl">
-        <h1 class="d">nothing<br /><em>was pulled here</em></h1>
+        <h1 data-e="d-cjra" class="d">sorry,<br><em>invalid link.</em></h1>
       </div>
       <div class="corner br">
         <p class="t"><a class="link" href="/" data-route>←&nbsp;back&nbsp;to&nbsp;the&nbsp;sheet</a></p>
