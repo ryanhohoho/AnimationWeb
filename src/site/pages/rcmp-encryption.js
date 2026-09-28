@@ -43,7 +43,7 @@ export function html(p) {
     ["YEAR", "2024 — present"],
     ["ROLE", "IT Technician, then Junior Software Developer"],
     ["ORG", "Royal Canadian Mounted Police"],
-    ["TOOLS", "BitLocker · XTS-AES · PowerShell"]
+    ["TOOLS", "Powershell · Private Encryption Protocol"]
   ].map(([k, v]) => `
         <div><p class="t dim">${esc(k)}</p><p class="t body">${esc(v)}</p></div>`).join("");
 
@@ -53,15 +53,15 @@ export function html(p) {
       <div class="conf-meta">${meta}
       </div>
       ${capture({ id: "rcmp-encryption-1", ratio: "1.7778", alt: "The encryption station." })}`,
-    lead: "The encryption side of the RCMP hardware pipeline whose engraving side is the sheet before this one. Drives are formatted and BitLocker-encrypted unattended, several at a time, and none may be called safe to remove before it is.",
+    lead: "Complete redesign of RCMP private encryption architecture. \nDrives are formatted and encrypted autonomously.",
 
     body: `
       <div class="conf-sec">
         <p class="t dim conf-k">THE WORK</p>
         <ul class="conf-list">
-          <li class="t body">Built the PowerShell tool, now 2,900 lines, that formats and BitLocker-encrypts hot-plugged drives with nobody at the keyboard. It replaced a manual, drive-by-drive process and has provisioned several thousand drives.</li>
-          <li class="t body">Made the tool follow each drive by a stable device identity rather than its drive letter, because Windows hands a released letter to the next drive within seconds, and a tool that trusts letters will call a half-encrypted drive safe to remove.</li>
-          <li class="t body">Wrote the procedure operators run it under, so the station works the same on anyone's shift.</li>
+          <li class="t body">CLI application that reads and writes encrypted drives.</li>
+          <li class="t body">Application follows each drive by a stable device identity rather than its drive letter, because Windows hands a released letter to the next drive within seconds, and a tool that trusts letters will call a half-encrypted drive safe to remove.</li>
+          <li data-e="t-as53" class="t body">Fully documented SOP.</li>
         </ul>
       </div>
 
@@ -73,14 +73,14 @@ export function html(p) {
         </div>
       </div>
 
-      <div class="conf-photos">
+      <div data-e="conf-photos-gww3" class="conf-photos">
         ${capture({ id: "rcmp-encryption-2", ratio: "1.3333", alt: "At the station." })}
         ${capture({ id: "rcmp-encryption-3", ratio: "1.3333", alt: "At the station." })}
       </div>`,
 
     notes: [
-      { k: "STATUS", v: "In daily use. It has provisioned several thousand drives." },
-      { k: "DISCLOSURE", v: "The architecture, its keys and its procedures are confidential, and nothing on this sheet describes them. No asset numbers, serials, volume identifiers, key material or credentials appear here." }
+      { k: "STATUS", v: "Processed over two-thousand devices as of September 7th, 2026." },
+      { k: "DISCLOSURE", v: "The architecture, its keys and its procedures are confidential. Please email me for further information about this project." }
     ]
   });
 }

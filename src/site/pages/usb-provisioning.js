@@ -23,7 +23,7 @@ import { mountUsbDemo } from "../usbDemo.js";
 
 export function html(p) {
   return renderSheet(p, {
-    headline: "USB Provisioning<br /><em>App</em>",
+    headline: "<em>LaserSO&nbsp;</em><em></em>",
     // THE LEAD IS ON PLATE 1, not under the headline. With the hero gone,
     // plate 0 is a title page -- one display line on one screen, which is what
     // the first plate of a two-plate sheet has always been in print. The
@@ -31,23 +31,28 @@ export function html(p) {
     // and prints no paragraph for it.
     lead: "",
     notes: [
-      { k: "DELIVERED", v: "In daily use. The provisioning tool has run several thousand drives." },
-      { k: "THE HARD PART", v: "Not the encryption. Windows recycles drive letters within seconds of a release, so every drive has to be re-resolved by a stable device identity on each poll or the tool will call a half-encrypted drive safe to remove." },
+      { k: "DELIVERED", v: "LaserSO is used daily by the RCMP and has outputted over ten-thousand devices as of September 4th, 2026." },
+      { k: "THE HARD PART", v: "The company uses a proprietary industrial laser engraver with no direct access to G-code compatibility. I reverse-engineered the accepted file format and built LaserSO to output files modified to our required specifications in extreme quantities." },
       // THE DISCLOSURE, ON THE PAGE. Not only in a comment: this cell is where a
       // reader is told, and the page must never carry a real run without it.
       // The subtitle that said it a second time went with FIG. 1.
-      { k: "DISCLOSURE", v: "No asset numbers, serials, volume identifiers, key material or credentials appear anywhere on this sheet. The engraving figure is a real run too, against a batch of sequential synthetic serials generated for it, and the label it engraves carries a stand-in telephone number." }
+      { k: "DISCLOSURE", v: "Serial numbers, IDs, encryption architecture, volume identifiers, key material or credentials are confidential and have not been shared on this site." }
     ],
     // THE ARGUMENT, and now the whole of plate 1's evidence block. FIG. 1 --
     // the recorded provisioning session and the table of timings read off it
     // -- stood here and was removed as the outdated demo; FIG. 2 above is the
     // figure this sheet is about.
     body: `
-    <p class="t body wide lead">Two command-line tools that took the manual step
-      out of an RCMP hardware pipeline. Drives are formatted and
-      BitLocker-encrypted unattended, several at a time; asset numbers are laid
-      onto physical jig coordinates by a generator rather than typed into an
-      engraver pocket by pocket.</p>`,
+    <p data-e="t-hx35" class="t body wide lead">&nbsp;LaserSO stands for Laser Soft Output.<br>What you saw above is the
+      original command-Line interface prototype overlayed by the
+      current
+      production application.&nbsp;<br>LaserSO pulls and erases serial
+     
+      numbers from a generated datapool in our backend. Serial numbers are
+     
+      mapped to physical jig coordinates by a generator based on template
+     
+      geometry.</p>`,
 
     // ── THE FIGURE IS THE HERO, which is what `hero` has always meant on this
     // trim: the figure under the headline. It was on plate 1 for one draft and
@@ -68,7 +73,7 @@ export function html(p) {
          loud: a hole is measured where the document LIVES, and everything
          inside a sticky child moves under it. The plate's one aperture is on
          plate 1, below this, and it does not move. -->
-    <div class="usb-stage" data-usb-stage>
+    <div data-e="usb-stage-tw6h" class="usb-stage" data-usb-stage>
       <div class="usb-pin">
         <div class="usb-glow" data-usb-light aria-hidden="true"></div>
         <!-- data-noswipe: a shadow root retargets its events to this element,
@@ -104,7 +109,7 @@ export function html(p) {
       tool has always had, and the desktop interface built over it. Scrolling
       wipes the terminal away to the left until only the interface is left. It
       plays on its own and cannot be operated.</p>
-    <p class="t dim usb-cap">FIG.&nbsp;2 — THE SAME RUN, TWICE. SCROLL&nbsp;TO&nbsp;CROSS&nbsp;OVER.</p>
+    <p data-e="t-5z65" class="t dim usb-cap">FIG.&nbsp;2 — THE SAME RUN, TWICE. SCROLL&nbsp;TO&nbsp;CROSS&nbsp;OVER.</p>
     `,
 
     // NO HERO. It was a piece of reference artwork standing in for a capture
@@ -112,7 +117,7 @@ export function html(p) {
     // a played transcript and a running interface. A placeholder above them
     // was the least true thing on the page in the most prominent slot.
     figure: capture({ id: "stand-usb-side", ratio: "0.7069", cls: "narrow",
-      alt: "Reference artwork standing in for a capture of the engraver tray." })
+      alt: "Reference artwork standing in for a capture of the engraver tray.", e: "fig-5cc4" })
   });
 }
 

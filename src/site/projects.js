@@ -29,12 +29,12 @@ export const PROJECTS = [
     // closet's slot, which was scrapped on 2026-09-25.
     slug: "motion-graphics",
     n: "01",
-    title: "experimental motion graphics",
+    title: "Digital Motion graphics",
     sub: "a vertical visual-audio piece · rendered live in the browser",
-    kind: "MOTION GRAPHICS · WEBGL + WEB AUDIO",
+    kind: "BLENDER · WEBGL + JAVASCRIPT",
     year: "2026",
     // PLACEHOLDER PROSE, like the other two: the owner rewrites it in the editor
-    line: "A vertical piece for phones, every frame drawn live by its own shader and scored by code — shown here as each of its scenes, and the whole of it.",
+    line: "Work-in-progress.\n\nExperimenting by combining programming and various different mediums to create digital interpretive media.",
     skills: "WEBGL2 · GLSL · RAYMARCHING · POST-EFFECT CHAINS · WEB AUDIO · BLENDER CYCLES · PHOTOGRAMMETRY · OPENCV TRACKING",
     // THE TWO INKS THE PIECE ENGRAVES IN. Its eye and its flower are cut as burin
     // lines in ultramarine with a second ink in crimson laid out of register on
@@ -48,9 +48,9 @@ export const PROJECTS = [
   {
     slug: "usb-provisioning",
     n: "02",
-    title: "glyph auto detection engine",
+    title: "LaserSO",
     sub: "batch engraving + encryption tooling · rcmp",
-    kind: "SYSTEMS TOOLING · COMMISSIONED",
+    kind: "PYTHON · TYPESCRIPT · REACT",
     year: "2025",
     // ONE SENTENCE, WITH THE NUMBER IN IT.
     // This used to be a gate caption -- read while standing in front of one
@@ -58,8 +58,8 @@ export const PROJECTS = [
     // now, and someone is deciding in a few seconds which of three to open, so
     // the job changed: not "what is this worth" but "what is this, and why is it
     // hard". The argument still lives on the sheet it opens.
-    line: "Reverse-engineered a laser cutter's undocumented project format so 10,000 drives could be engraved and encrypted without anyone typing a serial by hand.",
-    skills: "POWERSHELL · BITLOCKER / XTS-AES · WINDOWS STORAGE APIS · PYTHON · HUNGARIAN ASSIGNMENT · OPERATOR SOP",
+    line: "Automatic serial population directly connected to company database. Outputs laser-engraving files for every new company device in British Columbia.",
+    skills: "PYTHON · TYPESCRIPT · REACT · WINDOWS STORAGE APIS · HUNGARIAN ASSIGNMENT",
     inkA: "#16305C",   // deep navy: the sky of this sheet
     ink: "#23262B",    // near-black
     inkName: "NAVY&nbsp;+&nbsp;BLACK",
@@ -73,13 +73,13 @@ export const PROJECTS = [
     // it is one the site already states elsewhere; nothing new is disclosed.
     slug: "rcmp-encryption",
     n: "03",
-    title: "rcmp encryption architecture",
+    title: "RCMP Encryption Architecture",
     sub: "drive encryption at fleet scale · rcmp · confidential",
-    kind: "SECURITY ENGINEERING · CONFIDENTIAL",
+    kind: "PROTECTED B · CONFIDENTIAL · PYTHON",
     year: "2024",
     // PLACEHOLDER PROSE, drafted from the site's own copy: the owner rewrites it
-    line: "The encryption side of an RCMP hardware pipeline: drives formatted and BitLocker-encrypted unattended, several thousand of them. The architecture itself is confidential.",
-    skills: "POWERSHELL · BITLOCKER / XTS-AES · WINDOWS STORAGE APIS · OPERATOR SOP",
+    line: "Modifies private encryption protocol by reading and writing on encrypted drives. CLI for disk inspection and automatic disk detection.",
+    skills: "POWERSHELL · WINDOWS STORAGE APIS · OTHER · OTHER · OTHER",
     // THE USB SHEET'S NAVY, WITH THE DETAIL PRINTED OUT: the same family as
     // the work beside it, and a cool redaction grey as the second ink
     inkA: "#16305C",   // deep navy
@@ -92,9 +92,9 @@ export const PROJECTS = [
     n: "04",
     title: "iclicker",
     sub: "classroom participation · security case study",
-    kind: "SECURITY · CASE STUDY",
+    kind: "DEVTOOLS · JAVASCRIPT",
     year: "2025",
-    line: "A classroom attendance system that asks the device being measured to grade itself, and trusts the answer. Written up as a case study, not a tool.",
+    line: "Work in progress.",
     skills: "REVERSE ENGINEERING · CLIENT-SIDE TRUST · MV3 EXTENSIONS · DISCLOSURE",
     inkA: "#3576C4",   // his blue
     ink: "#4FAEA6",    // his teal

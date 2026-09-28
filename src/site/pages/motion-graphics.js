@@ -78,12 +78,12 @@ export function html() {
   if (total > t + .01) segs.push(`<span class="mg-seg is-black" style="flex-grow:${(total - t).toFixed(3)}"></span>`);
 
   return `
-  <section class="plate mg" id="p0">
+  <section data-e="plate-2jgh" class="plate mg" id="p0">
     <canvas class="mg-ground" aria-hidden="true"></canvas>
     <div class="mg-in">
       <header class="mg-head">
-        <h1 class="mg-h">experimental<br /><em>motion graphics</em></h1>
-        <p class="mg-lead">Short vertical pieces made for phones. Each one is drawn live in the browser by its own shader and scored by code.</p>
+        <h1 data-e="mg-h-7s8e" class="mg-h">experimental<br><em>motion graphics</em></h1>
+        <p data-e="mg-lead-prta" class="mg-lead">Scenes made for mobile viewing experience.</p>
       </header>
 
       <div class="mg-wall mg-top" role="list" aria-label="Featured works" data-list="works">${worksOn("top").map(tile).join("")}
@@ -106,10 +106,10 @@ export function html() {
         <div class="mg-bloom-steps" aria-hidden="true">${flower.map((_, k) => `<i style="--k:${k}"></i>`).join("")}</div>
       </section>
 
-      <section class="mg-bts" aria-labelledby="mg-bts-h">
+      <section data-e="mg-bts-5bho" class="mg-bts" aria-labelledby="mg-bts-h">
         <h2 class="mg-bts-h" id="mg-bts-h">behind the scenes</h2>
-        <p class="mg-body">Placeholder. The process notes go here: the engine, the offline renders, the path-traced undercroft in Blender, the measured camera shake.</p>
-        <p class="mg-body">Placeholder. A second paragraph, for whatever the first did not have room for.</p>
+        <p class="mg-body">Work in progress.</p>
+        <p class="mg-body">Work in progress.</p>
         <div class="mg-bts-figs">
           ${capture({ id: "motion-bts-1", ratio: "1.7778", alt: "Behind the scenes." })}
           ${capture({ id: "motion-bts-2", ratio: "1.7778", alt: "Behind the scenes." })}
@@ -131,7 +131,7 @@ export function html() {
 
       <section class="mg-credits" aria-label="Credits">
         <p class="mg-credits-h">credits</p>
-        <p class="mg-credits-note">Everything not listed was made for the pieces procedurally, in code: the shaders, the score, the typography and the pixel flowers. Faces: Bodoni Moda (Owen Earl), Instrument Serif, JetBrains Mono, Silkscreen, Noto Sans JP, Noto Serif SC and VT323, under the SIL Open Font License 1.1.</p>
+        <p data-e="mg-credits-not-7s2i" class="mg-credits-note">Everything not listed was made for the pieces procedurally in code: shaders, audio, typography and pixel flowers. Faces: Bodoni Moda (Owen Earl), Instrument Serif, JetBrains Mono, Silkscreen, Noto Sans JP, Noto Serif SC and VT323, under the SIL Open Font License 1.1.</p>
         <ul class="mg-credits-list" data-credits></ul>
       </section>
 

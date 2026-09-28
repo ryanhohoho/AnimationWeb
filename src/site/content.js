@@ -37,7 +37,7 @@ export const EXPERIENCE = [
     role: "Junior Software Developer",
     loc: "surrey, BC",
     when: "Oct 2025 — Present",
-    what: "Built RCMP USP, an encrypted read/write tool to become the company standard operating procedure across tens of thousands of units province-wide."
+    what: "Built LaserSO, an encrypted read/write tool to become the company standard operating procedure across tens of thousands of units province-wide."
   },
   {
     org: "Royal Canadian Mounted Police (RCMP)",
@@ -70,9 +70,9 @@ export const EXPERIENCE = [
 // The flag is what makes the row render dashed and italic instead of as a
 // plausible-looking link. Fill in `url` and `shown` and delete it.
 export const SOCIALS = [
-  { label: "Email",    shown: "ryanho499@gmail.com",  url: "mailto:ryanho499@gmail.com" },
+  { label: "Email",    shown: "ryanho333@gmail.com",  url: "mailto:ryanho333@gmail.com" },
   { label: "GitHub",   shown: "github.com/ryanhohoho", url: "https://github.com/ryanhohoho" },
-  { label: "LinkedIn", shown: "linkedin.com/in/…",    url: "https://linkedin.com/in/",  placeholder: true }
+  { label: "LinkedIn", shown: "linkedin.com/in/ryan-ho-a30168251/",    url: "https://linkedin.com/in/",  placeholder: true }
 ];
 
 // ── the card media ──────────────────────────────────────────────────────────

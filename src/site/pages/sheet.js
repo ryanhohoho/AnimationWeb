@@ -83,13 +83,13 @@ export function renderSheet(p, {
   // BUILT WITH is the one hard, skimmable fact in projects.js that the site has
   // never printed anywhere. A colophon is exactly where it belongs.
   const skills = p?.skills
-    ? `\n        <div><p class="t dim">BUILT&nbsp;WITH</p><p class="t body">${esc(p.skills)}</p></div>`
+    ? `\n        <div><p class="t dim">BUILT&nbsp;WITH</p><p data-e="t-9hcc" class="t body">${esc(p.skills)}</p></div>`
     : "";
 
   return `
   <section class="plate sheet" id="p0">
-    <div class="sheet-in">
-      <h1 class="d sheet-h">${headline}</h1>
+    <div data-e="sheet-in-ecsx" class="sheet-in">
+      <h1 data-e="d-zsf3" class="d sheet-h">${headline}</h1>
       ${hero}
       ${lead ? `<p class="t body wide lead">${lead}</p>` : ""}
     </div>
@@ -99,7 +99,7 @@ export function renderSheet(p, {
     <div data-e="sheet-in-ta8h" class="sheet-in">
       ${body}
       ${figure}
-      <div class="cols">
+      <div data-e="cols-bz62" class="cols">
         ${cols}${skills}
       </div>
       <p class="t back-hint"><a class="link" href="/projects" data-route>←&nbsp;back&nbsp;to&nbsp;the&nbsp;work</a></p>

@@ -17,11 +17,8 @@ import { capture } from "../media.js";
 
 export function html(p) {
   return renderSheet(p, {
-    headline: "a mark that<br />anything can make<br /><em>is not attendance</em>",
-    lead: "An industry-standard attendance system, adopted institution-wide, that " +
-      "asks the device being measured to grade itself and trusts the answer. " +
-      "Written up as a case study of what a standardised system rests on when it " +
-      "is deployed at that scale, not as a method.",
+    headline: "iClicker",
+    lead: "Work in progress.",
 
     hero: capture({ id: "stand-iclicker-hero", ratio: "1.7778",
       alt: "Reference artwork standing in for a capture of the client." }),

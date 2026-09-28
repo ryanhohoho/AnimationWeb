@@ -14,6 +14,7 @@
    #doc[data-page="..."] scopes a rule to one page (site/router.js sets it). */
 
 /* @bp base */
+#doc[data-page="contact"] [data-e="socks-45tz"] > li:nth-child(3) > a:nth-child(1) > span:nth-child(2) { color:var(--ink); }
 #doc[data-page="experience"] [data-e="deck-in-bdzo"] { translate:0px -30px; }
 #doc[data-page="home"] [data-e="ap-j04e"] { translate:-80px 44px; }
 #doc[data-page="home"] [data-e="d-d2e9"] { font-size:110px; font-weight:500; letter-spacing:-2.45px; line-height:76.2px; translate:99px -159px; }
@@ -23,6 +24,16 @@
 #doc[data-page="home"] [data-e="t-wxlk"] { font-size:39.49px; line-height:1.85; max-width:none; translate:99px -149px; width:106px; }
 #doc[data-page="home"] [data-e="t-zx0b"] { translate:176px 136px; }
 #doc[data-page="project:iclicker"] [data-e="sheet-in-ta8h"] { display:none; }
+#doc[data-page="project:motion-graphics"] [data-e="mg-bts-5bho"] { display:none; }
+#doc[data-page="project:rcmp-encryption"] [data-e="conf-photos-gww3"] { display:none; }
+#doc[data-page="project:rcmp-encryption"] [data-e="sheet-in-ecsx"] > figure:nth-child(3) { display:none; }
+#doc[data-page="project:usb-provisioning"] [data-e="d-zsf3"] { font-weight:400; letter-spacing:-2.62px; text-transform:none; translate:0px -1px; }
+#doc[data-page="project:usb-provisioning"] [data-e="fig-5cc4"] { display:none; }
+#doc[data-page="project:usb-provisioning"] [data-e="t-5z65"] { display:none; text-transform:none; }
+#doc[data-page="project:usb-provisioning"] [data-e="t-hx35"] { translate:0px -168px; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(1) > a:nth-child(1) > span:nth-child(2) > span:nth-child(1) { text-transform:none; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(2) > a:nth-child(1) > span:nth-child(2) > span:nth-child(1) { text-transform:none; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(3) > a:nth-child(1) > span:nth-child(2) > span:nth-child(1) { text-transform:none; }
 #doc[data-page="projects"] [data-e="deck-in-bdzo"] { translate:0px 10px; }
 
 /* @bp 860 */

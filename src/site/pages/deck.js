@@ -71,7 +71,7 @@ function experience() {
         <p class="t body row-what">${esc(e.what)}</p>
       </li>`).join("");
   return shell("p-experience", "02", "20:50", "EXPERIENCE", "Where I've worked",
-    `<ol class="rows">${rows}\n    </ol>`);
+    `<ol data-e="rows-5k81" class="rows">${rows}\n    </ol>`);
 }
 
 // ── 03 · PROJECTS ───────────────────────────────────────────────────────────
@@ -125,7 +125,7 @@ function projects() {
         </a>
       </li>`;
   }).join("");
-  return shell("p-projects", "03", "22:45", "PROJECTS", "jobs.",
+  return shell("p-projects", "03", "22:45", "PROJECTS", "what i've built.",
     `<ul data-e="cards-0frh" class="cards">${cards}\n    </ul>`);
 }
 
@@ -142,7 +142,7 @@ function photos() {
   const hang = PHOTOGRAPHY.length ? `
     <p class="t dim eye ph-eye" style="--i:4">PHOTOGRAPHY</p>
     ${hangHTML(PHOTOGRAPHY, 5)}` : "";
-  return shell("p-photos", "04", "23:30", "PHOTOS", "What I've seen", `${reel}${hang}`);
+  return shell("p-photos", "04", "23:30", "PHOTOS", "soon.", `${reel}${hang}`);
 }
 
 // ── 05 · CONTACT ────────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ function contact() {
         </a>
       </li>`).join("");
   return shell("p-contact", "05", "00:15", "CONTACT", "",
-    `<ul class="socks">${rows}\n    </ul>
+    `<ul data-e="socks-45tz" class="socks">${rows}\n    </ul>
     <p class="t dim back-hint" style="--i:6"><a class="link" href="/" data-route>← back to the start</a></p>`);
 }
 
