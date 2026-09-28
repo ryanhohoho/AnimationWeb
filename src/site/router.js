@@ -268,7 +268,13 @@ export function createRouter({ scope, deck, world, onPage }) {
     // goes to zero and the print behind it stays in full view, so winding the
     // weather on there is a visible pan of the whole sky. runFade owns the ramp
     // on that path and the weather does not move at all.
-    if (carry) deck.setSky(deck.sky + leftAt, deck.skyRamp + leftAt);
+    //
+    // The plate is in DESIGN pixels now (deck.js, styles/designPx.js), and the
+    // scroll is a real one, so it goes in divided by the design pixel.
+    if (carry) {
+      const d = leftAt / (deck.scale || 1);
+      deck.setSky(deck.sky + d, deck.skyRamp + d);
+    }
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 
     deck.setInk(inkA, ink);

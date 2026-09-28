@@ -24,13 +24,25 @@
 // Rewriting the stylesheet source into calc() by hand: 1800 lines of
 // `calc(11 * var(--u))`, and the next rule written in px would not scale.
 //
+// THE WHOLE WINDOW, NOT ITS WIDTH (2026-09-27, the owner's second answer). The
+// design pixel was the window's width over 1512, so a window wider for its
+// height than his (a 27" monitor's browser is about 2:1, the laptop's 1.74:1)
+// had less of the page's height: the experience card fitted on the laptop and
+// scrolled on the monitor. --u is now the SMALLER of width/1512 and
+// height/867, and every page sheet is a 1512 x 867 stage scaled by it and
+// centred -- so every screen shows exactly the laptop's page, and a wider one
+// a little more paper either side. For that to hold, a vw or a vh has to mean
+// a share of the REFERENCE window too, so those are rewritten as well, to
+// calc(n * var(--vw)) and friends (1vw below the tablet breakpoint, 15.12
+// design px above it) -- except 100 and 50, which mean the real window.
+//
 // Left alone, on purpose:
 //   · anything of 1px or less -- a hairline is a hairline at every size, and a
 //     1.7px line is a blurred one;
 //   · @media / @container / @supports conditions -- a breakpoint is a fact
 //     about the window, not about the design;
-//   · the declaration of --u itself (it is the unit), strings, url() and
-//     comments.
+//   · the declarations of --u, --vw, --vh, --lvh, --svh, --dvh (they are the
+//     units), strings, url() and comments.
 //
 // Used by vite.config.js (site.css and edits.css, as they are served and
 // built) and by the editor's live preview, which injects the same edits
@@ -39,12 +51,18 @@
 export const REF_W = 1512;   // the owner's window, 14" MacBook Pro at its default resolution
 export const REF_H = 867;    // ...and its height inside the browser, measured off his screenshot
 
-const HOLD = /\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|url\([^)]*\)|--u\s*:[^;}]*|@(?:media|container|supports)[^{]*\{/g;
+const HOLD = /\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|url\([^)]*\)|--(?:u|vw|vh|lvh|svh|dvh)\s*:[^;}]*|@(?:media|container|supports)[^{]*\{/g;
 const PX = /(^|[^\w.#-])(-?(?:\d+\.\d+|\d+|\.\d+))px\b/g;
+const VP = /(^|[^\w.#-])(-?(?:\d+\.\d+|\d+|\.\d+))(vw|vh|lvh|svh|dvh)\b/g;
 
 export function designPx(css) {
   let out = "", at = 0;
-  const scale = (s) => s.replace(PX, (m, pre, n) => (Math.abs(+n) <= 1 ? m : `${pre}calc(${n} * var(--u))`));
+  const scale = (s) => s
+    .replace(PX, (m, pre, n) => (Math.abs(+n) <= 1 ? m : `${pre}calc(${n} * var(--u))`))
+    // a share of the WINDOW is a share of the reference window, except the
+    // two that mean the real one: 100 (full bleed, a sticky pin, a sheet
+    // that fills the screen) and 50 (the middle of it)
+    .replace(VP, (m, pre, n, unit) => (Math.abs(+n) === 100 || Math.abs(+n) === 50 ? m : `${pre}calc(${n} * var(--${unit}))`));
   for (const m of css.matchAll(HOLD)) {
     out += scale(css.slice(at, m.index)) + m[0];
     at = m.index + m[0].length;

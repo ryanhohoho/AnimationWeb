@@ -68,6 +68,17 @@ uniform float uF;
 
 uniform vec2  uRes;        // the viewport
 uniform float uScroll;     // how far down the document it is
+// WHERE THE FRAGMENT GRID STARTS, AND HOW MANY OF ITS PIXELS MAKE ONE PIXEL OF
+// PRINT (2026-09-27). Every hole now draws its own sky into a canvas inside its
+// own element (deck.js), one small pass each, so a pass must be able to start
+// anywhere on the plate: uOrigin is the real, CSS-pixel document position the
+// fragment grid's top-left stands on, measured from the left of the page
+// sheet, and uZoom is the design pixel (styles/designPx.js) -- so the plate is
+// laid out in the owner's 1512 px window on every screen, and a 27" monitor
+// shows the same weather in the same holes, only larger. The full-screen pass
+// (the crossing) is the same arithmetic with the window as its grid.
+uniform vec2  uOrigin;
+uniform float uZoom;
 uniform vec2  uPlate;      // the whole document
 // ONE PLATE, AND EVERY SHEET IS A CUT FROM IT.
 // The night used to run 19:00 to 01:00 over whatever height THIS document
@@ -357,7 +368,7 @@ void main() {
   // gl_FragCoord counts up from the bottom; a sheet of paper counts down from
   // the top. Everything below is in the paper's coordinates.
   vec2 vp  = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
-  vec2 doc = vec2(vp.x, vp.y + uScroll);
+  vec2 doc = (vp + uOrigin) / uZoom;
 
   // THE DIE-CUTS. A hole is a rectangle of the document, so a hole stays put on
   // the page while the page scrolls under the window — registration by
@@ -559,7 +570,7 @@ export function createSheetPress(canvas, sheet, frames) {
   }
 
   const U = {};
-  for (const n of ["uDens", "uTex", "uFrames", "uF", "uRes", "uScroll", "uPlate", "uRefH", "uSky", "uSkyRamp", "uBand",
+  for (const n of ["uDens", "uTex", "uFrames", "uF", "uRes", "uScroll", "uOrigin", "uZoom", "uPlate", "uRefH", "uSky", "uSkyRamp", "uBand",
                    "uInkA", "uInkB", "uInkA2", "uInkB2", "uAltHole", "uAltIdn", "uOverlay", "uIdentity", "uRuling", "uHoles", "uHoleCount", "uCross", "uCross2", "uEatOut", "uEatA", "uEatB", "uEatIdn",
                    "uRoundHole", "uHoleFade",
                    "uMask", "uMaskBox", "uMaskUV", "uMaskAmt", "uPaper"]) {
@@ -629,7 +640,13 @@ export function createSheetPress(canvas, sheet, frames) {
    *                 the clear and the draw. Used to paint one small control's
    *                 worth of sky without paying for a second full pass.
    */
-  function draw({ w, h, scrollY, plate, bandPx, inkA, inkB, alt, holes, f, ruling, cross, eat, overlay, sky, skyRamp, mask, holeDX, holeFade, roundHole, scissor }) {
+  /**
+   * @param origin   {x,y} the real document position (CSS px, x from the left of
+   *                 the page sheet) the top-left of the fragment grid stands on.
+   *                 Defaults to {x:0, y:scrollY}, the window over the page.
+   * @param zoom     real px per design px (styles/designPx.js). Default 1.
+   */
+  function draw({ w, h, scrollY, origin, zoom, plate, bandPx, inkA, inkB, alt, holes, f, ruling, cross, eat, overlay, sky, skyRamp, mask, holeDX, holeFade, roundHole, scissor }) {
     if (w < 2 || h < 2) return false;
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w; canvas.height = h;
@@ -652,7 +669,9 @@ export function createSheetPress(canvas, sheet, frames) {
     gl.uniform1i(U.uRoundHole, roundHole === undefined || roundHole === null ? -1 : roundHole);
     gl.uniform1f(U.uHoleFade, holeFade === undefined ? 1 : holeFade);
     gl.uniform2f(U.uRes, w, h);
-    gl.uniform1f(U.uScroll, scrollY);
+    gl.uniform1f(U.uScroll, scrollY || 0);
+    gl.uniform2f(U.uOrigin, origin ? origin.x : 0, origin ? origin.y : (scrollY || 0));
+    gl.uniform1f(U.uZoom, zoom || 1);
     gl.uniform2f(U.uPlate, plate.w, plate.h);
     gl.uniform1f(U.uRefH, REF_H);
     gl.uniform1f(U.uSky, sky || 0);

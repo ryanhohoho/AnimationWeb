@@ -1,6 +1,7 @@
 // main.js — the editor shell: the bar, the frame, the panels, and Save
 
 import { toCss, BPS } from "../shared/editsCss.js";
+import { REF_H } from "../../src/styles/designPx.js";
 import { h, api, toast, modal, contrastOf } from "./util.js";
 import { createFrame } from "./frame.js";
 import { createStore } from "./model.js";
@@ -97,11 +98,19 @@ function fit() {
   // was harmless while a px was a px; now a px is 1/1512 of the window
   // (src/styles/designPx.js), and only at exactly that width does a drag of
   // one pixel on screen store one pixel of design.
+  //
+  // AND DESKTOP IS HIS WINDOW'S HEIGHT TOO (867 inside the browser, REF_H), not
+  // whatever the pane has room for. The fold is where a laptop visitor stops
+  // seeing the page on arrival, and a frame as tall as a 27" pane put it
+  // somewhere else entirely: a composition that fitted here scrolled on the
+  // laptop. So the whole window is shown, scaled to fit both ways. Tablet and
+  // phone keep filling the height; their pages are meant to be scrolled.
   const w = b.width;
-  const scale = Math.min(1, availW / w);
+  const desk = ed.bp === "base";
+  const scale = Math.min(1, availW / w, desk ? availH / REF_H : 1);
   dev.dataset.bp = ed.bp;
   dev.style.width = w + "px";
-  dev.style.height = availH / scale + "px";
+  dev.style.height = (desk ? REF_H : availH / scale) + "px";
   dev.style.transform = scale < 1 ? `scale(${scale})` : "";
   // A scaled frame is centred HERE, not by the grid. A transform leaves the
   // layout box at full width, and a grid item wider than its cell is pushed
@@ -111,7 +120,7 @@ function fit() {
   dev.style.transformOrigin = scale < 1 ? "top left" : "";
   dev.style.justifySelf = scale < 1 ? "start" : "";
   dev.style.marginLeft = scale < 1 ? `${Math.max(0, (availW - w * scale) / 2)}px` : "";
-  dev.dataset.size = `${w} px${scale < 1 ? ` · shown at ${Math.round(scale * 100)}%` : ""}`;
+  dev.dataset.size = `${w}${desk ? ` × ${REF_H}` : ""} px${scale < 1 ? ` · shown at ${Math.round(scale * 100)}%` : ""}`;
 }
 addEventListener("resize", fit);
 

@@ -429,9 +429,19 @@ export function bootMew({ world, deck, scope, enter = false }) {
    */
   function characterPx() {
     const z = cfg.sizing;
-    const w = Math.max(1, world.viewport.w);
+    // measured in DESIGN pixels (styles/designPx.js): the page above the tablet
+    // breakpoint is the owner's 1512 px window scaled to fit, and she is sized
+    // against that page -- a 27" monitor made the page 1.5x and left her at
+    // her laptop size. The factor is read off the root, whose font-size is
+    // 16 design px (1 at and below the tablet breakpoint, where it is 16px).
+    const k = designScale();
+    const w = Math.max(1, world.viewport.w / k);
     const t = Math.min(1, Math.max(0, (w - z.narrowAtPx) / Math.max(1, z.wideAtPx - z.narrowAtPx)));
-    return z.narrowHeightPx + (z.characterHeightPx - z.narrowHeightPx) * t;
+    return (z.narrowHeightPx + (z.characterHeightPx - z.narrowHeightPx) * t) * k;
+  }
+  function designScale() {
+    if (typeof document === "undefined" || typeof getComputedStyle !== "function") return 1;
+    return parseFloat(getComputedStyle(document.documentElement).fontSize) / 16 || 1;
   }
 
   function fitModel() {

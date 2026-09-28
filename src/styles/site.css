@@ -175,10 +175,16 @@ html { scroll-behavior:smooth; }
    WIDTH -- the horizontal first, by instruction -- with the height holding it
    only on a window so wide and short that the width would push it off the
    bottom (640 is the tallest the home composition needs, at 1512 wide). Never
-   under .8: below 1210 px a smaller page is better than type under 9 px. */
-:root { --u:1px; }
+   under .8: below 1210 px a smaller page is better than type under 9 px.
+   ...AND THEN THE WHOLE WINDOW (2026-09-27, by instruction): the smaller of
+   width/1512 and height/867, so a screen of any shape shows exactly the
+   laptop's page, the extra paper going to the sides. designPx.js has the
+   argument; --vw and --vh are the reference window's hundredths. */
+:root { --u:1px; --vw:1vw; --vh:1vh; --lvh:1lvh; --svh:1svh; --dvh:1dvh; }
 @media (min-width:861px) {
-  :root { --u:clamp(.8px, min(100vw / 1512, 100vh / 640), 3px);
+  :root { --u:clamp(.8px, min(100vw / 1512, 100vh / 867), 3px);
+          --vw:calc(15.12 * var(--u));
+          --vh:calc(8.67 * var(--u)); --lvh:var(--vh); --svh:var(--vh); --dvh:var(--vh);
           /* the column's air, 11% of the reference window's 867 px height:
              11vh was a different share of a differently shaped window */
           --deck-top:95px; }
@@ -190,6 +196,20 @@ html { scroll-behavior:smooth; }
      867 -- in design pixels. An edit made in the editor still wins (edits.css
      comes later, at the same specificity). */
   #s0 > .ap.tall { top:121px; height:538px; }
+  /* THE SUMMARY NEVER SCROLLS, by instruction (2026-09-27). It did, by 157
+     design px on every screen: .deck-in is flex:1, a box as tall as the page
+     with four lines at the top of it, and moving that box down in the editor
+     (translate 208) carried its empty foot past the bottom -- a transformed
+     box still counts towards the scroll. Here the column is only as tall as
+     its words, and the sheet clips at the window: whatever is placed on it,
+     the summary is one screen. (clip, not hidden: no scroll container.) */
+  #s0 > .deck-in { flex:none; }
+  #s0 { height:100lvh; overflow:clip; }
+  /* EVERY SHEET IS THE REFERENCE WINDOW'S WIDTH, centred, so a percentage
+     inside one (the home window's --x, a figure's --w) is a share of the
+     laptop's page and lands in the same place against the words on every
+     screen. The paper beyond it is the same paper. */
+  .plate { width:1512px; margin-inline:auto; }
 }
 /* so a rem is a design unit too (a gap of 1.6rem grows with the words) */
 html { font-size:16px; }
@@ -311,6 +331,13 @@ body.pre #doc { opacity:0; animation:doc-rescue 0s linear 4s forwards; }
   position:absolute; left:var(--x); top:var(--y); width:var(--w); height:var(--h);
   z-index:0; pointer-events:none;
 }
+ /* EVERY HOLE PRINTS ITS OWN SKY (deck.js), into this canvas: the element's
+   first child, filling it, under its registration ticks and its ring. It is
+   part of the element, so it scrolls, zooms and turns with it -- the sky can
+   no longer trail behind the hole it is in. Transparent until the press has
+   printed it, which shows the paper, which is what an unprinted hole is. */
+.hole-cv { position:absolute; inset:0; width:100%; height:100%; display:block;
+           pointer-events:none; z-index:0; }
 .ap::before, .ap::after {
   content:""; position:absolute; width:9px; height:9px; pointer-events:none;
   opacity:.85; z-index:1; transition:border-color var(--t2) var(--e);
@@ -434,6 +461,10 @@ pre.sr { white-space:pre; }
   flex:none;
 }
 .deck-hole::before, .deck-hole::after { content:none; }
+/* the lens's sky is clipped to the circle by the same element that draws its
+   ring, so the two cannot disagree by so much as a pixel */
+.deck-hole { overflow:hidden; }
+.deck-hole > .hole-cv { border-radius:50%; }
 
 /* the eyebrow. Small, heavy, spaced -- the annotation register the whole sheet
    is written in, used here to name the section rather than to label a part. */
@@ -524,36 +555,16 @@ pre.sr { white-space:pre; }
 .pcard-media { position:relative; display:block; aspect-ratio:4/3; width:100%;
                --icon:clamp(64px, 26%, 116px); }
 
-/* ── THE PUNCH ─────────────────────────────────────────────────────────────
-   Two mask layers composited with `exclude`, which is A + B - 2AB: the gradient
-   is opaque everywhere, the glyph is opaque where the icon is, and excluding one
-   from the other leaves the picture with the icon's exact shape REMOVED from it.
-   So the sheet -- the paper, the print, the sky -- shows through the card in the
-   shape of that project's own icon. The card is another die-cut.
-
-   The punch is sized in the same `--icon` the aperture span uses and centred the
-   same way, so the CSS hole and the shader hole are one rectangle by
-   construction rather than two numbers somebody has to keep in step. */
+/* ── NO PUNCH ANY MORE (2026-09-27) ──────────────────────────────────────
+   The icon used to be cut out of the picture with a two-layer CSS mask, the
+   sky shown through the cut from the canvas behind the page, and a white plate
+   laid in the cut at rest -- three things from two systems, which never quite
+   agreed and slid apart on a fast scroll. It is ONE element now, .pcard-ap,
+   laid over the picture: its own canvas prints the project's sky, masked to
+   the glyph, and the white glyph below it is the same shape in the same box.
+   The picture is whole underneath, and nothing has to be kept in step. */
 .pcard-cut { position:absolute; inset:0; overflow:hidden; display:block;
              background:var(--paper); }
-@supports (mask-composite:exclude) or (-webkit-mask-composite:xor) {
-  .pcard-cut {
-    -webkit-mask-image:linear-gradient(#000,#000), var(--glyph);
-            mask-image:linear-gradient(#000,#000), var(--glyph);
-    /* `var(--icon) auto` and NOT `var(--icon) var(--icon)`. --icon is a
-       percentage, and a percentage resolves against the box's WIDTH in a
-       horizontal position and against its HEIGHT in a vertical one -- so
-       naming it twice made a 4:3 box punch a 92x69 hole out of a square
-       drawing. `auto` takes the plate's own 1:1 instead. Measured: 92x69
-       before, 92x92 after. */
-    -webkit-mask-size:100% 100%, var(--icon) auto;
-            mask-size:100% 100%, var(--icon) auto;
-    -webkit-mask-position:0 0, center;   mask-position:0 0, center;
-    -webkit-mask-repeat:no-repeat, no-repeat;
-            mask-repeat:no-repeat, no-repeat;
-    -webkit-mask-composite:xor;          mask-composite:exclude;
-  }
-}
 
 /* THE PICTURE IS THE ONLY THING THAT SCALES, and that is not a stylistic
    preference. If the card or the cut carried the transform, the icon's real
@@ -586,17 +597,18 @@ pre.sr { white-space:pre; }
                transform:translate(-50%,-50%);
                pointer-events:none; z-index:2;
                filter:drop-shadow(0 1px 2px rgba(0,0,0,.28)); }
-/* the aperture the deck measures. Empty, unpainted, and exactly coincident with
-   the glyph above it -- the hole, the punch, the white plate and the origin of
-   the crossing are all this one rectangle. */
-/* the aperture the deck measures. Empty, unpainted, and exactly coincident with
-   the glyph above it and with the punch below it -- the hole, the cut, the white
-   plate and the origin of the crossing are all this one square. It takes its
-   height from aspect-ratio for the same reason the mask does: a percentage means
-   two different lengths on two different axes. */
+/* THE ICON'S SKY: the same square as the white glyph, above it, its canvas
+   masked to the glyph (--glyph, the same image) and shown as far as the hover
+   has opened it (--open, written by deck.setMaskHole). It is also the origin
+   of the crossing. Height from aspect-ratio: a percentage means two different
+   lengths on two different axes. */
 .pcard-ap { position:absolute; left:50%; top:50%;
             width:var(--icon); height:auto; aspect-ratio:1;
-            transform:translate(-50%,-50%); pointer-events:none; z-index:0; }
+            transform:translate(-50%,-50%); pointer-events:none; z-index:3; }
+.pcard-ap > .hole-cv {
+  opacity:var(--open, 0);
+  -webkit-mask:var(--glyph) center / contain no-repeat;
+          mask:var(--glyph) center / contain no-repeat; }
 
 .pcard-meta { display:grid; gap:.5rem; align-content:start; padding-top:.2rem; }
 .pcard-title { font-size:19px; font-weight:600; letter-spacing:-.015em;

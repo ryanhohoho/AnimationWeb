@@ -1,9 +1,15 @@
 // cards.js — THE HOVER, AND THE ONE HOLE IT OPENS
 //
-// A project card is a picture with that project's icon cut clean through the
-// middle of it. At rest the cut is filled by a white plate, so the icon reads as
-// a solid white mark. Point at the card and the plate clears, the sheet's own
-// sky shows through the shape underneath, and the picture starts moving.
+// A project card is a picture with that project's icon on it. At rest the icon
+// is a solid white mark. Point at the card and the white clears, the icon
+// fills with that project's own sky, and the picture starts moving.
+//
+// (The icon used to be CUT through the picture, with the sky showing through
+// from a canvas behind the page and the white plate laid in the cut. Since
+// 2026-09-27 it is one element over the picture that prints its own sky, masked
+// to the glyph -- deck.js and site.css say why -- and nothing here changed but
+// these words: the deck still takes one open icon, and still says whether it
+// could.)
 //
 // WHY ONLY ONE AT A TIME, AND WHY THAT IS NOT A COMPROMISE
 // -------------------------------------------------------
