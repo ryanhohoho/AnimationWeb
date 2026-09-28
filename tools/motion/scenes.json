@@ -39,7 +39,7 @@
     { "id": "chrome",      "src": "montage", "from": 47.0,  "to": 55.0 },
     { "id": "moire",       "src": "montage", "from": 55.5,  "to": 63.5 },
     { "id": "topo",        "src": "montage", "from": 64.0,  "to": 72.0 },
-    { "id": "radar",       "src": "montage", "from": 72.5,  "to": 80.5 },
+    { "id": "earth",       "src": "montage", "from": 72.5,  "to": 80.5, "poster": 4.6 },
     { "id": "poster",      "src": "montage", "from": 81.0,  "to": 86.0 },
     { "id": "pool",        "src": "montage", "from": 86.5,  "to": 97.0 },
     { "id": "desktop",     "src": "montage", "from": 97.5,  "to": 101.0 },

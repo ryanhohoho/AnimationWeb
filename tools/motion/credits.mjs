@@ -32,7 +32,7 @@ const md = readFileSync(src, "utf8");
 const FLOWER = Array.from({ length: 21 }, (_, i) => `flower-${String(i + 1).padStart(2, "0")}`);
 const PHOTO_CUTS = ["flower-01", "flower-02", "flower-03", "flower-04", "flower-06", "flower-08",
   "flower-10", "flower-11", "flower-13", "flower-15", "flower-17", "flower-19", "flower-21"];   // the cuts that are the photograph
-const MONTAGE = ["wings", "credits", "firmament", "tower", "providence", "particles", "chrome", "moire", "topo", "radar",
+const MONTAGE = ["wings", "credits", "firmament", "tower", "providence", "particles", "chrome", "moire", "topo", "earth",
   "poster", "pool", "desktop", "angels"];
 
 // [pattern on "used in" (lower case), scene ids]. First match wins.
@@ -42,8 +42,8 @@ const RULES = [
   [/"we live\." \/ \(remembered/, ["factory", "lonely"]],
   [/"and with eyes like mine" \/ "so we made company\."/, ["like", "company", "moire", "angels"]],
   [/"a flower\."|bloom montage/, [...PHOTO_CUTS, "watch", "particles", "poster"]],
-  // the Earth is also the radar's disc and a poster tile; the whale's close-up is a poster tile too
-  [/^"a world\." \(the earth\)/, ["world", "radar", "poster"]],
+  // the Earth is also a poster tile; the whale's close-up is a poster tile too
+  [/^"a world\." \(the earth\)/, ["world", "poster"]],
   [/^"a world\."/, ["world"]],
   [/grew lonely/, ["whale"]],
   [/a tile in the poster/, ["poster"]],
@@ -58,7 +58,8 @@ const RULES = [
   [/^"we end\."/, ["poppies"]],
   [/devices montage: wings/, ["wings", "angels"]],
   [/the sky, tiled|turn in the sky/, ["firmament"]],
-  [/radio telescope/, ["tower"]],
+  [/radio telescope|pigeons the telescope broadcasts/, ["tower"]],
+  [/earth spun out of control/, ["earth"]],
   [/^the angels/, ["angels"]],
   [/^the pool and "my world"/, ["pool", "desktop"]],
   [/^the pool/, ["pool"]],

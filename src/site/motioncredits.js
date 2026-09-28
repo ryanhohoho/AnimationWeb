@@ -49,7 +49,6 @@ export const CREDITS = [
   "url": "https://commons.wikimedia.org/wiki/File:The_Earth_seen_from_Apollo_17.jpg",
   "in": [
    "world",
-   "radar",
    "poster"
   ]
  },
@@ -431,6 +430,50 @@ export const CREDITS = [
   "url": "https://commons.wikimedia.org/wiki/File:Very_large_array_antenna.jpg",
   "in": [
    "tower"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "the devices montage: the pigeons the telescope broadcasts — one rock dove, matted frame by frame with BiRefNet, 98 frames of its flight (tools/prep_pigeon.py → assets/pigeon/pigeon_frames.png)",
+  "work": "Pigeon take off",
+  "author": "Karthik Easvur, 2017",
+  "licence": "CC BY-SA 3.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Pigeon_take_off.webm",
+  "in": [
+   "tower"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "the devices montage: the Earth spun out of control — the day side",
+  "work": "Blue Marble Next Generation, December 2004 (world.200412, 5400×2700)",
+  "author": "NASA Earth Observatory (Reto Stöckli)",
+  "licence": "Public domain",
+  "url": "https://visibleearth.nasa.gov/images/74218",
+  "in": [
+   "earth"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "same — the night side's cities",
+  "work": "Black Marble 2016 (3 km)",
+  "author": "NASA Earth Observatory (Joshua Stevens, Miguel Román)",
+  "licence": "Public domain",
+  "url": "https://visibleearth.nasa.gov/images/144898",
+  "in": [
+   "earth"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "same — the clouds",
+  "work": "cloud_combined_2048",
+  "author": "NASA Goddard (Visible Earth)",
+  "licence": "Public domain",
+  "url": "https://visibleearth.nasa.gov/images/57747",
+  "in": [
+   "earth"
   ]
  },
  {
@@ -1169,7 +1212,7 @@ export const CREDITS = [
    "chrome",
    "moire",
    "topo",
-   "radar",
+   "earth",
    "poster",
    "pool",
    "desktop",

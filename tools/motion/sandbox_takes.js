@@ -64,7 +64,7 @@ const MONTAGE_TAKES = {
   m_chrome: { len: 8 },
   m_moire: { len: 8 },
   m_topo: { len: 8 },
-  m_radar: { len: 8 },
+  m_earth: { len: 8 },
   m_poster: { len: 5 },
   m_pool: { len: 10.5, params: { start: 1.5 } },
   m_desktop: { len: 3.5, params: { start: 0 } },

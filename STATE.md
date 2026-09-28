@@ -2299,3 +2299,20 @@ the owner to adjust).
 - NOT verified: Safari (no WebKit here) -- in particular FIG. 2's pointer
   position under `zoom`, which rests on getBoundingClientRect reporting
   screen pixels inside a zoomed box.
+
+# 19 · Three works re-made in the piece (2026-09-27)
+
+By instruction, in "let me be a flower" itself (its HANDOFF.md, round 10), then re-baked here with
+`--only credits,tower,earth` from a sandbox montage render (scenes.json's offsets unchanged: every take kept its
+length). Only those three clips, their posters, the contact sheet and the generated tables changed.
+- **credits**: god's lament in Chinese on a phone-filmed CRT (neon-green extrusion, scanlines, curved glass,
+  glare), the roll dividing into a rash, ending on the tube switching off.
+- **tower** ("disconnected"): the dish broadcasts rotoscoped pigeons in waves, tracked in numbered boxes; the
+  meters and scribbles are gone; the blue screen's text is new.
+- **earth** (was **radar**; id, clip and CUT entry renamed, name "the world, spun out" — the owner's to change):
+  the Earth on NASA maps tumbling four turns a second, through motion blur, rolling and Harris shutters, a sonic
+  boom and a spiral into the lens. Its poster is 4.6 s in (`"poster"` in scenes.json, new: the middle frame
+  is a torn one); `bake_motion.mjs --only` now takes a comma list.
+- `tools/motion/credits.mjs` maps the new CREDITS.md rows (the pigeon clip → tower, NASA's maps → earth).
+- NOT redone: `film.mp4` (the whole film on the page) still carries the old credits/tower/radar for the
+  0.1–0.35 s each appears in it; re-render the film to bring it in step.

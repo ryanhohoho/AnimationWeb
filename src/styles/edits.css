@@ -14,7 +14,9 @@
    #doc[data-page="..."] scopes a rule to one page (site/router.js sets it). */
 
 /* @bp base */
+#doc[data-page="home"] [data-e="ap-j04e"] { translate:-190px 44px; }
 #doc[data-page="home"] [data-e="d-d2e9"] { font-size:110px; letter-spacing:-2.45px; line-height:76.2px; translate:228px -41px; }
+#doc[data-page="home"] [data-e="deck-in-w257"] { translate:-194px 208px; }
 #doc[data-page="home"] [data-e="t-3e44"] { translate:228px -37px; }
 #doc[data-page="home"] [data-e="t-kxel"] { translate:228px -27px; }
 #doc[data-page="home"] [data-e="t-wxlk"] { translate:228px -31px; }

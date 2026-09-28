@@ -77,8 +77,8 @@ import v35 from "../assets/motion/moire.mp4?url";
 import p35 from "../assets/motion/moire.webp?url";
 import v36 from "../assets/motion/topo.mp4?url";
 import p36 from "../assets/motion/topo.webp?url";
-import v37 from "../assets/motion/radar.mp4?url";
-import p37 from "../assets/motion/radar.webp?url";
+import v37 from "../assets/motion/earth.mp4?url";
+import p37 from "../assets/motion/earth.webp?url";
 import v38 from "../assets/motion/poster.mp4?url";
 import p38 from "../assets/motion/poster.webp?url";
 import v39 from "../assets/motion/pool.mp4?url";
@@ -149,7 +149,7 @@ export const CLIPS = {
   "chrome": { video: v34, poster: p34, dur: 8.000, cell: 2 },
   "moire": { video: v35, poster: p35, dur: 8.000, cell: 22 },
   "topo": { video: v36, poster: p36, dur: 8.000, cell: 11 },
-  "radar": { video: v37, poster: p37, dur: 8.000, cell: 17 },
+  "earth": { video: v37, poster: p37, dur: 8.000, cell: 17 },
   "poster": { video: v38, poster: p38, dur: 5.000, cell: 4 },
   "pool": { video: v39, poster: p39, dur: 10.500, cell: 5 },
   "desktop": { video: v40, poster: p40, dur: 3.500, cell: 30 },

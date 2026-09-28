@@ -37,14 +37,14 @@ export const EXPERIENCE = [
     role: "Junior Software Developer",
     loc: "Burnaby, BC",
     when: "Oct 2025 — Present",
-    what: "Reverse-engineered xTool's undocumented .xcs laser format and wrote a generator that lays serials onto physical jig coordinates, replacing a camera alignment that failed on a 75-pocket fixture for a 10,000-drive rollout."
+    what: "Built an enterprise disk-provisioning workflow that detects active removable disks to automatically format, encrypt, laser-engrave, and validate drives at scale; advanced the tool to become the company standard operating procedure across tens of thousands of units provincewide."
   },
   {
     org: "Royal Canadian Mounted Police",
     role: "Information Technology Technician",
     loc: "Burnaby, BC",
     when: "Oct 2024 — Oct 2025",
-    what: "Built a 2,900-line PowerShell tool that formats and BitLocker-encrypts hot-plugged drives unattended; it replaced a manual per-drive process and has provisioned several thousand."
+    what: "Cut total operational labor by 25+ hours/week by automating legacy Internet Explorer-dependent software and eliminating numerous error-prone manual tasks; documented the reverse-engineered format specifications, decision logs, and versioned SOPs for all projects."
   },
   {
     org: "Free Geek Vancouver",

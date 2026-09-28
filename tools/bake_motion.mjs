@@ -1,6 +1,6 @@
 // bake_motion.mjs — THE MOTION-GRAPHICS PAGE'S VIDEO
 //
-//   node tools/bake_motion.mjs --renders <dir> [--only <id>] [--crf 27] [--dry]
+//   node tools/bake_motion.mjs --renders <dir> [--only <id>[,<id>…]] [--crf 27] [--dry]
 //   node tools/bake_motion.mjs --add <video> --id <id> [--from <s> --to <s>]
 //   node tools/bake_motion.mjs --sheet
 //   node tools/bake_motion.mjs --renders <dir> --card
@@ -55,7 +55,7 @@ const FPS = MAN.fps;
 const args = process.argv.slice(2);
 const arg = (k, d) => (args.includes(k) ? args[args.indexOf(k) + 1] : d);
 const RENDERS = arg("--renders", null);
-const ONLY = arg("--only", null);
+const ONLY = arg("--only", null)?.split(",") ?? null;
 const ADD = arg("--add", null);
 const CRF = Number(arg("--crf", 27));
 const DRY = args.includes("--dry");
@@ -133,12 +133,13 @@ function clip(s) {
   return mp4;
 }
 
-// the poster: the clip's middle frame (the film's: the whale, close), walked
-// down a quality ladder to 70 KB. Cut from the CLIP just written, so a work
+// the poster: the clip's middle frame (the film's: the whale, close), or the
+// second scenes.json names as its "poster" (a work whose middle is a white
+// flash or a torn frame), walked down a quality ladder to 70 KB. Cut from the CLIP just written, so a work
 // from a file and a work from a render get the same treatment.
 function poster(s, mp4) {
   const webp = join(OUT, `${s.id}.webp`);
-  const at = (s.id === "film" ? 38.9 : framesOf(mp4) / FPS / 2).toFixed(3);
+  const at = (s.id === "film" ? 38.9 : s.poster ?? framesOf(mp4) / FPS / 2).toFixed(3);
   for (const q of [80, 72, 64, 56, 48]) {
     run(["-ss", at, "-i", mp4, "-frames:v", "1",
       "-vf", `scale=540:1170:flags=lanczos`, "-c:v", "libwebp", "-q:v", String(q), "-y", webp]);
@@ -272,7 +273,7 @@ if (ADD) {
 
 if (RENDERS) {
   for (const s of MAN.scenes) {
-    if (ONLY && s.id !== ONLY) continue;
+    if (ONLY && !ONLY.includes(s.id)) continue;
     if (DRY) { console.log(s.id, s.src, (s.to - s.from).toFixed(2)); continue; }
     bake(s);
   }
