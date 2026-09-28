@@ -33,18 +33,18 @@ export const PROFILE = {
 // are two different jobs and the promotion is part of what they say.
 export const EXPERIENCE = [
   {
-    org: "Royal Canadian Mounted Police",
+    org: "Royal Canadian Mounted Police (RCMP)",
     role: "Junior Software Developer",
-    loc: "Burnaby, BC",
+    loc: "surrey, BC",
     when: "Oct 2025 — Present",
-    what: "Built an enterprise disk-provisioning workflow that detects active removable disks to automatically format, encrypt, laser-engrave, and validate drives at scale; advanced the tool to become the company standard operating procedure across tens of thousands of units provincewide."
+    what: "Built RCMP USP, an encrypted read/write tool to become the company standard operating procedure across tens of thousands of units province-wide."
   },
   {
-    org: "Royal Canadian Mounted Police",
+    org: "Royal Canadian Mounted Police (RCMP)",
     role: "Information Technology Technician",
-    loc: "Burnaby, BC",
+    loc: "surrey, BC",
     when: "Oct 2024 — Oct 2025",
-    what: "Cut total operational labor by 25+ hours/week by automating legacy Internet Explorer-dependent software and eliminating numerous error-prone manual tasks; documented the reverse-engineered format specifications, decision logs, and versioned SOPs for all projects."
+    what: "Increased total product output by over 100% through the elimination of error-prone manual tasks, and reverse-engineered a proprietary file format to company specifications."
   },
   {
     org: "Free Geek Vancouver",

@@ -33,7 +33,7 @@ const esc = (v) => String(v ?? "")
 function shell(id, node, hour, eyebrow, heading, body) {
   return `<section class="plate deckpage" id="${id}" data-node="${node}">
   <div class="corner tr deck-hour"></div>
-  <div class="deck-in">
+  <div data-e="deck-in-bdzo" class="deck-in">
     <!-- ONE SMALL ROUND CUT, ABOVE EVERYTHING ELSE ON THE CARD.
          Without a hole a card is all paper, and the night walking across the
          deck -- 19:00 on the summary to a quarter past midnight here -- would
@@ -125,7 +125,7 @@ function projects() {
         </a>
       </li>`;
   }).join("");
-  return shell("p-projects", "03", "22:45", "PROJECTS", "What I've built",
+  return shell("p-projects", "03", "22:45", "PROJECTS", "jobs.",
     `<ul data-e="cards-0frh" class="cards">${cards}\n    </ul>`);
 }
 
