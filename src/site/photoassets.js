@@ -3,12 +3,90 @@
 // size the right way up, src is one URL per long edge (640 / 1280 / 2048),
 // and a reel picture also has its print. Add or remove pictures by adding or
 // removing them in photos-source/ and running the tool again.
-
+import i0 from "../assets/photos/photography-img-8726-640.webp?url";
+import i1 from "../assets/photos/photography-img-8726-1280.webp?url";
+import i2 from "../assets/photos/photography-img-8726-2048.webp?url";
+import i3 from "../assets/photos/photography-img-8437-640.webp?url";
+import i4 from "../assets/photos/photography-img-8437-1280.webp?url";
+import i5 from "../assets/photos/photography-img-8437-2048.webp?url";
+import i6 from "../assets/photos/photography-img-8358-640.webp?url";
+import i7 from "../assets/photos/photography-img-8358-1280.webp?url";
+import i8 from "../assets/photos/photography-img-8358-2048.webp?url";
+import i9 from "../assets/photos/photography-img-8225-640.webp?url";
+import i10 from "../assets/photos/photography-img-8225-1280.webp?url";
+import i11 from "../assets/photos/photography-img-8225-2048.webp?url";
+import i12 from "../assets/photos/photography-img-7683-640.webp?url";
+import i13 from "../assets/photos/photography-img-7683-1280.webp?url";
+import i14 from "../assets/photos/photography-img-7683-2048.webp?url";
+import i15 from "../assets/photos/photography-img-7673-640.webp?url";
+import i16 from "../assets/photos/photography-img-7673-1280.webp?url";
+import i17 from "../assets/photos/photography-img-7673-2048.webp?url";
+import i18 from "../assets/photos/photography-img-6799-640.webp?url";
+import i19 from "../assets/photos/photography-img-6799-1280.webp?url";
+import i20 from "../assets/photos/photography-img-6799-2048.webp?url";
+import i21 from "../assets/photos/photography-img-5787-640.webp?url";
+import i22 from "../assets/photos/photography-img-5787-1280.webp?url";
+import i23 from "../assets/photos/photography-img-5787-2048.webp?url";
+import i24 from "../assets/photos/photography-img-5787-2-640.webp?url";
+import i25 from "../assets/photos/photography-img-5787-2-1280.webp?url";
+import i26 from "../assets/photos/photography-img-5787-2-2048.webp?url";
+import i27 from "../assets/photos/photography-img-4478-640.webp?url";
+import i28 from "../assets/photos/photography-img-4478-1280.webp?url";
+import i29 from "../assets/photos/photography-img-4478-2048.webp?url";
+import i30 from "../assets/photos/photography-img-3329-640.webp?url";
+import i31 from "../assets/photos/photography-img-3329-1280.webp?url";
+import i32 from "../assets/photos/photography-img-3329-2048.webp?url";
+import i33 from "../assets/photos/photography-img-3314-640.webp?url";
+import i34 from "../assets/photos/photography-img-3314-1280.webp?url";
+import i35 from "../assets/photos/photography-img-3314-2048.webp?url";
+import i36 from "../assets/photos/photography-img-2698-640.webp?url";
+import i37 from "../assets/photos/photography-img-2698-1280.webp?url";
+import i38 from "../assets/photos/photography-img-2698-2048.webp?url";
+import i39 from "../assets/photos/photography-img-2386-640.webp?url";
+import i40 from "../assets/photos/photography-img-2386-1280.webp?url";
+import i41 from "../assets/photos/photography-img-2386-2048.webp?url";
+import i42 from "../assets/photos/photography-img-2173-640.webp?url";
+import i43 from "../assets/photos/photography-img-2173-1280.webp?url";
+import i44 from "../assets/photos/photography-img-2173-2048.webp?url";
+import i45 from "../assets/photos/photography-img-2165-640.webp?url";
+import i46 from "../assets/photos/photography-img-2165-1280.webp?url";
+import i47 from "../assets/photos/photography-img-2165-2048.webp?url";
+import i48 from "../assets/photos/photography-img-1842-640.webp?url";
+import i49 from "../assets/photos/photography-img-1842-1280.webp?url";
+import i50 from "../assets/photos/photography-img-1842-2048.webp?url";
+import i51 from "../assets/photos/photography-img-9887-640.webp?url";
+import i52 from "../assets/photos/photography-img-9887-1280.webp?url";
+import i53 from "../assets/photos/photography-img-9887-2048.webp?url";
+import i54 from "../assets/photos/photography-img-9795-640.webp?url";
+import i55 from "../assets/photos/photography-img-9795-1280.webp?url";
+import i56 from "../assets/photos/photography-img-9795-2048.webp?url";
+import i57 from "../assets/photos/photography-img-0917-640.webp?url";
+import i58 from "../assets/photos/photography-img-0917-1280.webp?url";
+import i59 from "../assets/photos/photography-img-0917-2048.webp?url";
 
 export const REEL = [
 
 ];
 
 export const PHOTOGRAPHY = [
-
+  { id: "photography-img-8726", w: 1536, h: 2048, src: { 640: i0, 1280: i1, 2048: i2 } },
+  { id: "photography-img-8437", w: 1536, h: 2048, src: { 640: i3, 1280: i4, 2048: i5 } },
+  { id: "photography-img-8358", w: 1536, h: 2048, src: { 640: i6, 1280: i7, 2048: i8 } },
+  { id: "photography-img-8225", w: 1536, h: 2048, src: { 640: i9, 1280: i10, 2048: i11 } },
+  { id: "photography-img-7683", w: 1536, h: 2048, src: { 640: i12, 1280: i13, 2048: i14 } },
+  { id: "photography-img-7673", w: 1536, h: 2048, src: { 640: i15, 1280: i16, 2048: i17 } },
+  { id: "photography-img-6799", w: 1536, h: 2048, src: { 640: i18, 1280: i19, 2048: i20 } },
+  { id: "photography-img-5787", w: 1536, h: 2048, src: { 640: i21, 1280: i22, 2048: i23 } },
+  { id: "photography-img-5787-2", w: 1536, h: 2048, src: { 640: i24, 1280: i25, 2048: i26 } },
+  { id: "photography-img-4478", w: 1536, h: 2048, src: { 640: i27, 1280: i28, 2048: i29 } },
+  { id: "photography-img-3329", w: 1536, h: 2048, src: { 640: i30, 1280: i31, 2048: i32 } },
+  { id: "photography-img-3314", w: 1536, h: 2048, src: { 640: i33, 1280: i34, 2048: i35 } },
+  { id: "photography-img-2698", w: 1536, h: 2048, src: { 640: i36, 1280: i37, 2048: i38 } },
+  { id: "photography-img-2386", w: 1536, h: 2048, src: { 640: i39, 1280: i40, 2048: i41 } },
+  { id: "photography-img-2173", w: 1536, h: 2048, src: { 640: i42, 1280: i43, 2048: i44 } },
+  { id: "photography-img-2165", w: 1536, h: 2048, src: { 640: i45, 1280: i46, 2048: i47 } },
+  { id: "photography-img-1842", w: 1536, h: 2048, src: { 640: i48, 1280: i49, 2048: i50 } },
+  { id: "photography-img-9887", w: 1536, h: 2048, src: { 640: i51, 1280: i52, 2048: i53 } },
+  { id: "photography-img-9795", w: 1536, h: 2048, src: { 640: i54, 1280: i55, 2048: i56 } },
+  { id: "photography-img-0917", w: 1536, h: 2048, src: { 640: i57, 1280: i58, 2048: i59 } }
 ];
