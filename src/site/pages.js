@@ -18,6 +18,7 @@ import { mountCards } from "./cards.js";
 import { mountMedia } from "./media.js";
 import { mountPhotos } from "./photos.js";
 import { REEL, PHOTOGRAPHY } from "./photoassets.js";
+import { Analytics } from "@vercel/analytics/next"
 export { afterArrival } from "../utils/arrival.js";
 
 // the three deck cards that are not the summary. The summary ships as markup in
