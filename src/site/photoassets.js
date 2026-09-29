@@ -3,30 +3,30 @@
 // size the right way up, src is one URL per long edge (640 / 1280 / 2048),
 // and a reel picture also has its print. Add or remove pictures by adding or
 // removing them in photos-source/ and running the tool again.
-import i0 from "../assets/photos/photography-img-8726-640.webp?url";
-import i1 from "../assets/photos/photography-img-8726-1280.webp?url";
-import i2 from "../assets/photos/photography-img-8726-2048.webp?url";
-import i3 from "../assets/photos/photography-img-8437-640.webp?url";
-import i4 from "../assets/photos/photography-img-8437-1280.webp?url";
-import i5 from "../assets/photos/photography-img-8437-2048.webp?url";
-import i6 from "../assets/photos/photography-img-8358-640.webp?url";
-import i7 from "../assets/photos/photography-img-8358-1280.webp?url";
-import i8 from "../assets/photos/photography-img-8358-2048.webp?url";
-import i9 from "../assets/photos/photography-img-8225-640.webp?url";
-import i10 from "../assets/photos/photography-img-8225-1280.webp?url";
-import i11 from "../assets/photos/photography-img-8225-2048.webp?url";
-import i12 from "../assets/photos/photography-img-7683-640.webp?url";
-import i13 from "../assets/photos/photography-img-7683-1280.webp?url";
-import i14 from "../assets/photos/photography-img-7683-2048.webp?url";
-import i15 from "../assets/photos/photography-img-7673-640.webp?url";
-import i16 from "../assets/photos/photography-img-7673-1280.webp?url";
-import i17 from "../assets/photos/photography-img-7673-2048.webp?url";
-import i18 from "../assets/photos/photography-img-6799-640.webp?url";
-import i19 from "../assets/photos/photography-img-6799-1280.webp?url";
-import i20 from "../assets/photos/photography-img-6799-2048.webp?url";
-import i21 from "../assets/photos/photography-img-5787-640.webp?url";
-import i22 from "../assets/photos/photography-img-5787-1280.webp?url";
-import i23 from "../assets/photos/photography-img-5787-2048.webp?url";
+import i0 from "../assets/photos/photography-img-0598-2-640.webp?url";
+import i1 from "../assets/photos/photography-img-0598-2-1280.webp?url";
+import i2 from "../assets/photos/photography-img-0598-2-2048.webp?url";
+import i3 from "../assets/photos/photography-img-8726-640.webp?url";
+import i4 from "../assets/photos/photography-img-8726-1280.webp?url";
+import i5 from "../assets/photos/photography-img-8726-2048.webp?url";
+import i6 from "../assets/photos/photography-img-8437-640.webp?url";
+import i7 from "../assets/photos/photography-img-8437-1280.webp?url";
+import i8 from "../assets/photos/photography-img-8437-2048.webp?url";
+import i9 from "../assets/photos/photography-img-8358-640.webp?url";
+import i10 from "../assets/photos/photography-img-8358-1280.webp?url";
+import i11 from "../assets/photos/photography-img-8358-2048.webp?url";
+import i12 from "../assets/photos/photography-img-8225-640.webp?url";
+import i13 from "../assets/photos/photography-img-8225-1280.webp?url";
+import i14 from "../assets/photos/photography-img-8225-2048.webp?url";
+import i15 from "../assets/photos/photography-img-7683-640.webp?url";
+import i16 from "../assets/photos/photography-img-7683-1280.webp?url";
+import i17 from "../assets/photos/photography-img-7683-2048.webp?url";
+import i18 from "../assets/photos/photography-img-7673-640.webp?url";
+import i19 from "../assets/photos/photography-img-7673-1280.webp?url";
+import i20 from "../assets/photos/photography-img-7673-2048.webp?url";
+import i21 from "../assets/photos/photography-img-6799-640.webp?url";
+import i22 from "../assets/photos/photography-img-6799-1280.webp?url";
+import i23 from "../assets/photos/photography-img-6799-2048.webp?url";
 import i24 from "../assets/photos/photography-img-5787-2-640.webp?url";
 import i25 from "../assets/photos/photography-img-5787-2-1280.webp?url";
 import i26 from "../assets/photos/photography-img-5787-2-2048.webp?url";
@@ -69,14 +69,14 @@ export const REEL = [
 ];
 
 export const PHOTOGRAPHY = [
-  { id: "photography-img-8726", w: 1536, h: 2048, src: { 640: i0, 1280: i1, 2048: i2 } },
-  { id: "photography-img-8437", w: 1536, h: 2048, src: { 640: i3, 1280: i4, 2048: i5 } },
-  { id: "photography-img-8358", w: 1536, h: 2048, src: { 640: i6, 1280: i7, 2048: i8 } },
-  { id: "photography-img-8225", w: 1536, h: 2048, src: { 640: i9, 1280: i10, 2048: i11 } },
-  { id: "photography-img-7683", w: 1536, h: 2048, src: { 640: i12, 1280: i13, 2048: i14 } },
-  { id: "photography-img-7673", w: 1536, h: 2048, src: { 640: i15, 1280: i16, 2048: i17 } },
-  { id: "photography-img-6799", w: 1536, h: 2048, src: { 640: i18, 1280: i19, 2048: i20 } },
-  { id: "photography-img-5787", w: 1536, h: 2048, src: { 640: i21, 1280: i22, 2048: i23 } },
+  { id: "photography-img-0598-2", w: 1536, h: 2048, src: { 640: i0, 1280: i1, 2048: i2 } },
+  { id: "photography-img-8726", w: 1536, h: 2048, src: { 640: i3, 1280: i4, 2048: i5 } },
+  { id: "photography-img-8437", w: 1536, h: 2048, src: { 640: i6, 1280: i7, 2048: i8 } },
+  { id: "photography-img-8358", w: 1536, h: 2048, src: { 640: i9, 1280: i10, 2048: i11 } },
+  { id: "photography-img-8225", w: 1536, h: 2048, src: { 640: i12, 1280: i13, 2048: i14 } },
+  { id: "photography-img-7683", w: 1536, h: 2048, src: { 640: i15, 1280: i16, 2048: i17 } },
+  { id: "photography-img-7673", w: 1536, h: 2048, src: { 640: i18, 1280: i19, 2048: i20 } },
+  { id: "photography-img-6799", w: 1536, h: 2048, src: { 640: i21, 1280: i22, 2048: i23 } },
   { id: "photography-img-5787-2", w: 1536, h: 2048, src: { 640: i24, 1280: i25, 2048: i26 } },
   { id: "photography-img-4478", w: 1536, h: 2048, src: { 640: i27, 1280: i28, 2048: i29 } },
   { id: "photography-img-3329", w: 1536, h: 2048, src: { 640: i30, 1280: i31, 2048: i32 } },
