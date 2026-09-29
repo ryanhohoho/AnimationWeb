@@ -6,24 +6,34 @@ as the only unprinted thing on it.
 
 ![The link card: bone paper with a rectangle cut out of it, and Mew standing in the hole in cerulean.](public/og.png)
 
-Four cards — home, experience, projects, contact — reached from a small bar at
-the top, with the project sheets hanging off the projects card. The deck shape
+Five cards — home, experience, projects, photos, contact — reached from a small
+bar at the top, with the project sheets hanging off the projects card. The deck shape
 exists so the work survives being skimmed; the sheet it is cut from has not
 changed. Mew is on Home, and nowhere else.
 
-One of the four sheets is not on the sheet at all: **experimental motion
-graphics** is a showcase of short vertical works rendered live in the browser --
+One of the four sheets is not on the sheet at all: **digital motion graphics** is a showcase of short vertical works rendered live in the browser --
 a drifting wall of every one of them playing at once from one video, the
 longest first, a flower stepped through 21 techniques as you scroll, and the
 whole film they were cut from as the conclusion. A viewer opens out of any of
 them with the Photos app's gestures. It is dressed in the works' look rather
 than the site's.
 
-Another is locked: **rcmp encryption architecture**, the confidential other
-half of the USB tooling, says what the work was and what the role was, and
-marks the rest "This work is confidential" with a way to ask.
+Another is locked: **Softshield**, the confidential encryption tool (slug
+`rcmp-encryption`), says what the work was and what the role was, and marks the
+rest "This work is confidential" with a way to ask. The other two are **Laser
+Processing** (slug `usb-provisioning`, the engraving pipeline) and **iclicker**.
 
-Vite and Three.js. No framework, no CSS library, no component library. Real
+The **photos** card is a strip of life drifting across the window (printed in
+the sky's two inks until you look at a frame) and the photography, hung like a
+photobook. Pictures come straight off an iPhone through `tools/bake_photos.mjs`,
+which strips every one of its location and camera data.
+
+**Every screen shows the owner's laptop page.** A px in the stylesheets is a
+pixel of his 14" MacBook Pro's 1512 x 867 window; above tablet width every page
+is that window scaled to fit the screen and centred (`src/styles/designPx.js`).
+
+Vite 8 and Three.js, plus Vercel Web Analytics and Speed Insights (injected at
+the top of `src/main.js`; the site is hosted on Vercel). No framework, no CSS library, no component library. Real
 routes via the History API, because Mew is a live WebGL context with physics and
 a brain: a real navigation would kill her and start a new one, so the **sheet**
 changes and the window does not.
@@ -45,9 +55,11 @@ hashed URLs, `public/`, the SPA fallback — for checking the bundle as a bundle
 
 | | |
 |---|---|
-| `src/site/pressgl.js` | **the press.** Paper, print and every hole, in one fragment shader pass. Compiled twice from one template, once per GLSL dialect, and the two agree byte for byte. |
+| `src/site/pressgl.js` | **the press.** Paper, print and the crossing, in one fragment shader. Compiled twice from one template, once per GLSL dialect, and the two agree byte for byte. |
 | `src/site/sky.js` | the same press on the CPU. The reference implementation. |
-| `src/site/deck.js` | the mask: geometry, the crossing, the two draws. |
+| `src/site/deck.js` | the mask: every hole prints its own sky into a canvas inside its element; the full-screen canvas is used only for the crossing. |
+| `src/site/photos.js` | the photos card: the reel, the photography hang, the viewer. Pictures: `tools/bake_photos.mjs` from `photos-source/` (git-ignored). |
+| `src/styles/designPx.js` | the design pixel: every px/vw/vh in the stylesheets rewritten to scale from the 1512 x 867 reference window. |
 | `src/site/router.js` | going through the hole. Page scopes, generation-guarded watchdogs, the swipe. |
 | `src/site/pages/sheet.js` | the two-plate trim the USB and iClicker sheets are cut to. Their page files are only the **words**. |
 | `src/site/pages/motion-graphics.js` | the motion-graphics page: markup here; the works and where each is shown in `motion.js`; the wall's layout (`motionLayout.js`), the tiles' drawing (`motionSheet.js`), the flower (`motionBloom.js`), the viewer (`motionViewer.js`) and the dithered ground (`motionAmbient.js`) fetched only when it opens. Its media: `tools/bake_motion.mjs`, `tools/motion/README.md`. |
@@ -72,10 +84,8 @@ measured and thrown away.
 
 ## Not finished
 
-The project sheets carry **placeholder prose** — the words have not had
-their turn, including the motion-graphics page's process notes and its three
-behind-the-scenes slots. The USB and iClicker card media are placeholders too. Their FIGURES are not placeholders: the USB sheet plays a real
-recorded session and, beside it, the engraving generator's own interface running
-a real recorded batch. The LinkedIn handle in `src/site/content.js` is marked
-`placeholder: true` and renders as visibly unset rather than as a plausible
-guess.
+Some project prose is still being written, including the motion-graphics
+page's process notes and its three behind-the-scenes slots. The Laser
+Processing sheet's figures are real: a recorded command-line session and,
+beside it, the engraving generator's own interface running a recorded batch.
+The photos card's reel (life) has no pictures yet; the photography has twenty.

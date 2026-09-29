@@ -69,7 +69,7 @@ from has not changed. **Mew is on Home only**: she leaves through the crossing
 out of Home, sleeps everywhere else, and comes back by the side entrance on the
 way Home. Every word is set in **Darker Grotesque**.
 
-One project page is not cut to the site's trim: **experimental motion graphics**
+One project page is not cut to the site's trim: **experimental motion graphics** (titled "Digital Motion graphics" on the site since 2026-09-28)
 (`pages/motion-graphics.js`), a showcase of short vertical works -- most cut from
 "let me be a flower" (`../VisualAudialExperience`), with more to come. By
 instruction it wears the works' look, not the site's: a dark ground (a dithered
@@ -78,7 +78,9 @@ The works and where each is shown are data, one line each, in `site/motion.js`.
 **No spec notes on any page** (counts, running times, ratios, frame rates): the
 owner asked for none, and nothing here may say to add them.
 
-Vite + Three.js, no framework, no CSS library. Real routes via the History API,
+Vite 8 (upgraded from 5 on 2026-09-28) + Three.js, no framework, no CSS
+library. Hosted on Vercel; `@vercel/analytics` and `@vercel/speed-insights` are
+injected at the top of `src/main.js`. Real routes via the History API,
 because Mew is a live WebGL context with physics and a brain: a real navigation
 would kill her, so the SHEET changes, not the window.
 
@@ -105,6 +107,7 @@ two are checked against each other on the GPU.
 npm run dev            # localhost:5173 — the owner tests here, in his own browser
 npm run edit           # localhost:5275/editor/ — the visual editor (see below)
 npm test               # 1070 checks: the headless sim + the router harness
+                       # (2026-09-28: 1068 pass -- see Security below)
 npm run test:sim       # just the engine/behaviour suite
 npm run test:router    # just the router + page-swap harness (needs a fake DOM)
 npm run build          # production bundle
@@ -299,8 +302,9 @@ when only the numbers were.
   scissored pass must also run BEFORE the full one, because they share the
   drawing buffer the sheet is displayed from.
 - **Anything pinned to Mew converts with `view.fxPerPx`, not `worldPerPx`.** She
-  is sized for the screen she is on (`characterPx()` in main.js), and an effect
-  using the page's scale keeps the proportions of a character twice as big.
+  is sized for the screen she is on (`characterPx()` in `src/mew.js`, which
+  also multiplies by the design pixel so she grows with the page), and an
+  effect using the page's scale keeps the proportions of a character twice as big.
 - **The sweat's alpha is a CLASSIFIER, not a coverage** (`fx/alphaFlags.js`).
   Antialiasing its edge puts the fringe on `FX_ALPHA` and the pixelate pass rims
   every drop in the hyper beam's hot outline. Hard `discard`, always.
@@ -328,10 +332,26 @@ when only the numbers were.
   `#doc` at the exact moment `commit()` calls `bind()`. `measure()` takes it off
   for the length of the measurement; without that, every aperture and every icon
   is baked 30 px left for the life of the page.
-- **Never round an aperture box.** The lens is a circle INSCRIBED in it, so half
-  a pixel moves its centre and changes its radius under a 1 px ring drawn from
-  the element's own rectangle. `skyBtns` are the exception and must stay
-  rounded: that box is a scissor rect and a `drawImage` source rect.
+- **Every hole prints its own sky, into a canvas inside its element**
+  (`deck.js`, since 2026-09-27). `bind()` gives each `[data-ap]`,
+  `[data-icon-ap]` and `[data-sky]` element a first-child `canvas.hole-cv`;
+  each paint prints that hole's piece of the plate into the top-left of the
+  full-screen canvas's buffer (scissored) and copies it across in the SAME
+  task. So a hole moves, zooms and turns with its element by construction --
+  the old single full-screen canvas trailed a frame behind every scroll. The
+  full-screen `#sheet` is now drawn ONLY during a crossing and hidden at rest
+  (its buffer is scratch for the hole passes). Holes print only while on
+  screen, and never on a scroll (their content depends on their place on the
+  page, not the scroll), except `data-fixed` ones and the crossing.
+- **The plate is in DESIGN pixels.** The press takes `origin` (real px, x from
+  the left of the page sheet) and `zoom` (the design pixel); holes, `sky` and
+  `skyRamp` are design px. Anything handing the deck a real page length
+  divides by `deck.scale` first -- the router's scroll carry does.
+- **A project icon is one element OVER the picture, not a punch through it.**
+  `.pcard-ap`'s canvas is masked to the glyph (`--glyph`) and faded by
+  `--open`, which `deck.setMaskHole` writes; the white glyph below is the same
+  square. Only one icon is open at a time. The lens's sky is clipped by the
+  same element that draws its ring (`.deck-hole { overflow:hidden }`).
 - **A teleport is only free while nobody can see it.** She is drawn above the
   spreading print, so a crossing does not hide one either, and a fade covers
   nothing at all. `recollect` places her only when she is off screen; on screen
@@ -412,14 +432,22 @@ when only the numbers were.
 - **A px in `site.css` and `edits.css` is a DESIGN pixel** -- a pixel of the
   owner's 1512 px window. `src/styles/designPx.js` rewrites each one to
   `calc(n * var(--u))` as the file is served and built (Vite plugin in
-  `vite.config.js`, and the editor's live preview), and `--u` is 1px up to
-  860 wide and the window's width over 1512 above it. So the page is one
-  composition on every desktop; before it, a 27" monitor showed the laptop's
-  words at a third of the size. Hairlines (≤1px), breakpoints and `--u`
-  itself are left alone. A length that must NOT scale needs another unit; a
-  vertical size that must match the laptop is a design px, not a `vh`
-  (the home window and the USB figure had to be moved off `vh` for exactly
-  this). The editor's Desktop frame is therefore fixed at 1512.
+  `vite.config.js`, and the editor's live preview). `--u` is 1px up to 860
+  wide, and above it the SMALLER of width/1512 and height/867 (the laptop's
+  window inside the browser) -- so every desktop shows exactly the laptop's
+  page, scaled to fit, with any spare width as paper at the sides. Every
+  `.plate` is 1512 design px wide and centred (the stage), so a percentage
+  inside one is a share of the laptop's page. `vw`/`vh`/`lvh`/`svh`/`dvh` are
+  rewritten too (to `calc(n * var(--vw))` etc: 1vw below 860, 15.12 design px
+  above) EXCEPT 100 and 50, which keep meaning the real window (full bleed,
+  sticky pins, centring). Hairlines (≤1px), breakpoints and the unit
+  declarations are left alone. The editor's Desktop frame is therefore fixed
+  at 1512 x 867 (`REF_W`/`REF_H` in designPx.js), scaled to fit the pane.
+- **Home never scrolls on a desktop.** `#s0` is `height:100lvh; overflow:clip`
+  and its `.deck-in` is `flex:none`: a moved box still counts towards the
+  scroll, and moving the tall flex:1 column in the editor made Home scroll by
+  157 design px. Something placed below the laptop's fold is clipped, and the
+  editor's 867-tall frame shows exactly where.
 - **FIG. 2's app is zoomed, not rewritten.** Its console places rows at a
   pixel height from script, which a stylesheet rewrite cannot reach, so
   `usbDemo.js` sets `zoom` on the shadow host to the design pixel -- and
@@ -454,7 +482,15 @@ FIG. 1 — the played PowerShell transcript and its timing table — was removed
 as the outdated demo; FIG. 2 runs sequential synthetic serials. The page
 carries a DISCLOSURE block saying what is not on it, and the redaction check in
 `test/sim.test.js` still holds any device identifier to the four stand-ins
-(`#1234567` …). If you edit that page, keep both true. If you are ever asked to
+(`#1234567` …). If you edit that page, keep both true.
+
+**OPEN, 2026-09-28:** the owner reworded the page (now titled "Laser
+Processing") in commit `87d737d`. Its DISCLOSURE note no longer contains the
+two sentences the check looks for ("No asset numbers, serials, volume
+identifiers, key material or credentials" and "sequential synthetic serials"),
+so `npm run test:sim` reports 1068/1070. The stand-in check itself still
+passes. Resolving it is the owner's call: restore the sentences on the page,
+or authorise changing the test. Do not edit either unasked. If you are ever asked to
 include real capture data, censor it in a copy of the file rather than reading
 the original into context.
 
