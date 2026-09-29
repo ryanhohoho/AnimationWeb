@@ -31,7 +31,8 @@ import * as M from "./media.js";
 const ROOT = process.cwd();
 const R = (p) => join(ROOT, p);
 const MEDIA = "src/assets/media";
-const STAGE = R("node_modules/.editor-staging");
+// (ED_STAGE lets a second editor run beside the first without emptying its uploads)
+const STAGE = R(process.env.ED_STAGE || "node_modules/.editor-staging");
 const EDITS = "src/styles/edits.css";
 
 const read = (f) => readFileSync(R(f), "utf8");
@@ -119,31 +120,43 @@ function labelFor(file, ast, pos) {
   return parts.join(" › ");
 }
 
+/** the line a character offset is on, 1-based, for telling two matches apart */
+const lineOf = (code, at) => code.slice(0, at).split("\n").length;
+
 function resolveData(page, target, nth, same) {
-  const want = S.norm(target);
+  const want = S.canon(target);
   const hits = [];
   for (const file of filesFor(page)) {
     if (!file.endsWith(".js") || !existsSync(R(file))) continue;
     const code = read(file);
     const ast = S.parse(code);
-    for (const c of S.stringNodes(ast)) {
-      if (S.norm(c.value) === want) hits.push({ file, code, ast, c });
+    for (const c of S.stringNodes(ast, { content: true })) {
+      if (S.canon(c.value) === want) hits.push({ file, code, ast, c });
     }
   }
-  let pick = null;
-  if (hits.length === 1) pick = hits[0];
-  else if (hits.length > 1 && hits.length === same) pick = hits[nth];
-  if (!pick) {
-    return { ok: false, reason: hits.length
-      ? `This text appears ${hits.length} times in the source and ${same} times on the page, so the editor cannot tell which one this is.`
-      : "This text is assembled by code rather than written as one string, so it cannot be edited here." };
+  const info = (h, extra = {}) => ({
+    ok: true, kind: "data", file: h.file, start: h.c.start, end: h.c.end, orig: h.c.value,
+    // a string with markup OR an entity in it is inserted as markup somewhere
+    // (a plain one goes through esc()), so it is written back as markup
+    form: /<[a-z]|&[a-z#0-9]+;/i.test(h.c.value) ? "html" : "text",
+    label: labelFor(h.file, h.ast, h.c.start),
+    line: lineOf(h.code, h.c.start),
+    reusedOnPage: 1, ...extra
+  });
+  if (hits.length === 1) return info(hits[0], { reusedOnPage: same > 1 ? same : 1 });
+  // the same words written twice in the source and drawn twice on the page
+  // (the two RCMP rows): told apart by the order the page draws them in
+  if (hits.length > 1 && hits.length === same && nth >= 0 && nth < hits.length) return info(hits[nth]);
+  if (!hits.length) {
+    return { ok: false, reason: "These words are put together by code (or come from a template with parts that change), so there is no single string in the source to change. Edit the pieces they are made from instead." };
   }
-  const { file, ast, c } = pick;
+  // The counts disagree. Guessing would write into a string that may not be
+  // the one on screen, so the person is asked -- with each candidate's place
+  // in the source and the line it is on -- instead of being told no.
   return {
-    ok: true, kind: "data", file, start: c.start, end: c.end, orig: c.value,
-    form: /<[a-z]/i.test(c.value) ? "html" : "text",
-    label: labelFor(file, ast, c.start),
-    reusedOnPage: hits.length === 1 && same > 1 ? same : 1
+    ok: false, ambiguous: true,
+    reason: `These words are written ${hits.length} times in the source and drawn ${same} time${same === 1 ? "" : "s"} on this page, so the editor cannot tell which one this is. Double-click to choose.`,
+    choices: hits.map((h) => info(h))
   };
 }
 
@@ -154,10 +167,11 @@ function resolveText({ page, esrc, count, html, nth, same }) {
     const el = elementAt(code, off, { js: file.endsWith(".js") });
     if (el) {
       const inner = code.slice(el.openEnd, el.closeStart);
-      if (!inner.includes("${") && S.norm(inner) === S.norm(html)) {
+      if (!inner.includes("${") && S.canon(inner) === S.canon(html)) {
         return {
           ok: true, kind: "static", file, start: el.openEnd, end: el.closeStart, orig: inner,
           form: "html", label: `${basename(file)} › <${el.tag}>`,
+          line: lineOf(code, el.openEnd),
           sharedBy: sharedBy(file, off), repeated: count
         };
       }
@@ -301,8 +315,12 @@ function plan(body) {
           const { code } = src(op.file);
           needSeen.add(op.file);
           if (code.slice(op.start, op.end) !== op.orig) throw new Error(`${op.file} changed under this text`);
-          const v = op.file.endsWith(".js") ? escTpl(op.value) : op.value;
-          batch.add(op.file, op.start, op.end, wrapLike(op.orig, v));
+          const js = op.file.endsWith(".js");
+          // only the words changed: patch them in and leave every tag as written
+          const merged = S.mergeInner(op.orig, op.value);
+          if (merged !== null) { batch.add(op.file, op.start, op.end, js ? escTpl(merged) : merged); break; }
+          const v = S.tidyAttrs(op.value);
+          batch.add(op.file, op.start, op.end, wrapLike(op.orig, js ? escTpl(v) : v));
           break;
         }
         case "attr": {

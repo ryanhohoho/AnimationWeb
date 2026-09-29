@@ -831,49 +831,85 @@ pre.sr { white-space:pre; }
 .conf-photos { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap:1.4rem; }
 .sheet-in .conf-photos .fig { width:100%; }
 
-/* ── THE PHOTOS CARD (pages/deck.js, site/photos.js) ──────────────────────
-   The strip runs past the column to both edges of the window, like film laid
-   across a desk; the card clips it sideways (clip, not hidden: nothing here
-   may become a scroll container). Each frame is its picture's own shape at
-   one height, the PRINT until you look at it, the photograph while you do.
-   Frames are spaced by a margin, not a flex gap, so half the track is exactly
-   one copy and its spacing -- the length the drift moves before it starts
-   again, with no half-gap jump at the seam. */
+/* ── THE PHOTOS CARD (pages/deck.js, site/photos.js, site/photolayout.js) ────
+   The card body is as wide as the SHEET, not the column: the photography is a
+   justified block in the middle of it (960 design px, the deck's own column) and
+   the life pictures hang in the paper either side, in the margins the other
+   cards leave empty. Nothing on it is measured: a block is an aspect-ratio and
+   a grid of fr, a picture is its own aspect-ratio, so nothing moves when a
+   picture arrives. `clip`, not `hidden`: nothing here may become a scroll
+   container. */
 #p-photos { overflow-x:clip; }
-.reel { width:100vw; margin:1rem 0 0 calc(50% - 50vw); height:240px; overflow:hidden;
-        touch-action:pan-y; cursor:grab; user-select:none; -webkit-user-select:none; }
-.reel.is-held { cursor:grabbing; }
-.reel-track { display:flex; width:max-content; height:100%;
-              animation:reel-drift var(--reel-t, 60s) linear infinite; will-change:transform; }
-@keyframes reel-drift { to { transform:translate3d(-50%, 0, 0); } }
-@media (hover:hover) { .reel:hover .reel-track { animation-play-state:paused; } }
-.reel-f { position:relative; flex:none; height:100%; aspect-ratio:var(--a); margin:0 6px 0 0;
-          padding:0; border:0; background:var(--paper); cursor:inherit; }
-.reel-f img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
-              pointer-events:none; -webkit-user-drag:none; }
-.reel-photo { opacity:0; transition:opacity var(--t2) var(--e); }
-@media (hover:hover) { .reel-f:hover .reel-photo { opacity:1; } }
-.reel-f:focus-visible { outline:1px solid var(--blue); outline-offset:3px; }
-.reel-f:focus-visible .reel-photo { opacity:1; }
-@media (prefers-reduced-motion:reduce) {
-  .reel { overflow-x:auto; }
-  .reel-track { animation:none; }
-}
+.ph-defs { position:absolute; width:0; height:0; overflow:hidden; }
+.ph { width:1512px; margin:1.4rem 0 0 calc(50% - 756px); }
+.ph-spread { display:grid; grid-template-columns:276px 960px 276px; }
+.ph-spread + .ph-spread { margin-top:14px; }          /* the gutter, between spreads too */
+.ph-mos { display:grid; gap:14px; align-content:start; }
 
-/* the photography: rows of one or two, one height per row (site/photos.js
-   works the rows out; here a width is a flex share and a height is the
-   picture's own aspect, so nothing is measured and nothing shifts) */
-.t.dim.ph-eye { margin-top:3.2rem; }
-/* more paper between rows than between the two pictures of a pair: a pair
-   reads as a spread, and the next row as a turn of the page */
-.hang { width:100%; display:grid; gap:72px; }
-.hang-row { display:flex; gap:24px; }
-.hang-row.is-one { width:var(--w); }
-.hang-row.is-r { margin-left:auto; }
-.hang-f { flex:var(--a) 1 0%; aspect-ratio:var(--a); padding:0; border:0; overflow:hidden;
-          background:color-mix(in srgb, var(--n4) 14%, var(--paper)); cursor:zoom-in; }
-.hang-f img { width:100%; height:100%; object-fit:cover; display:block; }
-.hang-f:focus-visible { outline:1px solid var(--blue); outline-offset:3px; }
+/* THE BLOCK. Each block is an exact rectangle the column wide (its height is
+   its aspect-ratio, worked out from the pictures), split into cells by fr, so
+   every row and every feature ends on the same two edges and the gutter is one
+   width everywhere. Pictures are cropped by nothing but rounding. */
+.ph-blk { display:grid; gap:14px; width:100%; aspect-ratio:var(--ar); }
+.ph-f { min-width:0; min-height:0; padding:0; border:0; overflow:hidden; cursor:zoom-in;
+        background:color-mix(in srgb, var(--n4) 14%, var(--paper)); }
+.ph-f img { width:100%; height:100%; object-fit:cover; display:block; }
+.ph-f:focus-visible, .lf:focus-visible { outline:1px solid var(--blue); outline-offset:3px; }
+
+/* THE LIFE. Two columns a side, hung against the block, the inner one dropped
+   so the two never line up like a ruler; their pictures are spread down the
+   height of the spread they flank, whatever their number. */
+.ph-roll { position:relative; z-index:2; display:flex; gap:14px; align-self:stretch; padding:8px 0; }
+.ph-roll.is-l { justify-content:flex-end; padding-right:30px; }
+.ph-roll.is-r { justify-content:flex-start; padding-left:30px; }
+.ph-col { display:flex; flex-direction:column; justify-content:space-around; gap:18px; width:112px; }
+.ph-roll.is-l .ph-col { align-items:flex-end; }
+.ph-roll.is-r .ph-col { align-items:flex-start; }
+.ph-roll.is-l .ph-col:last-child, .ph-roll.is-r .ph-col:first-child { padding-top:52px; }
+
+/* A snapshot is PRINTED until you look at it: the sky's two inks over the
+   picture's own light and dark (site/photos.js, printFilter), a fine screen on
+   top; then it is the photograph. Two images, one file: the print is the same
+   picture through a colour map, so nothing extra is downloaded or baked. */
+.lf { position:relative; flex:none; width:calc(var(--w) * var(--u)); aspect-ratio:var(--a);
+      padding:0; border:0; background:var(--paper); cursor:zoom-in; z-index:0;
+      transition:transform .4s var(--e); }
+.lf img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+.lf-print { filter:url(#ph-print); }
+.lf::after { content:""; position:absolute; inset:0; background:var(--ph-dots) 0 0 / 4px 4px;
+             pointer-events:none; transition:opacity var(--t2) var(--e); }
+.lf-photo { opacity:0; transition:opacity var(--t2) var(--e); }
+.lf.lit .lf-photo, .lf:focus-visible .lf-photo { opacity:1; }
+.lf.lit::after, .lf:focus-visible::after { opacity:0; }
+@media (hover:hover) {
+  .lf:hover { z-index:3; transform:scale(1.55); }
+  .lf:hover .lf-photo { opacity:1; }
+  .lf:hover::after { opacity:0; }
+}
+@media (prefers-reduced-motion:reduce) { .lf, .lf:hover { transform:none; } }
+
+/* NO MARGINS ON A TABLET OR A PHONE: the block is the width of the screen and
+   each spread's life pictures follow it as a justified strip -- a flex line of
+   pictures that each grow by their own aspect, so a line ends flush without any
+   of them being cropped, and the last line is left short by the filler. */
+@media (max-width:860px){
+  .ph { width:100%; margin:1.2rem 0 0; }
+  /* the spread is ONE flex line-breaker: the block takes a whole line, and
+     both margins' pictures (their boxes are dissolved) flow after it as a
+     single justified strip */
+  .ph-spread { display:flex; flex-wrap:wrap; gap:6px; }
+  .ph-spread + .ph-spread { margin-top:20px; }
+  .ph-mos { order:0; flex:0 0 100%; gap:10px; margin-bottom:6px; }
+  .ph-blk { gap:10px; }
+  .ph-roll, .ph-col { display:contents; }
+  .ph-spread::after { content:""; order:2; flex-grow:1000000; }
+  .lf { order:1; --h:88px; width:auto; flex:calc(var(--a) * 100) 1 calc(var(--a) * var(--h)); }
+  .lf:hover { transform:none; }
+}
+@media (max-width:560px){
+  .ph-blk, .ph-mos { gap:8px; }
+  .lf { --h:72px; }
+}
 
 /* the viewer: one picture on the paper (site/photos.js, makeViewer) */
 .phv { position:fixed; inset:0; z-index:60; touch-action:none; overscroll-behavior:contain; }
@@ -893,13 +929,8 @@ pre.sr { white-space:pre; }
 .phv-side[data-step="1"] { right:10px; }
 .phv-side:disabled { display:none; }
 
-/* a phone: a shorter strip, the photography one picture to a row at full
-   width, and the viewer edge to edge with no X or arrows (a swipe does both) */
+/* a phone: the viewer edge to edge with no X or arrows (a swipe does both) */
 @media (max-width:560px){
-  .reel { height:160px; }
-  .hang { gap:40px; }
-  .hang-row { gap:14px; }
-  .hang-row, .hang-row.is-one { display:grid; width:100%; margin:0; }
   .phv-side, .phv-close { display:none; }
 }
 
@@ -1517,6 +1548,32 @@ pre.sr { white-space:pre; }
      employer, and all three rows read the same way.
      `.row-loc` is already here for the same reason, one line further down. */
   .row-role { width:100%; }
+}
+
+/* ── HOME ON A PHONE ─────────────────────────────────────────────────────
+   The laptop's page kept, not shrunk: the words on the left, the tall window
+   on the right, the name hanging from the window's top edge and the last line
+   of the bio sitting on its bottom edge. On a laptop that is done with
+   translates, which a phone cannot use -- a translate is a number for ONE
+   width, and phones are 320 to 430 -- so here it is layout: a two-column grid
+   whose row is as tall as the window, and a text column stretched to that row
+   with the bio pushed to its foot (margin-top:auto). Every phone therefore
+   gets the same alignment without a number in it.
+
+   The window's right edge is the nav rule's right edge and the words start at
+   its left edge (both 28 px on a 390 phone, --pad + 10), the way the window on
+   a laptop starts where the rule ends. The whole group is centred in the card,
+   because a laptop's is: 165 px of paper above it, 164 below. The window's shape
+   is the aspect-ratio, not a height, so it is the same shape at every width.
+
+   Type sizes and the reset of the laptop's translates are in edits.css (phone
+   section), where the editor can move them. */
+@media (max-width:560px){
+  #s0 { display:grid; grid-template-columns:minmax(0,1fr) 46%; column-gap:20px;
+        align-content:center; padding:48px 28px 20px; }
+  #s0 > .deck-in { grid-area:1 / 1; padding-top:0; align-self:stretch; }
+  #s0 > .ap.tall { grid-area:1 / 2; aspect-ratio:2 / 5; }
+  #s0 .name + .bio { margin-top:auto; }
 }
 
 /* Mew is not on the project sheets: asleep, her canvas is hidden (mew.js) */

@@ -29,8 +29,9 @@ its behind-the-scenes figures take **Replace…**.
 | reorder | drag rows in **Layers**, or "earlier / later" in the inspector |
 | replace a picture or clip | select it → **Replace…** → pick a file in Finder |
 | set what stays in frame | click the preview in the inspector (the focal point) |
-| add something | **Insert after ▾**: a paragraph, heading, label, picture or clip, or a hole |
-| copy / remove | ⌘D / ⌫ (⌫ on several asks once for all of them). Delete also offers "hide on this page only" |
+| add something | **Insert after ▾**: a paragraph, heading, label, picture or clip, or a hole. Its **Only on Phone** box (on by default when Tablet or Phone is the size being edited) makes it a phone-only element |
+| copy / remove | ⌘D / ⌫ (⌫ on several asks once for all of them). Delete also offers "hide on this screen size only" |
+| show or hide on a device | **Show on** in the inspector: Desktop, Tablet and Phone are three separate switches (see below) |
 | paper and ink colours | click empty space, so that nothing is selected: the inspector shows the page's colours |
 | FIG. 2's backlight colours | on the USB sheet, with nothing selected: six colours and two presets (Apple Intelligence, Vivid). The light is shown in full while the panel is open, because on the page it follows the reader's scroll |
 | try the page as a visitor | tick **Preview** |
@@ -50,6 +51,8 @@ until you change it there. Each field shows where its value comes from:
 a filled dot means set at this size; a hollow dot means set at a larger size;
 no dot means it comes from `site.css`, and the grey placeholder shows what it
 currently works out to.
+
+**Different words for the phone (or the laptop).** Every element is in the markup once, so an element written for one screen is shown on that screen and hidden on the others. **Show on** has a switch for each of Desktop, Tablet and Phone, and they do not cascade into each other: hide a paragraph on Desktop and Tablet and it is still there on the phone. Insert the phone's paragraph with **Only on Phone** ticked, write it, then select the laptop's paragraph and switch Phone off. (This used to be one "hide at this size and smaller" box, which hid the phone's words on the phone as well.) Each switch is written as a plain `display:none` under exactly that device's width range, in the `@hide` sections at the foot of `edits.css`.
 
 **Scope.** "This element only" is the default. If the element has classes, the
 inspector also offers every element like it on this page, or on every page.
@@ -82,9 +85,14 @@ budget is reported after saving.
 
 ## What it will refuse, and why
 
-- **Words that code assembles** (e.g. `kind · year` joined in a template, or a
-  title upper-cased on the way out). There is no single string to write back to.
-  The inspector says so when you select it.
+- **Words that code assembles** (e.g. a sentence joined from three variables).
+  There is no single string to write back to. The inspector says so when you
+  select it. (A line made of separate strings with only a dot between them, like
+  a project's `kind · year`, is not this: each piece is selectable and editable
+  on its own.)
+- **Words written more than once in the source** that the editor cannot pair up
+  with the page. It asks which one you mean, listing each with its line, rather
+  than guessing.
 - **Editing a copy before saving it.** A duplicated list item does not exist in
   the source until it is saved.
 - **A save against a file that changed on disk** since the page was loaded (you
@@ -110,8 +118,20 @@ editor/
 - In edit mode only, every start tag in `index.html` and in the page templates
   carries `data-esrc="file:offset"`: where its `<` sits in the file on disk.
 - A text edit is resolved before you type: the server finds the string, through
-  the AST, whose normalised value matches what is on screen. Two identical
-  strings (the two RCMP rows) are told apart by their order on the page.
+  the AST, whose canonical form matches what is on screen. The canonical form
+  drops every tag's attributes and decodes entities (`source.js`, `canon`),
+  because a browser re-spells markup it parsed (`data-route` comes back as
+  `data-route=""`) and comparing that literally refused "back to the start" as
+  "assembled by code". Two identical strings (the two RCMP rows) are told apart
+  by their order on the page, counted from the words **as the page first drew
+  them**: counting from the DOM as it is now failed as soon as one of the two
+  had been edited ("written 2 times in the source and drawn 1 time").
+- A text edit is written as a patch, not a replacement: when only words changed,
+  the original tags are kept exactly as written and only the text between them
+  is replaced (`mergeInner`). Editing "back to the start" changes those words
+  and nothing else in the file. The browser's own leftovers from typing (a
+  `<span style="letter-spacing…">` around retyped letters, `<b>`) are removed
+  before a change is kept.
 - A save becomes range edits against the original files. All are checked
   (overlaps, files changed on disk, JS that no longer parses) before any file is
   written.
@@ -122,3 +142,12 @@ editor/
 - The shell page is served raw, with no Vite reload client, so saving source
   files reloads the site in the frame and never the editor holding your undo
   history.
+- `ED_STAGE=<folder>` puts the upload staging folder somewhere else. A second
+  editor on another port (`vite --config editor/vite.editor.config.js --port N`)
+  needs it, or starting it empties the first one's uploads.
+
+## Pictures on the Photos card are not the editor's
+
+The card is drawn from the two folders `src/assets/photos/reel/` and
+`src/assets/photos/photography/`; add or remove a file there and the card
+follows. See `tools/bake_photos.mjs` and `src/site/photoassets.js`.

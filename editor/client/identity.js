@@ -49,6 +49,26 @@ export function isTextLeaf(el, win) {
  * card's picture rather than one of its four layers, the paragraph rather than
  * the <em> inside it.
  */
+/**
+ * A text block made of several inline pieces with nothing but a separator
+ * between them ("BLENDER · 2026": two spans and a dot). Each piece is its own
+ * string in the source; the block is put together by code, so the block cannot
+ * be written back and the pieces can. A click should therefore stop at the
+ * piece, not climb to the block.
+ */
+export function isComposite(el) {
+  let pieces = 0, sep = false;
+  for (const n of el.childNodes) {
+    if (n.nodeType === 1) { if (n.tagName !== "BR") pieces++; }
+    else if (n.nodeType === 3) {
+      if (/[\p{L}\p{N}]/u.test(n.textContent)) return false;
+      if (n.textContent.trim()) sep = true;
+    }
+  }
+  // (two <em> with only a space between them are still one sentence)
+  return pieces >= 2 && sep;
+}
+
 export function selectable(raw, win) {
   if (!raw || raw.nodeType !== 1) return null;
   let el = raw.closest("svg") || raw;
@@ -57,7 +77,8 @@ export function selectable(raw, win) {
   const fig = el.closest("figure.fig");
   if (fig) return fig;
   while (el.parentElement && el.id !== "doc" &&
-         INLINE.has(win.getComputedStyle(el).display) && isTextLeaf(el.parentElement, win)) {
+         INLINE.has(win.getComputedStyle(el).display) && isTextLeaf(el.parentElement, win) &&
+         !isComposite(el.parentElement)) {
     el = el.parentElement;
   }
   return el;

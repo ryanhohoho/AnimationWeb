@@ -4,7 +4,7 @@
 // place that decides how a change is scoped, how it is undone and what it
 // writes on save.
 
-import { setProp, effective, clone, BPS } from "../shared/editsCss.js";
+import { setProp, effective, clone, BPS, DEVICES, deviceOf, hiddenOn, setHidden } from "../shared/editsCss.js";
 import { locate, find, locKey, kindOf, lockReason, repeats, classesOf, cleanHTML,
   isTextLeaf, leafTexts, norm } from "./identity.js";
 import { api, toast, uid, modal, h } from "./util.js";
@@ -234,31 +234,95 @@ export function createEditor({ store, frame }) {
     return [parseFloat(x) || 0, parseFloat(y) || 0];
   };
 
+  // ── who can see it ─────────────────────────────────────────────────────
+  // Not a style at a size but a set of devices (editsCss.js says why): Desktop,
+  // Tablet and Phone each a range of their own, never cascading into each
+  // other. `ed.hiddenOn(el)` is { d, t, p } -- true where it is hidden.
+  ed.devices = DEVICES;
+  ed.thisDevice = () => deviceOf(ed.bp);
+  ed.hiddenOn = (el) => {
+    const sel = ed.peek(el);
+    return sel ? hiddenOn(store.styles, sel) : { d: false, t: false, p: false };
+  };
+  /** pairs: [{ el, hidden: { d, t, p } }] -- hide each on exactly those devices, as ONE step */
+  ed.setHiddenMany = (pairs, label = "Show on") => {
+    const rules = [];
+    for (const { el, hidden } of pairs) {
+      const base = ed.target(el, pairs.length > 1 ? "el" : ed.scope);
+      if (!base) { toast(`${el.tagName.toLowerCase()} cannot be hidden on its own; choose a scope in the inspector.`, true); continue; }
+      rules.push([base, hidden]);
+    }
+    if (!rules.length) return false;
+    store.global(label, (st) => { for (const [sel, hidden] of rules) setHidden(st.styles, sel, hidden); }, rerender);
+    return true;
+  };
+  ed.setHidden = (el, hidden, label) => ed.setHiddenMany([{ el, hidden }], label);
+  /** hide on this screen size only, leaving every other device as it is */
+  ed.hideHere = (els, label = "Hide on this screen") => {
+    const dev = ed.thisDevice();
+    return ed.setHiddenMany(els.map((el) => ({ el, hidden: { ...ed.hiddenOn(el), [dev]: true } })), label);
+  };
+  /** show on this screen size only: everywhere else it is hidden */
+  ed.onlyHere = (els, label = "Only on this screen") => {
+    const dev = ed.thisDevice();
+    return ed.setHiddenMany(els.map((el) => ({ el, hidden: Object.fromEntries(DEVICES.map((d) => [d.key, d.key !== dev])) })), label);
+  };
+  const hereName = () => BPS.find((b) => b.key === ed.bp).label;
+
   // ── text ───────────────────────────────────────────────────────────────
-  const leaves = () => [...ed.doc.querySelectorAll("#doc *")].filter((n) => isTextLeaf(n, ed.win));
+  // A LEAF'S WORDS AS THE PAGE FIRST DREW THEM. The server finds a string by
+  // what it says and, when the same words are written twice (the two RCMP
+  // rows), by how many times the page draws them and in what order. Counting
+  // from the DOM as it is NOW breaks that the moment one of them has been
+  // edited: it no longer says the same, so "written twice, drawn once" and the
+  // editor refused every later edit on the page. Each leaf's original words
+  // are taken once, as the page renders -- before an unsaved edit is put back
+  // on it -- and counting uses those.
+  const pristine = new WeakMap();
+  const leaves = () => [...ed.doc.querySelectorAll("#doc *")].filter((n) =>
+    isTextLeaf(n, ed.win) && !n.closest("[data-ed-new], [data-ed-copy]"));
+  const pristineOf = (n) => pristine.get(n) ?? cleanHTML(n.innerHTML);
+  ed.snapshotPristine = () => { for (const n of leaves()) if (!pristine.has(n)) pristine.set(n, cleanHTML(n.innerHTML)); };
 
   async function infoFor(el) {
     const loc = locate(el, ed.doc);
     const key = locKey(loc);
     if (textInfo.has(key)) return textInfo.get(key);
     if (el.closest("[data-ed-new]")) { const i = { ok: true, kind: "new", form: "html", label: "new — written on save" }; textInfo.set(key, i); return i; }
-    const html = cleanHTML(el.innerHTML);
-    const same = leaves().filter((n) => norm(cleanHTML(n.innerHTML)) === norm(html));
+    if (el.closest("[data-ed-copy]")) return { ok: false, reason: "This copy is not in the source yet. Save, then edit its words." };
+    const html = pristineOf(el);
+    const same = leaves().filter((n) => norm(pristineOf(n)) === norm(html));
     const r = await api("/__ed/resolve", {
       page: ed.page, esrc: el.dataset.esrc || null, count: repeats(el, ed.doc),
       html, nth: same.indexOf(el), same: same.length
     });
-    textInfo.set(key, r);
+    // an ambiguous answer is NOT cached: the person's choice is
+    if (r.ok || !r.choices) textInfo.set(key, r);
     return r;
   }
   ed.textInfo = infoFor;
   // after a save every offset in the source has moved, so what was resolved is stale
   ed.clearCaches = () => textInfo.clear();
 
+  /** the same words in several places in the source: ask which one this is */
+  async function chooseSource(el, info) {
+    const pick = await modal("Which one is this?", h("div", {},
+      h("p", {}, info.reason.replace(/ Double-click to choose\.$/, "")),
+      h("p", { style: { marginTop: "8px" } }, "Choose the place in the source these words are written.")),
+      [{ label: "Cancel", value: null },
+       ...info.choices.slice(0, 6).map((c, i) => ({ label: `${c.label} · line ${c.line}`, value: i, kind: i === 0 ? "primary" : "ghost" }))]);
+    if (pick === null || pick === undefined) return null;
+    const chosen = info.choices[pick];
+    textInfo.set(locKey(locate(el, ed.doc)), chosen);
+    return chosen;
+  }
+
   ed.editText = async (el) => {
     if (!el || !isTextLeaf(el, ed.win) || lockReason(el)) return;
-    const info = await infoFor(el);
-    if (!info.ok) { toast(info.reason, true, 5200); return; }
+    let info = await infoFor(el);
+    if (!info.ok && info.choices) info = await chooseSource(el, info);
+    else if (!info.ok) { toast(info.reason, true, 5200); return; }
+    if (!info) return;
     if (info.sharedBy > 1) toast(`This text is in a template used by ${info.sharedBy} pages; changing it changes all of them.`, false, 4200);
     const before = el.innerHTML;
     ed.editing = el;
@@ -299,6 +363,7 @@ export function createEditor({ store, frame }) {
       el.removeAttribute("contenteditable");
       el.removeAttribute("spellcheck");
       ed.editing = null;
+      if (info.form === "html") tidyEdited(el, before);
       const after = el.innerHTML;
       if (after === before) { ed.emit("editing"); return; }
       const loc = locate(el, ed.doc);
@@ -317,6 +382,38 @@ export function createEditor({ store, frame }) {
     };
   };
   ed.finishText = () => {};
+
+  /**
+   * WHAT THE BROWSER LEAVES BEHIND WHEN IT EDITS. A contenteditable does not
+   * only change letters: deleting a run and typing again makes the browser
+   * wrap the new letters in a `<span style="letter-spacing:-4.3px">` carrying
+   * whatever it computed at that spot, and its own bold is `<b>`. Written to
+   * the source that was a headline with an inline style baked into its words
+   * (Laser Processing) that no stylesheet could then change. The site's only
+   * emphasis is <em>, and its type is set by rules, so: a bare span is
+   * unwrapped, <b>/<strong> become <em>, <font> goes, an inline style the words
+   * did not have before is dropped, and a run of <em><em> is one.
+   */
+  function tidyEdited(root, before) {
+    const doc = root.ownerDocument;
+    const hadStyle = (v) => before.includes(v);
+    // what the words already had is theirs: a sentence that was written with
+    // spans keeps them, and only what the browser ADDED is undone
+    const had = (tag) => new RegExp(`<${tag}[\\s>]`, "i").test(before);
+    const unwrap = (n) => n.replaceWith(...n.childNodes);
+    for (const n of [...root.querySelectorAll("*")]) {
+      if (n.tagName === "BR") continue;
+      if (n.hasAttribute("style") && !hadStyle(n.getAttribute("style"))) n.removeAttribute("style");
+      if ((n.tagName === "B" || n.tagName === "STRONG") && !had(n.tagName)) {
+        const em = doc.createElement("em");
+        em.append(...n.childNodes);
+        n.replaceWith(em);
+      } else if (n.tagName === "FONT" || (n.tagName === "SPAN" && !n.attributes.length && !had("span"))) unwrap(n);
+      else if ((n.tagName === "DIV" || n.tagName === "P") && !had(n.tagName)) { n.before(doc.createElement("br")); unwrap(n); }
+    }
+    for (const em of [...root.querySelectorAll("em em")]) unwrap(em);
+    root.normalize();
+  }
 
   // ── links ──────────────────────────────────────────────────────────────
   ed.linkOf = (el) => {
@@ -448,7 +545,7 @@ export function createEditor({ store, frame }) {
     return !!go;
   }
 
-  ed.insert = async (kind) => {
+  ed.insert = async (kind, { only = false } = {}) => {
     const from = ed.sel?.el || ed.doc.querySelector("#doc > section");
     const anchor = staticAnchor(from);
     if (!anchor) { toast("Select something on the page first; new elements go after it.", true); return; }
@@ -501,6 +598,8 @@ export function createEditor({ store, frame }) {
     if (kind === "figure" && !composition) ed.style(ed.doc.querySelector(`[data-e="${id}"]`), { width: "min(100%, 34rem)" }, { label: "Figure width" });
     ed.afterPage();
     const n = ed.doc.querySelector(`[data-e="${id}"]`);
+    // written for this screen: it is on this device and no other
+    if (n && only) ed.onlyHere([n], `Only on ${hereName()}`);
     if (n) { ed.select(n); n.scrollIntoView({ block: "center", behavior: "smooth" }); }
   };
 
@@ -545,11 +644,11 @@ export function createEditor({ store, frame }) {
         : info.sharedBy > 1 ? `This element is in a template used by ${info.sharedBy} pages. Deleting it removes it from ALL of them.`
         : `It is removed from ${info.file || "the source"}.`;
       choice = await modal("Delete this element?", h("div", {}, where,
-        h("p", { style: { marginTop: "8px" } }, "Or hide it on this page only (at this screen size and smaller) — that is reversible in the inspector.")),
-        [{ label: "Cancel", value: null }, { label: "Hide here only", value: "hide" }, { label: count > 1 ? "Delete item" : "Delete", kind: "danger", value: "src" }]);
+        h("p", { style: { marginTop: "8px" } }, `Or hide it on ${hereName()} only. The other screens keep it, and “Show on” in the inspector changes which ones do — that is the way to write different words for a phone.`)),
+        [{ label: "Cancel", value: null }, { label: `Hide on ${hereName()} only`, value: "hide" }, { label: count > 1 ? "Delete item" : "Delete", kind: "danger", value: "src" }]);
       if (!choice) return;
     }
-    if (choice === "hide") { ed.scope = "el"; ed.style(el, { display: "none" }, { label: "Hide" }); ed.select(null); return; }
+    if (choice === "hide") { ed.scope = "el"; ed.hideHere([el]); ed.select(null); return; }
     const loc = locate(el, ed.doc);
     let parent = null, next = null, node = null;
     store.page({
@@ -578,12 +677,12 @@ export function createEditor({ store, frame }) {
     const skipped = ed.sels.length - els.length;
     const choice = await modal(`Delete ${els.length} elements?`, h("div", {},
       "Each is removed from the source it came from: an item of a list from that list, and anything in a template several pages share from all of those pages.",
-      h("p", { style: { marginTop: "8px" } }, "Or hide them on this page only (at this screen size and smaller), which is reversible in the inspector."),
+      h("p", { style: { marginTop: "8px" } }, `Or hide them on ${hereName()} only; the other screens keep them, and “Show on” in the inspector brings them back.`),
       skipped ? h("p", { style: { marginTop: "8px" } }, `${skipped} selected ${skipped === 1 ? "element is" : "elements are"} left alone (unsaved copies, or FIG. 2).`) : null),
-      [{ label: "Cancel", value: null }, { label: "Hide here only", value: "hide" }, { label: `Delete ${els.length}`, kind: "danger", value: "src" }]);
+      [{ label: "Cancel", value: null }, { label: `Hide on ${hereName()} only`, value: "hide" }, { label: `Delete ${els.length}`, kind: "danger", value: "src" }]);
     if (!choice) return;
     if (choice === "hide") {
-      ed.styleMany(els.map((el) => ({ el, props: { display: "none" } })), { label: `Hide ${els.length}` });
+      ed.hideHere(els, `Hide ${els.length} on ${hereName()}`);
       ed.select(null);
       return;
     }

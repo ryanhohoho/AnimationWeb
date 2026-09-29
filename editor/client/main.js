@@ -20,6 +20,7 @@ const frame = createFrame({
   iframe: $("site"),
   onReady(ctx) {
     canvas.mount(ctx);
+    ed.snapshotPristine();
     store.replay(ctx.page, ctx.doc);
     ed.afterPage();
     ed.reselect();
@@ -28,6 +29,7 @@ const frame = createFrame({
   },
   onPage(ctx) {
     ed.select(null);
+    ed.snapshotPristine();
     store.replay(ctx.page, ctx.doc);
     ed.afterPage();
     syncPage();

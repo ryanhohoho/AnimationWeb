@@ -49,6 +49,25 @@ export function norm(s) {
     .trim();
 }
 
+/**
+ * THE FORM TWO MARKUPS ARE COMPARED IN when one came out of a browser and the
+ * other out of a file. A browser re-writes what it parsed: a bare attribute
+ * (`data-route`) comes back as `data-route=""`, single quotes become double,
+ * `<br />` becomes `<br>`, a script may have added a class. None of that is a
+ * difference in WORDS, and comparing it as if it were was the editor refusing
+ * "back to the start" -- which is written in the source exactly as it is on the
+ * page -- as "assembled by code". So attributes are not compared at all: a
+ * start tag is reduced to its name, and what is left is the tags in order and
+ * the words between them. (The element is already pinned by its position in
+ * the file, `data-esrc`; this only has to say "and it still reads the same".)
+ */
+export function canon(s) {
+  return norm(String(s)
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<(\/?)([a-zA-Z][\w-]*)\b(?:"[^"]*"|'[^']*'|[^>"'])*>/g,
+      (_, close, name) => `<${close}${name.toLowerCase()}>`));
+}
+
 /** the static value of a node, or null if it has any dynamic part */
 export function staticValue(n) {
   if (!n) return null;
@@ -66,11 +85,24 @@ export function staticValue(n) {
  * A `+` chain is ONE candidate (its parts are not offered separately), and an
  * import path, an object key or a property name is never a candidate.
  */
-export function stringNodes(ast) {
+// Properties whose values are names for CODE, not words for the reader: a
+// project's `slug: "iclicker"` is the same string as its `title: "iclicker"`,
+// and counting it made the title look like it was written twice.
+const CODE_KEYS = new Set(["slug", "id", "key", "href", "url", "src", "srcset", "type", "ink", "inkA",
+  "class", "className", "e", "tag", "path", "route", "poster", "on", "node", "hour"]);
+const COMPARES = new Set(["==", "===", "!=", "!=="]);
+
+export function stringNodes(ast, { content = false } = {}) {
   const out = [];
   const inChain = new Set();
   walk(ast, (n, parent, key) => {
     if (inChain.has(n)) return;
+    if (content) {
+      // `content` is asking for WORDS: skip what only ever names or tests something
+      if (parent?.type === "Property" && key === "value" && CODE_KEYS.has(parent.key?.name || parent.key?.value)) return;
+      if (parent?.type === "BinaryExpression" && COMPARES.has(parent.operator)) return;
+      if (parent?.type === "SwitchCase" && key === "test") return;
+    }
     if (parent?.type === "ImportDeclaration" || parent?.type === "ExportAllDeclaration" ||
         parent?.type === "ExportNamedDeclaration" && key === "source") return;
     if (parent?.type === "Property" && key === "key") return;
@@ -93,6 +125,39 @@ export function quasis(ast) {
   });
   return out.sort((a, b) => a.start - b.start);
 }
+
+// ── writing markup back ──────────────────────────────────────────────────
+const TAGS = /(<!--[\s\S]*?-->|<\/?[a-zA-Z][^>]*>)/;
+const tagName = (t) => (t.startsWith("<!--") ? "<!--" : /^<\/?[a-zA-Z][\w-]*/.exec(t)[0].toLowerCase());
+
+/**
+ * A changed piece of markup, written back WITHOUT re-writing the parts that
+ * did not change. The browser hands back what it serialised -- `data-route=""`
+ * for `data-route`, `<br>` for `<br />`, attributes in its own order -- and
+ * writing that over the source changed the file's syntax on every edit, in
+ * places the person never touched. When the tags are the same tags in the
+ * same order (the usual case: only words changed), the ORIGINAL tags are kept
+ * exactly and only the text between them is replaced, and text that reads the
+ * same keeps its original spelling (`&nbsp;`, its own line breaks). Returns
+ * null when the structure itself changed (a word made emphasised, a line
+ * break added): the caller then writes the browser's markup.
+ */
+export function mergeInner(orig, next) {
+  const a = orig.split(TAGS), b = next.split(TAGS);
+  if (a.length !== b.length) return null;
+  let out = "";
+  for (let i = 0; i < a.length; i++) {
+    if (i % 2) {
+      if (tagName(a[i]) !== tagName(b[i])) return null;
+      out += a[i];
+    } else out += decode(a[i]) === decode(b[i]) ? a[i] : b[i];
+  }
+  return out;
+}
+
+/** attributes the browser wrote as `name=""` that the source writes bare */
+const BARE = /\s((?:data-[\w-]+)|autoplay|muted|loop|playsinline|hidden|inert|controls|disabled|async|defer)=""/g;
+export const tidyAttrs = (html) => html.replace(BARE, " $1");
 
 // ── writing a string back ────────────────────────────────────────────────
 function jsQuote(value, q) {

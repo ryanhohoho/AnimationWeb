@@ -106,8 +106,8 @@ two are checked against each other on the GPU.
 ```bash
 npm run dev            # localhost:5173 — the owner tests here, in his own browser
 npm run edit           # localhost:5275/editor/ — the visual editor (see below)
-npm test               # 1070 checks: the headless sim + the router harness
-                       # (2026-09-28: 1068 pass -- see Security below)
+npm test               # 1108 checks: the headless sim + the router harness
+                       # (2026-09-29: 1106 pass -- see Security below)
 npm run test:sim       # just the engine/behaviour suite
 npm run test:router    # just the router + page-swap harness (needs a fake DOM)
 npm run build          # production bundle
@@ -181,18 +181,28 @@ node tools/motion/credits.mjs ../VisualAudialExperience/CREDITS.md   # -> site/m
 not edit them.** The works' names, and where each is shown, are
 `src/site/motion.js`, which is hand-written.
 
-The photos card's pictures (only when pictures are added or removed). Drop
-them straight off the iPhone -- HEIC is fine -- into `photos-source/reel/`
-(the strip of life) or `photos-source/photography/`, which git ignores:
+The photos card's pictures. The two FOLDERS are the list: `src/assets/photos/reel/`
+(the snapshots hung in the margins) and `src/assets/photos/photography/` (the
+block in the middle). `site/photoassets.js` is a hand-written glob over them, so
+a picture added there is on the card and one deleted there is gone, with no code
+to edit and nothing to run. Only a picture a browser cannot show needs the bake:
+drop it straight off the iPhone -- HEIC is fine -- into `photos-source/reel/` or
+`photos-source/photography/` (git ignores both), then:
 
 ```bash
-node tools/bake_photos.mjs       # -> src/assets/photos/, src/site/photoassets.js
+npm run photos                   # = node tools/bake_photos.mjs -> src/assets/photos/{reel,photography}/
+node tools/bake_photos.mjs --dry|--prune|--restore|--all
 ```
 
 It strips every picture's metadata (an iPhone writes its GPS position into
-each one), turns it upright, converts P3 to sRGB, and prints the reel's frames
-with the sky's own press. `src/site/photoassets.js` is **generated — do not
-edit it.** The folder is the list: a picture removed there is removed here.
+each one), turns it upright, converts P3 to sRGB, and writes each at 640 / 1280 /
+2048 (and 320 for the reel) as `<id>_<w>x<h>_l<lightness>_<edge>.webp`: the page
+learns a picture's shape and lightness from its NAME, so it needs no manifest
+and nothing moves when a picture arrives. It writes no code. A picture already
+in a folder as a WebP/JPEG/PNG can simply be copied in. A picture you delete from
+the site's folder while its original is still in `photos-source/` is not baked
+again (`photos-source/.baked` remembers what it made); `--restore` brings
+it back and `--prune` removes what has no original.
 
 Tab mark and link card (only if the mark, the palette or the pitch changes):
 
@@ -488,7 +498,7 @@ carries a DISCLOSURE block saying what is not on it, and the redaction check in
 Processing") in commit `87d737d`. Its DISCLOSURE note no longer contains the
 two sentences the check looks for ("No asset numbers, serials, volume
 identifiers, key material or credentials" and "sequential synthetic serials"),
-so `npm run test:sim` reports 1068/1070. The stand-in check itself still
+so `npm run test:sim` reports 1106/1108. The stand-in check itself still
 passes. Resolving it is the owner's call: restore the sentences on the page,
 or authorise changing the test. Do not edit either unasked. If you are ever asked to
 include real capture data, censor it in a copy of the file rather than reading

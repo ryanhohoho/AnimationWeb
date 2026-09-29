@@ -23,7 +23,7 @@ import { PROJECTS } from "../projects.js";
 import { glyphUrl } from "../iconatlas.js";
 import { cardStill, cardVideo } from "../content.js";
 import { REEL, PHOTOGRAPHY } from "../photoassets.js";
-import { reelHTML, hangHTML } from "../photos.js";
+import { photosHTML } from "../photos.js";
 
 const esc = (v) => String(v ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -138,11 +138,8 @@ function projects() {
 // under a label of its own. Everything about how either is drawn is in
 // site/photos.js; the pictures are tools/bake_photos.mjs's.
 function photos() {
-  const reel = REEL.length ? reelHTML(REEL, 3) : "";
-  const hang = PHOTOGRAPHY.length ? `
-    <p class="t dim eye ph-eye" style="--i:4">PHOTOGRAPHY</p>
-    ${hangHTML(PHOTOGRAPHY, 5)}` : "";
-  return shell("p-photos", "04", "23:30", "PHOTOS", "soon.", `${reel}${hang}`);
+  const hang = PHOTOGRAPHY.length || REEL.length ? photosHTML({ REEL, PHOTOGRAPHY }, 4) : "";
+  return shell("p-photos", "04", "23:30", "PHOTOS", "soon.", hang);
 }
 
 // ── 05 · CONTACT ────────────────────────────────────────────────────────────

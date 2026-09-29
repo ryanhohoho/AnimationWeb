@@ -253,6 +253,38 @@ export function createInspector(ed, mount) {
     };
   }
 
+  // ── who can see it ─────────────────────────────────────────────────────
+  // Desktop / Tablet / Phone, each its own switch. Not "hide at this size and
+  // smaller": that cascaded, so an element hidden on the laptop was hidden on
+  // the phone as well and words written for the phone could never be shown
+  // there while the laptop's stayed hidden. Each device here is separate.
+  function showOn(els) {
+    const hid = els.map((e) => ed.hiddenOn(e));
+    const here = ed.thisDevice();
+    const buttons = ed.devices.map((d) => {
+      const nHidden = hid.filter((x) => x[d.key]).length;
+      const state = nHidden === 0 ? "on" : nHidden === els.length ? "" : "mixed";
+      return h("button", {
+        type: "button", class: `${state}${d.key === here ? " here" : ""}`,
+        title: `${d.label}: ${state === "on" ? "shown — click to hide it here" : state === "mixed" ? "shown on some of them" : "hidden — click to show it here"}`,
+        "aria-pressed": String(state === "on"),
+        onclick: () => ed.setHiddenMany(els.map((el, i) => ({ el, hidden: { ...hid[i], [d.key]: state === "on" } })),
+          `${state === "on" ? "Hide" : "Show"} on ${d.label.toLowerCase()}`)
+      }, d.label);
+    });
+    const kids = [h("span", { class: "lab" }, "Show on"), h("div", { class: "btns", style: { flex: 1 } }, buttons)];
+    const row = h("div", { class: "row" }, kids);
+    // hidden by the site's OWN stylesheet at this size (not by an edit): say so,
+    // or the switch reads "shown" over an empty space
+    if (els.length === 1) {
+      const el = els[0];
+      if (!hid[0][here] && ed.win.getComputedStyle(el).display === "none") {
+        return h("div", {}, row, h("div", { class: "note", style: { margin: "4px 0 0" } }, `The site's own stylesheet hides this on ${ed.BPS.find((b) => b.key === ed.bp).label.toLowerCase()}.`));
+      }
+    }
+    return row;
+  }
+
   // ── the panels ─────────────────────────────────────────────────────────
   function render() {
     closePop();
@@ -333,12 +365,7 @@ export function createInspector(ed, mount) {
     layout.push(h("div", { class: "grid2", style: { marginTop: "6px" } },
       num({ k: "↑", title: "Space above", get: R("margin-top"), set: S("margin-top", "", "Space above") }),
       num({ k: "↓", title: "Space below", get: R("margin-bottom"), set: S("margin-bottom", "", "Space below") })));
-    const disp = ed.read(el, "display");
-    layout.push(h("div", { class: "row" },
-      h("label", { class: "tog", style: { padding: 0 } },
-        h("input", { type: "checkbox", checked: disp.value === "none" ? true : null,
-          onchange: (e) => ed.style(el, { display: e.target.checked ? "none" : null }, { label: "Hide" }) }),
-        ` Hide at ${bpLabel.toLowerCase()}${ed.bp === "base" ? " (and smaller)" : ""}`)));
+    layout.push(showOn([el]));
     if (ed.canReorder(el)) {
       const [i, n] = ed.orderIndex(el);
       layout.push(h("div", { class: "row" }, h("span", { class: "lab" }, "Order"),
@@ -526,12 +553,7 @@ export function createInspector(ed, mount) {
     layout.push(h("div", { class: "grid2", style: { marginTop: "6px" } },
       num({ k: "↑", title: "Space above", get: G("margin-top"), set: SA("margin-top", "Space above"), rel: RA("margin-top", "Space above") }),
       num({ k: "↓", title: "Space below", get: G("margin-bottom"), set: SA("margin-bottom", "Space below"), rel: RA("margin-bottom", "Space below") })));
-    const hidden = els.every((e) => ed.read(e, "display").value === "none");
-    layout.push(h("div", { class: "row" },
-      h("label", { class: "tog", style: { padding: 0 } },
-        h("input", { type: "checkbox", checked: hidden ? true : null,
-          onchange: (e) => ed.styleMany(els.map((el) => ({ el, props: { display: e.target.checked ? "none" : null } })), { label: "Hide" }) }),
-        ` Hide all at this size${ed.bp === "base" ? " (and smaller)" : ""}`)));
+    layout.push(showOn(els));
     parts.push(sec("Layout", layout, () => ed.styleMany(els.map((el) => ({ el, props: { translate: null, width: null, height: null, "max-width": null, "margin-top": null, "margin-bottom": null } })), { label: "Reset layout" })));
 
     // TYPE, only if every one of them is words
@@ -707,12 +729,25 @@ export function createInspector(ed, mount) {
     return sec("Picture", kids);
   }
 
+  // "Only on this screen" is remembered, and starts ON when a phone or tablet
+  // is being edited: adding words there is almost always writing the phone's
+  // own version, and it should not appear on the laptop as well.
+  const ONLY_KEY = "ed-insert-only";
   function insertMenu(anchor) {
     closePop();
+    const dev = ed.BPS.find((b) => b.key === ed.bp).label;
+    let only = ed.bp !== "base";
+    try { const v = localStorage.getItem(ONLY_KEY); if (v !== null && ed.bp !== "base") only = v === "1"; } catch {}
+    const box = h("input", { type: "checkbox", checked: only ? true : null });
     const menu = h("div", { class: "menu" },
       [["text", "Paragraph", "body text"], ["heading", "Heading", "display type"], ["label", "Label", "small caps"],
        ["figure", "Picture or clip…", "from Finder"], ["hole", "Hole", "a cut onto the sky"]]
-        .map(([k, l, s]) => h("button", { onclick: () => { closePop(); ed.insert(k); } }, l, h("small", {}, s))));
+        .map(([k, l, s]) => h("button", { onclick: () => {
+          closePop();
+          try { if (ed.bp !== "base") localStorage.setItem(ONLY_KEY, box.checked ? "1" : "0"); } catch {}
+          ed.insert(k, { only: box.checked });
+        } }, l, h("small", {}, s))),
+      h("label", { class: "only", title: "Otherwise it is added to every screen size" }, box, `Only on ${dev.toLowerCase()}`));
     pop = menu;
     document.body.append(menu);
     const r = anchor.getBoundingClientRect();
@@ -795,7 +830,8 @@ export function createInspector(ed, mount) {
       if (T[tok] && rr(tok) < 1.3) warn.push(`Backlight colour ${i + 1} is ${rr(tok).toFixed(2)}:1 against the paper — close enough to it that it will barely show.`);
     });
 
-    mount.replaceChildren(
+    // (a null in here is written out as the word "null": filter, do not pass)
+    mount.replaceChildren(...[
       h("div", { class: "insp-head" }, h("div", { class: "insp-kind" }, h("span", { class: "badge" }, "page"), pageName()),
         h("div", { class: "insp-src" }, "Nothing selected. Click anything on the page, or change the colours below.")),
       ...warn.map((w) => h("div", { class: "warn" }, w)),
@@ -825,7 +861,7 @@ export function createInspector(ed, mount) {
         colorField({ label: "Rose (--ink-b)", get: val(T["--ink-b"]), set: setTok("--ink-b"), allowVars: false, allowNone: false }))]),
       sec("Keys", [h("div", { style: { fontSize: "11px", color: "var(--dim)", lineHeight: 1.8 } },
         "Click select · double-click edit words · drag move (⌥ no snap, ⇧ one axis) · arrows nudge (⇧ ×10) · ⌘Z / ⇧⌘Z · ⌘D duplicate · ⌫ delete · Esc deselect · ⌘S save")])
-    );
+    ].filter(Boolean));
   }
   /**
    * Light FIG. 2's backlight fully while its colours are on screen.

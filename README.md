@@ -23,10 +23,13 @@ Another is locked: **Softshield**, the confidential encryption tool (slug
 rest "This work is confidential" with a way to ask. The other two are **Laser
 Processing** (slug `usb-provisioning`, the engraving pipeline) and **iclicker**.
 
-The **photos** card is a strip of life drifting across the window (printed in
-the sky's two inks until you look at a frame) and the photography, hung like a
-photobook. Pictures come straight off an iPhone through `tools/bake_photos.mjs`,
-which strips every one of its location and camera data.
+The **photos** card is the photography as one justified block, its pictures in
+different sizes but ending on the same edges, with the snapshots of his life hung
+in the paper either side of it, printed in the sky's two inks until you look at
+one. The folders `src/assets/photos/reel/` and `photography/` are the list: add a
+picture and it is on the card, delete one and it is gone. Pictures come straight
+off an iPhone through `tools/bake_photos.mjs` (`npm run photos`), which strips
+every one of its location and camera data.
 
 **Every screen shows the owner's laptop page.** A px in the stylesheets is a
 pixel of his 14" MacBook Pro's 1512 x 867 window; above tablet width every page
@@ -58,7 +61,7 @@ hashed URLs, `public/`, the SPA fallback — for checking the bundle as a bundle
 | `src/site/pressgl.js` | **the press.** Paper, print and the crossing, in one fragment shader. Compiled twice from one template, once per GLSL dialect, and the two agree byte for byte. |
 | `src/site/sky.js` | the same press on the CPU. The reference implementation. |
 | `src/site/deck.js` | the mask: every hole prints its own sky into a canvas inside its element; the full-screen canvas is used only for the crossing. |
-| `src/site/photos.js` | the photos card: the reel, the photography hang, the viewer. Pictures: `tools/bake_photos.mjs` from `photos-source/` (git-ignored). |
+| `src/site/photos.js`, `photolayout.js`, `photoassets.js` | the photos card: the block and the margins, how they are worked out from the pictures (pure), and the folder glob that is the list. Pictures: `tools/bake_photos.mjs` from `photos-source/` (git-ignored). |
 | `src/styles/designPx.js` | the design pixel: every px/vw/vh in the stylesheets rewritten to scale from the 1512 x 867 reference window. |
 | `src/site/router.js` | going through the hole. Page scopes, generation-guarded watchdogs, the swipe. |
 | `src/site/pages/sheet.js` | the two-plate trim the USB and iClicker sheets are cut to. Their page files are only the **words**. |
@@ -88,4 +91,4 @@ Some project prose is still being written, including the motion-graphics
 page's process notes and its three behind-the-scenes slots. The Laser
 Processing sheet's figures are real: a recorded command-line session and,
 beside it, the engraving generator's own interface running a recorded batch.
-The photos card's reel (life) has no pictures yet; the photography has twenty.
+

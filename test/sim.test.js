@@ -4309,6 +4309,154 @@ section("the editor's resize arithmetic: a corner follows the pointer, and scale
   ok(u.left === 0 && u.top === 20 && u.width === 50 && u.height === 12, "a group's box is the smallest one holding all of it");
 }
 
+// ---------------------------------------------------------------------------
+section("the photos card's pictures are the folders' contents, and a file's name carries its shape");
+// site/photoassets.js used to be a generated list of imports, so a picture
+// deleted from the folder broke the whole site. It is a glob now; `collect`
+// is its pure half, checked here against fake globs.
+{
+  const A = await import("../src/site/photoassets.js");
+  const D = "../assets/photos/reel/";
+  const files = {
+    [D + "img-1_300x400_l20_640.webp"]: "u1-640", [D + "img-1_300x400_l20_1280.webp"]: "u1-1280",
+    [D + "img-2_400x300_320.webp"]: "u2-320",
+    [D + "plain.webp"]: "up",
+    [D + ".hidden_1x1_640.webp"]: "uh",
+    [D + "notes.txt"]: "un"
+  };
+  const list = A.collect(files);
+  ok(list.map((p) => p.id).join() === "img-1,img-2,plain", "every picture in a folder is in the list, once, in a stable order (dotfiles and non-pictures are not)");
+  const a = list[0];
+  ok(a.w === 300 && a.h === 400 && !a.guess && Math.abs(a.l - 0.2) < 1e-9, "its shape and its lightness are read from its name");
+  ok(Object.keys(a.src).join() === "640,1280", "...and each copy is filed under its own long edge");
+  ok(list[2].guess && list[2].w === 3 && list[2].h === 4, "a picture dropped in by hand, with no shape in its name, is taken as 3:4 until it is read");
+  ok(A.collect({}).length === 0 && A.collect(undefined).length === 0, "an empty folder is an empty list, not an error");
+  const { [D + "img-1_300x400_l20_640.webp"]: _gone, [D + "img-1_300x400_l20_1280.webp"]: _gone2, ...rest } = files;
+  ok(A.collect(rest).map((p) => p.id).join() === "img-2,plain", "control: take a picture out of the folder and it is out of the list, with nothing else to edit");
+  ok(A.copyFor(a, 500) === "u1-640" && A.copyFor(a, 700) === "u1-1280" && A.copyFor(a, 5000) === "u1-1280",
+    "a copy is the smallest one big enough, or the largest there is");
+}
+
+// ---------------------------------------------------------------------------
+section("the photography block: worked out from the pictures, every block an exact rectangle");
+{
+  const L = await import("../src/site/photolayout.js");
+  const rnd = mulberry32(99);
+  const shapes = [[3, 4], [4, 3], [2, 3], [1, 1], [9, 16]];
+  const pics = Array.from({ length: 23 }, (_, i) => {
+    const [w, h] = shapes[Math.floor(rnd() * shapes.length)];
+    return { id: `p${i}`, w: w * 100, h: h * 100, l: rnd() };
+  });
+  const W = 960, gap = 14;
+  const m = L.mosaic(pics, { W, gap, maxK: 4 });
+  const used = m.blocks.flatMap((b) => b.items.map((p) => p.id));
+  ok(used.length === pics.length && new Set(used).size === pics.length, "every picture is placed, and once");
+  let maxErr = 0;
+  for (const b of m.blocks) {
+    const asp = (p) => p.w / p.h;
+    if (b.kind === "row") {
+      const across = b.items.reduce((s, p) => s + b.h * asp(p), 0) + gap * (b.items.length - 1);
+      maxErr = Math.max(maxErr, Math.abs(across - W));
+    } else {
+      const fi = b.side === "l" ? 0 : b.items.length - 1;
+      const f = b.items[fi], stack = b.items.filter((_, i) => i !== fi);
+      const stackH = stack.reduce((s, p) => s + b.ws / asp(p), 0) + gap * (stack.length - 1);
+      maxErr = Math.max(maxErr, Math.abs(b.wf / asp(f) - b.h), Math.abs(stackH - b.h), Math.abs(b.wf + b.ws + gap - W));
+    }
+  }
+  ok(maxErr < 1e-6, `every row ends on the column's edge and every feature's stack is exactly as tall as the feature (worst ${maxErr.toExponential(1)} px)`);
+  ok(new Set(m.blocks.map((b) => Math.round(b.h / 20))).size >= 3, "the blocks come in different sizes");
+  ok(m.blocks[0].h >= W * 0.6, "and the page opens on something large");
+  ok(JSON.stringify(L.mosaic(pics, { W, gap, maxK: 4 }).blocks.map((b) => b.items.map((p) => p.id))) === JSON.stringify(m.blocks.map((b) => b.items.map((p) => p.id))),
+    "the same folder is the same page every time");
+  ok(JSON.stringify(L.mosaic(pics.slice(1), { W, gap, maxK: 4 }).blocks.map((b) => b.items.map((p) => p.id))) !== JSON.stringify(m.blocks.map((b) => b.items.map((p) => p.id))),
+    "control: take one picture away and the page is dealt again, not patched");
+  // the light
+  const dark = pics.map((p, i) => ({ ...p, l: i < 4 ? 0.85 : 0.08 }));
+  const md = L.mosaic(dark, { W, gap, maxK: 4 });
+  const feats = md.blocks.filter((b) => b.kind === "feature").map((b) => b.items[b.side === "l" ? 0 : b.items.length - 1]);
+  ok(feats.length > 0 && feats.every((p) => p.l > 0.5), "with a few light pictures among dark ones, what is large is light");
+  ok(L.mosaic([], {}).blocks.length === 0 && L.mosaic(pics.slice(0, 1), {}).blocks.length === 1, "no pictures is no blocks, and one picture is one");
+  // narrow screens: at most two to a row
+  const nm = L.mosaic(pics, { W: 358, gap: 8, maxK: 2 });
+  ok(nm.blocks.filter((b) => b.kind === "row").every((b) => b.items.length <= 2), "on a phone no row has more than two pictures");
+  // spreads
+  const sp = L.spreads(m.blocks, gap, W * 0.85);
+  ok(sp.flatMap((s) => s.blocks).length === m.blocks.length && sp.length >= 2, "the blocks are grouped into spreads without losing one");
+  // the life pictures
+  const life = Array.from({ length: 50 }, (_, i) => ({ id: `r${i}`, w: 300, h: 400, l: 0.5, src: { 320: "/r.webp" } }));
+  const r1 = L.fillRolls(life, sp.flatMap((s) => [{ h: s.h }, { h: s.h }]), { widths: [96], gap: 18 });
+  const placed = r1.flatMap((r) => r.cols.flat());
+  ok(placed.length === 50 && new Set(placed.map((x) => x.p.id)).size === 50, "every snapshot is hung, once, however many there are");
+  const r2 = L.fillRolls(life.concat(life.map((p) => ({ ...p, id: p.id + "b" }))), sp.flatMap((s) => [{ h: s.h }, { h: s.h }]), { widths: [96], gap: 18 });
+  ok(Math.min(...r2.flatMap((r) => r.cols.flat().map((x) => x.w))) < Math.min(...placed.map((x) => x.w)),
+    "control: twice as many snapshots hang smaller, rather than the page growing");
+  ok(L.fillRolls([], [{ h: 500 }], {})[0].cols.flat().length === 0, "no snapshots leaves the margins empty");
+
+  // the markup: every picture exactly once, at either kind of window
+  const P = await import("../src/site/photos.js");
+  const wide = P.photosHTML({ REEL: life, PHOTOGRAPHY: pics.map((p) => ({ ...p, src: { 640: "/a.webp" } })) }, 4,
+    { name: "wide", W: 960, gap: 14, maxK: 4, spread: 0.85 });
+  const count = (html, prefix) => (html.match(new RegExp(`data-photo="${prefix}/`, "g")) || []).length;
+  ok(count(wide, "photography") === pics.length && count(wide, "reel") === life.length, "the card draws every photograph and every snapshot, once");
+  const narrow = P.photosHTML({ REEL: life, PHOTOGRAPHY: pics.map((p) => ({ ...p, src: { 640: "/a.webp" } })) }, 4,
+    { name: "narrow", W: 358, gap: 8, maxK: 2, spread: 1.2 });
+  ok(narrow.includes('data-ph="narrow"') && count(narrow, "photography") === pics.length && count(narrow, "reel") === life.length,
+    "and a phone's card has them all as well, dealt again for its width");
+  ok(P.photosHTML({ REEL: [], PHOTOGRAPHY: [] }, 4).includes('class="ph"') && count(P.photosHTML({ REEL: [], PHOTOGRAPHY: [] }, 4), "reel") === 0,
+    "an empty folder is an empty card, not an error");
+  const f = P.printFilter();
+  const tables = [...f.matchAll(/tableValues="([^"]+)"/g)].map((x) => x[1].split(" ").map(Number));
+  ok(tables.length === 3 && tables.every((t) => t.length === 17 && t.every((v) => v >= 0 && v <= 1)) && tables.every((t) => t[16] > 0.85),
+    "the print is a colour map from the palette: three channels, in range, and white stays nearly paper");
+}
+
+// ---------------------------------------------------------------------------
+section("the editor: who can see an element is a set of devices, and they do not cascade");
+{
+  const E = await import("../editor/shared/editsCss.js");
+  const m = E.fromCss("");
+  const sel = '#doc[data-page="home"] [data-e="x"]';
+  E.setHidden(m, sel, { d: true, t: true, p: false });
+  const css = E.toCss(m);
+  ok(/@media \(min-width:861px\)/.test(css) && /@media \(min-width:561px\) and \(max-width:860px\)/.test(css) && !/\/\* @hide p \*\//.test(css),
+    "hidden on desktop and tablet is written as those two width ranges, and no phone rule");
+  const back = E.fromCss(css);
+  ok(JSON.stringify(E.hiddenOn(back, sel)) === '{"d":true,"t":true,"p":false}', "...and reads back as the same three answers");
+  ok(E.toCss(back) === css, "the file round-trips exactly");
+  // the bug: a legacy bucket display:none hid every smaller size too, with no way to show the phone again
+  const legacy = E.fromCss('/* @bp base */\n' + sel + ' { display:none; translate:1px 2px; }\n\n/* @bp 860 */\n@media (max-width:860px) {\n}\n\n/* @bp 560 */\n@media (max-width:560px) {\n}\n');
+  ok(JSON.stringify(E.hiddenOn(legacy, sel)) === '{"d":true,"t":true,"p":true}', "control: the old way hides on every size below it");
+  E.setHidden(legacy, sel, { d: true, t: true, p: false });
+  ok(JSON.stringify(E.hiddenOn(legacy, sel)) === '{"d":true,"t":true,"p":false}' && legacy.rules[sel].base.translate === "1px 2px" && !("display" in legacy.rules[sel].base),
+    "showing it on the phone alone works, keeps its other styles, and folds the old rule away");
+  E.setHidden(legacy, sel, { d: false, t: false, p: false });
+  ok(!/\/\* @hide [dtp] \*\//.test(E.toCss(legacy)), "showing it everywhere leaves no rule behind");
+}
+
+// ---------------------------------------------------------------------------
+section("the editor: text is found by what it says, not by how a browser spelled it");
+{
+  const S = await import("../editor/server/source.js");
+  ok(S.canon('<a class="link" href="/" data-route>← back to the start</a>') ===
+     S.canon('<a class="link" href="/" data-route="" data-esrc="src/x.js:9">← back to the start</a>'),
+    "a bare attribute and the browser's data-route=\"\" are the same words (this was 'assembled by code')");
+  ok(S.canon("a<br />b") === S.canon("a<br>b") && S.canon("<em>x</em>") !== S.canon("<b>x</b>"),
+    "<br /> is <br>, and control: a different tag is a different thing");
+  ok(S.canon("Laser&nbsp;Processing") === S.canon("Laser Processing"), "a bound space is a space");
+  const orig = '<a class="link" href="/" data-route>← back to the start</a>';
+  const merged = S.mergeInner(orig, '<a class="link" href="/" data-route="">← back to home</a>');
+  ok(merged === '<a class="link" href="/" data-route>← back to home</a>', "an edit changes the words and leaves every tag exactly as written");
+  ok(S.mergeInner("I study CS at <em>UBC</em>.&nbsp;", "I study CS at <em>UBC</em>.&nbsp;") === "I study CS at <em>UBC</em>.&nbsp;",
+    "words that were not touched keep their own spelling");
+  ok(S.mergeInner("a <em>b</em>", "a <em>b</em><br>") === null && S.mergeInner("a", "a <em>b</em>") === null,
+    "control: a changed structure (a break, an emphasis) is not merged");
+  ok(S.tidyAttrs('<a data-route="" alt="">') === '<a data-route alt="">', "a bare data attribute is written bare, and alt=\"\" stays");
+  const ast = S.parse('const P = [{ slug: "iclicker", title: "iclicker", n: "x" }]; if (a === "iclicker") {}');
+  ok(S.stringNodes(ast).filter((c) => c.value === "iclicker").length === 3 && S.stringNodes(ast, { content: true }).filter((c) => c.value === "iclicker").length === 1,
+    "asking for WORDS skips a slug and a comparison, so a title is not 'written three times'");
+}
+
 console.log(`\n${checks - failures}/${checks} checks passed`);
 if (failures > 0) process.exit(1);
 console.log("ALL PASS");
