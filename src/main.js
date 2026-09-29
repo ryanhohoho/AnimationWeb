@@ -18,7 +18,11 @@
 //
 // If the engine chunk fails or is blocked, the site is UNCHANGED except that
 // there is no mew on it. That is a correct page, not a broken one.
-import { Analytics } from "@vercel/analytics/next"
+// vercel analytics
+import { inject } from "@vercel/analytics"
+
+inject()
+
 import { createWorld } from "./engine/world.js";
 import { reducedMotion } from "./utils/motion.js";
 import { createScope } from "./utils/lifecycle.js";
