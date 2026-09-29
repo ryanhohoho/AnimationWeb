@@ -22,6 +22,10 @@
 import { inject } from "@vercel/analytics"
 
 inject()
+// speed insights
+import { injectSpeedInsights } from '@vercel/speed-insights';
+
+injectSpeedInsights();
 
 import { createWorld } from "./engine/world.js";
 import { reducedMotion } from "./utils/motion.js";
