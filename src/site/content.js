@@ -37,7 +37,7 @@ export const EXPERIENCE = [
     role: "Junior Software Developer",
     loc: "surrey, BC",
     when: "Oct 2025 — Present",
-    what: "Built LaserSO, an encrypted read/write tool to become the company standard operating procedure across tens of thousands of units province-wide."
+    what: "Built RCMP Softshield, an encrypted read/write tool to become the company standard operating procedure across tens of thousands of units province-wide."
   },
   {
     org: "Royal Canadian Mounted Police (RCMP)",

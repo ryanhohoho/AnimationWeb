@@ -40,27 +40,27 @@ export function html(p) {
   // the row under the title: when, as whom, where, with what (her row says
   // WITH for the people; the people here are not the site's to name)
   const meta = [
-    ["YEAR", "2024 — present"],
-    ["ROLE", "IT Technician, then Junior Software Developer"],
+    ["YEAR", "2025 — present"],
+    ["ROLE", "Junior Software Developer"],
     ["ORG", "Royal Canadian Mounted Police"],
-    ["TOOLS", "Powershell · Private Encryption Protocol"]
+    ["TOOLS", "C  · C++  ·  Powershell   ·  Other"]
   ].map(([k, v]) => `
         <div><p class="t dim">${esc(k)}</p><p class="t body">${esc(v)}</p></div>`).join("");
 
   return renderSheet(p, {
-    headline: "rcmp encryption<br /><em>architecture</em>",
+    headline: "RCMP<br><em>Softshield</em>",
     hero: `
       <div class="conf-meta">${meta}
       </div>
       ${capture({ id: "rcmp-encryption-1", ratio: "1.7778", alt: "The encryption station." })}`,
-    lead: "Complete redesign of RCMP private encryption architecture. \nDrives are formatted and encrypted autonomously.",
+    lead: "Complete redesign of RCMP private encryption architecture. \nAutomatic encryption and formatting of storage devices.\nComplete manipulatability of software encryption protocol and format through a Command-Line interface.",
 
     body: `
       <div class="conf-sec">
         <p class="t dim conf-k">THE WORK</p>
         <ul class="conf-list">
           <li class="t body">CLI application that reads and writes encrypted drives.</li>
-          <li class="t body">Application follows each drive by a stable device identity rather than its drive letter, because Windows hands a released letter to the next drive within seconds, and a tool that trusts letters will call a half-encrypted drive safe to remove.</li>
+          <li class="t body">Accesses and pre-configures encryption architecture on all connected storage devices.</li>
           <li data-e="t-as53" class="t body">Fully documented SOP.</li>
         </ul>
       </div>

@@ -48,7 +48,7 @@ export const PROJECTS = [
   {
     slug: "usb-provisioning",
     n: "02",
-    title: "LaserSO",
+    title: "Laser Processing",
     sub: "batch engraving + encryption tooling · rcmp",
     kind: "PYTHON · TYPESCRIPT · REACT",
     year: "2025",
@@ -73,13 +73,13 @@ export const PROJECTS = [
     // it is one the site already states elsewhere; nothing new is disclosed.
     slug: "rcmp-encryption",
     n: "03",
-    title: "RCMP Encryption Architecture",
+    title: "Softshield",
     sub: "drive encryption at fleet scale · rcmp · confidential",
-    kind: "PROTECTED B · CONFIDENTIAL · PYTHON",
-    year: "2024",
+    kind: "PROTECTED B · C · C++ · POWERSHELL",
+    year: "2026",
     // PLACEHOLDER PROSE, drafted from the site's own copy: the owner rewrites it
-    line: "Modifies private encryption protocol by reading and writing on encrypted drives. CLI for disk inspection and automatic disk detection.",
-    skills: "POWERSHELL · WINDOWS STORAGE APIS · OTHER · OTHER · OTHER",
+    line: "Modifies private encryption protocol by reading and writing on encrypted drives. CLI for disk inspection and automatic disk malformation detection.",
+    skills: "C  · C++  · POWERSHELL  · OTHER",
     // THE USB SHEET'S NAVY, WITH THE DETAIL PRINTED OUT: the same family as
     // the work beside it, and a cool redaction grey as the second ink
     inkA: "#16305C",   // deep navy

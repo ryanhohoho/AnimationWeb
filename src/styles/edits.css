@@ -26,14 +26,23 @@
 #doc[data-page="project:iclicker"] [data-e="sheet-in-ta8h"] { display:none; }
 #doc[data-page="project:motion-graphics"] [data-e="mg-bts-5bho"] { display:none; }
 #doc[data-page="project:rcmp-encryption"] [data-e="conf-photos-gww3"] { display:none; }
+#doc[data-page="project:rcmp-encryption"] [data-e="d-zsf3"] { text-transform:none; }
 #doc[data-page="project:rcmp-encryption"] [data-e="sheet-in-ecsx"] > figure:nth-child(3) { display:none; }
+#doc[data-page="project:rcmp-encryption"] [data-e="t-fdqs"] { max-width:none; width:398px; }
 #doc[data-page="project:usb-provisioning"] [data-e="d-zsf3"] { font-weight:400; letter-spacing:-2.62px; text-transform:none; translate:0px -1px; }
 #doc[data-page="project:usb-provisioning"] [data-e="fig-5cc4"] { display:none; }
 #doc[data-page="project:usb-provisioning"] [data-e="t-5z65"] { display:none; text-transform:none; }
 #doc[data-page="project:usb-provisioning"] [data-e="t-hx35"] { translate:0px -168px; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(1) { order:1; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(1) > a:nth-child(1) > span:nth-child(1) .pcard-still { object-position:51% 50%; }
 #doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(1) > a:nth-child(1) > span:nth-child(2) > span:nth-child(1) { text-transform:none; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(2) { order:3; }
 #doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(2) > a:nth-child(1) > span:nth-child(2) > span:nth-child(1) { text-transform:none; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(3) { order:2; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(3) > a:nth-child(1) > span:nth-child(1) .pcard-still { object-position:14% 27%; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(3) > a:nth-child(1) > span:nth-child(1) .pcard-vid { object-position:49% 53%; }
 #doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(3) > a:nth-child(1) > span:nth-child(2) > span:nth-child(1) { text-transform:none; }
+#doc[data-page="projects"] [data-e="cards-0frh"] > li:nth-child(4) { order:4; }
 #doc[data-page="projects"] [data-e="deck-in-bdzo"] { translate:0px 10px; }
 
 /* @bp 860 */

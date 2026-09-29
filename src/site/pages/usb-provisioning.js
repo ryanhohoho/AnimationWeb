@@ -23,7 +23,7 @@ import { mountUsbDemo } from "../usbDemo.js";
 
 export function html(p) {
   return renderSheet(p, {
-    headline: "<em>LaserSO&nbsp;</em><em></em>",
+    headline: "<span style=\"letter-spacing: -4.32432px;\"><b>Laser Processing</b></span>",
     // THE LEAD IS ON PLATE 1, not under the headline. With the hero gone,
     // plate 0 is a title page -- one display line on one screen, which is what
     // the first plate of a two-plate sheet has always been in print. The
@@ -31,7 +31,7 @@ export function html(p) {
     // and prints no paragraph for it.
     lead: "",
     notes: [
-      { k: "DELIVERED", v: "LaserSO is used daily by the RCMP and has outputted over ten-thousand devices as of September 4th, 2026." },
+      { k: "DELIVERED", v: "This application is used daily by the RCMP and has outputted over ten-thousand devices as of September 4th, 2026." },
       { k: "THE HARD PART", v: "The company uses a proprietary industrial laser engraver with no direct access to G-code compatibility. I reverse-engineered the accepted file format and built LaserSO to output files modified to our required specifications in extreme quantities." },
       // THE DISCLOSURE, ON THE PAGE. Not only in a comment: this cell is where a
       // reader is told, and the page must never carry a real run without it.
@@ -43,15 +43,25 @@ export function html(p) {
     // -- stood here and was removed as the outdated demo; FIG. 2 above is the
     // figure this sheet is about.
     body: `
-    <p data-e="t-hx35" class="t body wide lead">&nbsp;LaserSO stands for Laser Soft Output.<br>What you saw above is the
-      original command-Line interface prototype overlayed by the
+    <p data-e="t-hx35" class="t body wide lead">What you saw above is the
+      original command-Line interface prototype
+
+      overlayed by the
       current
-      production application.&nbsp;<br>LaserSO pulls and erases serial
+      production
      
-      numbers from a generated datapool in our backend. Serial numbers are
+      application.&nbsp;<br>It pulls and erases serial
      
+      numbers
+     
+      from a generated datapool in our backend. Serial numbers are
+     
+     
+ 
       mapped to physical jig coordinates by a generator based on template
-     
+    
+      
+
       geometry.</p>`,
 
     // ── THE FIGURE IS THE HERO, which is what `hero` has always meant on this

@@ -91,7 +91,7 @@ export function renderSheet(p, {
     <div data-e="sheet-in-ecsx" class="sheet-in">
       <h1 data-e="d-zsf3" class="d sheet-h">${headline}</h1>
       ${hero}
-      ${lead ? `<p class="t body wide lead">${lead}</p>` : ""}
+      ${lead ? `<p data-e="t-fdqs" class="t body wide lead">${lead}</p>` : ""}
     </div>
   </section>
 
