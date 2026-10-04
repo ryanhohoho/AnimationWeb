@@ -7,6 +7,7 @@
 
 import { v2, makeNoise1d2, clamp, smoothstep } from "../../utils/math.js";
 import { createPathfinder } from "./pathfinder.js";
+import { createShake } from "./shake.js";
 
 export function createBrain({ body, world, config, pathConfig, attackConfig }) {
   const cfg = config;
@@ -273,15 +274,31 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
       downX: e.point.x,
       downY: e.point.y,
       offX: body.pos.x - e.point.x,
-      offY: body.pos.y - e.point.y
+      offY: body.pos.y - e.point.y,
+      // is the hand shaking her? (shake.js). `shook` once it has, which
+      // changes what letting go means
+      shake: createShake(cfg.fling.shake),
+      shook: false
     };
   });
 
-  world.on("pointerup", () => {
+  world.on("pointerup", (e) => {
     world.grabbing = false;
     if (brain.state !== "held") return;
     const h = brain.held;
     brain.held = null;
+    // SHAKEN, OR TAKEN AWAY BY THE BROWSER: put down, not thrown. A shake's
+    // last stroke is as fast as a throw, and throwing her across the page at
+    // the end of one displaced her, which is the one thing a shake was not to
+    // do (by instruction). A cancelled gesture is neither a throw nor a pet.
+    if (h.shook || e?.cancel) {
+      v2.scale(body.vel, body.vel, cfg.fling.shake.releaseKeep);
+      brain.state = "hover";
+      brain.stateTime = 0;
+      settle();
+      scheduleNextInterest();
+      return;
+    }
     if (h.pending) {
       // never dragged: it was a pet
       brain.state = "hover";
@@ -1113,10 +1130,20 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
         if (!h) { brain.state = "hover"; break; }
         if (h.pending) {
           const moved = Math.hypot(world.pointer.pos.x - h.downX, world.pointer.pos.y - h.downY);
-          if (moved > cfg.fling.grabThresholdPx) {
+          const slop = world.pointer.type === "touch" ? cfg.fling.grabThresholdTouchPx : cfg.fling.grabThresholdPx;
+          if (moved > slop) {
             h.pending = false;
             brain.agitation = clamp(brain.agitation + 0.2, 0, 1);
           }
+        }
+        // the hand in CLIENT px: a shake is the hand's motion, not the page's
+        if (h.shake.step(world.pointer.client.x, world.pointer.client.y, world.time, body.radius)) {
+          h.shook = true;
+          brain.agitation = clamp(brain.agitation + 0.35, 0, 1);
+          // the cursor's answer -- stars and the >.< (mew.js, faceOverlay.js) --
+          // and none of its push: no impulse, no change of state, she stays in
+          // the hand. `dir` is only for listeners that aim something; up.
+          world.emit("startle", { dir: { x: 0, y: -1 }, intensity: 1, source: "shake" });
         }
         const fhx = (world.pointer.pos.x + h.offX - body.pos.x) * cfg.fling.holdGain
           - body.vel.x * cfg.fling.holdDamp;

@@ -28,6 +28,10 @@
 import { PROJECTS, bySlug } from "./projects.js";
 import { reducedMotion } from "../utils/motion.js";
 import { renderProject, renderNotFound, renderDeckPage } from "./pages.js";
+// the tab's name and the front page's description: one file, which the
+// editor's "Link & icon" tab writes and the build puts in the head
+import { SITE, PREVIEW } from "./identity.js";
+import { tabTitle } from "./identityHead.js";
 
 
 // ── THE DECK ─────────────────────────────────────────────────────────────────
@@ -83,9 +87,11 @@ export const RAMP = {
 // follow. A project sheet does not appear here at all: it already has a written
 // one-sentence summary in projects.js, read by anyone deciding which of three to
 // open, and a second one would be a second thing to keep in step.
+//
+// Home's is the head's own (SITE.description in identity.js), so the front page
+// says the same thing whether it was loaded or navigated back to.
 const DESC = {
-  home: "Ryan Ho — systems developer. Undocumented file formats, hardware " +
-        "automation, and a procedurally animated Mew loose on the page.",
+  home: SITE.description,
   experience: "Where Ryan Ho has worked: systems and tooling for the RCMP, and " +
         "computer science and biology at UBC.",
   projects: "Three pieces of work — a commissioned provisioning and engraving " +
@@ -178,16 +184,16 @@ export function createRouter({ scope, deck, world, onPage }) {
 
   function render(route) {
     if (route.name === "home") {
-      return { html: homeHTML, title: "RYAN HO", desc: DESC.home, ink: null, inkA: null };
+      return { html: homeHTML, title: SITE.title, desc: DESC.home, ink: null, inkA: null };
     }
     if (DECK.includes(route.name)) {
-      return { html: renderDeckPage(route.name), title: `${route.name} — RYAN HO`,
+      return { html: renderDeckPage(route.name), title: tabTitle(SITE, route.name),
                desc: DESC[route.name], ink: null, inkA: null };
     }
     if (route.name === "project") {
       return {
         html: renderProject(route.project),
-        title: `${route.project.title} — RYAN HO`,
+        title: tabTitle(SITE, route.project.title),
         // the card's own sentence, already written and already read by anyone
         // choosing between the three
         desc: route.project.line,
@@ -195,7 +201,7 @@ export function createRouter({ scope, deck, world, onPage }) {
         inkA: route.project.inkA
       };
     }
-    return { html: renderNotFound(route.path), title: "not printed — RYAN HO",
+    return { html: renderNotFound(route.path), title: tabTitle(SITE, "not printed"),
              desc: DESC[404], ink: null };
   }
 
@@ -243,9 +249,13 @@ export function createRouter({ scope, deck, world, onPage }) {
     // the description travels with the title, or a shared inner page quotes the
     // front page. og:title too: a scraper that runs JS reads the property, and
     // one that does not gets the summary's, which is the right default
+    //
+    // Home goes back to the link card's own words (PREVIEW in identity.js),
+    // which is what the head shipped with: its tab name is not its card title.
+    const home = route.name === "home";
     if (metaDesc && desc) metaDesc.setAttribute("content", desc);
-    if (metaOgDesc && desc) metaOgDesc.setAttribute("content", desc);
-    if (metaOgTitle) metaOgTitle.setAttribute("content", title);
+    if (metaOgDesc && desc) metaOgDesc.setAttribute("content", home ? PREVIEW.description : desc);
+    if (metaOgTitle) metaOgTitle.setAttribute("content", home ? PREVIEW.title : title);
     // ── THE READER LANDS AT THE TOP; THE PLATE WINDS ON ──────────────────
     // Keeping the reader's scroll offset made the sky continuous, but it also
     // dropped them into the middle of a sheet they had not read yet. The offset

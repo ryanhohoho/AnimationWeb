@@ -2,8 +2,9 @@
 //
 // Two kinds of change, because they live in two different places:
 //
-//   GLOBAL  styles (the edits.css model) and colours. Pure data: undoing one is
-//           swapping the data back and re-rendering the CSS.
+//   GLOBAL  styles (the edits.css model), colours, and the site's identity
+//           (the Link & icon tab: names, the link card, the icon). Pure data:
+//           undoing one is swapping the data back and re-rendering.
 //   PAGE    words, pictures, inserted and deleted elements. They live in the DOM
 //           of ONE page, and that DOM is thrown away every time the router
 //           renders the page again -- so each one can re-apply itself to a
@@ -15,7 +16,7 @@
 
 import { fromCss, clone } from "../shared/editsCss.js";
 
-export function createStore({ css, palette, tokens, projects }) {
+export function createStore({ css, palette, tokens, projects, identity }) {
   const inks = {};
   for (const p of projects) inks[p.slug] = { inkA: p.inkA, ink: p.ink };
   const st = {
@@ -23,6 +24,10 @@ export function createStore({ css, palette, tokens, projects }) {
     palette: { ...palette },
     tokens: { ...tokens },
     inks,
+    // identity.js's four exports, plus `uploads` -- the pictures the tab is
+    // cutting from, by token, which live only in this session and are never
+    // written to the file (site.js keeps the bytes)
+    identity: { ...clone(identity || {}), uploads: { card: null, icon: null } },
     done: [],
     undone: [],
     base: null,
@@ -31,7 +36,7 @@ export function createStore({ css, palette, tokens, projects }) {
   st.base = snapshot();
 
   function snapshot() {
-    return JSON.stringify({ s: st.styles, p: st.palette, t: st.tokens, i: st.inks });
+    return JSON.stringify({ s: st.styles, p: st.palette, t: st.tokens, i: st.inks, d: st.identity });
   }
   const emit = () => st.listeners.forEach((f) => f());
 
@@ -40,15 +45,18 @@ export function createStore({ css, palette, tokens, projects }) {
     get palette() { return st.palette; },
     get tokens() { return st.tokens; },
     get inks() { return st.inks; },
+    get identity() { return st.identity; },
+    /** the identity as it was at load or at the last save */
+    get savedIdentity() { return JSON.parse(st.base).d; },
     get done() { return st.done; },
     on(f) { st.listeners.add(f); return () => st.listeners.delete(f); },
 
     /** a change to the global data, as one undoable step */
     global(label, mutate, after) {
-      const before = { s: clone(st.styles), p: { ...st.palette }, t: { ...st.tokens }, i: clone(st.inks) };
+      const before = { s: clone(st.styles), p: { ...st.palette }, t: { ...st.tokens }, i: clone(st.inks), d: clone(st.identity) };
       mutate(st);
-      const now = { s: clone(st.styles), p: { ...st.palette }, t: { ...st.tokens }, i: clone(st.inks) };
-      const set = (v) => { st.styles = clone(v.s); st.palette = { ...v.p }; st.tokens = { ...v.t }; st.inks = clone(v.i); after(); };
+      const now = { s: clone(st.styles), p: { ...st.palette }, t: { ...st.tokens }, i: clone(st.inks), d: clone(st.identity) };
+      const set = (v) => { st.styles = clone(v.s); st.palette = { ...v.p }; st.tokens = { ...v.t }; st.inks = clone(v.i); st.identity = clone(v.d); after(); };
       st.done.push({ label, global: true, do: () => set(now), undo: () => set(before) });
       st.undone = [];
       after();

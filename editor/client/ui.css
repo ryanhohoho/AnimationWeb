@@ -253,3 +253,133 @@ button.link.on { border-style: solid; border-color: var(--acc); background: var(
 .btns button.here { box-shadow: inset 0 -2px 0 var(--acc); }
 .btns button.on.here { box-shadow: 0 1px 2px rgba(0,0,0,.12), inset 0 -2px 0 var(--acc); }
 .menu .only { display: flex; align-items: center; gap: 6px; padding: 8px 10px 6px; border-top: 1px solid var(--line); margin-top: 4px; color: var(--dim); font-size: 11px; cursor: pointer; }
+
+/* ── the Link & icon tab (client/site.js) ───────────────────────────────────
+   Laid over the same three columns as the page's panels. The site's frame
+   stays where it is, at its size, under the board: hiding it would put the
+   page at innerWidth 0, which stops the deck painting (CLAUDE.md). */
+#layers { grid-column: 1; grid-row: 1; }
+#canvas { grid-column: 2; grid-row: 1; }
+#inspector { grid-column: 3; grid-row: 1; }
+#site-nav, #site-board, #site-panel { display: none; min-height: 0; }
+body.site-mode #site-nav { display: block; grid-column: 1; grid-row: 1; background: var(--panel); border-right: 1px solid var(--line); overflow: auto; z-index: 5; }
+body.site-mode #site-board { display: block; grid-column: 2; grid-row: 1; background: var(--bg); overflow: auto; z-index: 5; }
+body.site-mode #site-panel { display: block; grid-column: 3; grid-row: 1; background: var(--panel); border-left: 1px solid var(--line); overflow: auto; z-index: 5; }
+body.site-mode #layers, body.site-mode #inspector { visibility: hidden; }
+body.site-mode .bar-c { opacity: .35; pointer-events: none; }
+
+.site-tab { border: 1px solid var(--line2); background: none; padding: 4px 9px; border-radius: 5px; white-space: nowrap;
+  font: 500 11px var(--mono); letter-spacing: .04em; color: var(--dim); margin-left: 4px; }
+.site-tab:hover { border-color: var(--dim); color: var(--text); }
+.site-tab[aria-pressed="true"] { background: var(--acc); border-color: var(--acc); color: #fff; }
+
+.site-secs { display: grid; padding: 6px 0; }
+.site-sec { display: grid; gap: 2px; text-align: left; border: 0; background: none; padding: 9px 12px; border-left: 2px solid transparent; }
+.site-sec b { font-size: 12px; font-weight: 600; }
+.site-sec span { font-size: 10.5px; color: var(--faint); }
+.site-sec:hover { background: rgba(0,0,0,.04); }
+.site-sec.on { background: var(--acc-soft); border-left-color: var(--acc); }
+.site-where { padding: 10px 12px; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--faint); line-height: 1.5; display: grid; gap: 8px; }
+.site-where code { font: 10px var(--mono); color: var(--dim); }
+
+.site-board-in { padding: 20px 24px 60px; display: grid; gap: 22px; justify-items: start; }
+.site-stage { display: grid; gap: 8px; }
+.stage-h { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.stage-h b { font: 600 10px var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--dim); }
+.stage-h span { font-size: 11px; color: var(--faint); }
+.designer { display: block; box-shadow: 0 0 0 1px rgba(0,0,0,.1), 0 8px 30px rgba(0,0,0,.12); outline: none; touch-action: none; }
+.designer:focus-visible { box-shadow: 0 0 0 2px var(--acc), 0 8px 30px rgba(0,0,0,.12); }
+.painter-row { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.painter { display: block; box-shadow: 0 0 0 1px rgba(0,0,0,.12); cursor: crosshair; touch-action: none; image-rendering: pixelated; }
+.icon-sizes { display: grid; gap: 14px; }
+.isz { display: flex; align-items: center; gap: 10px; font-size: 10.5px; color: var(--faint); }
+.isz canvas { box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+
+.mocks { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+.mock { display: grid; gap: 6px; margin: 0; max-width: 460px; }
+.mock figcaption { font: 600 10px var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--dim); }
+.mock-note { font-size: 10.5px; color: var(--faint); max-width: 420px; }
+.thumb { display: block; }
+/* the apps' own type is their system face, not the site's */
+.mock > div { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif; }
+
+.m-discord { background: #313338; color: #dbdee1; padding: 12px 16px 14px; border-radius: 8px; width: 460px; font-size: 15px; }
+.m-d-link { color: #00a8fc; font-size: 15px; margin-bottom: 6px; }
+.m-d-embed { background: #2b2d31; border-left: 4px solid #fff; border-radius: 4px; padding: 10px 16px 16px 12px; display: grid; gap: 6px; max-width: 432px; }
+.m-d-site { font-size: 12px; color: #dbdee1; }
+.m-d-title { font-size: 16px; font-weight: 600; color: #00a8fc; }
+.m-d-desc { font-size: 14px; line-height: 1.375; white-space: pre-line; }
+.m-d-embed .thumb { margin-top: 10px; }
+
+.m-imsg { background: #fff; padding: 14px; border-radius: 10px; width: 300px; box-shadow: 0 0 0 1px rgba(0,0,0,.06); }
+.m-i-bubble { border-radius: 18px; overflow: hidden; width: 270px; background: #e9e9eb; }
+.m-i-foot { padding: 8px 12px 10px; display: grid; gap: 2px; }
+.m-i-foot b { font-size: 13px; color: #000; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.m-i-foot span { font-size: 12px; color: #8a8a8e; }
+
+.m-slack { background: #fff; padding: 12px 14px; border-radius: 8px; width: 420px; border-left: 4px solid #ddd; display: grid; gap: 4px; box-shadow: 0 0 0 1px rgba(0,0,0,.06); color: #1d1c1d; font-size: 15px; }
+.m-s-site { display: flex; align-items: center; gap: 6px; font-size: 15px; }
+.m-s-title { color: #1264a3; font-weight: 700; }
+.m-s-desc { line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.m-slack .thumb { margin-top: 6px; }
+
+.m-x { background: #fff; padding: 12px; border-radius: 10px; width: 404px; box-shadow: 0 0 0 1px rgba(0,0,0,.06); }
+.m-x-card { position: relative; border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px #cfd9de; width: 380px; }
+.m-x-dom { position: absolute; left: 12px; bottom: 12px; background: rgba(0,0,0,.77); color: #fff; font-size: 13px; padding: 1px 6px; border-radius: 4px; }
+.m-x-from { font-size: 13px; color: #536471; margin-top: 4px; }
+
+.m-li { background: #fff; width: 380px; border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,.1); }
+.m-li-foot { background: #eef3f8; padding: 10px 12px; display: grid; gap: 3px; }
+.m-li-foot b { font-size: 14px; color: rgba(0,0,0,.9); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.m-li-foot span { font-size: 12px; color: rgba(0,0,0,.6); }
+
+.m-google { background: #fff; padding: 16px 18px; border-radius: 8px; width: 460px; box-shadow: 0 0 0 1px rgba(0,0,0,.06); }
+.m-g-site { display: flex; align-items: center; gap: 10px; }
+.m-g-ico { width: 28px; height: 28px; border-radius: 50%; background: #f1f3f4; display: grid; place-items: center; box-shadow: 0 0 0 1px #ecedef; }
+.m-g-site > span:last-child { display: grid; }
+.m-g-site b { font-size: 14px; font-weight: 400; color: #202124; }
+.m-g-site small { font-size: 12px; color: #4d5156; }
+.m-g-title { font-size: 20px; color: #1a0dab; margin: 6px 0 3px; line-height: 1.3; }
+.m-g-desc { font-size: 14px; color: #4d5156; line-height: 1.58; }
+
+.m-tabs-wrap { display: grid; gap: 10px; }
+.m-tabs { display: flex; align-items: flex-end; gap: 2px; padding: 8px 8px 0; border-radius: 8px 8px 0 0; width: 460px; }
+.m-tabs.light { background: #dee1e6; } .m-tabs.dark { background: #202124; }
+.m-tab { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; width: 200px; border-radius: 8px 8px 0 0; font-size: 12px; }
+.m-tabs.light .m-tab { color: #3c4043; } .m-tabs.dark .m-tab { color: #bdc1c6; }
+.m-tabs.light .m-tab.on { background: #fff; color: #202124; } .m-tabs.dark .m-tab.on { background: #35363a; color: #e8eaed; }
+.m-tab span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-tab i { font-style: normal; opacity: .6; }
+.m-tab-plus { padding: 0 8px 8px; color: #80868b; }
+
+.m-home { display: flex; gap: 22px; padding: 22px 26px; border-radius: 22px; width: 300px;
+  background: linear-gradient(160deg, #6f8fb3, #b7a3c9 60%, #e8c4cf); }
+.m-app { display: grid; justify-items: center; gap: 5px; width: 66px; }
+.m-app span { font-size: 11px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.35); max-width: 72px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-app.ghost i { width: 60px; height: 60px; border-radius: 13.5px; background: rgba(255,255,255,.35); }
+
+/* fields */
+#site-panel .sec { display: grid; gap: 8px; }
+.sf { display: grid; gap: 4px; min-width: 0; }
+.sf-l { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; color: var(--dim); gap: 6px; }
+.sf-l small { color: var(--faint); font: 10px var(--mono); }
+.sf-count.over { color: var(--warn); font-weight: 600; }
+.sf-in { width: 100%; min-width: 0; border: 1px solid var(--line2); border-radius: 5px; background: #fff; padding: 5px 7px; font: 12px/1.4 var(--ui); outline: none; }
+.sf-in:focus { border-color: var(--acc); }
+textarea.sf-in { resize: vertical; min-height: 54px; }
+.sf-in.num, .sf-in.hex { font: 11.5px var(--mono); }
+select.sf-in { padding: 4px; }
+.sf-h { font-size: 10.5px; color: var(--faint); line-height: 1.45; }
+.sf-check { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--dim); cursor: pointer; }
+.sf-color { display: flex; gap: 6px; align-items: center; }
+.sf-color input[type=color] { width: 34px; height: 28px; border: 0; padding: 0; background: none; flex: none; }
+.sf-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.sf-chips button { width: 16px; height: 16px; border: 0; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.site-layers { display: grid; gap: 2px; }
+.site-layer { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; text-align: left; border: 1px solid transparent; background: rgba(0,0,0,.03); border-radius: 5px; padding: 6px 8px; }
+.site-layer b { flex: 1; min-width: 0; font-weight: 500; font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-layer span { flex: none; max-width: 55%; overflow: hidden; text-overflow: ellipsis; font-size: 10px; color: var(--faint); white-space: nowrap; }
+.site-layer:hover { border-color: var(--line2); }
+.site-layer.on { border-color: var(--acc); background: var(--acc-soft); }
+#site-panel .note { margin: 10px 12px 0; }

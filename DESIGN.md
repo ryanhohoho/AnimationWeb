@@ -651,10 +651,11 @@ src/styles/site.css    the sheet. Two type sizes, one chroma, layer order at the
 index.html             the summary card, and the chrome. Every block carries its
                        reason.
 
-tools/mewMark.mjs      the 32x32 Mew, as text. The tab mark and the link card
-                       are both cut from it.
-tools/bake_favicon.mjs -> public/favicon.svg + the two pngs
-tools/bake_og.mjs      -> public/og.png, set rather than captured
+src/site/identity.js   the site's name, the link card (words and design) and
+                       the 32x32 Mew, as text. The tab mark and the link card
+                       are both cut from it; the editor's Link & icon tab
+                       edits it and draws the card (editor/client/card.js)
+tools/bake_favicon.mjs -> public/favicon.svg, .ico and the three pngs
 tools/bake_icons.mjs   -> the atlas, the glyph plates, and iconatlas.js (the
                        glyph plates are also each icon's CSS mask now; the
                        shader no longer reads the atlas)
@@ -671,12 +672,12 @@ tools/vendor_demo.mjs  -> src/vendor/xtool-demo/. Copies the demo in from the
 Three things about this site are only ever seen by somebody who is not looking
 at it, and all three were nothing until recently.
 
-- **A shared link.** The card is SET, not captured (`tools/bake_og.mjs`): at the
+- **A shared link.** The card is SET, not captured (drawn in the editor's Link & icon tab from `CARD` in `src/site/identity.js`): at the
   ~500 px a preview is seen at, a screenshot of this sheet is a grey rectangle,
   because the halftone dissolves and the animal is 40 px of pink. So the card
   draws the thesis instead — bone paper, a rectangle cut out of it, the one
-  unprinted thing standing in the hole. The description travels with the route,
-  or a shared `/projects/closet` advertises the front page.
+  unprinted thing standing in the hole. One card for every route, by
+  instruction: the apps that unfurl a link do not run the page.
 - **A reader who asked for less motion.** The crossings commit outright, the
   entrances land at their end state, the weather holds on one frame, the hover
   video never starts — and the engine is never imported. She wanders, flees the

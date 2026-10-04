@@ -14,7 +14,9 @@ export function createWorld({ seed = 1337, headless = false } = {}) {
       vel: { x: 0, y: 0 },          // from hand motion (client deltas)
       speed: 0,
       active: false,       // becomes true on first real pointer event
-      lastMoveAt: -Infinity
+      lastMoveAt: -Infinity,
+      type: "mouse"        // the last press's pointerType: a finger is judged
+                           // differently from a mouse (behavior.fling)
     },
     scroll: { y: 0, vel: 0 },
     colliders: [],          // [{ rect: {x, y, w, h}, el }] in DOCUMENT coords
@@ -122,12 +124,42 @@ function attachBrowser(world) {
   }, { passive: true });
 
   window.addEventListener("pointerdown", (e) => {
+    // ── THE HAND IS WHERE IT PRESSED ─────────────────────────────────────
+    // The pointer's position used to come from pointermove alone. A mouse
+    // hovers, so by the time it presses the position is already right; a
+    // FINGER does not: it arrives out of nowhere, and the first event it sends
+    // is this one. So on a phone the press was measured against wherever the
+    // LAST touch had been (or the -9999 sentinel, on the first touch of a
+    // visit), the brain read that jump as the hand having moved, turned every
+    // tap on her into a drag, and the hold spring pulled her toward the old
+    // spot. Which is why a tap nudged her and never fired the beam.
+    //
+    // Snapped here, with prev = now, so the press itself contributes no
+    // velocity either (a smear from the previous touch would read as a flick).
+    raw.x = raw.prevX = e.clientX;
+    raw.y = raw.prevY = e.clientY;
+    world.pointer.active = true;
+    world.pointer.type = e.pointerType || "mouse";
+    world.pointer.client.x = e.clientX;
+    world.pointer.client.y = e.clientY;
+    world.pointer.pos.x = e.clientX;
+    world.pointer.pos.y = e.clientY + window.scrollY;
+    world.pointer.vel.x = 0;
+    world.pointer.vel.y = 0;
+    world.pointer.speed = 0;
     // document coords, same space the body lives in
-    world.emit("pointerdown", { x: e.clientX, y: e.clientY + window.scrollY });
+    world.emit("pointerdown", { x: e.clientX, y: e.clientY + window.scrollY, type: world.pointer.type });
   }, { passive: true });
 
   window.addEventListener("pointerup", (e) => {
     world.emit("pointerup", { x: e.clientX, y: e.clientY + window.scrollY });
+  }, { passive: true });
+  // THE BROWSER TOOK THE GESTURE (a touch that became a scroll or a pinch):
+  // there is no pointerup coming, and a grab left open would follow a hand
+  // that is no longer reported. It lets go -- without the throw or the pet a
+  // real release would mean, because nobody released anything.
+  window.addEventListener("pointercancel", () => {
+    world.emit("pointerup", { x: world.pointer.pos.x, y: world.pointer.pos.y, cancel: true });
   }, { passive: true });
   // a drag that leaves the window still has to let go
   window.addEventListener("blur", () => {

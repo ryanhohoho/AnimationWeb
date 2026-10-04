@@ -270,6 +270,12 @@ body::before {
 }
 
 #stage { position:fixed; inset:0; width:100vw; height:100lvh; z-index:30; pointer-events:none; }
+/* the press on her, on a touch screen (mew.js, "a finger on her must not
+   scroll the page"): invisible, carried on her by the render frame, and
+   touch-action:none so a drag or a shake on her is hers and not a scroll */
+#mew-touch { position:fixed; left:0; top:0; z-index:24; border-radius:50%; touch-action:none;
+  -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+#mew-touch[hidden] { display:none; }
 
 /* THE SHEET. Fixed, so it costs one canvas the size of the window rather than
    one the size of the document — a 5,000 px tall canvas is both a memory

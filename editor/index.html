@@ -16,6 +16,9 @@
     <div class="bar-l">
       <span class="brand"><i></i>EDIT</span>
       <nav id="pages" aria-label="Pages"></nav>
+      <!-- not a page: the site's name, its link card and its icon
+           (client/site.js), which no page of the site shows -->
+      <button id="site-tab" class="site-tab" aria-pressed="false" title="The tab's name, the link card a shared URL unfurls into, and the icon">Link &amp; icon</button>
     </div>
     <div class="bar-c">
       <div id="bps" class="seg" role="radiogroup" aria-label="Screen size"></div>
@@ -41,6 +44,10 @@
       <div id="device"><iframe id="site" title="The site, being edited"></iframe></div>
     </section>
     <aside id="inspector" aria-label="Inspector"></aside>
+    <!-- the Link & icon tab, laid over the same three columns -->
+    <aside id="site-nav" aria-label="Link and icon sections"></aside>
+    <section id="site-board" aria-label="Link and icon previews"></section>
+    <aside id="site-panel" aria-label="Link and icon settings"></aside>
   </main>
 
   <footer id="status">

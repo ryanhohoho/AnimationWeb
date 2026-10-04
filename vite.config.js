@@ -1,8 +1,45 @@
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
-import { copyFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { createHash } from "node:crypto";
 import { designPx } from "./src/styles/designPx.js";
+import { identityHead, IDENTITY_FILES } from "./src/site/identityHead.js";
+
+// ── THE NAME, THE LINK CARD AND THE ICON COME FROM ONE FILE ────────────────
+// src/site/identity.js holds them (the editor's "Link & icon" tab writes it),
+// and this writes them into index.html's head where the marker comment sits.
+// It has to be the head of the HTML itself, not something the page sets later:
+// a link preview is made by a scraper that never runs the page's JavaScript.
+//
+// identity.js is imported FRESH on every transform (its mtime in the URL), so
+// a save in the editor shows on the next load with no restart. Every public/
+// file it links carries a hash of its contents, so a scraper or a browser that
+// cached the old card or icon fetches the new one.
+//
+// Normal order: AFTER the editor's "pre" hook, which re-reads index.html from
+// disk to mark its body (and so would throw this away), and BEFORE
+// buildNotesOut's "post" one, which strips the marker with every other note.
+// A missing marker stops the build rather than ship a page with no title.
+const IDENTITY_MARK = /<!--\s*identity\b(?:(?!-->)[\s\S])*-->/g;
+const siteIdentity = () => ({
+  name: "site-identity",
+  transformIndexHtml: {
+    async handler(html) {
+      const marks = html.match(IDENTITY_MARK) || [];
+      if (marks.length !== 1) throw new Error(`index.html needs exactly one <!-- identity --> marker in its head (found ${marks.length})`);
+      const src = join(process.cwd(), "src/site/identity.js");
+      const id = await import(`${pathToFileURL(src).href}?t=${statSync(src).mtimeMs}`);
+      const files = {};
+      for (const f of IDENTITY_FILES) {
+        const p = join(process.cwd(), "public", f);
+        if (existsSync(p)) files[f] = createHash("sha1").update(readFileSync(p)).digest("hex").slice(0, 8);
+      }
+      return html.replace(IDENTITY_MARK, () => identityHead(id, files));
+    }
+  }
+});
 
 // ── THE DEEP LINK PROBLEM, AND THE SMALLEST HONEST FIX ──────────────────────
 // This site has real routes. /projects/closet is a URL somebody can send to
@@ -107,7 +144,7 @@ export default defineConfig(({ mode }) => ({
   // routes and no server, so it keeps the relative base.
   base: mode === "single" ? "./" : "/",
   appType: "spa",
-  plugins: mode === "single" ? [designPixels(), viteSingleFile()] : [designPixels(), buildNotesOut(), spaFallback()],
+  plugins: mode === "single" ? [designPixels(), siteIdentity(), viteSingleFile()] : [designPixels(), siteIdentity(), buildNotesOut(), spaFallback()],
   build: {
     assetsInlineLimit: mode === "single" ? 100000000 : 4096,
     chunkSizeWarningLimit: 2000

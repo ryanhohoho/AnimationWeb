@@ -22,11 +22,13 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync,
   copyFileSync, statSync, rmSync } from "node:fs";
 import { join, relative, extname, basename } from "node:path";
-import { randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
+import { randomUUID, createHash } from "node:crypto";
 import { spawn, execFileSync } from "node:child_process";
 import { startTags, elementAt, bodyRange } from "./html.js";
 import * as S from "./source.js";
 import * as M from "./media.js";
+import { checkIdentity, identityEdits, IDENTITY_FILE, PUBLIC_FILES } from "./identity.js";
 
 const ROOT = process.cwd();
 const R = (p) => join(ROOT, p);
@@ -283,7 +285,7 @@ function ensureCaptureImport(batch, file, code, ast) {
  * Turn the editor's changes into a Batch, encoding media into staging as it
  * goes. Nothing outside node_modules/.editor-staging is touched here.
  */
-function plan(body) {
+function plan(body, { identityNow = null } = {}) {
   const batch = new Batch();
   const moves = [];     // { from, to } or { del } -- applied only if the plan holds
   const warnings = [];
@@ -497,6 +499,12 @@ function plan(body) {
     }
   }
 
+  // ── the name, the link card and the icon (the "Link & icon" tab) ───────
+  if (body.identity) {
+    try { identityOp(body.identity, identityNow, batch, src, moves, runAfter); }
+    catch (e) { batch.errors.push(e.message); }
+  }
+
   // every offset from data-esrc is only true of the text the page was built from
   for (const f of needSeen) {
     if (seen.has(f) && seen.get(f) !== src(f).code) {
@@ -504,6 +512,58 @@ function plan(body) {
     }
   }
   return { batch, moves, warnings, runAfter, src };
+}
+
+/**
+ * The tab sends whole values for what changed in src/site/identity.js, the
+ * files it drew (the card, an uploaded icon at every size) already staged, the
+ * files that no longer apply (og.jpg once the card is drawn again, favicon.svg
+ * once the icon is a photograph), and whether the grid icon needs baking.
+ * Everything is checked against the shape the site reads before anything is
+ * written; the files are only ever the seven public/ names the head links.
+ */
+function identityOp(op, now, batch, src, moves, runAfter) {
+  const errs = checkIdentity(op.values);
+  if (errs.length) throw new Error(`identity.js: ${errs.slice(0, 3).join("; ")}`);
+  if (op.values && Object.keys(op.values).length) {
+    const { code, ast } = src(IDENTITY_FILE);
+    for (const e of identityEdits(code, ast, op.values, now)) batch.add(IDENTITY_FILE, e.start, e.end, e.text);
+  }
+  for (const [name, staged] of Object.entries(op.files || {})) {
+    if (!PUBLIC_FILES.has(name)) throw new Error(`public/${name} is not a file the Link & icon tab writes`);
+    const from = join(STAGE, basename(String(staged)));
+    if (!existsSync(from)) throw new Error(`the drawn ${name} is gone from staging; save again`);
+    moves.push({ copy: from, to: R(`public/${name}`) });
+  }
+  for (const name of op.remove || []) {
+    if (!PUBLIC_FILES.has(name)) throw new Error(`public/${name} is not a file the Link & icon tab removes`);
+    if (op.files?.[name]) continue;
+    if (existsSync(R(`public/${name}`))) retire(`public/${name}`, moves);
+  }
+  if (op.bake) {
+    // the grid is drawn by the same tool a person would run, after identity.js
+    // has been written; if it refuses, the icon files are put back as they were
+    const icons = ["favicon.svg", "favicon.ico", "favicon-32.png", "favicon-192.png", "apple-touch-icon.png"];
+    const rollback = icons.map((f) => ({ path: R(`public/${f}`), content: existsSync(R(`public/${f}`)) ? readFileSync(R(`public/${f}`)) : null }));
+    runAfter.push(["node", ["tools/bake_favicon.mjs"], rollback]);
+  }
+}
+
+/** identity.js as it is on disk now, imported fresh (its mtime in the URL) */
+async function loadIdentity() {
+  const f = R(IDENTITY_FILE);
+  const m = await import(`${pathToFileURL(f).href}?t=${statSync(f).mtimeMs}`);
+  return JSON.parse(JSON.stringify({ SITE: m.SITE, PREVIEW: m.PREVIEW, CARD: m.CARD, ICON: m.ICON }));
+}
+/** which of the tab's public/ files exist, with a short hash of each, so the
+    editor can show the files as they are and tell a fresh one from a cached one */
+function publicFiles() {
+  const out = {};
+  for (const f of PUBLIC_FILES) {
+    const p = R(`public/${f}`);
+    if (existsSync(p)) out[f] = createHash("sha1").update(readFileSync(p)).digest("hex").slice(0, 8);
+  }
+  return out;
 }
 
 /** encode a staged upload as media id `id`; returns what it made */
@@ -652,7 +712,7 @@ const json = (res, obj, code = 200) => {
   res.end(JSON.stringify(obj));
 };
 
-function state() {
+async function state() {
   const css = existsSync(R(EDITS)) ? read(EDITS) : "";
   const site = read("src/styles/site.css");
   const tokens = {};
@@ -670,7 +730,7 @@ function state() {
     const v = (k) => { const p = S.prop(n, k); return p ? S.staticValue(p.value) : null; };
     projects.push({ slug: v("slug"), title: v("title"), n: v("n"), inkA: v("inkA"), ink: v("ink") });
   });
-  return { css, tokens, palette, projects };
+  return { css, tokens, palette, projects, identity: await loadIdentity(), publicFiles: publicFiles() };
 }
 
 export default function editorPlugin() {
@@ -723,7 +783,7 @@ export default function editorPlugin() {
           }
           if (!p.startsWith("/__ed/")) return next();
 
-          if (p === "/__ed/state") return json(res, state());
+          if (p === "/__ed/state") return json(res, await state());
 
           if (p === "/__ed/resolve" && req.method === "POST") {
             const q = JSON.parse(String(await body(req)));
@@ -743,6 +803,20 @@ export default function editorPlugin() {
             const d = M.probe(join(STAGE, id));
             if (!d.w) { unlinkSync(join(STAGE, id)); return json(res, { ok: false, reason: "That file is not a picture or a clip ffmpeg can read." }); }
             return json(res, { ok: true, staged: id, url: `/__ed/staged/${id}`, video: d.video, w: d.w, h: d.h, seconds: d.seconds });
+          }
+
+          // A FILE THE EDITOR DREW (the link card, the icon at each size, or an
+          // svg icon as it was chosen), staged as bytes: no ffmpeg probe, since
+          // an .ico or an .svg is not a picture ffmpeg reads and the bytes were
+          // made by the editor's own canvas. Only the four types those can be.
+          if (p === "/__ed/stage" && req.method === "POST") {
+            const ext = extname(url.searchParams.get("name") || "").toLowerCase();
+            if (![".png", ".jpg", ".ico", ".svg"].includes(ext)) return json(res, { ok: false, reason: `a ${ext || "file"} is not something the Link & icon tab writes` });
+            const bytes = await body(req);
+            if (!bytes.length || bytes.length > 8 * 1024 * 1024) return json(res, { ok: false, reason: "that file is empty or over 8 MB" });
+            const id = `${randomUUID()}${ext}`;
+            writeFileSync(join(STAGE, id), bytes);
+            return json(res, { ok: true, staged: id });
           }
 
           if (p.startsWith("/__ed/staged/")) {
@@ -766,7 +840,7 @@ export default function editorPlugin() {
 
           if (p === "/__ed/save" && req.method === "POST") {
             const b = JSON.parse(String(await body(req)));
-            const { batch, moves, warnings, runAfter, src } = plan(b);
+            const { batch, moves, warnings, runAfter, src } = plan(b, { identityNow: b.identity ? await loadIdentity() : null });
             // the new stylesheet, if it changed
             const cssNow = existsSync(R(EDITS)) ? read(EDITS) : "";
             const writeCss = typeof b.css === "string" && b.css !== cssNow;

@@ -265,10 +265,52 @@ export function bootMew({ world, deck, scope, enter = false }) {
   // pressing on the character starts a grab: the brain resolves it into a PET
   // (clean click -> hyper beam) or a DRAG (carry + fling on release).
   // pointerdown events arrive in document coords.
+  const HIT = 1.25;          // the press's reach, in her radius
   world.on("pointerdown", (p) => {
     const d = Math.hypot(p.x - body.pos.x, p.y - body.pos.y);
-    if (d < body.radius * 1.25) world.emit("mewdown", { point: { x: p.x, y: p.y } });
+    if (d < body.radius * HIT) world.emit("mewdown", { point: { x: p.x, y: p.y } });
   });
+
+  // ── A FINGER ON HER MUST NOT SCROLL THE PAGE ─────────────────────────────
+  // On a touch screen the browser decides at touchstart whether a finger is
+  // scrolling, from the touch-action of whatever is under it -- and under her
+  // is the page, which scrolls. So a press on her that moved at all became a
+  // scroll, the browser took the gesture (pointercancel), and a drag or a shake
+  // could never be made on a phone.
+  //
+  // Not a touchstart listener with preventDefault: a non-passive touch listener
+  // on the window makes EVERY scroll on the page wait for the main thread to
+  // answer it, which with her and the press running is a scroll that starts
+  // late. This is a disc the size of her press, carried on her by the render
+  // frame, with touch-action:none -- the browser reads it on the compositor,
+  // and the rest of the page scrolls exactly as it did.
+  //
+  // Touch screens only (pointer: coarse). A mouse never scrolls by dragging,
+  // and over the page the disc would take her clicks from the links under her.
+  // Below the nav bar (z 24 against #chrome's 25), so a tap on her over a nav
+  // word still follows the word.
+  const touchDisc = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches
+    ? document.createElement("div") : null;
+  if (touchDisc) {
+    touchDisc.id = "mew-touch";
+    touchDisc.setAttribute("aria-hidden", "true");
+    touchDisc.hidden = true;
+    document.body.append(touchDisc);
+    scope?.add(() => touchDisc.remove());
+  }
+  let discKey = "";
+  /** put the disc on her (client px), or away; written only when it changes */
+  function placeDisc(x, y, on) {
+    if (!touchDisc) return;
+    const r = body.radius * HIT;
+    const key = on ? `${Math.round(x - r)},${Math.round(y - r)},${Math.round(2 * r)}` : "";
+    if (key === discKey) return;
+    discKey = key;
+    touchDisc.hidden = !on;
+    if (!on) return;
+    touchDisc.style.width = touchDisc.style.height = `${Math.round(2 * r)}px`;
+    touchDisc.style.transform = `translate3d(${Math.round(x - r)}px, ${Math.round(y - r)}px, 0)`;
+  }
 
   // --- model load --------------------------------------------------------------
 
@@ -450,7 +492,9 @@ export function bootMew({ world, deck, scope, enter = false }) {
     // would walk straight around that guard. The >.< comes from the overlay's own
     // subscription to `startle`, so it lands on both.
     world.on("startle", (e) => {
-      if (e.source === "cursor") {
+      // ...and so is being SHAKEN (brain.js, held), which is the same
+      // rudeness at closer range: the stars and the >.<, no sweat
+      if (e.source === "cursor" || e.source === "shake") {
         sparkle.annoy((Math.random() * 0xffffffff) >>> 0);
         return;
       }
@@ -544,6 +588,7 @@ export function bootMew({ world, deck, scope, enter = false }) {
       }
       if (wantSleep && !asleep && (world.mewClear !== false || fadedOut)) {
         asleep = true;
+        placeDisc(0, 0, false);
         loop.stop();
         canvas.classList.add("asleep");
         if (fadedOut) {
@@ -561,6 +606,10 @@ export function bootMew({ world, deck, scope, enter = false }) {
       // subtracting the live scroll offset (native-smooth under scrolling)
       const ix = lerp(body.prevPos.x, body.pos.x, alpha);
       const iy = lerp(body.prevPos.y, body.pos.y, alpha) - window.scrollY;
+      // on her physics circle, not the bob or the shake: the press is judged
+      // against body.pos, so the disc has to be where that is. Not while the
+      // editor hides her (its inline visibility), or fading off Contact.
+      placeDisc(ix, iy, !fading && !fadedOut && canvas.style.visibility !== "hidden");
       poser.update(dt, simTime);
       const bob = ctxBase.visual.bobPx;
       let px = ix + bob.x;

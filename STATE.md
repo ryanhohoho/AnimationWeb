@@ -2684,3 +2684,85 @@ clock: on the frame the canvas is shown again she is off the right edge and noth
 frames or guide line are scheduled, the path glints (determinism, window, outward waves, drawn late in
 the charge and not before), and the >.< hold (none in the charge, up within a beat of the shot, gone after,
 with no flail or startle emitted).
+
+---
+
+# 28 · The name, the link card and the icon, in one file and in the editor (2026-10-04)
+
+By instruction (one question round): a **Link & icon** tab in the editor; ONE preview for the whole
+site; the card both designed and uploadable; the icon both painted and uploadable; the names as separate
+fields.
+
+- **Why every link showed the Home card.** Discord, iMessage, Slack, X and LinkedIn read the head of
+  whatever HTML the address returns, without running it, and Vercel's rewrite returns the same
+  `index.html` for every route. Checked on the live site: `/projects` served the Home head. The router's
+  per-page description only ever reached readers that run the page (Google). The owner chose one card.
+- **`src/site/identity.js`** holds `SITE` (tab names, site name, author, address, search description),
+  `PREVIEW` (the card's words, its picture's path, design or upload), `CARD` (the design) and `ICON`
+  (the 32 × 32 grid, its two colours, grid or upload). It replaced three copies: the head of
+  `index.html`, `DESC.home` and the `— RYAN HO` suffix in `router.js`, and the grid in `mewMark.mjs`.
+- **The head is written at dev and build time** by `siteIdentity()` in `vite.config.js` over the
+  `<!-- identity -->` marker (`identityHead.js`, pure). `og:image` is absolute (`SITE.url`, now that the
+  domain is known: the open item in §15) and every linked file carries `?v=` + 8 hex of its SHA-1, so a
+  changed card or icon is fetched again. New: `og:url`, `og:image:type`, `apple-mobile-web-app-title`,
+  `application-name`, `/favicon.ico` (with `sizes="32x32"`, or Chrome prefers it to the svg) and a
+  180 px `apple-touch-icon.png` (5 px cells on 10 px of ground: 180 is not a whole number of cells).
+  A browser asking for `/favicon.ico` used to get `index.html` through the rewrite. No canonical link:
+  with one HTML for every route it would tell Google every page is Home.
+- **The card has one renderer, the editor's** (`editor/client/card.js`, Canvas 2D with the site's own
+  woff2 files). `tools/bake_og.mjs` was removed: it was broken (it named the Plex `.ttf` files, gone
+  since the woff2 switch) and was a second rasteriser. The default `CARD` is the shipped card measured
+  off its PNG: every line's ink within 2 px of ffmpeg's (FreeType rounded advances to whole pixels, so
+  ffmpeg's lines were up to 9 px narrower; its Mew sat 1 px up-left from yuv420 chroma). `public/og.png`
+  is still the ffmpeg one until the card is next saved.
+- **Saving** sends whole values for what changed; `editor/server/identity.js` checks them against the
+  shape the site reads and writes one property at a time (comments survive; nothing inside the `texts`
+  and `grid` lists, which are rewritten whole). Files go to `public/` under seven fixed names only; a
+  grid icon runs `bake_favicon.mjs` (which refuses in upload mode). Checked live with real saves: a card
+  text and an author change (two lines of `identity.js`, a new `og.png`, the head's hash changed);
+  an uploaded icon and card (all five icon files, svg removed and unlinked, `og.png` cut from the
+  picture); then back to Pixels and Design, after which `identity.js` and all five icon files were
+  byte-identical to before. `npm test` ran after each save and passed.
+- **Tests** (`identity:` section): the shape, refusals (control), one title, absolute hashed picture,
+  unlinked missing files, escaping (control), relative with no address (control), the tab pattern, the
+  marker and no hand-written tags in `index.html`, the icon files match the grid, the ICO, 180 px, and the
+  writer's round trip through a real file with every comment kept. 1178/1178 + the router harness.
+- NOT seen: a real unfurl of the new head in Discord or any app (it needs a deploy); Safari for the
+  editor tab; the file picker driven by hand (checked with the picker stubbed to a generated PNG).
+
+---
+
+# 29 · A tap on a phone fires the beam; shaking her (2026-10-04)
+
+By instruction. One question round on the shake: she stays in the hand while shaken; the stars and the
+>.< only (no limb flail); not thrown when let go.
+
+- **Why a tap on a phone never fired the beam.** `world.pointer.pos` came from `pointermove` alone. A
+  mouse hovers, so it is right by the time it presses; a finger sends no move before its press, so the
+  press was measured against wherever the LAST touch had been (or the -9999 sentinel on a first touch).
+  The brain read that as the hand having moved past `grabThresholdPx`, made the tap a drag, and the hold
+  spring pulled her toward the old point: the nudge the owner saw, and no pet. `world.js` now puts the
+  hand where it pressed, with zero velocity, on `pointerdown`, and records `pointer.type`. A finger gets
+  its own slop (`grabThresholdTouchPx: 12`, just past Android's 8 dp and UIKit's ~10 pt).
+- **A finger on her no longer scrolls the page.** The browser decides at touchstart, from the
+  touch-action of what is under the finger, whether a touch scrolls; under her is the page. A drag or a
+  shake on a phone became a scroll and the browser cancelled the pointer. `#mew-touch` (mew.js) is a
+  disc the size of her press, carried on her physics circle by the render frame, `touch-action:none`,
+  only on `(pointer: coarse)`, at z 24 (under the nav bar). Not a non-passive touchstart listener: that
+  makes every scroll on the page wait for the main thread. `pointercancel` now lets go, with no throw
+  and no pet.
+- **The shake** (`engine/behavior/shake.js`, pure). Counted in reversals along each stroke's own
+  direction: a stroke must cover `strokeR` (0.5) of her radius in at most `strokeMaxS` (0.26 s), the hand
+  must come back `backR` (0.25 r) to count it, and `reversals` (3) inside `windowS` (0.9 s) is a shake.
+  Measured: 3-4 Hz recognised in 0.34-0.49 s, 6 Hz in 0.24 s, 2 Hz in 0.7 s; 1.5 Hz, a drag, a throw, a
+  single there-and-back and a tremor never. Shaken on, she answers again at most every `againS` (1.4 s).
+  The answer is `startle` with `source: "shake"`: mew.js gives it the cursor's annoyance stars, the face
+  overlay its >.<; no impulse and no state change. Let go after a shake she keeps `releaseKeep` (0.15) of
+  her velocity, a short drift rather than a throw.
+- **Checked**: the tests above (`touch:` section, with a control: the same tap against a stale hand is a
+  drag); and in the real page at 375 x 812 with touch-type PointerEvents and the sim stepped by hand: a
+  tap after a distant earlier touch charged the beam and moved her 1.1 px; a 4 Hz +/-24 px shake was
+  recognised at 0.48 s, the stars ran, she stayed held, and was put down 4.9 px from where it began.
+- NOT seen: a real finger on a real phone or tablet (the pane sends mouse events and suspends rAF, so the
+  disc's placement by the render frame and touch-action's effect were not observed), or the >.< drawn.
+

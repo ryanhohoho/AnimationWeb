@@ -69,6 +69,7 @@ hashed URLs, `public/`, the SPA fallback — for checking the bundle as a bundle
 | `src/site/usbDemo.js` | FIG. 2 on the USB sheet: a terminal and the interface built over it, one rectangle, wiped between by the scroll. |
 | `src/engine/**` | Mew: physics, a small brain, pose layers, and effects whose maths is headless-testable. |
 | `src/mew.js` | the engine, behind a dynamic import. The sheet is a finished page without it. |
+| `src/site/identity.js` | the tab's name, the link card a shared URL unfurls into, and the tab mark: written into the head by `vite.config.js`, edited in the editor's **Link & icon** tab. |
 | `tools/` | the bake scripts. Nothing generated is edited by hand. |
 | `editor/` | a visual editor that runs the real site in a frame and saves words, styles, colours and media back into the source. `editor/README.md`. |
 

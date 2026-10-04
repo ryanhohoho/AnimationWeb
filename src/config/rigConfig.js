@@ -807,12 +807,53 @@ export const rigConfig = {
     // a press without movement is still a pet (hyper beam)
     fling: {
       grabThresholdPx: 9,       // movement before a press becomes a drag
+      // ...for a FINGER. A fingertip rolls as it presses and lifts, so a tap
+      // that means "tap" travels further than a click does: the platforms'
+      // own slops are 8 dp (Android's ViewConfiguration touch slop) and about
+      // 10 pt (UIKit's tap tolerance). 12 sits just past both, so a tap is
+      // never read as a drag, and a real drag (tens of px) still is at once.
+      grabThresholdTouchPx: 12,
       holdGain: 160,            // px/s^2 per px toward the hand (snappy, lags a touch)
       holdDamp: 22,
       flingGain: 1.15,          // release velocity = pointer velocity * this
       flingMaxPx: 1700,         // px/s cap
       settleSpeedPx: 260,       // below this the throw is over -> hover
-      loopChance: 0.35          // fast throws may end in a loop-de-loop
+      loopChance: 0.35,         // fast throws may end in a loop-de-loop
+      // SHAKING HER (2026-10-04, by instruction): held, and the hand goes back
+      // and forth hard. She stays in the hand, gets the stars and the >.< --
+      // the same answer a cursor barging into her gets, without the push --
+      // and is not thrown when she is let go.
+      //
+      // A shake is counted in REVERSALS: the hand travels a stroke, then comes
+      // back. Every length is a share of her radius (48 px on a phone, 75 on
+      // the laptop), so the gesture is the same size relative to her on every
+      // screen, finger or mouse. Measured against synthetic hands (and held
+      // by test/sim.test.js): a 3-4 Hz shake her radius wide is recognised in
+      // 0.34-0.49 s, a frantic 6 Hz one in 0.24 s, a lazy 2 Hz one in 0.7 s;
+      // a 1.5 Hz wave of any size, a slow drag, a fast straight throw, a
+      // single there-and-back and a 3 px tremor never are. It takes a real
+      // shake, and not for long.
+      shake: {
+        strokeR: 0.5,           // a stroke has to cover half her radius (24 px
+                                // on a phone, ~38 on the laptop): less is a
+                                // tremor of the hand, not a shake
+        backR: 0.25,            // ...and the hand has to come back a quarter of
+                                // it before that counts as a reversal, so the
+                                // jitter at the end of a stroke is not one
+        strokeMaxS: 0.26,       // a stroke slower than this is steering, not
+                                // shaking: a deliberate shake runs 3-6 Hz, i.e.
+                                // 0.08-0.17 s a stroke; 0.26 lets a tired 2 Hz
+                                // one count and a 1.5 Hz wave not
+        reversals: 3,           // back-forth-back: two is any change of mind
+        windowS: 0.9,           // ...all inside this
+        againS: 1.4,            // shaken on and on: the stars come again, at most
+                                // this often (the >.< holds about that long)
+        releaseKeep: 0.15       // let go after a shake: she keeps this much of
+                                // the hand's last swing, a short drift to a stop
+                                // rather than a throw (and rather than a dead
+                                // stop, which the follow-through layers read as
+                                // a collision)
+      }
     },
     // loop-de-loop: a quick flown circle following the existing velocity,
     // triggered by fast arrivals/sudden stops. it accelerates INTO the loop

@@ -78,11 +78,46 @@ You can still save them.
 | a card's picture / hover clip | `src/assets/media/card-<slug>.webp` / `.mp4` |
 | a card's icon | `tools/icons/icon-<slug>.*`, then `tools/bake_icons.mjs` runs |
 | new elements, deletions | the markup or the data list they belong to |
+| the tab's name, the site's name, the link card's words and design, the icon's grid | `src/site/identity.js` (Link & icon tab) |
+| the link card's picture | `public/og.png` (designed) or `public/og.jpg` (a photograph) |
+| the icon | `public/favicon.svg`, `.ico`, `-32.png`, `-192.png`, `apple-touch-icon.png` (the grid: `tools/bake_favicon.mjs` runs) |
 
 Uploads are encoded the way `tools/bake_captures.mjs` encodes: WebP stills,
 walked down a quality ladder to 140 KB; H.264 clips with a poster, aimed at
 500 KB. A replacement keeps the width of the file it replaces. Anything over
 budget is reported after saving.
+
+## The Link & icon tab
+
+**Link & icon**, next to the pages in the bar, is everything about the site
+that no page shows: the browser tab's name, the card a shared link unfurls into
+(Discord, iMessage, Slack, X, LinkedIn), what a search result quotes, and the
+icon. Four sections, each with mock-ups of where it is seen, drawn from the
+same canvas Save encodes:
+
+- **Name** — the tab on Home, the pattern for every other tab (`{page}` is the
+  page's name), the site name (above the card in Discord and Slack, and under
+  the icon on a phone's home screen), the author, and the address the card's
+  picture is served from.
+- **Link preview** — the card's title, description and picture text, and the
+  search description. One card for the whole site: the apps that unfurl links
+  read the head without running the page, and every route returns the same
+  `index.html`.
+- **Card picture** — **Design**: a paper colour, the window, Mew (from the
+  icon's grid) and any number of text blocks in the site's three faces. Click
+  a block to select it, drag to move (it snaps to the other blocks' edges and
+  baselines; ⌥ turns that off, ⇧ holds one axis), arrows nudge, ⌫ deletes a
+  text. Or **A picture**: choose one, drag it in the frame, scroll or slide to
+  zoom. A photograph is saved as a JPEG, a drawing as a PNG.
+- **Icon** — **Pixels**: paint the 32 × 32 grid (a stroke paints whatever the
+  first cell was not), her colour and the ground's. Or **A picture**, cut to a
+  square, with "sharp pixels" for pixel art and the picture's own transparency
+  kept in the tab. The home-screen icon always sits on the ground colour.
+
+The original of an uploaded picture is not kept, only what was cut from it; to
+re-cut, choose it again. Undo covers everything in the tab. A link already
+posted keeps its old card for a while in most apps: a new picture has a new
+address (`?v=` and a hash of its bytes), so it is fetched again.
 
 ## What it will refuse, and why
 

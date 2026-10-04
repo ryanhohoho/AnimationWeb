@@ -205,8 +205,8 @@ export function createEditor({ store, frame }) {
   // holding the whole gesture. The snapshot is all of the global data, because
   // a gesture can be on a colour as well as on a style.
   let liveBefore = null;
-  const all = () => ({ s: clone(store.styles), p: { ...store.palette }, t: { ...store.tokens }, i: clone(store.inks) });
-  const restore = (v) => store.live((st) => { st.styles = v.s; st.palette = v.p; st.tokens = v.t; st.inks = v.i; }, () => {});
+  const all = () => ({ s: clone(store.styles), p: { ...store.palette }, t: { ...store.tokens }, i: clone(store.inks), d: clone(store.identity) });
+  const restore = (v) => store.live((st) => { st.styles = v.s; st.palette = v.p; st.tokens = v.t; st.inks = v.i; st.identity = v.d; }, () => {});
   ed.beginLive = () => { if (!liveBefore) liveBefore = all(); };
   ed.living = () => !!liveBefore;
   ed.endLive = (label, el, props, child = "") => {

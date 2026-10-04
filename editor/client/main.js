@@ -9,6 +9,7 @@ import { createEditor } from "./editor.js";
 import { createCanvas } from "./canvas.js";
 import { createLayers } from "./layers.js";
 import { createInspector } from "./inspector.js";
+import { createSiteTab } from "./site.js";
 import { isTextLeaf } from "./identity.js";
 
 const $ = (id) => document.getElementById(id);
@@ -43,6 +44,18 @@ canvas = createCanvas(ed);
 window.__ED__ = ed;
 layers = createLayers(ed, $("tree"));
 inspector = createInspector(ed, $("inspector"));
+const site = createSiteTab({ ed, store, state, nav: $("site-nav"), board: $("site-board"), panel: $("site-panel"),
+  onSection: () => refresh() });
+function setSite(on) {
+  if (on === site.isOpen) return;
+  if (on) { ed.select(null); if (ed.editing) ed.finishText(); }
+  if (on) site.open(); else site.close();
+  $("site-tab").setAttribute("aria-pressed", String(on));
+  renderPages();
+  refresh();
+}
+$("site-tab").onclick = () => setSite(!site.isOpen);
+window.__SITE__ = site;
 
 frame.applyStyles(toCss(store.styles));
 frame.applyPalette(store.palette, store.tokens, store.inks);
@@ -63,8 +76,8 @@ function renderPages() {
   let sep = false;
   for (const p of PAGES) {
     if (p.sub && !sep) { nav.append(h("span", { class: "sep" })); sep = true; }
-    nav.append(h("button", { "aria-current": frame.ctx.page === p.key ? "page" : null,
-      onclick: () => { ed.select(null); frame.navigate(p.path); } }, p.label));
+    nav.append(h("button", { "aria-current": !site.isOpen && frame.ctx.page === p.key ? "page" : null,
+      onclick: () => { setSite(false); ed.select(null); frame.navigate(p.path); } }, p.label));
   }
 }
 function syncPage() {
@@ -137,13 +150,15 @@ function refresh() {
     refreshQueued = false;
     // not mid-gesture: re-rendering the inspector would close the colour picker
     // being dragged or drop the field being scrubbed
-    if (!ed.living()) { inspector.render(); layers.build(); }
+    // the Link & icon tab draws itself; the page's panels are hidden under it
+    if (site.isOpen) site.sync();
+    else if (!ed.living()) { inspector.render(); layers.build(); }
     const n = store.dirtyCount();
     $("dirty").textContent = n ? `${n} unsaved change${n === 1 ? "" : "s"}` : "";
     $("undo").disabled = !store.canUndo();
     $("redo").disabled = !store.canRedo();
     const s = ed.sel?.el;
-    $("crumbs").textContent = ed.sels.length > 1 ? `${frame.ctx.page} › ${ed.sels.length} elements`
+    $("crumbs").textContent = site.isOpen ? `link & icon › ${site.section}` : ed.sels.length > 1 ? `${frame.ctx.page} › ${ed.sels.length} elements`
       : s ? `${frame.ctx.page} › ${s.dataset.e ? "#" + s.dataset.e : s.tagName.toLowerCase()} ${[...s.classList].map((c) => "." + c).join("")}` : frame.ctx.page || "";
   });
 }
@@ -184,6 +199,8 @@ function onKey(e) {
   if (mod && k.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
   if (mod && k.toLowerCase() === "s") { e.preventDefault(); save(); return; }
   if (inField) return;
+  // the tab has its own keys (the designer's nudges); nothing on the page is selected
+  if (site.isOpen) return;
   if (mod && k.toLowerCase() === "d") { e.preventDefault(); if (ed.sels.length > 1) toast("Duplicate one element at a time."); else ed.duplicate(); return; }
   if (!ed.sels.length) return;
   if (k === "Escape") { ed.select(null); return; }
@@ -212,9 +229,13 @@ $("preview").onchange = (e) => {
 // ── save ───────────────────────────────────────────────────────────────────
 async function save() {
   if (ed.editing) ed.finishText();
+  // a field in the Link & icon tab commits on blur; ⌘S from inside one would
+  // otherwise save a gesture that is still open
+  if (document.activeElement?.closest?.("#site-panel")) document.activeElement.blur();
   const body = store.payload(toCss);
   const cssChanged = body.css !== state.css;
-  if (!body.ops.length && !cssChanged && !body.palette && !body.tokens && !body.projectInks) {
+  const siteLines = site.summary();
+  if (!body.ops.length && !cssChanged && !body.palette && !body.tokens && !body.projectInks && !site.dirty()) {
     toast("Nothing to save.");
     return;
   }
@@ -231,6 +252,7 @@ async function save() {
   if (cssChanged) lines.push(`styles → src/styles/edits.css (${Object.keys(store.styles.rules).length} rules)`);
   if (body.palette || body.tokens) lines.push("colours → site.css, palette.js" + (body.tokens?.["--paper"] ? ", index.html" : ""));
   if (body.projectInks) lines.push(`project inks → projects.js (${Object.keys(body.projectInks).join(", ")})`);
+  lines.push(...siteLines);
 
   const warns = [];
   for (const [sel, bps] of Object.entries(store.styles.rules)) {
@@ -259,7 +281,11 @@ async function save() {
   $("save").disabled = true;
   $("save").textContent = "Saving…";
   let res;
-  try { res = await api("/__ed/save", body); }
+  // the tab's pictures are drawn and staged now, after the dialog, so a
+  // cancelled save draws nothing
+  try { body.identity = await site.payload(); }
+  catch (e) { res = { ok: false, errors: [`the link card or icon could not be drawn: ${e.message || e}`] }; }
+  if (!res) try { res = await api("/__ed/save", body); }
   catch (e) { res = { ok: false, errors: [String(e)] }; }
   $("save").disabled = false;
   $("save").textContent = "Save";
@@ -270,6 +296,7 @@ async function save() {
   }
   state.css = body.css;
   store.committed();
+  if (body.identity) api("/__ed/state").then((next) => site.afterSave(next)).catch(() => {});
   ed.clearCaches();
   toast(`Saved ${res.changed.length} file${res.changed.length === 1 ? "" : "s"}.`);
   for (const w of res.warnings || []) toast(w, true, 7000);

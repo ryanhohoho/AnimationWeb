@@ -208,16 +208,23 @@ the site's folder while its original is still in `photos-source/` is not baked
 again (`photos-source/.baked` remembers what it made); `--restore` brings
 it back and `--prune` removes what has no original.
 
-Tab mark and link card (only if the mark, the palette or the pitch changes):
+The site's name, the link card and the tab mark: **`src/site/identity.js`**,
+edited in the editor's **Link & icon** tab (or by hand). `siteIdentity()` in
+`vite.config.js` writes the `<title>`, the descriptions, the `og:` tags and the
+icon links into `index.html`'s head where the `<!-- identity -->` marker is, at
+dev and at build time (a scraper never runs the page). The card's picture is
+drawn by the editor (`editor/client/card.js`) and saved as `public/og.png` (or
+`og.jpg` for an uploaded photograph); the grid icon is baked by:
 
 ```bash
-node tools/bake_favicon.mjs      # -> public/favicon.svg, favicon-32.png, favicon-192.png
-node tools/bake_og.mjs           # -> public/og.png (1200x630), needs ffmpeg-static
+node tools/bake_favicon.mjs      # ICON.grid -> public/favicon.svg, .ico, -32, -192, apple-touch-icon.png
 ```
 
-Both cut from the same 32×32 grid in `tools/mewMark.mjs`, which is the drawing
-itself in text — edit it there and re-bake both. `public/` is copied verbatim to
-the dist root, which is why these paths are absolute in `index.html`.
+`tools/bake_og.mjs` is gone (it needed the Plex `.ttf` files, which left the
+tree with the woff2 switch); the card has one renderer now, the editor's.
+`public/` is copied verbatim to the dist root, which is why the icon paths are
+absolute. ONE preview for the whole site, by instruction: Vercel returns the
+same `index.html` for every route, so every shared link unfurls into this card.
 
 `src/site/iconatlas.js` is **generated — do not edit it.** Add a project by
 dropping its icon in `tools/icons/`, adding a cell to `CELLS` in the tool, and
@@ -389,6 +396,12 @@ when only the numbers were.
   card paths in `index.html` are absolute — and why `dist/404.html` has to be
   written by the build rather than dropped in `public/`: it carries the hashed
   script tags.
+- **The head's name, card and icon tags are not in `index.html`.** They are
+  written from `src/site/identity.js` over the `<!-- identity -->` marker by
+  `siteIdentity()` (normal order: after the editor's "pre" hook, which re-reads
+  the file from disk, and before `buildNotesOut` strips comments). Add a meta
+  tag there by hand and it will disagree with the editor; there is a test.
+  `theme-color` stays in `index.html` because the paper owns it.
 - **`[data-at]` is the scroll readout's.** `deck.js` writes
   `"<scroll> / <height>"` into every element carrying it, on every measure. A
   page that puts its own `data-at` on something gets that text printed into it.
@@ -489,6 +502,11 @@ when only the numbers were.
   the first time a material is drawn; the new beam's first shot was a 117 ms
   frame on a phone-sized window until `mew.js` called `compileAsync` on its
   scenes. Anything hidden until its moment needs the same.
+- **The hand is where it pressed.** `world.js` sets the pointer's position
+  on `pointerdown`, because a finger sends no move before its press; reading
+  the position from `pointermove` alone made every tap on a phone a drag.
+  And a finger on her lands on `#mew-touch` (touch-action:none, coarse
+  pointers only), never on the page, or the browser turns it into a scroll.
 - **A cursor only flicks her off TEXT** (brain.js, the startle): her circle has
   to overlap a soft rect, the same test the aside uses. In open paper a fast
   pointer does nothing.

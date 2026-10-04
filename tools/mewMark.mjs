@@ -1,83 +1,58 @@
 // mewMark.mjs — the 32x32 Mew, and a PNG writer for it.
 //
-// Shared by bake_favicon.mjs (the tab mark) and bake_og.mjs (the link card),
-// because they are the same drawing at two sizes and a second copy of a grid is
-// a second grid that can drift.
+// The drawing itself is ICON.grid in src/site/identity.js (the editor's "Link &
+// icon" tab paints it; the argument for the grid is beside it there). This is
+// the node half: the tab mark as an svg of merged runs, and as an opaque PNG at
+// any whole number of pixels to a cell. Node's zlib is the only dependency and
+// the PNG writer is thirty lines.
 //
-// WHY THERE IS A GRID HERE AND NOT AN IMAGE PIPELINE
-// --------------------------------------------------
-// The source is src/assets/media/"mew icon.png": a 1024 px white silhouette on
-// black, and NOT an integer upscale of anything -- the best power-of-two grid
-// scores 0.81 on uniformity, which is a resample, not a sprite. So there is no
-// original lattice to recover, and the 32x32 below IS the decision: her
-// bounding box, centred in a square, majority-voted at a 0.30 threshold so the
-// tail's one-cell strokes survive instead of dropping out.
-//
-// It lives here as text because that makes the mark editable by anyone with a
-// keyboard and re-bakeable with no image library at all. Node's zlib is the
-// only dependency and the PNG writer is thirty lines.
+// It used to be shared with tools/bake_og.mjs, which drew the link card with
+// ffmpeg. The card is drawn in the editor now, from the same grid.
 
 import { deflateSync } from "node:zlib";
+import { ICON } from "../src/site/identity.js";
 
-// the site's own two, from src/styles/site.css
-export const INK   = [0x00, 0x5A, 0x7D];   // --ink-a, the cerulean
-export const PAPER = [0xEF, 0xED, 0xE6];   // --paper, the bone
+const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+// her colour and the ground's, from identity.js
+export const PAPER = rgb(ICON.fg);
+export const INK   = rgb(ICON.bg);
 
-// 32x32. '#' is HER, '.' is sky.
-const GRID = `
-................................
-......................###.......
-.....................####.......
-....................####........
-...................#####........
-...................####.........
-..................####..........
-........##........##............
-......####.......##.............
-....######.......#..............
-...########......#..............
-###########.......##............
-############.......#####........
-.###########............##......
-.############.............##....
-..###########...............#...
-..##########..........#......#..
-...######............##.......#.
-......####......##...##.......#.
-......#######..###..###........#
-.....########..###..###........#
-...##########..##..###.........#
-...##############..###.........#
-......#######.#######.........##
-.......######.#######.........#.
-.......###.##.#######.........#.
-........##########...........#..
-.........######.#...........#...
-..........###.###..........#....
-................##.......##.....
-..................#######.......
-................................
-`.trim().split("\n");
+const GRID = ICON.grid;
 
 export const N = GRID.length;
 /** is this cell HER? */
-export const on = (x, y) => GRID[y][x] === "#";
+export const on = (x, y) => GRID[y]?.[x] === "#";
+
+/** a PNG in an .ico: one 32 px entry, which is all a browser asks /favicon.ico
+    for. An ICO may carry a PNG as-is (Vista onwards, every browser since). */
+export function icoOf(png, size = 32) {
+  const head = Buffer.alloc(22);
+  head.writeUInt16LE(0, 0); head.writeUInt16LE(1, 2); head.writeUInt16LE(1, 4);
+  head[6] = size; head[7] = size;                    // 0 would mean 256
+  head.writeUInt16LE(1, 10); head.writeUInt16LE(32, 12);
+  head.writeUInt32LE(png.length, 14); head.writeUInt32LE(22, 18);
+  return Buffer.concat([head, png]);
+}
 
 /**
- * The mark as a truecolour PNG. No alpha: it is opaque by design, and both
- * callers want a filled square rather than a cut-out.
+ * The mark as a truecolour PNG. No alpha: it is opaque by design -- a filled
+ * square rather than a cut-out.
  * @param scale  cells to pixels
  * @param fg     her colour
  * @param bg     the ground
+ * @param pad    pixels of ground round her, for a size that is not a whole
+ *               number of cells (180 = 32 x 5 + 10 each side)
  */
-export function markPng(scale, fg = PAPER, bg = INK) {
-  const S = N * scale;
+export function markPng(scale, fg = PAPER, bg = INK, pad = 0) {
+  const S = N * scale + pad * 2;
   const raw = Buffer.alloc(S * (S * 3 + 1));
   for (let y = 0; y < S; y++) {
     const row = y * (S * 3 + 1);
     raw[row] = 0;                                   // filter: none
     for (let x = 0; x < S; x++) {
-      raw.set(on((x / scale) | 0, (y / scale) | 0) ? fg : bg, row + 1 + x * 3);
+      const cx = x - pad, cy = y - pad;
+      const in_ = cx >= 0 && cy >= 0 && cx < N * scale && cy < N * scale;
+      raw.set(in_ && on((cx / scale) | 0, (cy / scale) | 0) ? fg : bg, row + 1 + x * 3);
     }
   }
   const ihdr = Buffer.alloc(13);

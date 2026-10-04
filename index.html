@@ -8,44 +8,13 @@
        in paper-coloured bars. No maximum-scale: pinch zoom stays. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
-  <title>RYAN HO</title>
-  <meta name="description" content="Ryan Ho — systems developer. Undocumented file formats, hardware automation, and a procedurally animated Mew loose on the page." />
+  <!-- identity: the tab's name, the description, the icon links and the link
+       card are written HERE, from src/site/identity.js, by siteIdentity() in
+       vite.config.js -- at dev time and at build time, so a scraper that never
+       runs the page still reads them. Change them in the editor's "Link & icon"
+       tab, or in identity.js. This comment is the marker: there must be
+       exactly one, and the build stops without it. -->
   <meta name="theme-color" content="#FFFFFF" />
-  <meta name="author" content="Ryan Ho" />
-
-  <!-- THE TAB MARK. Her, in bone, on the one ink no project may own — which is
-       the disc idiom and every window on this sheet said in 32 pixels. Cut from
-       src/assets/media/"mew icon.png" by tools/bake_favicon.mjs; the svg is the
-       same 32×32 grid as merged horizontal runs, so it is the mark itself and
-       not a rendering of it. The png is there for the browsers that will not
-       take an svg, and 192 is the size a phone wants for a home-screen tile.
-       No 16: at that size her tail is a dashed line. -->
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
-  <link rel="apple-touch-icon" href="/favicon-192.png" />
-
-  <!-- ══ THE LINK CARD ═══════════════════════════════════════════════════════
-       A shared link is the only part of this site most people will ever see,
-       and it is seen at about 500 px wide in somebody else's feed. So the card
-       is SET rather than captured (tools/bake_og.mjs): a screenshot of the
-       sheet at that size is a grey rectangle, because the halftone dissolves,
-       the display type is unreadable and the animal is 40 px of pink.
-
-       THE PATHS ARE RELATIVE, AND THAT IS A KNOWN COMPROMISE. og:image is
-       specified as absolute, and most scrapers — Slack, Discord, iMessage,
-       LinkedIn, Twitter — resolve a relative one against the page anyway. A
-       WRONG absolute origin is worse than a relative path, and this repo does
-       not know its own domain yet: there is no deploy config in it. When there
-       is one, make these absolute and add a canonical link beside them. -->
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Ryan Ho" />
-  <meta property="og:title" content="Ryan Ho — systems developer" />
-  <meta property="og:description" content="Undocumented file formats, and the hardware nobody wants to do by hand. Portfolio, printed as a two-ink riso sky seen through die-cut apertures." />
-  <meta property="og:image" content="/og.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Bone paper with a rectangle cut out of it, and Mew standing in the hole in cerulean." />
-  <meta name="twitter:card" content="summary_large_image" />
 
   <!-- THE ONE RULE THAT NEEDS TO NOT BE IN THE STYLESHEET. `body class="pre"`
        below holds #doc at opacity 0 until main.js has built the deck, so the

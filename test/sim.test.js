@@ -4688,6 +4688,218 @@ section("the hyper beam (2026-10-04): its shape, its clock, its stars and its bu
   }
 }
 
+// ---------------------------------------------------------------------------
+// A TAP ON A PHONE, AND A SHAKE (2026-10-04). A finger sends no pointermove
+// before it presses, so the hand's position was wherever the LAST touch had
+// been: every tap on her read as a drag, nudged her, and never fired the beam.
+section("touch: a tap on her is a tap, and a shake is a shake");
+{
+  const { createShake } = await import("../src/engine/behavior/shake.js");
+  const SH = rigConfig.behavior.fling.shake;
+
+  // ── the press puts the hand where it pressed (world.js, attachBrowser) ──
+  const handlers = {};
+  const hadWin = "window" in globalThis, hadDoc = "document" in globalThis;
+  const oldWin = globalThis.window, oldDoc = globalThis.document;
+  globalThis.window = { innerWidth: 390, innerHeight: 844, devicePixelRatio: 3, scrollY: 0,
+    addEventListener: (t, f) => { handlers[t] = f; } };
+  globalThis.document = { documentElement: { scrollHeight: 844 } };
+  try {
+    const w = createWorld({ seed: 4 });
+    handlers.pointermove({ clientX: 40, clientY: 700 });          // an earlier touch, far away
+    w.tick(1 / 120);
+    handlers.pointerdown({ clientX: 200, clientY: 300, pointerType: "touch" });
+    w.tick(1 / 120);
+    ok(w.pointer.pos.x === 200 && w.pointer.pos.y === 300 && w.pointer.speed === 0 && w.pointer.type === "touch",
+      `a press with no move before it puts the hand where it pressed, still (${w.pointer.pos.x},${w.pointer.pos.y}, ${w.pointer.speed})`);
+    let ups = [];
+    w.on("pointerup", (e) => ups.push(e));
+    handlers.pointercancel({});
+    ok(ups.length === 1 && ups[0].cancel === true, "a gesture the browser takes away is a release, marked as cancelled");
+  } finally {
+    if (hadWin) globalThis.window = oldWin; else delete globalThis.window;
+    if (hadDoc) globalThis.document = oldDoc; else delete globalThis.document;
+  }
+
+  // ── the brain: the same tap, with the hand reported right and wrong ──
+  const tapWith = (handAt) => {
+    const world = createWorld({ headless: true, seed: 9 });
+    world.viewport.w = 390; world.viewport.h = 844; world.docSize = { w: 390, h: 844 }; world.collidersVersion = 1;
+    const body = createBody({ x: 200, y: 300, radius: 48, config: rigConfig.physics });
+    const brain = createBrain({ body, world, config: rigConfig.behavior, pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    world.pointer.active = true; world.pointer.type = "touch";
+    world.pointer.pos = { ...handAt }; world.pointer.client = { ...handAt }; world.pointer.vel = { x: 0, y: 0 };
+    world.emit("mewdown", { point: { x: 200, y: 300 } });
+    // a finger rolls a few px in a 0.15 s tap
+    for (let i = 0; i < 18; i++) {
+      world.time += 1 / 120;
+      world.pointer.pos.x = handAt.x + (i / 18) * 7; world.pointer.client.x = world.pointer.pos.x;
+      brain.step(1 / 120); body.step(1 / 120);
+    }
+    const moved = Math.hypot(body.pos.x - 200, body.pos.y - 300);
+    world.emit("pointerup", {});
+    return { state: brain.state, moved };
+  };
+  const right = tapWith({ x: 200, y: 300 }), stale = tapWith({ x: 40, y: 700 });
+  ok(right.state === "charge" && right.moved < 3,
+    `a tap on her, with a 7 px finger roll, charges the beam and does not move her (${right.state}, ${right.moved.toFixed(1)} px)`);
+  ok(stale.state !== "charge",
+    `control: measured against a stale hand, the same tap is a drag and no beam (${stale.state}, moved ${stale.moved.toFixed(0)} px)`);
+
+  // ── the detector, against synthetic hands ──
+  // sampled at the sim's rate and at a 60 Hz event rate, which must agree
+  const run = (hand, seconds, r, hz = 120) => {
+    const d = createShake(SH);
+    const fires = [];
+    for (let i = 0; i <= seconds * hz; i++) {
+      const t = i / hz, [x, y] = hand(t);
+      if (d.step(x, y, t, r)) fires.push(t);
+    }
+    return fires;
+  };
+  const sine = (f, amp, ax = 1, ay = 0) => (t) => [300 + Math.sin(2 * Math.PI * f * t) * amp * ax, 400 + Math.sin(2 * Math.PI * f * t) * amp * ay];
+  for (const [name, r] of [["phone", 48], ["laptop", 75]]) {
+    const wiggle = run(sine(4, 0.5 * r), 2, r);
+    ok(wiggle.length >= 1 && wiggle[0] <= 0.5,
+      `${name}: a 4 Hz wiggle half her radius wide is a shake within half a second (${wiggle[0]?.toFixed(2)} s)`);
+    ok(run(sine(4, 0.5 * r), 2, r, 60)[0] === undefined ? false : Math.abs(run(sine(4, 0.5 * r), 2, r, 60)[0] - wiggle[0]) < 0.05,
+      `${name}: ...and the same at a 60 Hz event rate`);
+    ok(run(sine(2.2, 0.5 * r), 2, r).length >= 1, `${name}: a tired 2.2 Hz shake still counts`);
+    ok(run(sine(4, 0.4 * r, 0.7071, 0.7071), 2, r).length >= 1, `${name}: a diagonal one counts like a level one`);
+    ok(run(sine(1.5, r), 3, r).length === 0, `${name}: a 1.5 Hz wave her whole width wide is steering, not a shake`);
+    ok(run(sine(10, 3), 3, r).length === 0, `${name}: a 3 px tremor at 10 Hz is never one`);
+    ok(run((t) => [100 + 300 * t, 400 + 40 * t], 2, r).length === 0, `${name}: a slow drag is never one`);
+    ok(run((t) => [100 + 2000 * t, 400 - 900 * t], 0.4, r).length === 0, `${name}: nor is a fast throw (no reversal)`);
+    ok(run((t) => (t < 0.25 ? [300 + 400 * t, 400] : t < 0.5 ? [400 - 400 * (t - 0.25), 400] : [300, 400]), 1, r).length === 0,
+      `${name}: one there-and-back is a change of mind, not a shake`);
+    const long = run(sine(4, 0.5 * r), 5, r);
+    ok(long.length >= 2 && long.length <= 4 && long.every((t, i) => i === 0 || t - long[i - 1] >= SH.againS - 1e-9),
+      `${name}: shaken for 5 s she answers ${long.length} times, never closer than ${SH.againS} s apart`);
+  }
+
+  // ── held and shaken: stars and the >.<, no push, and no throw at the end ──
+  const shakeHer = (hand, seconds) => {
+    const world = createWorld({ headless: true, seed: 12 });
+    world.viewport.w = 1280; world.viewport.h = 800; world.docSize = { w: 1280, h: 800 }; world.collidersVersion = 1;
+    const body = createBody({ x: 600, y: 400, radius: 75, config: rigConfig.physics });
+    const brain = createBrain({ body, world, config: rigConfig.behavior, pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    const seen = [];
+    world.on("startle", (e) => seen.push(e));
+    world.pointer.active = true; world.pointer.type = "mouse";
+    world.pointer.pos = { x: 600, y: 400 }; world.pointer.client = { x: 600, y: 400 }; world.pointer.vel = { x: 0, y: 0 };
+    world.emit("mewdown", { point: { x: 600, y: 400 } });
+    let prev = hand(0), statesHeld = true, maxOff = 0;
+    for (let t = 1 / 120; t <= seconds; t += 1 / 120) {
+      world.time += 1 / 120;
+      const [x, y] = hand(t);
+      world.pointer.pos = { x, y }; world.pointer.client = { x, y };
+      world.pointer.vel = { x: (x - prev[0]) * 120, y: (y - prev[1]) * 120 }; prev = [x, y];
+      brain.step(1 / 120); body.step(1 / 120);
+      if (brain.state !== "held") statesHeld = false;
+      maxOff = Math.max(maxOff, Math.hypot(body.pos.x - x, body.pos.y - y));
+    }
+    const vAt = Math.hypot(body.vel.x, body.vel.y);
+    world.emit("pointerup", {});
+    return { seen, statesHeld, maxOff, state: brain.state, vAt, vAfter: Math.hypot(body.vel.x, body.vel.y) };
+  };
+  const shook = shakeHer((t) => [600 + Math.sin(2 * Math.PI * 4 * t) * 40, 400], 1.2);
+  ok(shook.seen.length === 1 && shook.seen[0].source === "shake",
+    `a shake is answered with the cursor's reaction, once (${shook.seen.map((e) => e.source).join(",")})`);
+  ok(shook.statesHeld && shook.maxOff < 120, `...and she stays in the hand the whole time (${shook.maxOff.toFixed(0)} px behind it at most)`);
+  ok(shook.state === "hover" && shook.vAfter <= shook.vAt * SH.releaseKeep + 1e-6,
+    `let go after a shake she is put down, not thrown (${shook.vAt.toFixed(0)} -> ${shook.vAfter.toFixed(0)} px/s)`);
+  const thrown = shakeHer((t) => [600 + 900 * t, 400], 0.4);
+  ok(thrown.seen.length === 0 && thrown.state === "flung", "control: a drag that goes one way is still a throw, with no stars");
+}
+
+// ---------------------------------------------------------------------------
+// THE NAME, THE LINK CARD AND THE ICON (src/site/identity.js). A scraper reads
+// the head of index.html and never runs the page, so what matters is the HTML
+// the build writes, the files it links, and that the editor's writes land as
+// valid source. Each check that could pass by accident has its control.
+section("identity: the head a link preview is made from");
+{
+  const { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const ID = await import("../src/site/identity.js");
+  const H = await import("../src/site/identityHead.js");
+  const W = await import("../editor/server/identity.js");
+  const S = await import("../editor/server/source.js");
+  const root = new URL("..", import.meta.url);
+  const all = { SITE: ID.SITE, PREVIEW: ID.PREVIEW, CARD: ID.CARD, ICON: ID.ICON };
+
+  ok(W.checkIdentity(all).length === 0, `identity.js is the shape the site reads (${W.checkIdentity(all)[0] || "ok"})`);
+  const bad = JSON.parse(JSON.stringify(all));
+  bad.PREVIEW.image = "/../../etc/passwd"; bad.ICON.grid[3] = "x".repeat(32); bad.SITE.extra = "?";
+  ok(W.checkIdentity(bad).length === 3, "control: a path out of public/, a broken grid and an unknown key are all refused");
+
+  // the head, built the way the build builds it
+  const files = { "favicon.svg": "aaaa1111", "favicon-32.png": "b", "og.png": "c0ffee00" };
+  const head = H.identityHead(all, files);
+  ok((head.match(/<title>/g) || []).length === 1, "exactly one <title>");
+  ok(head.includes(`<meta property="og:image" content="${ID.SITE.url}${ID.PREVIEW.image}?v=c0ffee00" />`),
+    "the card's picture is an absolute address carrying a hash of its bytes");
+  ok(!head.includes("favicon.ico") && head.includes("/favicon.svg?v=aaaa1111"),
+    "an icon file that is not there is not linked; one that is, is (with its hash)");
+  const nasty = H.identityHead({ ...all, PREVIEW: { ...ID.PREVIEW, title: `a "quoted" <b>&` } }, {});
+  ok(nasty.includes('content="a &quot;quoted&quot; &lt;b&gt;&amp;"') && !nasty.includes('"quoted"'),
+    "a quote or an angle bracket in the words cannot end the attribute it is in");
+  ok(H.identityHead({ ...all, SITE: { ...ID.SITE, url: "" } }, files).includes('content="/og.png?v=c0ffee00"') &&
+     !H.identityHead({ ...all, SITE: { ...ID.SITE, url: "" } }, files).includes("og:url"),
+    "control: with no address the picture is relative and no og:url is claimed");
+  ok(H.tabTitle({ pageTitle: "{page} — X" }, "photos") === "photos — X" && H.tabTitle({ pageTitle: "Just me" }, "photos") === "Just me",
+    "a tab pattern puts the page's name where {page} is, and a pattern without it is used as it is");
+
+  // index.html carries the marker, and none of the tags it is replaced with
+  const html = readFileSync(new URL("index.html", root), "utf8");
+  const headSrc = html.slice(0, html.indexOf("</head>"));
+  ok((headSrc.match(/<!--\s*identity\b/g) || []).length === 1, "index.html has exactly one identity marker");
+  ok(!/<title>|property="og:|rel="icon"|name="description"/.test(headSrc.replace(/<!--[\s\S]*?-->/g, "")),
+    "...and no hand-written title, card or icon tag that could disagree with identity.js");
+
+  // every file the head would link is in public/, and the card is the right size
+  const pub = (f) => new URL(`public/${f}`, root);
+  ok(existsSync(pub(ID.PREVIEW.image.slice(1))), `the card's picture exists (public${ID.PREVIEW.image})`);
+  const png = readFileSync(pub("og.png"));
+  ok(ID.PREVIEW.image !== "/og.png" || (png.readUInt32BE(16) === 1200 && png.readUInt32BE(20) === 630),
+    "the card is 1200 x 630, the size every app crops to");
+  if (ID.ICON.mode === "grid") {
+    const M = await import("../tools/mewMark.mjs");
+    ok(readFileSync(pub("favicon.svg"), "utf8") === M.markSvg() && readFileSync(pub("favicon-32.png")).equals(M.markPng(1)),
+      "the icon files are the grid as it is now (re-bake with tools/bake_favicon.mjs if not)");
+    const ico = readFileSync(pub("favicon.ico"));
+    ok(ico.readUInt16LE(2) === 1 && ico.readUInt16LE(4) === 1 && ico.subarray(22).equals(M.markPng(1)),
+      "favicon.ico is one 32 px entry holding that same PNG");
+    const apple = readFileSync(pub("apple-touch-icon.png"));
+    ok(apple.readUInt32BE(16) === 180 && apple.readUInt32BE(20) === 180, "the home-screen icon is 180 x 180");
+  }
+
+  // the editor's writer: nothing changed writes nothing; a change round-trips
+  // through the real file and keeps every comment
+  const src = readFileSync(new URL("src/site/identity.js", root), "utf8");
+  const ast = S.parse(src);
+  ok(W.identityEdits(src, ast, all, all).length === 0, "saving identity.js unchanged writes nothing");
+  const next = JSON.parse(JSON.stringify(all));
+  next.SITE.description = 'A description with "quotes" — and an em dash, long enough that it has to be wrapped over more than one line of source.';
+  next.CARD.texts.push({ text: "two\nlines", font: "grotesque", weight: 700, size: 40, color: "#112233", x: 10, y: 20, spacing: 1, lineHeight: 1.1, align: "center" });
+  next.ICON.grid[0] = "#".repeat(32);
+  const edits = W.identityEdits(src, ast, next, all).sort((a, b) => b.start - a.start);
+  let out = src;
+  for (const e of edits) out = out.slice(0, e.start) + e.text + out.slice(e.end);
+  const dir = mkdtempSync(join(tmpdir(), "identity-"));
+  try {
+    writeFileSync(join(dir, "identity.mjs"), out);
+    const back = await import(join(dir, "identity.mjs"));
+    ok(JSON.stringify({ SITE: back.SITE, PREVIEW: back.PREVIEW, CARD: back.CARD, ICON: back.ICON }) === JSON.stringify(next),
+      `a saved change reads back as itself (${edits.length} edits)`);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+  ok((out.match(/\/\//g) || []).length === (src.match(/\/\//g) || []).length, "...and every comment in the file survives it");
+  const descLines = out.slice(out.indexOf("A description with") - 20, out.indexOf("one line of source.") + 25).split("\n");
+  ok(descLines.length > 1 && descLines.every((l) => l.length <= 100),
+    `...with the long sentence wrapped over ${descLines.length} lines, not written as one`);
+}
+
 console.log(`\n${checks - failures}/${checks} checks passed`);
 if (failures > 0) process.exit(1);
 console.log("ALL PASS");
