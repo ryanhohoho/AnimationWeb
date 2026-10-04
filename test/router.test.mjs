@@ -861,6 +861,32 @@ console.log("\n== the page turn does not move the type");
         "container wins, so typing cannot churn the grid");
     }
 
+    // ── A HOLE'S OWN CANVAS IS NOT AN OBSTACLE ───────────────────────────
+    // Every aperture prints its sky into a canvas.hole-cv inside it, and a
+    // canvas is "media" to the collector, so the home window was a soft rect and
+    // the most expensive place on the page to stop. She must be free to rest in
+    // it. The control is the same box under any other class: a canvas that IS a
+    // picture still counts.
+    {
+      const holeDoc = (cls) => {
+        const d = { style: {}, querySelectorAll: () => d._kids };
+        const cv = mkEl(d, "CANVAS", 940, 348, null, { media: true, top: 165, height: 538 });
+        cv.classList = { contains: (c) => c === cls };
+        d._kids = [mkEl(d, "P", 200, 400, "a paragraph of words"), cv];
+        return d;
+      };
+      document.getElementById = (id) => (id === "doc" ? holeDoc("hole-cv") : held(id));
+      const w8 = createWorld({ headless: true });
+      createColliderTracker(w8);
+      ok(w8.colliders.length === 1 && !w8.colliders.some((c) => c.rect.w === 348),
+        `the words are collected and the window's canvas is not (${w8.colliders.length} rect)`);
+      document.getElementById = (id) => (id === "doc" ? holeDoc("a-picture") : held(id));
+      const w9 = createWorld({ headless: true });
+      createColliderTracker(w9);
+      ok(w9.colliders.length === 2 && w9.colliders.some((c) => c.rect.w === 348 && c.soft),
+        "control: the same canvas under another class is still collected, soft");
+    }
+
     // ── AND THE OBSERVER HAS AN OWNER ────────────────────────────────────
     // utils/lifecycle.js is explicit that a leak needs a named owner rather
     // than vigilance, and an observer is one of the four classes it exists to

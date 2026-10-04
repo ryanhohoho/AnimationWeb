@@ -31,7 +31,7 @@
 
 import { reducedMotion } from "../utils/motion.js";
 import { PALETTE, unit } from "./palette.js";
-import { copies, copyFor } from "./photoassets.js";
+import { copies, copyFor, arrange, compact, ARRANGEMENT } from "./photoassets.js";
 import { mosaic, spreads, fillRolls } from "./photolayout.js";
 
 const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -94,14 +94,21 @@ function screenTile() {
 }
 
 // ── THE BLOCK ─────────────────────────────────────────────────────────────
-function cell(p, set, area, px, first) {
+// A FRAME IS MADE FOR ONE PICTURE (its shape is that picture's) AND MAY BE
+// SHOWING ANOTHER: `p` is the frame's, `shown` says whose picture is in it
+// (photoassets.js, arrange). data-slot names the frame, data-photo the picture
+// in it; the editor swaps the pictures of two frames and the frames stay. The
+// image fills its frame (object-fit: cover), so a picture in another's frame is
+// cropped, never stretched, and nothing around it moves.
+function cell(p, set, area, px, first, shown) {
+  const s = shown.get(p.id) || p;
   return `
-        <button type="button" class="ph-f" data-photo="${esc(key(set, p))}" style="${area}" aria-label="Open photo">
-          <img src="${copyFor(p, 1280)}" srcset="${srcset(p)}" sizes="(max-width:860px) 100vw, ${vw(px)}" width="${p.w}" height="${p.h}" alt=""${first ? ` fetchpriority="high"` : ` loading="lazy"`} decoding="async" />
+        <button type="button" class="ph-f" data-photo="${esc(key(set, s))}" data-slot="${esc(key(set, p))}" style="${area}" aria-label="Open photo">
+          <img src="${copyFor(s, 1280)}" srcset="${srcset(s)}" sizes="(max-width:860px) 100vw, ${vw(px)}" width="${s.w}" height="${s.h}" alt="" draggable="false"${first ? ` fetchpriority="high"` : ` loading="lazy"`} decoding="async" />
         </button>`;
 }
 
-function blockHTML(b, pf, first) {
+function blockHTML(b, pf, first, shown) {
   const set = "photography";
   const ar = (pf.W / b.h).toFixed(4);
   if (b.kind === "row") {
@@ -109,7 +116,7 @@ function blockHTML(b, pf, first) {
     const cols = b.items.map((p) => `${aspect(p).toFixed(4)}fr`).join(" ");
     return `
       <div class="ph-blk" style="--ar:${ar}; grid-template-columns:${cols}">${b.items.map((p, i) =>
-        cell(p, set, `grid-column:${i + 1}`, ((pf.W - pf.gap * (b.items.length - 1)) * aspect(p)) / sum, first && i === 0)).join("")}
+        cell(p, set, `grid-column:${i + 1}`, ((pf.W - pf.gap * (b.items.length - 1)) * aspect(p)) / sum, first && i === 0, shown)).join("")}
       </div>`;
   }
   // a feature: the large picture spans every row of the stack beside it
@@ -121,18 +128,18 @@ function blockHTML(b, pf, first) {
   const fc = b.side === "l" ? 1 : 2, sc = b.side === "l" ? 2 : 1;
   return `
       <div class="ph-blk is-feature" style="--ar:${ar}; grid-template-columns:${cols}; grid-template-rows:${rows}">${
-        cell(b.items[fi], set, `grid-column:${fc}; grid-row:1 / span ${m}`, b.wf, first)}${
-        stack.map((p, i) => cell(p, set, `grid-column:${sc}; grid-row:${i + 1}`, b.ws, false)).join("")}
+        cell(b.items[fi], set, `grid-column:${fc}; grid-row:1 / span ${m}`, b.wf, first, shown)}${
+        stack.map((p, i) => cell(p, set, `grid-column:${sc}; grid-row:${i + 1}`, b.ws, false, shown)).join("")}
       </div>`;
 }
 
 // ── THE MARGINS ───────────────────────────────────────────────────────────
-function lifeHTML(entry, side) {
-  const col = (items) => `<div class="ph-col">${items.map(({ p, w }) => `
-          <button type="button" class="lf" data-photo="${esc(key("reel", p))}" style="--w:${w}; --a:${aspect(p).toFixed(4)}" aria-label="Open photo">
-            <img class="lf-print" src="${copyFor(p, 320)}" width="${p.w}" height="${p.h}" alt="" loading="lazy" decoding="async" />
-            <img class="lf-photo" src="${copyFor(p, 320)}" width="${p.w}" height="${p.h}" alt="" loading="lazy" decoding="async" />
-          </button>`).join("")}
+function lifeHTML(entry, side, shown) {
+  const col = (items) => `<div class="ph-col">${items.map(({ p, w }) => { const s = shown.get(p.id) || p; return `
+          <button type="button" class="lf" data-photo="${esc(key("reel", s))}" data-slot="${esc(key("reel", p))}" style="--w:${w}; --a:${aspect(p).toFixed(4)}" aria-label="Open photo">
+            <img class="lf-print" src="${copyFor(s, 320)}" width="${s.w}" height="${s.h}" alt="" draggable="false" loading="lazy" decoding="async" />
+            <img class="lf-photo" src="${copyFor(s, 320)}" width="${s.w}" height="${s.h}" alt="" draggable="false" loading="lazy" decoding="async" />
+          </button>`; }).join("")}
         </div>`;
   // the column beside the block is the second one, so both rolls hang their
   // pictures against it
@@ -141,8 +148,9 @@ function lifeHTML(entry, side) {
 }
 
 /** the whole card body, worked out for a window of this kind */
-export function photosHTML(lists, i, pf = profile()) {
+export function photosHTML(lists, i, pf = profile(), maps = ARRANGEMENT) {
   const { REEL, PHOTOGRAPHY } = lists;
+  const shown = { photography: arrange(PHOTOGRAPHY, maps.photography), reel: arrange(REEL, maps.reel) };
   const mos = mosaic(PHOTOGRAPHY, { W: pf.W, gap: pf.gap, maxK: pf.maxK });
   const sp = PHOTOGRAPHY.length ? spreads(mos.blocks, pf.gap, pf.W * pf.spread)
     : REEL.length ? [{ blocks: [], h: pf.W * pf.spread }] : [];
@@ -151,10 +159,10 @@ export function photosHTML(lists, i, pf = profile()) {
   let first = true;
   const body = sp.map((s, n) => `
     <div class="ph-spread">
-      ${lifeHTML(rolls[n * 2], "l")}
-      <div class="ph-mos">${s.blocks.map((b) => { const h = blockHTML(b, pf, first); first = false; return h; }).join("")}
+      ${lifeHTML(rolls[n * 2], "l", shown.reel)}
+      <div class="ph-mos">${s.blocks.map((b) => { const h = blockHTML(b, pf, first, shown.photography); first = false; return h; }).join("")}
       </div>
-      ${lifeHTML(rolls[n * 2 + 1], "r")}
+      ${lifeHTML(rolls[n * 2 + 1], "r", shown.reel)}
     </div>`).join("");
   return `
     ${printFilter()}
@@ -167,7 +175,12 @@ export function mountPhotos(ctx, lists) {
   const root = document.getElementById("p-photos");
   if (!root) return;
   const byKey = new Map([...lists.REEL.map((p) => [key("reel", p), p]), ...lists.PHOTOGRAPHY.map((p) => [key("photography", p), p])]);
-  const listOf = (k) => (k.startsWith("reel/") ? lists.REEL : lists.PHOTOGRAPHY);
+  // the viewer pages in the order the pictures are ON THE PAGE, which is the
+  // order of the frames once some have been swapped, not the folder's
+  const listOf = (k) => {
+    const set = k.slice(0, k.indexOf("/") + 1);
+    return [...root.querySelectorAll(`[data-photo^="${set}"]`)].map((n) => byKey.get(n.dataset.photo)).filter(Boolean);
+  };
   const viewer = makeViewer(ctx.scope, byKey, listOf, (k) => root.querySelector(`[data-photo="${CSS.escape(k)}"]`));
   // one click on any picture opens it
   const onClick = (e) => {
@@ -181,17 +194,32 @@ export function mountPhotos(ctx, lists) {
   // phone turned on its side, a window dragged narrower) re-deals the card:
   // fewer to a row, the life pictures out of the margins and into strips.
   let kind = profile().name;
+  // which picture is in which frame: the saved arrangement, and whatever the
+  // editor is trying out (it calls root.__ph.set; a visitor never does)
+  const maps = { photography: { ...ARRANGEMENT.photography }, reel: { ...ARRANGEMENT.reel } };
+  const render = (pf) => {
+    const old = root.querySelector(".ph"), defs = root.querySelector(".ph-defs");
+    if (!old) return;
+    const tpl = document.createElement("template");
+    tpl.innerHTML = photosHTML(lists, 4, pf, maps);
+    defs?.remove();
+    old.replaceWith(...tpl.content.children);
+    watchLit();
+  };
   const rebuild = () => {
     const pf = profile();
     if (pf.name === kind) return;
     kind = pf.name;
-    const old = root.querySelector(".ph"), defs = root.querySelector(".ph-defs");
-    if (!old) return;
-    const tpl = document.createElement("template");
-    tpl.innerHTML = photosHTML(lists, 4, pf);
-    defs?.remove();
-    old.replaceWith(...tpl.content.children);
-    watchLit();
+    render(pf);
+  };
+  const setList = (set) => (set === "reel" ? lists.REEL : lists.PHOTOGRAPHY);
+  root.__ph = {
+    /** the full arrangement of one set: { frame: shown } for every frame */
+    get: (set) => Object.fromEntries([...arrange(setList(set), maps[set])].map(([f, p]) => [f, p.id])),
+    /** put an arrangement on the page (and keep it through a resize) */
+    set: (set, full) => { maps[set] = compact(full); render(profile()); },
+    /** the sparse maps, as the file keeps them */
+    all: () => ({ photography: { ...maps.photography }, reel: { ...maps.reel } })
   };
   let rt = 0;
   const onResize = () => { clearTimeout(rt); rt = setTimeout(rebuild, 150); };

@@ -43,7 +43,7 @@
 // of a video rather than a video.
 
 import { CLIPS } from "./motionassets.js";
-import { CUT, FILM, WORKS } from "./motion.js";
+import { CUT, FILM, WORKS, hasSound } from "./motion.js";
 import { reducedMotion } from "../utils/motion.js";
 
 const FPS = 30;
@@ -217,6 +217,8 @@ export function mountViewer(scope, root, { lists, ambient, cover = () => {}, clo
     const id = ids[i], c = clipOf(i), name = NAMES.get(id) ?? id;
     title.textContent = name;
     el.setAttribute("aria-label", name);
+    // a silent scene has nothing for the speaker to turn on (motion.js, hasSound)
+    snd.classList.toggle("is-silent", !hasSound(id));
     // the film's own cut: a tick where each of its stretches starts
     ticks.innerHTML = id === FILM.id ? CUT.map((x) => `<i style="left:${(100 * x[2] / c.dur).toFixed(3)}%"></i>`).join("") : "";
     scrub.setAttribute("aria-valuemax", String(Math.round(c.dur * FPS) - 1));
@@ -634,7 +636,7 @@ export function mountViewer(scope, root, { lists, ambient, cover = () => {}, clo
     else if (k === " " && !e.target.closest?.("button")) setPlaying(!playing);
     else if (k === ".") stepFrames(1);
     else if (k === ",") stepFrames(-1);
-    else if (k === "m" || k === "M") { muted = !muted; soundState(); }
+    else if ((k === "m" || k === "M") && hasSound(ids[i])) { muted = !muted; soundState(); }
     else used = false;
     if (used) { e.preventDefault(); e.stopPropagation(); }
   };

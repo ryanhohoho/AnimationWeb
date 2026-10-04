@@ -114,7 +114,7 @@ export function renderNotFound(path) {
         <h1 data-e="d-cjra" class="d">sorry,<br><em>invalid link.</em></h1>
       </div>
       <div class="corner br">
-        <p class="t"><a class="link" href="/" data-route>←&nbsp;back&nbsp;to&nbsp;the&nbsp;sheet</a></p>
+        <p class="t"><a class="link" href="/" data-route>← go back</a></p>
       </div>
     </section>`;
 }

@@ -481,6 +481,25 @@ pre.sr { white-space:pre; }
    sheet, which is what it was set for. */
 .t.body.bio { max-width:46ch; font-size:13px; color:var(--n3); }
 .bio em { font-style:normal; color:var(--ink); font-weight:600; }
+/* THE NOTE ABOUT MEW BEING SHINY: two lines, one shows (index.html, src/mew.js).
+   Neither shows before she has rolled, so the page never says the wrong one. */
+.mew-hint > [data-hint] { display:none; margin:0; max-width:none; text-transform:none; }
+html[data-shiny="0"] .mew-hint > [data-hint="plain"],
+html[data-shiny="1"] .mew-hint > [data-hint="shiny"] { display:block; }
+/* HOME AND PHOTOS ARE NOT TEXT TO COPY: dragging across them painted the
+   browser's blue selection over the name and the pictures, which spoils a page
+   that is a composition. Every other page keeps normal selection, because a
+   recruiter copying a date or an address from Experience or Contact is the
+   reason it exists. This is the documented way: user-select:none (with the
+   -webkit- prefix Safari still needs), touch-callout off so a long press on a
+   phone shows no copy / save-image sheet, and images that cannot be dragged
+   out of the page. */
+#doc[data-page="home"], #doc[data-page="photos"] {
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+}
+#doc[data-page="home"] img, #doc[data-page="photos"] img {
+  -webkit-user-drag:none; user-drag:none; -webkit-touch-callout:none;
+}
 .hint { margin-top:.6rem; }
 .hint .link { text-transform:none; letter-spacing:.02em; }
 
@@ -1831,6 +1850,8 @@ body:has(#doc[data-page="project:motion-graphics"]) .t.topnav-a.on { color:#f1ec
 .mgv-snd .spk { fill:currentColor; }
 .mgv-snd .off, .mgv-snd.is-muted .on { display:none; }
 .mgv-snd.is-muted .off { display:inline; }
+/* a scene with no sound track has no speaker (motion.js, hasSound) */
+.mgv-snd.is-silent { display:none; }
 
 /* the neighbours: a chevron just beside each side of the frame. Only that
    strip pages; the rest of the dark around the frame puts the work back. */

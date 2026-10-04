@@ -106,8 +106,7 @@ two are checked against each other on the GPU.
 ```bash
 npm run dev            # localhost:5173 — the owner tests here, in his own browser
 npm run edit           # localhost:5275/editor/ — the visual editor (see below)
-npm test               # 1108 checks: the headless sim + the router harness
-                       # (2026-09-29: 1106 pass -- see Security below)
+npm test               # the headless sim + the router harness (all pass, 2026-10-04)
 npm run test:sim       # just the engine/behaviour suite
 npm run test:router    # just the router + page-swap harness (needs a fake DOM)
 npm run build          # production bundle
@@ -172,6 +171,7 @@ never in it; `tools/motion/README.md` is the whole procedure:
 
 ```bash
 node tools/bake_motion.mjs --add <video> --id <id>        # a new work from any video, then one line in site/motion.js
+                                                          # silent by default: --sound keeps its track, with `sound: true` on its line in site/motion.js (only the pool, the clouds and the film have one)
 node tools/bake_motion.mjs --sheet                        # rebuild the contact sheet from the site's own clips
 node tools/bake_motion.mjs --renders <sandbox>/renders    # re-cut every work from the piece's renders
 node tools/motion/credits.mjs ../VisualAudialExperience/CREDITS.md   # -> site/motioncredits.js
@@ -185,7 +185,9 @@ The photos card's pictures. The two FOLDERS are the list: `src/assets/photos/ree
 (the snapshots hung in the margins) and `src/assets/photos/photography/` (the
 block in the middle). `site/photoassets.js` is a hand-written glob over them, so
 a picture added there is on the card and one deleted there is gone, with no code
-to edit and nothing to run. Only a picture a browser cannot show needs the bake:
+to edit and nothing to run. (Which picture sits in which frame is
+`src/assets/photos/arrangement.json`, written by the editor's drag-to-swap: optional,
+and it follows the folders.) Only a picture a browser cannot show needs the bake:
 drop it straight off the iPhone -- HEIC is fine -- into `photos-source/reel/` or
 `photos-source/photography/` (git ignores both), then:
 
@@ -489,18 +491,13 @@ committed file, or in any transcript:** credentials or key material, real asset
 numbers, drive serials, or volume identifiers.
 
 FIG. 1 — the played PowerShell transcript and its timing table — was removed
-as the outdated demo; FIG. 2 runs sequential synthetic serials. The page
-carries a DISCLOSURE block saying what is not on it, and the redaction check in
-`test/sim.test.js` still holds any device identifier to the four stand-ins
-(`#1234567` …). If you edit that page, keep both true.
-
-**OPEN, 2026-09-28:** the owner reworded the page (now titled "Laser
-Processing") in commit `87d737d`. Its DISCLOSURE note no longer contains the
-two sentences the check looks for ("No asset numbers, serials, volume
-identifiers, key material or credentials" and "sequential synthetic serials"),
-so `npm run test:sim` reports 1106/1108. The stand-in check itself still
-passes. Resolving it is the owner's call: restore the sentences on the page,
-or authorise changing the test. Do not edit either unasked. If you are ever asked to
+as the outdated demo; FIG. 2 runs sequential synthetic serials. The redaction
+check in `test/sim.test.js` still holds any device identifier to the four
+stand-ins (`#1234567` …) and scans every committed text file for key-shaped and
+serial-shaped values. **No test checks the page's WORDING** (2026-10-04, by the
+owner's instruction: the DISCLOSURE-sentence checks were removed, and tests are
+for behaviour, not copy), so the DISCLOSURE note is the owner's to word; it
+should still say what is not on the page. If you are ever asked to
 include real capture data, censor it in a copy of the file rather than reading
 the original into context.
 

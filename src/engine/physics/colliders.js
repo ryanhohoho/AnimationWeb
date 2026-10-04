@@ -87,6 +87,14 @@ export function createColliderTracker(world, scope) {
       // she is free to sit in. Visually hidden things are excluded by their
       // rectangle instead — `.sr` measures 1x1 and does not survive the filter.
       if (!hasOwnText(el) && !el.matches(MEDIA)) continue;
+      // THE CANVAS INSIDE A HOLE IS NOT A PICTURE TO KEEP OFF. Every aperture
+      // prints its own sky into a first-child canvas.hole-cv (site/deck.js), and
+      // a canvas is "media" to the test above, so from the day holes got their
+      // own canvas the home window has been a soft rect: the most expensive
+      // place on the page to stop, which is the opposite of what this file's
+      // head says about apertures ("the best place she can be"). She is the one
+      // unprinted thing on the sheet and the window is where the print is not.
+      if (el.classList?.contains("hole-cv")) continue;
       let covered = false;
       for (let a = el.parentElement; a && a !== doc; a = a.parentElement) {
         if (chosen.has(a)) { covered = true; break; }

@@ -11,7 +11,7 @@ import { api, toast, uid, modal, h } from "./util.js";
 
 export function createEditor({ store, frame }) {
   const listeners = new Set();
-  const textInfo = new Map();        // locKey -> resolve() answer, taken before the first edit
+  const textInfo = new Map();        // page|locKey -> { words, r }: resolve() answer, taken before the first edit
   const ed = {
     store, frame,
     bp: "base",
@@ -285,10 +285,19 @@ export function createEditor({ store, frame }) {
   ed.snapshotPristine = () => { for (const n of leaves()) if (!pristine.has(n)) pristine.set(n, cleanHTML(n.innerHTML)); };
 
   async function infoFor(el) {
+    // THE KEY INCLUDES THE PAGE, and the words. A card's heading is written once,
+    // in the shared shell() template, so the experience, projects and photos
+    // headings all carry the SAME data-e: keyed by that alone, whichever heading
+    // was resolved first answered for the other two, and an edit made on Projects
+    // was written over the Photos string (and a refusal on one page was shown on
+    // the next). A cached answer is also dropped if the words it was taken for
+    // are not the words this element had when the page drew it.
     const loc = locate(el, ed.doc);
-    const key = locKey(loc);
-    if (textInfo.has(key)) return textInfo.get(key);
-    if (el.closest("[data-ed-new]")) { const i = { ok: true, kind: "new", form: "html", label: "new — written on save" }; textInfo.set(key, i); return i; }
+    const key = `${ed.page}|${locKey(loc)}`;
+    const words = pristineOf(el);
+    const hit = textInfo.get(key);
+    if (hit && hit.words === words) return hit.r;
+    if (el.closest("[data-ed-new]")) { const i = { ok: true, kind: "new", form: "html", label: "new — written on save" }; textInfo.set(key, { words, r: i }); return i; }
     if (el.closest("[data-ed-copy]")) return { ok: false, reason: "This copy is not in the source yet. Save, then edit its words." };
     const html = pristineOf(el);
     const same = leaves().filter((n) => norm(pristineOf(n)) === norm(html));
@@ -297,7 +306,7 @@ export function createEditor({ store, frame }) {
       html, nth: same.indexOf(el), same: same.length
     });
     // an ambiguous answer is NOT cached: the person's choice is
-    if (r.ok || !r.choices) textInfo.set(key, r);
+    if (r.ok || !r.choices) textInfo.set(key, { words, r });
     return r;
   }
   ed.textInfo = infoFor;
@@ -313,7 +322,7 @@ export function createEditor({ store, frame }) {
        ...info.choices.slice(0, 6).map((c, i) => ({ label: `${c.label} · line ${c.line}`, value: i, kind: i === 0 ? "primary" : "ghost" }))]);
     if (pick === null || pick === undefined) return null;
     const chosen = info.choices[pick];
-    textInfo.set(locKey(locate(el, ed.doc)), chosen);
+    textInfo.set(`${ed.page}|${locKey(locate(el, ed.doc))}`, { words: pristineOf(el), r: chosen });
     return chosen;
   }
 
@@ -544,6 +553,33 @@ export function createEditor({ store, frame }) {
       [{ label: "Cancel", value: false }, { label: `${verb === "add" ? "Add" : "Duplicate"} on all ${n}`, kind: "primary", value: true }]);
     return !!go;
   }
+
+  // ── the photos card ─────────────────────────────────────────────────────
+  /**
+   * Two pictures on the Photos card change places. Each frame keeps its size
+   * and its place; the pictures are cropped to fit (object-fit: cover). It is
+   * one undoable step, and what is saved is the whole arrangement, written to
+   * src/assets/photos/arrangement.json (site/photoassets.js reads it).
+   */
+  ed.swapPhotos = (a, b) => {
+    const api = ed.doc.getElementById("p-photos")?.__ph;
+    if (!api || !a?.dataset.slot || !b?.dataset.slot) return false;
+    const split = (v) => [v.slice(0, v.indexOf("/")), v.slice(v.indexOf("/") + 1)];
+    const [set, fa] = split(a.dataset.slot), [set2, fb] = split(b.dataset.slot);
+    if (set !== set2 || fa === fb) return false;
+    const before = api.get(set), after = { ...before };
+    after[fa] = before[fb]; after[fb] = before[fa];
+    const maps = { ...api.all(), [set]: Object.fromEntries(Object.entries(after).filter(([k, v]) => k !== v)) };
+    store.page({
+      page: ed.page, label: "Swap photos",
+      apply: (doc) => doc.getElementById("p-photos")?.__ph?.set(set, after),
+      revert: (doc) => doc.getElementById("p-photos")?.__ph?.set(set, before),
+      op: { type: "photoOrder", maps }
+    }, ed.ctx);
+    ed.reselect();
+    ed.afterPage();
+    return true;
+  };
 
   ed.insert = async (kind, { only = false } = {}) => {
     const from = ed.sel?.el || ed.doc.querySelector("#doc > section");

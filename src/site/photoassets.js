@@ -64,6 +64,62 @@ export const copyFor = (p, edge) => {
   return (list.find(([e]) => e >= edge) || list[list.length - 1])[1];
 };
 
+// ── THE ARRANGEMENT: WHICH PICTURE IS IN WHICH FRAME ──────────────────────
+// The page lays itself out from the pictures (photolayout.js), so each picture
+// has a frame of its own shape, in a place that follows from the whole set.
+// That is the default and needs nothing. To MOVE a picture, the editor swaps
+// two pictures over: each keeps the frame it was in, the frames keep their
+// sizes, and the picture is cropped to the other one's frame (object-fit:
+// cover). What it saves is  src/assets/photos/arrangement.json :
+//
+//   { "photography": { "<frame>": "<picture shown in it>", ... }, "reel": { ... } }
+//
+// A FRAME IS NAMED BY THE PICTURE IT WAS MADE FOR, which is why this survives
+// the folders changing. A picture added is in its own frame; one removed takes
+// its frame with it (the layout is worked out again without it) and any frame
+// that was showing it goes back to its own picture. The file is optional: it is
+// read through a glob, so a missing one is the default arrangement and not an
+// error, and an entry naming a picture that is gone is ignored. `arrange` is
+// pure, so it is checked in node.
+const NAMEOK = /^[A-Za-z0-9._-]+$/;
+/** whatever was in the file -> { photography: {frame: shown}, reel: {...} }, only well-formed entries that move something */
+export function sanitize(raw) {
+  const out = { photography: {}, reel: {} };
+  for (const set of Object.keys(out)) {
+    const m = raw && typeof raw === "object" ? raw[set] : null;
+    if (m && typeof m === "object") {
+      for (const [k, v] of Object.entries(m)) if (typeof v === "string" && NAMEOK.test(k) && NAMEOK.test(v) && k !== v) out[set][k] = v;
+    }
+  }
+  return out;
+}
+
+/**
+ * Who is shown in whose frame. Every picture is shown exactly once, in every
+ * case: an entry is honoured if both ends exist and the picture is not already
+ * placed; a frame left without one gets its own picture if that is free, and
+ * otherwise the first picture nobody has been given.
+ * @param list  the pictures of one set (collect's output)
+ * @param map   { frameId: shownId }
+ * @returns Map frameId -> picture
+ */
+export function arrange(list, map = {}) {
+  const by = new Map(list.map((p) => [p.id, p]));
+  const shown = new Map(), used = new Set();
+  for (const f of list) {
+    const want = map && map[f.id];
+    if (want && want !== f.id && by.has(want) && !used.has(want)) { shown.set(f.id, by.get(want)); used.add(want); }
+  }
+  for (const f of list) if (!shown.has(f.id) && !used.has(f.id)) { shown.set(f.id, f); used.add(f.id); }
+  const spare = list.filter((p) => !used.has(p.id));
+  for (const f of list) if (!shown.has(f.id)) { const p = spare.shift(); shown.set(f.id, p); used.add(p.id); }
+  return shown;
+}
+
+/** a full { frame: shown } map -> only the entries that move something (what the file keeps) */
+export const compact = (full) => Object.fromEntries(Object.entries(full || {}).filter(([k, v]) => k !== v));
+
 // (a glob's pattern has to be a literal, so the extensions are written twice)
 export const REEL = collect(import.meta.glob("../assets/photos/reel/*.{webp,jpg,jpeg,png,avif}", { eager: true, query: "?url", import: "default" }));
 export const PHOTOGRAPHY = collect(import.meta.glob("../assets/photos/photography/*.{webp,jpg,jpeg,png,avif}", { eager: true, query: "?url", import: "default" }));
+export const ARRANGEMENT = sanitize(Object.values(import.meta.glob("../assets/photos/arrangement.json", { eager: true, import: "default" }))[0]);

@@ -57,7 +57,7 @@ export function html(p) {
 
     body: `
       <div class="conf-sec">
-        <p class="t dim conf-k">THE WORK</p>
+        <p class="t dim conf-k">summary</p>
         <ul class="conf-list">
           <li class="t body">CLI application that reads and writes encrypted drives.</li>
           <li class="t body">Accesses and pre-configures encryption architecture on all connected storage devices.</li>

@@ -425,6 +425,24 @@ function plan(body) {
           mediaOp(op, batch, src, moves, warnings, runAfter);
           break;
         }
+        case "photoOrder": {
+          // WHICH PICTURE IS IN WHICH FRAME on the Photos card, written whole:
+          // the one file site/photoassets.js reads. Only ids are accepted (the
+          // names of pictures in the two folders), so nothing else can end up
+          // in it, and only entries that move something are kept.
+          const out = { photography: {}, reel: {} };
+          for (const set of Object.keys(out)) {
+            for (const [k, v] of Object.entries(op.maps?.[set] || {}).sort()) {
+              if (!/^[A-Za-z0-9._-]+$/.test(k) || typeof v !== "string" || !/^[A-Za-z0-9._-]+$/.test(v)) throw new Error(`"${k}" -> "${v}" is not a picture name`);
+              if (k !== v) out[set][k] = v;
+            }
+          }
+          mkdirSync(STAGE, { recursive: true });
+          const tmp = join(STAGE, `arrangement-${randomUUID()}.json`);
+          writeFileSync(tmp, JSON.stringify(out, null, 2) + "\n");
+          moves.push({ copy: tmp, to: R("src/assets/photos/arrangement.json") });
+          break;
+        }
         default:
           throw new Error(`unknown change: ${op.type}`);
       }

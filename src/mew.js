@@ -156,6 +156,9 @@ export function bootMew({ world, deck, scope, enter = false }) {
   const isShiny = shinyParam === null
     ? Math.random() < cfg.shiny.chance
     : shinyParam !== "0";
+  // the page's note about her ("refresh a few times, mew can be shiny!") shows
+  // only while she is not, and says something else when she is: CSS reads this
+  document.documentElement.dataset.shiny = isShiny ? "1" : "0";
 
   function updateViewport() {
     const { dpr } = world.viewport;

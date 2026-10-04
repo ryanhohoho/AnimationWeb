@@ -18,7 +18,7 @@ import { capture } from "../media.js";
 export function html(p) {
   return renderSheet(p, {
     headline: "iClicker",
-    lead: "Work in progress.",
+    lead: "← GO BACK",
 
     hero: capture({ id: "stand-iclicker-hero", ratio: "1.7778",
       alt: "Reference artwork standing in for a capture of the client." }),

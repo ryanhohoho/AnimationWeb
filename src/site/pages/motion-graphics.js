@@ -135,7 +135,7 @@ export function html() {
         <ul class="mg-credits-list" data-credits></ul>
       </section>
 
-      <p class="mg-back"><a href="/projects" data-route>←&nbsp;back&nbsp;to&nbsp;the&nbsp;work</a></p>
+      <p class="mg-back"><a href="/projects" data-route>← GO BACK</a></p>
     </div>
   </section>`;
 }

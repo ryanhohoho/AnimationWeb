@@ -91,18 +91,19 @@ export function renderSheet(p, {
     <div data-e="sheet-in-ecsx" class="sheet-in">
       <h1 data-e="d-zsf3" class="d sheet-h">${headline}</h1>
       ${hero}
-      ${lead ? `<p data-e="t-fdqs" class="t body wide lead">${lead}</p>` : ""}
+      ${lead ? `<p data-e="t-fdqs" class="t body wide lead">${lead}</p>
+      ` : ""}
     </div>
   </section>
 
-  <section class="plate sheet${deep ? " deep" : ""}" id="p1">
+  <section data-e="plate-jj63" class="plate sheet${deep ? " deep" : ""}" id="p1">
     <div data-e="sheet-in-ta8h" class="sheet-in">
       ${body}
       ${figure}
       <div data-e="cols-bz62" class="cols">
         ${cols}${skills}
       </div>
-      <p class="t back-hint"><a class="link" href="/projects" data-route>←&nbsp;back&nbsp;to&nbsp;the&nbsp;work</a></p>
+      <p class="t back-hint"><a class="link" href="/projects" data-route>← GO BACK</a></p>
     </div>
   </section>`;
 }

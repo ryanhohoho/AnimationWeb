@@ -21,6 +21,12 @@ Then add one line to `src/site/motion.js`:
 { id: "my-work", name: "its name", on: ["mix"] },   // or ["top"], or ["mix", "flower"]
 ```
 
+**Sound.** Only the works marked `sound: true` in `site/motion.js` (today the pool and the clouds), and
+the film, have an audio track; every other clip is baked with `-an`, and the viewer shows no speaker on
+it. A new work is silent unless you pass `--sound` to `--add` (and write `sound: true` on its line, or the
+next re-bake will drop the track). `npm test` reads each file's header and fails if a track and the flag
+disagree.
+
 `top` is the featured wall (in the order written), `mix` the scatter, `flower`
 the flower's run. The tile's size follows the clip's length; nothing else sets
 it. `npm test` checks that every name has a clip and every clip a name.

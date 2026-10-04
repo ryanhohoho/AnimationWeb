@@ -26,6 +26,7 @@ its behind-the-scenes figures take **Replace…**.
 | resize | the handles, on one element or round a selection of several. **Text scales**: with the chain on (the default) every handle scales the type, its box and its spacing together, so the lines break where they did and it follows the pointer 1:1; with the chain off the side handles change the box only and re-wrap the lines. Corners always scale. A picture keeps its shape from every handle; a box keeps its ratio when its chain is on, or with ⇧ |
 | link size and box | the chain under Layout: on a text block, **Size and box scale together** (W scales the type; Aa scales a box that has a set width); on a box, **Keep width and height in ratio**. Remembered in this browser |
 | change several at once | the inspector shows only what they share (type only if all are words, fit and shape only if all are pictures). A value that differs shows **Mixed**. Typing sets it on all; dragging a field's label moves each by the same amount from its own value; **%** scales everything in place |
+| swap two photos | on the **Photos** page, drag a picture onto another (photograph onto photograph, snapshot onto snapshot). They change places; every frame keeps its size. Undoable, saved to `src/assets/photos/arrangement.json` |
 | reorder | drag rows in **Layers**, or "earlier / later" in the inspector |
 | replace a picture or clip | select it → **Replace…** → pick a file in Finder |
 | set what stays in frame | click the preview in the inspector (the focal point) |
@@ -146,8 +147,16 @@ editor/
   editor on another port (`vite --config editor/vite.editor.config.js --port N`)
   needs it, or starting it empties the first one's uploads.
 
-## Pictures on the Photos card are not the editor's
+## The Photos card
 
-The card is drawn from the two folders `src/assets/photos/reel/` and
-`src/assets/photos/photography/`; add or remove a file there and the card
-follows. See `tools/bake_photos.mjs` and `src/site/photoassets.js`.
+The pictures are not the editor's: the card is drawn from the two folders
+`src/assets/photos/reel/` and `src/assets/photos/photography/`; add or remove a
+file there and the card follows (see `tools/bake_photos.mjs` and
+`src/site/photoassets.js`). **Which picture sits in which frame is.** Drag a
+picture onto another and the two change places; each frame keeps its size and
+place, and the picture is cropped to fit it (never stretched). Save writes
+`src/assets/photos/arrangement.json`, `{ "photography": { "<frame>": "<picture
+shown in it>" }, "reel": {} }`, listing only the pictures that moved. A frame
+is named after the picture it was made for, so the file survives the folders
+changing: a new picture sits in its own frame, and an entry naming a picture
+that is gone is ignored. Delete the file to put everything back.

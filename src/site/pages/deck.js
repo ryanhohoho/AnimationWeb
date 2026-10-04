@@ -31,7 +31,7 @@ const esc = (v) => String(v ?? "")
 
 /** the shared shell. An eyebrow, a heading, and the thing itself. */
 function shell(id, node, hour, eyebrow, heading, body) {
-  return `<section class="plate deckpage" id="${id}" data-node="${node}">
+  return `<section data-e="plate-2cnu" class="plate deckpage" id="${id}" data-node="${node}">
   <div class="corner tr deck-hour"></div>
   <div data-e="deck-in-bdzo" class="deck-in">
     <!-- ONE SMALL ROUND CUT, ABOVE EVERYTHING ELSE ON THE CARD.
@@ -52,7 +52,7 @@ function shell(id, node, hour, eyebrow, heading, body) {
          control. -->
     <span class="ap deck-hole" data-ap data-round style="--i:0"></span>
     <p class="t dim eye" style="--i:1">${esc(eyebrow)}</p>
-    ${heading ? `<h1 class="d sm deck-h" style="--i:2">${esc(heading)}</h1>` : ""}
+    ${heading ? `<h1 data-e="d-xu4x" class="d sm deck-h" style="--i:2">${esc(heading)}</h1>` : ""}
     ${body}
   </div>
 </section>`;
@@ -139,7 +139,7 @@ function projects() {
 // site/photos.js; the pictures are tools/bake_photos.mjs's.
 function photos() {
   const hang = PHOTOGRAPHY.length || REEL.length ? photosHTML({ REEL, PHOTOGRAPHY }, 4) : "";
-  return shell("p-photos", "04", "23:30", "PHOTOS", "soon.", hang);
+  return shell("p-photos", "04", "23:30", "PHOTOS", "me and what i like.", hang);
 }
 
 // ── 05 · CONTACT ────────────────────────────────────────────────────────────
@@ -156,7 +156,7 @@ function contact() {
       </li>`).join("");
   return shell("p-contact", "05", "00:15", "CONTACT", "",
     `<ul data-e="socks-45tz" class="socks">${rows}\n    </ul>
-    <p class="t dim back-hint" style="--i:6"><a class="link" href="/" data-route>← back to the start</a></p>`);
+    <p class="t dim back-hint" style="--i:6"><a class="link" href="/" data-route>← GO BACK</a></p>`);
 }
 
 const PAGES = { experience, projects, photos, contact };

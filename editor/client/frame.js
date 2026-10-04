@@ -26,6 +26,9 @@ const EDIT_CSS = `
 .pcard-vid { opacity: 0 !important; }
 html { scroll-behavior: auto !important; }
 [contenteditable] { outline: none; cursor: text; }
+/* Home and Photos switch text selection off for visitors (site.css); the editor
+   has to be able to type and select inside the words it is editing */
+#doc [contenteditable], #doc [contenteditable] * { -webkit-user-select: text !important; user-select: text !important; }
 `;
 
 export function createFrame({ iframe, onReady, onPage, onEvent }) {

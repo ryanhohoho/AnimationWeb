@@ -107,6 +107,11 @@ export function createStore({ css, palette, tokens, projects }) {
         const op = typeof c.op === "function" ? c.op() : c.op;
         for (const o of [op].flat()) {
           if (!o) continue;
+          // the arrangement of the photos is one file: the last state wins
+          if (o.type === "photoOrder") {
+            if (last.has("photoOrder")) { ops[last.get("photoOrder")] = o; continue; }
+            last.set("photoOrder", ops.length);
+          }
           if (o.type === "text" || o.type === "inner" || o.type === "attr") {
             const k = `${o.file}:${o.start}:${o.end}`;
             if (last.has(k)) { ops[last.get(k)] = o; continue; }

@@ -23,6 +23,13 @@
 //
 // A work can be in two places ("mix" and "flower"). Every tile's size follows
 // its own clip's length, read from the clip, so nothing here says how big.
+//
+// SOUND IS THE EXCEPTION (2026-10-03, by instruction): only the works marked
+// `sound: true` have an audio track, and the film's own score stays. Every
+// other clip is silent, in the file and not just muted, and the viewer shows
+// no speaker on it. tools/bake_motion.mjs reads this flag when it cuts a clip
+// (a silent one is written with -an), so a re-bake keeps it true; `--add ...
+// --sound` is how a new work gets a track. npm test checks each file against it.
 
 export const WORKS = [
   // ── the featured wall ──
@@ -30,7 +37,7 @@ export const WORKS = [
   { id: "chrome",     name: "liquid chrome",            on: ["top"] },
   { id: "undercroft", name: "the undercroft",           on: ["top"] },
   { id: "poster",     name: "science.",                 on: ["top"] },
-  { id: "pool",       name: "the pool",                 on: ["top"] },
+  { id: "pool",       name: "the pool",                 on: ["top"], sound: true },
   { id: "angels",     name: "the angels",               on: ["top"] },
   { id: "flower-19",  name: "stripes",                  on: ["top", "flower"] },
 
@@ -46,7 +53,7 @@ export const WORKS = [
   { id: "world",      name: "a world",                  on: ["mix"] },
   { id: "earth",      name: "the world, spun out",      on: ["mix"] },
   { id: "flower-03",  name: "lines",                    on: ["mix", "flower"] },
-  { id: "clouds",     name: "clouds without a sky",     on: ["mix"] },
+  { id: "clouds",     name: "clouds without a sky",     on: ["mix"], sound: true },
   { id: "credits",    name: "the credits",              on: ["mix"] },
   { id: "lonely",     name: "the light goes out",       on: ["mix"] },
   { id: "moire",      name: "an eye in rings",          on: ["mix"] },
@@ -100,6 +107,9 @@ export const GROUND = "flower-13";
 // label) or give its own name; two stretches can be the same work (the sky
 // tiles are shown twice in the film and once, whole, on the page).
 export const FILM = { id: "film", name: "main composition", dur: 143.2 };
+
+/** does this scene have a sound track? the film does, and the works marked `sound` */
+export const hasSound = (id) => id === FILM.id || WORKS.some((w) => w.id === id && w.sound === true);
 
 export const ACTS = ["nothing", "god", "us", "company"];
 

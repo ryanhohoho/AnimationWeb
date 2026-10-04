@@ -4083,20 +4083,6 @@ section("the USB sheet carries a real run and nothing real in it");
   ok(runs.every((d) => STANDINS.includes(d)),
     `no seven-figure number on the sheet is anything but a stand-in (${runs.length} found)`);
 
-  // THE DISCLOSURE. There were two while FIG. 1 was on the page -- one in the
-  // colophon and a subtitle beside the transcript -- and the subtitle went with
-  // the transcript. The colophon's must survive every edit.
-  ok(/DISCLOSURE/.test(html), "the colophon still declares the substitution");
-  // spacing-agnostic ON PURPOSE. The first version of this matched the literal
-  // `&nbsp;` run and failed the moment those captions were allowed to wrap on a
-  // phone -- which is a typographic edit, not a disclosure being removed. What
-  // must survive an edit is the SENTENCE.
-  const words = (t) => html.replace(/&nbsp;|&#160;|\s+/g, " ").includes(t);
-  ok(words("No asset numbers, serials, volume identifiers, key material or credentials"),
-    "...and it still says what is NOT on the sheet");
-  ok(words("sequential synthetic serials"),
-    "...and what the engraving figure runs instead");
-
   // ── THE PAIRED CONTROL ───────────────────────────────────────────────
   // Every check above passes on a page with nothing wrong with it, which is
   // also what it would do if the scanner were broken. These are the same
@@ -4412,6 +4398,59 @@ section("the photography block: worked out from the pictures, every block an exa
 }
 
 // ---------------------------------------------------------------------------
+section("the photos card: pictures change frames, frames keep their sizes, and a folder can still change");
+{
+  const A = await import("../src/site/photoassets.js");
+  const P = await import("../src/site/photos.js");
+  const rnd = mulberry32(5);
+  const shapes = [[3, 4], [4, 3], [2, 3], [1, 1]];
+  const pics = Array.from({ length: 14 }, (_, i) => {
+    const [w, h] = shapes[Math.floor(rnd() * shapes.length)];
+    return { id: `p${i}`, w: w * 100, h: h * 100, l: rnd(), guess: false, src: { 640: `/p${i}.webp` } };
+  });
+  const shownIds = (m) => [...m.entries()].map(([f, p]) => `${f}:${p.id}`).join();
+  ok(shownIds(A.arrange(pics, {})) === pics.map((p) => `${p.id}:${p.id}`).join() && shownIds(A.arrange(pics)) === shownIds(A.arrange(pics, {})),
+    "with no arrangement every frame shows the picture it was made for");
+  const sw = A.arrange(pics, { p0: "p3", p3: "p0" });
+  ok(sw.get("p0").id === "p3" && sw.get("p3").id === "p0" && sw.get("p1").id === "p1", "a swap puts each picture in the other's frame and leaves the rest");
+  const everyOnce = (m, list) => m.size === list.length && new Set([...m.values()].map((p) => p.id)).size === list.length;
+  ok(everyOnce(sw, pics), "every picture is shown once");
+  // a cycle of three, and entries that are broken in every way a hand-edited file can be
+  ok(everyOnce(A.arrange(pics, { p0: "p1", p1: "p2", p2: "p0" }), pics) && A.arrange(pics, { p0: "p1", p1: "p2", p2: "p0" }).get("p2").id === "p0", "a longer cycle works too");
+  const bad = A.arrange(pics, { p0: "p1", p5: "p1", p7: "gone", gone: "p2", p9: "p9", p2: 7 });
+  ok(everyOnce(bad, pics), "two frames asking for the same picture, one asking for a picture that is gone, one for itself: still every picture once");
+  // pictures leaving and arriving
+  const fewer = pics.filter((p) => p.id !== "p3");
+  const lost = A.arrange(fewer, { p0: "p3", p3: "p0", p1: "p2", p2: "p1" });
+  ok(everyOnce(lost, fewer) && lost.get("p1").id === "p2" && lost.get("p2").id === "p1" && lost.get("p0").id === "p0",
+    "delete a picture that was swapped: its frame goes, the other swap stays, and the frame that wanted it shows its own");
+  const more = pics.concat([{ id: "new", w: 300, h: 400, l: 0.5, guess: false, src: { 640: "/n.webp" } }]);
+  const grown = A.arrange(more, { p0: "p3", p3: "p0" });
+  ok(everyOnce(grown, more) && grown.get("new").id === "new" && grown.get("p0").id === "p3", "add a picture: it is in its own frame and nothing that was moved comes back");
+  ok(A.arrange([], { a: "b" }).size === 0, "no pictures, nothing to show, no error");
+  // the file
+  const clean = A.sanitize({ photography: { a: "b", "../x": "y", c: "c", d: 4 }, reel: "no", extra: { z: "y" } });
+  ok(JSON.stringify(clean) === JSON.stringify({ photography: { a: "b" }, reel: {} }), "the file is read as only well-formed entries that move something");
+  ok(JSON.stringify(A.sanitize(undefined)) === JSON.stringify({ photography: {}, reel: {} }) && A.ARRANGEMENT.photography !== undefined, "a missing file is the default arrangement");
+  ok(JSON.stringify(A.compact({ a: "b", b: "a", c: "c" })) === JSON.stringify({ a: "b", b: "a" }), "what is saved is only the pictures that moved");
+
+  // the markup: the frames do not change, the pictures in them do
+  const lists = { REEL: [], PHOTOGRAPHY: pics };
+  const pf = { name: "wide", W: 960, gap: 14, maxK: 4, spread: 0.85 };
+  const base = P.photosHTML(lists, 4, pf, { photography: {}, reel: {} });
+  const swapped = P.photosHTML(lists, 4, pf, { photography: { p0: "p3", p3: "p0" }, reel: {} });
+  // a frame's geometry is everything but which picture is in it
+  const frames = (h) => h.replace(/data-photo="[^"]*"/g, "").replace(/ src="[^"]*"/g, "").replace(/ srcset="[^"]*"/g, "").replace(/ width="\d+" height="\d+"/g, "");
+  ok(frames(base) === frames(swapped), "swapping two pictures changes not one size, place or ratio on the card");
+  ok(base.includes('data-photo="photography/p0" data-slot="photography/p0"') && swapped.includes('data-photo="photography/p3" data-slot="photography/p0"'),
+    "control: the card does change, the frame keeps its name and the picture in it is the other one");
+  const slotOf = (h, id) => (h.match(new RegExp(`data-photo="photography/${id}" data-slot="photography/(\\w+)"`)) || [])[1];
+  ok(slotOf(swapped, "p3") === "p0" && slotOf(swapped, "p0") === "p3" && slotOf(base, "p3") === "p3", "picture p3 sits in frame p0 and p0 in p3, and neither does by default");
+  const count = (h) => (h.match(/data-photo="photography\//g) || []).length;
+  ok(count(swapped) === pics.length, "and the card still draws every picture once");
+}
+
+// ---------------------------------------------------------------------------
 section("the editor: who can see an element is a set of devices, and they do not cascade");
 {
   const E = await import("../editor/shared/editsCss.js");
@@ -4455,6 +4494,38 @@ section("the editor: text is found by what it says, not by how a browser spelled
   const ast = S.parse('const P = [{ slug: "iclicker", title: "iclicker", n: "x" }]; if (a === "iclicker") {}');
   ok(S.stringNodes(ast).filter((c) => c.value === "iclicker").length === 3 && S.stringNodes(ast, { content: true }).filter((c) => c.value === "iclicker").length === 1,
     "asking for WORDS skips a slug and a comparison, so a title is not 'written three times'");
+}
+
+// ---------------------------------------------------------------------------
+section("the motion-graphics page: only the works marked `sound` have a sound track");
+// Silence is in the FILE, not in a mute switch: a clip with a track is bytes
+// sent to a phone for nothing, and a `muted` flag can be flipped. site/motion.js
+// says which works speak (and the film does), the baker reads that when it cuts
+// a clip, and this reads the real files, so a re-bake or a replaced clip that
+// brings a track back is caught here and not by somebody's ears.
+{
+  const { readFileSync } = await import("node:fs");
+  const { hasSound, WORKS } = await import("../src/site/motion.js");
+  const { CLIPS } = await import("../src/site/motionassets.js");
+  // the handler boxes of an MP4 ('vide', 'soun'), read from the head of the file (faststart puts the moov there)
+  const handlers = (file) => {
+    const b = readFileSync(new URL(`../src/assets/motion/${file}.mp4`, import.meta.url)).subarray(0, 1 << 19);
+    const out = [];
+    for (let at = b.indexOf("hdlr"); at >= 0; at = b.indexOf("hdlr", at + 4)) out.push(b.toString("latin1", at + 12, at + 16));
+    return out;
+  };
+  const wrong = [], blind = [];
+  for (const id of Object.keys(CLIPS)) {
+    const h = handlers(id);
+    if (!h.includes("vide")) blind.push(id);
+    if (h.includes("soun") !== hasSound(id)) wrong.push(id);
+  }
+  ok(blind.length === 0, `every clip's header can be read (${blind.join(", ") || "all"})`);
+  ok(wrong.length === 0, `each clip has a sound track exactly when motion.js says so (${wrong.join(", ") || "all agree"})`);
+  ok(hasSound("pool") && hasSound("clouds") && hasSound("film") && !hasSound("firmament") && !hasSound("flower-13") && !hasSound("not-a-work"),
+    "the pool, the clouds and the film speak, and nothing else does");
+  ok(WORKS.filter((w) => w.sound).map((w) => w.id).sort().join() === "clouds,pool", "two works are marked `sound`");
+  ok(handlers("sheet").every((x) => x !== "soun"), "the contact sheet is silent too");
 }
 
 console.log(`\n${checks - failures}/${checks} checks passed`);

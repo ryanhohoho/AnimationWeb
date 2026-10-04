@@ -1,7 +1,7 @@
 // bake_motion.mjs — THE MOTION-GRAPHICS PAGE'S VIDEO
 //
 //   node tools/bake_motion.mjs --renders <dir> [--only <id>[,<id>…]] [--crf 27] [--dry]
-//   node tools/bake_motion.mjs --add <video> --id <id> [--from <s> --to <s>]
+//   node tools/bake_motion.mjs --add <video> --id <id> [--from <s> --to <s>] [--sound]
 //   node tools/bake_motion.mjs --sheet
 //   node tools/bake_motion.mjs --renders <dir> --card
 //
@@ -24,7 +24,9 @@
 //     run shows its posters and one live clip instead (site/motionBloom.js).
 //
 // WHAT COMES OUT, in src/assets/motion/:
-//   <id>.mp4       720x1560 H.264 + AAC, a keyframe every HALF SECOND (-g 15).
+//   <id>.mp4       720x1560 H.264, a keyframe every HALF SECOND (-g 15), and AAC
+//                  ONLY for the works marked `sound: true` in site/motion.js (and
+//                  the film): every other clip is written silent, with -an.
 //                  The viewer scrubs, and a seek decodes from the keyframe before
 //                  it: at 15 frames that is instant everywhere, where the
 //                  encoder's default (250) is a visible stall per step.
@@ -51,6 +53,11 @@ const GEN = join(ROOT, "src", "site", "motionassets.js");
 const MANIFEST = join(ROOT, "tools", "motion", "scenes.json");
 const MAN = JSON.parse(readFileSync(MANIFEST, "utf8"));
 const FPS = MAN.fps;
+// which clips keep their sound track is site/motion.js's `sound` flag, read here
+// so a re-bake cannot bring a track back; the film always keeps its score
+const { WORKS, FILM } = await import(pathToFileURL(join(ROOT, "src", "site", "motion.js")).href);
+const SOUND_NEW = process.argv.includes("--sound") ? process.argv[process.argv.indexOf("--id") + 1] : null;
+const hasSound = (id) => id === FILM.id || id === SOUND_NEW || WORKS.some((w) => w.id === id && w.sound === true);
 
 const args = process.argv.slice(2);
 const arg = (k, d) => (args.includes(k) ? args[args.indexOf(k) + 1] : d);
@@ -116,11 +123,12 @@ function inputs(s) {
 function clip(s) {
   const mp4 = join(OUT, `${s.id}.mp4`);
   const [inp, dur, a] = inputs(s);
+  const sound = hasSound(s.id);
   // a 20 ms fade at each end: a cut in the middle of a sustained note clicks
-  run([...inp, "-map", "0:v:0", "-map", a,
+  run([...inp, "-map", "0:v:0", ...(sound ? ["-map", a] : []),
     // cover, not stretch: a video that is not 9:19.5 (--add) is cropped to it
     "-vf", `scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H},fps=${FPS},format=yuv420p`,
-    "-af", `afade=t=in:d=0.02,afade=t=out:st=${Math.max(0, dur - 0.05).toFixed(3)}:d=0.05`,
+    ...(sound ? ["-af", `afade=t=in:d=0.02,afade=t=out:st=${Math.max(0, dur - 0.05).toFixed(3)}:d=0.05`] : []),
     "-c:v", "libx264", "-preset", "slow", "-profile:v", "high", "-crf", String(CRF),
     // CAPPED, not pure CRF. The piece is grain and dither and per-frame noise
     // by design, and at a constant quality the noisiest scene (the wings, their
@@ -128,8 +136,8 @@ function clip(s) {
     // seventh of the whole budget. The cap is what makes the budget a budget.
     "-maxrate", s.id === "film" ? "1800k" : "2000k", "-bufsize", "4000k",
     "-g", String(s.id === "film" ? FPS : FPS / 2), "-keyint_min", String(FPS / 2), "-sc_threshold", "0",
-    "-c:a", "aac", "-b:a", "128k", "-ac", "2",
-    "-movflags", "+faststart", "-shortest", "-y", mp4]);
+    ...(sound ? ["-c:a", "aac", "-b:a", "128k", "-ac", "2", "-shortest"] : ["-an"]),
+    "-movflags", "+faststart", "-y", mp4]);
   return mp4;
 }
 

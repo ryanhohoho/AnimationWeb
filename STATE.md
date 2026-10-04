@@ -2491,3 +2491,59 @@ identifier scan also tripped on the generated photo manifest, whose ids were UUI
 the new photo code holds no ids, and the bake's ledger is `photos-source/.baked`, not a .json, for the
 same reason.)
 
+---
+
+# 23 · Sound on the motion-graphics page (2026-10-03)
+
+Only the pool and the clouds speak (by instruction), and the film keeps its score. The other 49 clips
+in `src/assets/motion/` were rewritten without their audio track (`-c:v copy -an`: the picture is
+byte-for-byte what it was, 4 MB lighter in all). The flag is `sound: true` on a work in `site/motion.js`
+(`hasSound(id)` answers for a work or the film). Three things read it: `tools/bake_motion.mjs` (writes a
+silent clip with `-an`, so a re-bake cannot bring a track back; `--add ... --sound` for a new work), the
+viewer (`motionViewer.js` hides the speaker, `.mgv-snd.is-silent`, and ignores the M key on a silent scene)
+and `npm test` (reads each file's `hdlr` boxes). Seen: the speaker hidden on the chrome, science., undercroft
+and others and shown on the pool; not heard: playback. The film was left alone because it is the whole
+piece, which contains both scenes; silencing it is a one-line change in `hasSound` and a re-cut. The sim
+suite is 1111/1113; the same two USB disclosure checks fail.
+
+---
+
+# 24 · The editor wrote one card's heading into another's (2026-10-04)
+
+The experience, projects and photos headings are one line in the shared `shell()` template, so they carry
+the SAME `data-e` (`d-xu4x`). The editor's cache of "which string is this" (`textInfo` in
+`editor/client/editor.js`) was keyed by that id alone: the first heading resolved answered for the other
+two. An edit on Projects was therefore written over the Photos string, a refusal on one page showed on the
+next, and the Photos edit that followed was lost. The key is now `page|id`, and a cached answer is also
+dropped when the words it was taken for are not the element's words. Checked live: the three headings
+resolve to lines 73, 128 and 142, and an edit on each of Projects and Photos gives two ops on two ranges
+that survive moving between the pages. The strings in `deck.js` were put back to what the owner typed:
+Projects "and this is what i've built.", Photos "and this is my life.". Not covered by `npm test` (the
+editor's client has no DOM harness).
+
+---
+
+# 25 · Home and Photos for visitors, the shiny note, the photo arrangement, and wording tests (2026-10-04)
+
+- **Wording tests removed.** The DISCLOSURE checks (the colophon names itself, and two sentences) were
+  the only tests of copy; they are gone by the owner's instruction. The identifier scanners stay: they
+  test what is in the repository, not what a page says. `npm test` is all green.
+- **The shiny note.** `index.html` holds two lines in `.mew-hint` (still `data-e="label-qbzw"`, so the
+  owner's position rules apply): "refresh a few times, mew can be shiny!" and "try clicking on mew!".
+  `bootMew` sets `html[data-shiny]` ("1"/"0") when it rolls; CSS shows the first on "0", the second on "1",
+  and neither before she has rolled (a visit with no Mew shows no note about her).
+- **No text selection on Home and Photos** (`site.css`): `user-select:none` (plus `-webkit-`), no
+  touch-callout, images not draggable; every other page selects as before. The editor re-enables selection
+  inside the words it is editing (`frame.js`, `EDIT_CSS`).
+- **Photos arrangement.** Frames are made for a picture (its shape); the editor swaps which picture is
+  in which frame (`photoassets.js`: `arrange`, `sanitize`, `compact`; `photos.js`: `data-slot` = frame,
+  `data-photo` = picture shown, `root.__ph` = the editor's handle). Frames never change size. The viewer
+  pages in the order of the frames on the page. Saved as `src/assets/photos/arrangement.json`, optional
+  (a glob), read as well-formed entries only, and tolerant of pictures coming and going; the editor's op
+  is `photoOrder` (`plugin.js`), the last one wins at save. Drag in `canvas.js` (`swap` mode). Checked in
+  node and live in the editor, including a real save. The viewer's paging order was not exercised live
+  (the hidden pane suspends its animations).
+- **Mew and the home window.** Each hole prints its sky into a `canvas.hole-cv`; the collector counted a
+  canvas as a picture, so the window had been a soft rect (an expensive place to stop) since holes got
+  canvases. `colliders.js` now skips `.hole-cv`; a router test pairs it with a control.
+

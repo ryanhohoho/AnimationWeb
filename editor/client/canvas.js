@@ -56,13 +56,15 @@ const CSS = `
 .readout { position: fixed; pointer-events: none; font: 500 10.5px -apple-system, sans-serif; color: #fff;
            background: #E0357A; padding: 2px 5px; border-radius: 3px; white-space: nowrap; }
 .marquee { position: fixed; pointer-events: none; border: 1px dashed #005A7D; background: rgba(0,90,125,.07); }
+.lift { outline: 1.5px dashed #E0357A; background: rgba(224,53,122,.10); }
+.drop { outline: 2.5px solid #E0357A; background: rgba(224,53,122,.16); }
 `;
 
 const SNAP = 6;
 const FIGURE = "figure.fig, .pcard-media";
 
 export function createCanvas(ed) {
-  let root = null, hov = null, sel = null, members = null, guides = null, readout = null, marquee = null;
+  let root = null, hov = null, sel = null, members = null, guides = null, readout = null, marquee = null, lift = null, drop = null;
   let drag = null;
   let raf = 0;
 
@@ -76,8 +78,9 @@ export function createCanvas(ed) {
     guides = el("div", ""); readout = el("div", "readout");
     marquee = el("div", "marquee");
     readout.style.display = marquee.style.display = "none";
-    root.append(hov, members, sel, guides, readout, marquee);
-    hov.style.display = sel.style.display = "none";
+    lift = el("div", "box lift"); drop = el("div", "box drop");
+    root.append(hov, members, sel, guides, readout, marquee, lift, drop);
+    hov.style.display = sel.style.display = lift.style.display = drop.style.display = "none";
     cancelAnimationFrame(raf);
     const loop = () => { draw(); raf = requestAnimationFrame(loop); };
     loop();
@@ -87,6 +90,29 @@ export function createCanvas(ed) {
   function place(box, r) {
     box.style.left = r.left + "px"; box.style.top = r.top + "px";
     box.style.width = Math.max(1, r.width) + "px"; box.style.height = Math.max(1, r.height) + "px";
+  }
+
+  // THE PHOTOS CARD'S FRAMES SWAP, THEY DO NOT MOVE. Dragging a picture on the
+  // Photos page picks it up; the frame it is dropped on takes it and gives back
+  // its own. Every frame keeps its size and place. (Resize handles still work
+  // on a selected frame; it is the body of the picture that swaps.)
+  const photoFrame = (n) => {
+    const f = ed.page === "photos" ? n?.closest?.("[data-photo][data-slot]") : null;
+    return f && ed.doc.getElementById("p-photos")?.__ph && !lockReason(f) ? f : null;
+  };
+  const setOfSlot = (f) => f.dataset.slot.slice(0, f.dataset.slot.indexOf("/"));
+  function swapMove(e) {
+    const d = drag;
+    if (!d.started) {
+      if (Math.abs(e.clientX - d.x0) < 4 && Math.abs(e.clientY - d.y0) < 4) return;
+      d.started = true;
+      place(lift, d.src.getBoundingClientRect());
+      lift.style.display = "";
+    }
+    const f = photoFrame(ed.doc.elementFromPoint(e.clientX, e.clientY));
+    d.over = f && f !== d.src && setOfSlot(f) === setOfSlot(d.src) ? f : null;
+    if (d.over) { place(drop, d.over.getBoundingClientRect()); drop.style.display = ""; readoutAt(e, "swap"); }
+    else { drop.style.display = "none"; readoutAt(e, "drop on another picture"); }
   }
 
   const isText = (e) => ed.kind(e) === "text";
@@ -207,6 +233,12 @@ export function createCanvas(ed) {
       if (handle && ed.sels.length) return startResize(e, handle.dataset.h);
       const add = e.shiftKey && !(e.metaKey || e.ctrlKey);
       const take = e.shiftKey && (e.metaKey || e.ctrlKey);
+      const frame = !add && !take ? photoFrame(target) : null;
+      if (frame) {
+        if (!ed.isSelected(frame)) ed.select(frame);
+        drag = { mode: "swap", src: frame, x0: e.clientX, y0: e.clientY, started: false, over: null };
+        return;
+      }
       const hit = selectable(target, ed.win);
       const empty = !hit || lockReason(hit) || (ed.kind(hit) === "box" && !ed.isSelected(hit));
       // EMPTY SPACE: a drag draws a selection box; a click selects the
@@ -253,6 +285,7 @@ export function createCanvas(ed) {
 
   function dragMove(e) {
     const d = drag;
+    if (d.mode === "swap") return swapMove(e);
     let dx = e.clientX - d.x0, dy = e.clientY - d.y0;
     if (!d.started) {
       if (Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
@@ -407,8 +440,12 @@ export function createCanvas(ed) {
     const d = drag;
     drag = null;
     showGuides(null, null);
-    readout.style.display = marquee.style.display = "none";
+    readout.style.display = marquee.style.display = lift.style.display = drop.style.display = "none";
     if (!d) return;
+    if (d.mode === "swap") {
+      if (d.started && d.over) ed.swapPhotos(d.src, d.over);
+      return;
+    }
     if (d.mode === "marquee") {
       if (d.started) { ed.selectMany(d.preview); return; }
       // a click on empty space, not a drag: the container, or nothing
@@ -429,5 +466,9 @@ export function createCanvas(ed) {
     ed.emit("style");
   }
 
-  return { mount, onEvent, cancel: () => { if (drag?.started && drag.mode !== "marquee") ed.cancelLive(); drag = null; showGuides(null, null); } };
+  return { mount, onEvent, cancel: () => {
+    if (drag?.started && drag.mode !== "marquee" && drag.mode !== "swap") ed.cancelLive();
+    drag = null; showGuides(null, null);
+    if (lift) lift.style.display = drop.style.display = "none";
+  } };
 }
