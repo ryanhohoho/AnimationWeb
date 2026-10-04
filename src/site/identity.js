@@ -31,32 +31,33 @@ export const SITE = {
   // means relative paths, which is what was shipped before the domain existed.
   url: "https://ryanho.vercel.app",
   // the tab on Home
-  title: "RYAN HO",
+  title: "ryan ho",
   // the tab on every other page; {page} is that page's name ("experience",
   // a project's title, "not printed" for a missing page)
-  pageTitle: "{page} — RYAN HO",
+  pageTitle: "ryan ho — {page} ",
   // the small line above the card's title in Discord and Slack (og:site_name),
   // and the name under the icon when the site is added to a phone's home screen
-  siteName: "Ryan Ho",
+  siteName: "ryan ho",
   // what a search result quotes under the title (<meta name="description">).
   // The card's own description is PREVIEW.description, which can differ.
-  description: "Ryan Ho — systems developer. Undocumented file formats, hardware " +
-    "automation, and a procedurally animated Mew loose on the page.",
-  author: "Ryan Ho"
+  description: "Designing encryption architecture for the Government of Canada " +
+    "(RCMP). Currently studying at Computer Science and Biology at UBC.",
+  author: "ryan ho"
 };
 
 // ── THE LINK CARD ────────────────────────────────────────────────────────────
 // A shared link is the only part of this site most people will ever see, and
 // it is seen at about 500 px wide in somebody else's feed.
 export const PREVIEW = {
-  title: "Ryan Ho — systems developer",
-  description: "Undocumented file formats, and the hardware nobody wants to do " +
-    "by hand. Portfolio, printed as a two-ink riso sky seen through die-cut apertures.",
+  title: "ryan ho",
+  description: "Designing encryption architecture for the Government of Canada " +
+    "(RCMP). Currently studying at Computer Science and Biology at UBC.",
   // the picture, in public/: "/og.png" when it is drawn by the card designer
   // (flat colour compresses to almost nothing as a PNG), "/og.jpg" when it is
   // an uploaded photograph (which would be megabytes as one). Always 1200x630.
   image: "/og.png",
-  imageAlt: "Bone paper with a rectangle cut out of it, and Mew standing in the hole in cerulean.",
+  imageAlt: "Designing encryption architecture for the Government of Canada " +
+    "(RCMP). Currently studying at Computer Science and Biology at UBC.",
   // which of the two made it: "design" (CARD below) or "upload"
   mode: "design"
 };
@@ -82,24 +83,18 @@ export const PREVIEW = {
 // were, because FreeType rounded each glyph's advance to a whole pixel and a
 // browser does not.)
 export const CARD = {
-  background: "#EFEDE6",
+  background: "#FFFFFF",
   // the cut, and the ticks that say a hole is a hole
-  window: { show: true, x: 726, y: 84, w: 402, h: 462, fill: "#005A7D", ticks: true, tick: "#3D392F" },
+  window: { show: false, x: 400, y: 84, w: 402, h: 462, fill: "#005A7D", ticks: true, tick: "#3D392F" },
   // her, drawn from ICON's grid: `cell` pixels to a cell, 32 cells a side.
   // 10 is 320 px of animal centred in the window with a cell of air all round.
   // Nearest-neighbour, always: she is pixel art, and smoothing greys her edge.
-  mark: { show: true, x: 767, y: 155, cell: 10, color: "#EFEDE6" },
+  mark: { show: true, x: 450, y: 155, cell: 10, color: "#EAC2D8" },
   // EVERY LABEL ON THIS SITE IS TRUE, and that holds here: the last line says
   // this window is a cut with the one unprinted thing standing in it. "AP. 01 —
   // LAST LIGHT" was the first caption, and it is the HOME card's aperture.
   // (Nothing inside these lists: the editor rewrites each one whole.)
-  texts: [
-    { text: "RYAN HO · PORTFOLIO", font: "plex", weight: 600, size: 21, color: "#3D392F", x: 72, y: 111, spacing: 0, lineHeight: 1.2, align: "left" },
-    { text: "systems", font: "plex", weight: 200, size: 104, color: "#16150F", x: 72, y: 249, spacing: 0, lineHeight: 1.2, align: "left" },
-    { text: "developer", font: "plex", weight: 600, size: 104, color: "#16150F", x: 72, y: 361, spacing: 0, lineHeight: 1.2, align: "left" },
-    { text: "Undocumented file formats, and the hardware\nnobody wants to do by hand.", font: "plex", weight: 600, size: 22, color: "#3D392F", x: 72, y: 448, spacing: 0, lineHeight: 1.6364, align: "left" },
-    { text: "AP. 00 — THE UNPRINTED THING", font: "plex", weight: 600, size: 17, color: "#3D392F", x: 72, y: 556, spacing: 0, lineHeight: 1.2, align: "left" }
-  ]
+  texts: []
   // (an uploaded picture is not described here: when PREVIEW.mode is "upload"
   // the 1200x630 the editor cut from it IS the card, and the original is not
   // kept)
@@ -123,8 +118,8 @@ export const ICON = {
   // "grid": tools/bake_favicon.mjs draws the files from the grid below.
   // "upload": the editor cut them from a picture; the bake leaves them alone.
   mode: "grid",
-  fg: "#EFEDE6",
-  bg: "#005A7D",
+  fg: "#EAC2D8",
+  bg: "#303030",
   grid: [
     "................................",
     "......................###.......",
