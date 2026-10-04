@@ -89,7 +89,7 @@ export const CARD = {
   // her, drawn from ICON's grid: `cell` pixels to a cell, 32 cells a side.
   // 10 is 320 px of animal centred in the window with a cell of air all round.
   // Nearest-neighbour, always: she is pixel art, and smoothing greys her edge.
-  mark: { show: true, x: 450, y: 155, cell: 10, color: "#EAC2D8" },
+  mark: { show: true, x: 450, y: 155, cell: 10, color: "#B6E4EC" },
   // EVERY LABEL ON THIS SITE IS TRUE, and that holds here: the last line says
   // this window is a cut with the one unprinted thing standing in it. "AP. 01 —
   // LAST LIGHT" was the first caption, and it is the HOME card's aperture.
@@ -118,8 +118,13 @@ export const ICON = {
   // "grid": tools/bake_favicon.mjs draws the files from the grid below.
   // "upload": the editor cut them from a picture; the bake leaves them alone.
   mode: "grid",
-  fg: "#EAC2D8",
-  bg: "#303030",
+  fg: "#B6E4EC",
+  bg: "#848198",
+  // TRANSPARENT GROUND: in the browser's tab (the svg, the .ico and the 32
+  // and 192 px PNGs) she stands on nothing, so she sits on whatever the tab
+  // strip is, light or dark. The phone's home-screen tile keeps `bg` all the
+  // same: iOS fills a transparent one with black, so it is never left clear.
+  clear: true,
   grid: [
     "................................",
     "......................###.......",

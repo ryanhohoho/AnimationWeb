@@ -16,6 +16,8 @@ const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 // her colour and the ground's, from identity.js
 export const PAPER = rgb(ICON.fg);
 export const INK   = rgb(ICON.bg);
+// a tab mark with no ground (ICON.clear): she stands on the tab strip itself
+export const CLEAR = !!ICON.clear;
 
 const GRID = ICON.grid;
 
@@ -35,29 +37,34 @@ export function icoOf(png, size = 32) {
 }
 
 /**
- * The mark as a truecolour PNG. No alpha: it is opaque by design -- a filled
- * square rather than a cut-out.
+ * The mark as a PNG: a filled square (truecolour), or her alone on nothing
+ * (truecolour + alpha) when `clear`.
  * @param scale  cells to pixels
  * @param fg     her colour
  * @param bg     the ground
  * @param pad    pixels of ground round her, for a size that is not a whole
  *               number of cells (180 = 32 x 5 + 10 each side)
+ * @param clear  no ground. Its pixels carry HER colour at zero alpha, not the
+ *               ground's, so a browser smoothing the mark down to 16 px blends
+ *               her edge toward clear rather than toward a colour nobody chose.
  */
-export function markPng(scale, fg = PAPER, bg = INK, pad = 0) {
+export function markPng(scale, fg = PAPER, bg = INK, pad = 0, clear = CLEAR) {
   const S = N * scale + pad * 2;
-  const raw = Buffer.alloc(S * (S * 3 + 1));
+  const C = clear ? 4 : 3;
+  const raw = Buffer.alloc(S * (S * C + 1));
+  const her = clear ? [...fg, 255] : fg, sky = clear ? [...fg, 0] : bg;
   for (let y = 0; y < S; y++) {
-    const row = y * (S * 3 + 1);
+    const row = y * (S * C + 1);
     raw[row] = 0;                                   // filter: none
     for (let x = 0; x < S; x++) {
       const cx = x - pad, cy = y - pad;
       const in_ = cx >= 0 && cy >= 0 && cx < N * scale && cy < N * scale;
-      raw.set(in_ && on((cx / scale) | 0, (cy / scale) | 0) ? fg : bg, row + 1 + x * 3);
+      raw.set(in_ && on((cx / scale) | 0, (cy / scale) | 0) ? her : sky, row + 1 + x * C);
     }
   }
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(S, 0); ihdr.writeUInt32BE(S, 4);
-  ihdr[8] = 8; ihdr[9] = 2;                          // 8-bit, truecolour
+  ihdr[8] = 8; ihdr[9] = clear ? 6 : 2;              // 8-bit, truecolour (+ alpha)
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
     chunk("IHDR", ihdr),
@@ -69,7 +76,7 @@ export function markPng(scale, fg = PAPER, bg = INK, pad = 0) {
 /** the mark as an svg: one rect for the ground, one path of merged runs.
     Runs rather than a rect per cell -- 213 cells become 71 segments, and a
     path is one element the renderer fills in a single go. */
-export function markSvg(fg = PAPER, bg = INK) {
+export function markSvg(fg = PAPER, bg = INK, clear = CLEAR) {
   const seg = [];
   for (let y = 0; y < N; y++) {
     let x = 0;
@@ -83,8 +90,7 @@ export function markSvg(fg = PAPER, bg = INK) {
   }
   const hex = (c) => "#" + c.map((v) => v.toString(16).padStart(2, "0")).join("");
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${N} ${N}" shape-rendering="crispEdges">
-<rect width="${N}" height="${N}" fill="${hex(bg)}"/>
-<path fill="${hex(fg)}" d="${seg.join("")}"/>
+${clear ? "" : `<rect width="${N}" height="${N}" fill="${hex(bg)}"/>\n`}<path fill="${hex(fg)}" d="${seg.join("")}"/>
 </svg>
 `;
 }

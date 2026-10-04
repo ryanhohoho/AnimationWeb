@@ -104,7 +104,9 @@ export function createSiteTab({ ed, store, state, nav, board, panel, onSection }
       // 10 px of ground, anything else the nearest whole cell centred
       const cell = Math.max(1, Math.floor(size / 32));
       const pad = Math.round((size - cell * 32) / 2);
-      ctx.fillStyle = id.ICON.bg; ctx.fillRect(0, 0, size, size);
+      // a clear ground leaves the tab sizes empty round her; the home-screen
+      // tile always has its ground (iOS would fill it black)
+      if (apple || !id.ICON.clear) { ctx.fillStyle = id.ICON.bg; ctx.fillRect(0, 0, size, size); }
       drawGrid(ctx, id.ICON.grid, pad, pad, cell, id.ICON.fg);
       return c;
     }
@@ -127,10 +129,10 @@ export function createSiteTab({ ed, store, state, nav, board, panel, onSection }
     const id = I(), up = id.uploads.icon;
     const src = sources.get(up?.token);
     if (!src) return null;
-    const key = JSON.stringify([up, id.ICON.bg]);
+    const key = JSON.stringify([up, id.ICON.bg, !!id.ICON.clear]);
     if (iconMasterCache && key === iconMasterKey) return iconMasterCache;
     const c = h("canvas", { width: 512, height: 512 });
-    drawCropped(c.getContext("2d"), src.img, up.crop, 512, 512, { fill: up.clear ? null : id.ICON.bg, sharp: up.sharp });
+    drawCropped(c.getContext("2d"), src.img, up.crop, 512, 512, { fill: id.ICON.clear ? null : id.ICON.bg, sharp: up.sharp });
     iconMasterCache = c; iconMasterKey = key;
     return c;
   }
@@ -519,15 +521,15 @@ export function createSiteTab({ ed, store, state, nav, board, panel, onSection }
     const ctx = cv.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (id.ICON.mode === "grid") {
-      ctx.fillStyle = id.ICON.bg; ctx.fillRect(0, 0, S, S);
+      if (id.ICON.clear) checks(ctx, S);
+      else { ctx.fillStyle = id.ICON.bg; ctx.fillRect(0, 0, S, S); }
       drawGrid(ctx, id.ICON.grid, 0, 0, CELL, id.ICON.fg);
       ctx.strokeStyle = "rgba(127,127,127,.28)"; ctx.lineWidth = 1;
       ctx.beginPath();
       for (let i = 1; i < 32; i++) { ctx.moveTo(i * CELL + 0.5, 0); ctx.lineTo(i * CELL + 0.5, S); ctx.moveTo(0, i * CELL + 0.5); ctx.lineTo(S, i * CELL + 0.5); }
       ctx.stroke();
     } else {
-      // checks under a transparent picture, so "clear" shows as clear
-      for (let y = 0; y < S; y += 12) for (let x = 0; x < S; x += 12) { ctx.fillStyle = ((x + y) / 12) % 2 ? "#e8e8e8" : "#fff"; ctx.fillRect(x, y, 12, 12); }
+      checks(ctx, S);
       const sq = iconMaster();
       if (sq) { ctx.imageSmoothingEnabled = !id.uploads.icon?.sharp; ctx.drawImage(sq, 0, 0, S, S); }
       else if (savedIcon) ctx.drawImage(savedIcon, 0, 0, S, S);
@@ -536,6 +538,13 @@ export function createSiteTab({ ed, store, state, nav, board, panel, onSection }
       ...[[16, "16 px (a standard screen's tab)"], [32, "32 px (a retina tab)"], [64, "64"]].map(([px, l]) =>
         h("div", { class: "isz" }, iconThumb(px), h("span", {}, l))),
       h("div", { class: "isz" }, iconThumb(90, { round: 20, apple: true }), h("span", {}, "home screen")));
+  }
+  /** the checks that say "nothing here", under a clear ground: one per cell */
+  function checks(ctx, S) {
+    for (let y = 0; y < S; y += CELL) for (let x = 0; x < S; x += CELL) {
+      ctx.fillStyle = ((x + y) / CELL) % 2 ? "#e4e4e4" : "#fbfbfb";
+      ctx.fillRect(x, y, CELL, CELL);
+    }
   }
   const cellAt = (e) => {
     const r = painter.cv.getBoundingClientRect();
@@ -875,7 +884,8 @@ export function createSiteTab({ ed, store, state, nav, board, panel, onSection }
     if (mode === "grid") {
       out.push(group("Colours", [h("div", { class: "grid2" },
         colorField({ k: "i-fg", label: "Her", get: () => ICON.fg, set: (d, v) => { d.ICON.fg = v; } }),
-        colorField({ k: "i-bg", label: "Ground", get: () => ICON.bg, set: (d, v) => { d.ICON.bg = v; } }))]));
+        colorField({ k: "i-bg", label: ICON.clear ? "Home-screen tile" : "Ground", get: () => ICON.bg, set: (d, v) => { d.ICON.bg = v; } })),
+        clearField(ICON)]));
       const flipH = (g) => g.map((r) => r.reverse());
       const shift = (dx, dy) => (g) => g.map((r, y) => r.map((_, x) => g[(y - dy + 32) % 32][(x - dx + 32) % 32]));
       out.push(group("Drawing", [
@@ -903,20 +913,29 @@ export function createSiteTab({ ed, store, state, nav, board, panel, onSection }
       src ? h("label", { class: "sf-check" }, (() => { const c = h("input", { type: "checkbox" }); c.checked = !!up.sharp;
         c.onchange = () => change("Sharp pixels", (st) => { st.identity.uploads.icon = { ...st.identity.uploads.icon, sharp: c.checked }; }, { panel: true }); return c; })(),
         "Sharp pixels (for pixel art)") : null,
-      src ? h("label", { class: "sf-check" }, (() => { const c = h("input", { type: "checkbox" }); c.checked = !!up.clear;
-        c.onchange = () => change("Clear ground", (st) => { st.identity.uploads.icon = { ...st.identity.uploads.icon, clear: c.checked }; }, { panel: true }); return c; })(),
-        "Keep the picture's transparency in the tab") : null,
-      colorField({ k: "i-bg", label: "Ground (and the home-screen tile)", get: () => ICON.bg, set: (d, v) => { d.ICON.bg = v; } }),
-      h("div", { class: "sf-h" }, "A phone fills a transparent home-screen icon with black, so that one always sits on the ground colour, with 20 px of it round the picture.")
+      clearField(ICON),
+      colorField({ k: "i-bg", label: ICON.clear ? "Home-screen tile" : "Ground (and the home-screen tile)", get: () => ICON.bg, set: (d, v) => { d.ICON.bg = v; } }),
+      h("div", { class: "sf-h" }, "The home-screen icon always sits on this colour, with 20 px of it round the picture.")
     ]));
     return out;
+  }
+  /** the switch for a ground the tab strip shows through (ICON.clear) */
+  function clearField(ICON) {
+    return h("div", {},
+      checkField({ k: "i-clear", label: "Transparent ground in the tab", get: () => !!ICON.clear,
+        set: (d, v) => { d.ICON.clear = v; } }),
+      h("div", { class: "sf-h" }, ICON.clear
+        ? "She stands on the browser's own tab strip, light or dark: pick her colour so she reads on both (the tab previews show each). A phone's home screen fills a clear icon with black, so that tile keeps the colour beside it."
+        : "On, the ground is left out of the tab icon and the tab strip shows through it."));
   }
   // an svg is kept as favicon.svg only when it is the icon as it stands: a
   // square, uncut. Cropped or zoomed, the PNGs are the icon and an svg of the
   // whole picture would disagree with them.
   const svgKept = () => {
     const up = I().uploads.icon, src = sources.get(up?.token);
-    return !!src && src.type === "image/svg+xml" && src.w === src.h &&
+    // ...and clear, because an svg keeps its own transparency where the PNGs
+    // were filled with the ground
+    return !!src && src.type === "image/svg+xml" && src.w === src.h && !!I().ICON.clear &&
       up.crop.zoom === 1 && up.crop.x === 0.5 && up.crop.y === 0.5;
   };
 
@@ -953,7 +972,7 @@ export function createSiteTab({ ed, store, state, nav, board, panel, onSection }
     if (!token) return;
     change("Icon from a picture", (st) => {
       st.identity.ICON.mode = "upload";
-      st.identity.uploads.icon = { token, crop: { x: 0.5, y: 0.5, zoom: 1 }, sharp: false, clear: true };
+      st.identity.uploads.icon = { token, crop: { x: 0.5, y: 0.5, zoom: 1 }, sharp: false };
     }, { panel: true });
     renderBoard(); paint();
   }

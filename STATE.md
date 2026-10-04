@@ -2766,3 +2766,11 @@ By instruction. One question round on the shake: she stays in the hand while sha
 - NOT seen: a real finger on a real phone or tablet (the pane sends mouse events and suspends rAF, so the
   disc's placement by the render frame and touch-action's effect were not observed), or the >.< drawn.
 
+**Later the same day: a transparent ground** (by instruction). `ICON.clear` in `identity.js` leaves the
+ground out of the tab sizes -- the svg loses its rect, the .ico/32/192 PNGs become RGBA (sky pixels are
+HER colour at alpha 0, so a browser smoothing to 16 px fades her edge toward clear, not toward the
+ground) -- while `apple-touch-icon.png` stays opaque on `bg`, since iOS fills a clear one with black. It
+applies to an uploaded icon too (it replaced the upload's own "keep transparency" switch, and an uploaded
+svg is kept as favicon.svg only when clear). Tests: alpha exactly when clear, the 180 always opaque, the
+svg's rect, and the setting's check. Seen in the editor with the switch on; not baked by the owner yet.
+

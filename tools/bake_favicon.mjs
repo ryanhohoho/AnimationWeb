@@ -24,6 +24,9 @@
 // 5 px cells (160) on 10 px of ground each side. iOS rounds the corners of the
 // tile and fills transparency with black, which is why it is opaque.
 //
+// ICON.clear takes the ground out of every TAB size (svg, ico, 32, 192), so she
+// stands on the browser's own tab strip, light or dark. Not the 180: see above.
+//
 // When the icon is an uploaded picture (ICON.mode "upload") the editor made
 // these files, and this refuses rather than paint over them with the grid.
 
@@ -46,5 +49,6 @@ writeFileSync(join(OUT, "favicon.svg"), markSvg());
 writeFileSync(join(OUT, "favicon.ico"), icoOf(png32));
 writeFileSync(join(OUT, "favicon-32.png"), png32);
 writeFileSync(join(OUT, "favicon-192.png"), markPng(6));
-writeFileSync(join(OUT, "apple-touch-icon.png"), markPng(5, undefined, undefined, 10));
+// never clear: iOS fills a transparent home-screen icon with black
+writeFileSync(join(OUT, "apple-touch-icon.png"), markPng(5, undefined, undefined, 10, false));
 console.log("baked favicon.svg, favicon.ico, favicon-32.png, favicon-192.png, apple-touch-icon.png ->", OUT);

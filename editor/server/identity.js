@@ -55,6 +55,8 @@ export const SPEC = {
   }),
   ICON: shape({
     mode: oneOf("grid", "upload"), fg: hex, bg: hex,
+    // optional, so an identity.js from before it existed still checks
+    clear: (v) => v === undefined || typeof v === "boolean",
     grid: (v) => Array.isArray(v) && v.length === 32 && v.every((r) => typeof r === "string" && /^[.#]{32}$/.test(r))
   })
 };

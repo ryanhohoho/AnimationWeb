@@ -4873,6 +4873,33 @@ section("identity: the head a link preview is made from");
       "favicon.ico is one 32 px entry holding that same PNG");
     const apple = readFileSync(pub("apple-touch-icon.png"));
     ok(apple.readUInt32BE(16) === 180 && apple.readUInt32BE(20) === 180, "the home-screen icon is 180 x 180");
+    ok(apple[25] === 2, "...and opaque whatever the tab icon is (iOS fills a clear one with black)");
+    ok(readFileSync(pub("favicon-32.png"))[25] === (ID.ICON.clear ? 6 : 2),
+      `the tab icon has an alpha channel exactly when its ground is clear (${ID.ICON.clear ? "clear" : "filled"})`);
+  }
+
+  // A CLEAR GROUND: her and nothing else, so the tab strip shows through
+  {
+    const M = await import("../tools/mewMark.mjs");
+    const { inflateSync } = await import("node:zlib");
+    const pixels = (png) => {
+      // one IDAT, filter 0 on every row (mewMark writes exactly that)
+      let o = 8, idat = null;
+      while (o < png.length) { const n = png.readUInt32BE(o), t = png.toString("latin1", o + 4, o + 8); if (t === "IDAT") idat = png.subarray(o + 8, o + 8 + n); o += 12 + n; }
+      return inflateSync(idat);
+    };
+    const fg = [0xEA, 0xC2, 0xD8], bg = [0x30, 0x30, 0x30];
+    const clear = M.markPng(1, fg, bg, 0, true), filled = M.markPng(1, fg, bg, 0, false);
+    const cp = pixels(clear), herAt = (() => { for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) if (M.on(x, y)) return [x, y]; })();
+    const a = (x, y) => cp[y * (32 * 4 + 1) + 1 + x * 4 + 3];
+    ok(clear[25] === 6 && a(0, 0) === 0 && a(herAt[0], herAt[1]) === 255,
+      "a clear ground is a PNG with alpha: nothing round her, all of her");
+    ok(filled[25] === 2, "control: a filled ground is opaque truecolour, as before");
+    ok(!M.markSvg(fg, bg, true).includes("<rect") && M.markSvg(fg, bg, false).includes("<rect"),
+      "the svg drops its ground rectangle when clear, and keeps it when not");
+    ok(W.checkIdentity({ ...all, ICON: { ...ID.ICON, clear: true } }).length === 0
+      && W.checkIdentity({ ...all, ICON: { ...ID.ICON, clear: "yes" } }).length === 1,
+      "identity.js takes clear as a yes or no, and nothing else");
   }
 
   // the editor's writer: nothing changed writes nothing; a change round-trips

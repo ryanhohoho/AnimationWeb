@@ -111,8 +111,10 @@ same canvas Save encodes:
   zoom. A photograph is saved as a JPEG, a drawing as a PNG.
 - **Icon** — **Pixels**: paint the 32 × 32 grid (a stroke paints whatever the
   first cell was not), her colour and the ground's. Or **A picture**, cut to a
-  square, with "sharp pixels" for pixel art and the picture's own transparency
-  kept in the tab. The home-screen icon always sits on the ground colour.
+  square, with "sharp pixels" for pixel art. Either way, **Transparent ground
+  in the tab** leaves the ground out of the tab sizes (svg, ico, 32, 192), so
+  she stands on the browser's own light or dark tab strip. The home-screen
+  icon (180) always sits on the ground colour: iOS fills a clear one black.
 
 The original of an uploaded picture is not kept, only what was cut from it; to
 re-cut, choose it again. Undo covers everything in the tab. A link already
