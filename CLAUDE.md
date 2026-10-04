@@ -65,9 +65,11 @@ contact — reached from a small nav bar at the top middle -- no box, a hairline
 over the five names, out of the way while scrolling down (the arrow keys and a swipe
 still turn it, unadvertised), with four project sheets hanging off the projects card.
 The deck shape exists so the work survives being skimmed; the sheet it is cut
-from has not changed. **Mew is on Home only**: she leaves through the crossing
-out of Home, sleeps everywhere else, and comes back by the side entrance on the
-way Home. Every word is set in **Darker Grotesque**.
+from has not changed. **Mew is on Home and Contact** (`MEW_PAGES` in
+`site/mewPresence.js`; Contact since 2026-10-04): she leaves Home through its
+crossings, leaves Contact by fading out with the words on a page turn (or by
+the same flight on the crossing back to Home), sleeps everywhere else, and
+comes back by the side entrance. Every word is set in **Darker Grotesque**.
 
 One project page is not cut to the site's trim: **experimental motion graphics** (titled "Digital Motion graphics" on the site since 2026-09-28)
 (`pages/motion-graphics.js`), a showcase of short vertical works -- most cut from
@@ -485,6 +487,14 @@ when only the numbers were.
   the first time a material is drawn; the new beam's first shot was a 117 ms
   frame on a phone-sized window until `mew.js` called `compileAsync` on its
   scenes. Anything hidden until its moment needs the same.
+- **`world.wind` is null in still air.** Her own beam's blast
+  (`behavior/wind.js`) is published by the brain only while it blows, and
+  every pose layer reads it; one that dereferences it unguarded throws inside
+  the render loop and stops her for good (the ears did, 2026-10-04). There is
+  a still-air check in the suite.
+- **A cursor only flicks her off TEXT** (brain.js, the startle): her circle has
+  to overlap a soft rect, the same test the aside uses. In open paper a fast
+  pointer does nothing.
 - **The burn under the beam is the sheet's** (`deck.setBeamBurn`, every frame
   while the beam is out). It shows `#sheet` like a crossing does, and the
   holes do NOT reprint for it; a burn not refreshed for 400 ms is dropped.

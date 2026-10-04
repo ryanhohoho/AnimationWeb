@@ -451,6 +451,19 @@ function plan(body) {
     }
   }
 
+  // ── Mew's hyper beam: where the impact frames are drawn ─────────────────
+  // rigConfig.attack.impact.mode, "band" | "screen" (2026-10-04, by
+  // instruction). Found through the AST like every other value written here.
+  if (body.fx && (body.fx.impactMode === "band" || body.fx.impactMode === "screen")) {
+    const f = "src/config/rigConfig.js";
+    const { ast } = src(f);
+    const p = impactModeProp(ast);
+    if (!p) batch.errors.push("rigConfig.attack.impact.mode was not found");
+    else if (S.staticValue(p.value) !== body.fx.impactMode) {
+      batch.add(f, p.value.start, p.value.end, `"${body.fx.impactMode}"`);
+    }
+  }
+
   // ── the colours ─────────────────────────────────────────────────────────
   if (body.palette) {
     const f = "src/site/palette.js";
@@ -652,6 +665,14 @@ const json = (res, obj, code = 200) => {
   res.end(JSON.stringify(obj));
 };
 
+/** the `mode: "..."` property of rigConfig.attack.impact, or null */
+function impactModeProp(ast) {
+  const cfg = S.constObject(ast, "rigConfig");
+  const atk = cfg && S.prop(cfg, "attack")?.value;
+  const imp = atk && atk.type === "ObjectExpression" ? S.prop(atk, "impact")?.value : null;
+  return imp && imp.type === "ObjectExpression" ? S.prop(imp, "mode") : null;
+}
+
 function state() {
   const css = existsSync(R(EDITS)) ? read(EDITS) : "";
   const site = read("src/styles/site.css");
@@ -670,7 +691,9 @@ function state() {
     const v = (k) => { const p = S.prop(n, k); return p ? S.staticValue(p.value) : null; };
     projects.push({ slug: v("slug"), title: v("title"), n: v("n"), inkA: v("inkA"), ink: v("ink") });
   });
-  return { css, tokens, palette, projects };
+  const modeP = impactModeProp(S.parse(read("src/config/rigConfig.js")));
+  const fx = { impactMode: (modeP && S.staticValue(modeP.value)) || "band" };
+  return { css, tokens, palette, projects, fx };
 }
 
 export default function editorPlugin() {

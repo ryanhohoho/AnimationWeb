@@ -2653,13 +2653,33 @@ section("startled by what: a tantrum is not a fright");
   const seen = [];
   w.on("startle", (e) => seen.push(e));
 
-  // a pointer running into her
-  w.pointer.active = true;
-  w.pointer.pos.x = b.pos.x - 120; w.pointer.pos.y = b.pos.y;
-  w.pointer.vel.x = 2200; w.pointer.vel.y = 0;
-  w.pointer.speed = 2200;
+  // a pointer running into her -- while she sits on a paragraph, which since
+  // 2026-10-04 is the only place a cursor can shoo her from
+  const charge = (world, body) => {
+    world.pointer.active = true;
+    world.pointer.pos.x = body.pos.x - 120; world.pointer.pos.y = body.pos.y;
+    world.pointer.vel.x = 2200; world.pointer.vel.y = 0;
+    world.pointer.speed = 2200;
+  };
+  w.colliders = [{ rect: { x: 560, y: 340, w: 320, h: 120 }, soft: true }];
+  w.collidersVersion = 1;
+  charge(w, b);
   br.step(1 / 120);
-  ok(seen.length === 1, "a pointer charging her startles her");
+  ok(seen.length === 1, "a pointer charging her while she sits on the words startles her");
+  {
+    // THE CONTROL: the same charge in open paper does nothing at all
+    const wo = createWorld({ seed: 31, headless: true });
+    const bo = createBody({ x: 700, y: 400, radius: 75, config: rigConfig.physics });
+    const bro = createBrain({ body: bo, world: wo, config: rigConfig.behavior,
+      pathConfig: rigConfig.path, attackConfig: rigConfig.attack });
+    wo.viewport.w = 1400; wo.viewport.h = 900;
+    wo.docSize.w = 1400; wo.docSize.h = 3000;
+    let n = 0;
+    wo.on("startle", () => n++);
+    charge(wo, bo);
+    bro.step(1 / 120);
+    ok(n === 0 && bro.state !== "startle", "control: the same charge in open paper does not flick her");
+  }
   ok(seen[0].source === "cursor", `...and the event says what did it (${seen[0].source})`);
   ok(!seen[0].panic, "...and it is not a panic");
 
@@ -4578,8 +4598,9 @@ section("the hyper beam (2026-10-04): its shape, its clock, its frames and its b
     if (f >= 0 && t < A.chargeS - impS - 1e-6) { seen.push("early"); break; }
   }
   ok(seen.join() === [...Array(n).keys()].join(), `${n} impact frames, in order, in the last ${impS.toFixed(2)} s (${seen.join()})`);
-  ok(S.chargeTimeline(A.charge.aimFromS - 0.01, A).aim === 0 && S.chargeTimeline(A.chargeS - impS - 0.01, A).aim > 0.95,
-    "the guide line starts late in the charge and has reached the target before the frames");
+  ok(!("aim" in S.chargeTimeline(1, A)) && !("aimFromS" in A.charge),
+    "there is no dashed guide line any more (removed by instruction)");
+  ok(A.impact.mode === "band" || A.impact.mode === "screen", `the impact frames' region is one of the two (${A.impact.mode})`);
 
   // THE STARS are decided once per shot, from a seed
   const s1 = S.starSchedule(42, A), s2 = S.starSchedule(42, A), s3 = S.starSchedule(43, A);
@@ -4607,6 +4628,7 @@ section("the hyper beam (2026-10-04): its shape, its clock, its frames and its b
     getAim: () => ({ x: -1, y: 0 }),
     charScale: () => 1,
     getDocSize: () => ({ w: 1512, h: 867 }),
+    getView: () => ({ w: 1512, h: 867, sy: 0 }),
     present: { setFlat: (h) => flats.push([fxT, h]) },
     burn: { set: (b) => burns.push(b), clear: () => { cleared++; } }
   });
@@ -4627,6 +4649,105 @@ section("the hyper beam (2026-10-04): its shape, its clock, its frames and its b
     `the paper under it is handed to the sheet every frame of the shot (${burns.length} frames)`);
   ok(burns.some((b) => b.open > 0.95), "...burned through while held");
   ok(cleared === 1 && !fx.active, "and released exactly once, when the beam is gone");
+}
+
+// ---------------------------------------------------------------------------
+section("her own blast (2026-10-04): the wind field, the push, and every part that feels it");
+{
+  const { createWind } = await import("../src/engine/behavior/wind.js");
+  const A = rigConfig.attack, W = A.wind;
+  const wind = createWind(A);
+  ok(wind.at(-0.1).k === 0, "still air before the shot");
+  let peak = 0;
+  for (let t = 0; t < 0.3; t += 0.005) peak = Math.max(peak, wind.at(t).k);
+  ok(peak > 1.2, `the blast front overshoots as it arrives (peak ${peak.toFixed(2)})`);
+  const mid = wind.at(A.expandS + A.sustainS * 0.6).k;
+  ok(Math.abs(mid - 1) < 0.05, `and holds at full while the beam pours out (${mid.toFixed(2)})`);
+  const end = A.expandS + A.sustainS + A.fadeS;
+  ok(wind.at(end).k < 0.3 && wind.at(end).k > 0.02, `it is dying, not dead, as the beam goes (${wind.at(end).k.toFixed(2)})`);
+  ok(wind.at(wind.endS).k < 0.011 * (1 + W.blast), "and still by endS");
+  let sum = 0, n = 0;
+  for (let t = 0.2; t < end; t += 0.01, n++) sum += wind.at(t).gust;
+  ok(Math.abs(sum / n) < 0.35, `a gust is a change in the wind, not more of it (mean ${(sum / n).toFixed(2)})`);
+
+  // THE PUSH: she is shoved back about half her height and holds there,
+  // unsteadily. Driven through the real brain, firing to the right.
+  const world = createWorld({ headless: true, seed: 9 });
+  world.viewport.w = 1400; world.viewport.h = 900;
+  world.docSize = { w: 1400, h: 900 };
+  const body = createBody({ x: 700, y: 450, radius: 75, config: rigConfig.physics });
+  const brain = createBrain({ body, world, config: rigConfig.behavior, pathConfig: rigConfig.path, attackConfig: A });
+  world.pointer.active = true; world.pointer.pos = { x: 1200, y: 450 }; world.pointer.lastMoveAt = 0;
+  world.emit("pet", { point: { x: 700, y: 450 } });
+  const dt = 1 / 120;
+  let fired = false;
+  const xs = [];
+  let blew = false;
+  while (world.time < A.chargeS + end + 1.2) {
+    world.time += dt; brain.step(dt); body.step(dt);
+    if (brain.state === "fire") { fired = true; xs.push(body.pos.x); }
+    if (world.wind && world.wind.x < -0.99) blew = true;
+  }
+  ok(fired && blew, "the wind blows opposite the shot while she fires");
+  ok(world.wind === null, "...and the air is still again afterwards");
+  const hold = xs.slice(Math.floor(xs.length * 0.4), Math.floor(xs.length * 0.75));
+  const meanBack = 700 - hold.reduce((a, b) => a + b, 0) / hold.length;
+  ok(meanBack > 0.6 * body.radius && meanBack < 1.6 * body.radius,
+    `she is pushed back about half her height and holds there (${meanBack.toFixed(0)} px; her radius is ${body.radius})`);
+  const sd = Math.sqrt(hold.reduce((a, x) => a + (700 - x - meanBack) ** 2, 0) / hold.length);
+  ok(sd > 1.5, `...unsteadily, not pinned (${sd.toFixed(1)} px of buffeting)`);
+
+  // EVERY PART THAT FEELS IT, on a miniature rig: run in still air first --
+  // world.wind is null then, and a pose layer that reads through it throws
+  // and stops her loop for good (it happened: the ears, 2026-10-04) -- then in
+  // the wind, against a control rig that never feels any.
+  const mkRig = () => {
+    const root = new THREE.Group();
+    const rb = new THREE.Bone(); rb.name = "root"; root.add(rb);
+    for (const [nm, x, y] of [["armL", 0.2, 0.3], ["armR", -0.2, 0.3], ["footL", 0.15, -0.2], ["footR", -0.15, -0.2], ["earL", 0.1, 0.6], ["earR", -0.1, 0.6]]) {
+      const b = new THREE.Bone(); b.name = nm; b.position.set(x, y, 0); rb.add(b);
+    }
+    root.updateMatrixWorld(true);
+    return buildRig(root, { root: "root", armL: "armL", armR: "armR", footL: "footL", footR: "footR", earL: "earL", earR: "earR", tail: [] });
+  };
+  const { createEarSprings } = await import("../src/engine/pose/earSprings.js");
+  const make = (seed) => {
+    const w = createWorld({ headless: true, seed });
+    const rig = mkRig();
+    const layers = [createLimbPose({ config: rigConfig, world: w }), createEarSprings({ config: rigConfig, world: w })];
+    const ctx = { rig, body: { pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 }, accel: { x: 0, y: 0 } },
+      brain: { agitation: 0, state: "fire" }, world: w, dt: 1 / 60, time: 0,
+      shared: { bodyQuat: new THREE.Quaternion() }, visual: { bobPx: { x: 0, y: 0 } } };
+    return { w, rig, layers, ctx };
+  };
+  const a = make(21), c = make(21);
+  let threw = null;
+  const stepBoth = (windOn, t) => {
+    for (const s of [a, c]) {
+      s.ctx.time = t;
+      s.w.wind = s === a && windOn ? { x: -1, y: 0, ...wind.at(t - 0.5) } : null;
+      s.rig.resetToRest();
+      for (const l of s.layers) l.update(s.ctx);
+    }
+  };
+  try { for (let i = 0; i < 30; i++) stepBoth(false, i / 60); } catch (e) { threw = e.message; }
+  ok(!threw, `every pose layer runs in still air, with world.wind null (${threw || "no throw"})`);
+  const parts = ["armL", "footR", "earL", "earR"];
+  const travel = Object.fromEntries(parts.map((p) => [p, 0]));
+  const prev = Object.fromEntries(parts.map((p) => [p, a.rig.bones[p].quaternion.clone()]));
+  const prevC = Object.fromEntries(parts.map((p) => [p, c.rig.bones[p].quaternion.clone()]));
+  const travelC = Object.fromEntries(parts.map((p) => [p, 0]));
+  for (let i = 30; i < 90; i++) {
+    stepBoth(true, i / 60);
+    for (const p of parts) {
+      travel[p] += prev[p].angleTo(a.rig.bones[p].quaternion); prev[p].copy(a.rig.bones[p].quaternion);
+      travelC[p] += prevC[p].angleTo(c.rig.bones[p].quaternion); prevC[p].copy(c.rig.bones[p].quaternion);
+    }
+  }
+  for (const p of parts) {
+    ok(travel[p] > travelC[p] * 2.5,
+      `the ${p} flaps in the blast (${(travel[p] * 57.3).toFixed(0)} deg of travel in a second, against ${(travelC[p] * 57.3).toFixed(0)} in still air)`);
+  }
 }
 
 console.log(`\n${checks - failures}/${checks} checks passed`);

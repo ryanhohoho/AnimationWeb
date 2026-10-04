@@ -38,6 +38,8 @@ export function createBodyPose({ config, world, squashGroup }) {
   // smoothed velocity for direction stability (raw vel jitters while hovering)
   const dirVel = { x: 0, y: 0 };
   let swimPhase = 0;
+  let ripplePhase = 0;          // the blast's wave down the spine
+  const _gustAxis = new THREE.Vector3();
   let prevHeading = 0;
   let headingRate = 0;
   let squashTarget = 1;
@@ -223,6 +225,20 @@ export function createBodyPose({ config, world, squashGroup }) {
       // muscle: the brace forces itself into position against everything else
       orient.omega = cfg.orientOmega * (1 + brain.agitation * 0.9) * (1 + curve * 0.8)
         * (1 + (config.attack.fireAlignOmegaMul - 1) * braceK);
+      // ── THE BLAST KNOCKS HER, THE BRACE HAULS HER BACK ──────────────────
+      // Her own beam's wind (behavior/wind.js) is applied as TORQUE on the
+      // orientation spring's angular velocity, not as an angle added to the
+      // pose: a gust shoves, the muscle (the spring, stiffened through the
+      // brace) pulls her back, and the wobble that comes out has inertia and
+      // lag in it. In the page's plane on the sideways gusts, and about her
+      // own long axis -- the twist a flag makes -- on the gusts along the flow.
+      const wind = world.wind;
+      if (wind && wind.k > 0.001) {
+        const Wc = config.attack.wind;
+        orient.w.z += Wc.torque * wind.k * wind.cross * dt;
+        _gustAxis.copy(_F).multiplyScalar(Wc.rollTorque * wind.k * wind.gust * dt);
+        orient.w.add(_gustAxis);
+      }
       const q = orient.step(_qTarget, dt);
       rig.applyCharDelta(rig.bones.root, q);
       ctx.shared.bodyQuat.copy(q);
@@ -251,9 +267,18 @@ export function createBodyPose({ config, world, squashGroup }) {
         * (1 - braceK * 0.65); // the brace holds firm, only a shudder
       swimPhase += (und.freqBase + und.freqPerSpeed * speedN) * 2 * Math.PI * dt;
       ctx.shared.swimPhase = swimPhase;
+      // ...and in the blast, a faster wave of its own travelling tailward: the
+      // streamlined body WAVING in the flow rather than holding a pose in it
+      let ripAmp = 0;
+      if (wind && wind.k > 0.001) {
+        const Wc = config.attack.wind;
+        ripplePhase += Wc.rippleHz * (1 + 0.25 * wind.gust) * 2 * Math.PI * dt;
+        ripAmp = Wc.rippleDeg * D2R * Math.min(wind.k, 1.2) * (0.7 + 0.3 * Math.abs(wind.gust));
+      }
       const chain = rig.bones.spine;
       for (let i = 0; i < chain.length; i++) {
-        const a = undAmp * Math.sin(swimPhase - i * und.phaseStepRad);
+        const a = undAmp * Math.sin(swimPhase - i * und.phaseStepRad)
+          + ripAmp * Math.sin(ripplePhase - i * (ripAmp > 0 ? config.attack.wind.ripplePhase : 0));
         _e.set(a, 0, 0, "XYZ");
         _delta.setFromEuler(_e).premultiply(q).multiply(_qi.copy(q).invert());
         rig.applyCharDelta(chain[i], _delta);

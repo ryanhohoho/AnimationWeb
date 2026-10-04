@@ -781,7 +781,9 @@ export function createRouter({ scope, deck, world, onPage }) {
     // parts (a WebGL context, a video decoder, a 500 KB module) then, not in
     // the middle of the paper closing over it -- which is where they all used
     // to start, and where a phone dropped the frames.
-    world?.emit("navigating", { from: current, to: route, mode });
+    // fadeMs: how long the words take to go on a page turn, so anything else
+    // leaving with them (Mew, off Contact -- src/mew.js) goes at their rate
+    world?.emit("navigating", { from: current, to: route, mode, fadeMs: FADE_OUT });
     let arrived = false;
     const arrive = () => { if (!arrived) { arrived = true; world?.emit("settled", { route }); } };
 

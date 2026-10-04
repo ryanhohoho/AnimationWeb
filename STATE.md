@@ -2630,3 +2630,70 @@ with a cone as control, the clock ending on the brain's beat, the burn healing, 
 the impact frames' order and window, the star schedule's determinism with a control, and the whole effect
 driven headless (her silhouette only in the frames' two inks, the burn handed over every frame and
 released once). 1153/1153.
+
+---
+
+# 27 · Impact frames along the shot, her own blast, flicks on text, Mew on Contact (2026-10-04)
+
+One question round plus two test authorisations (the owner: "for tests specifically, you do not need to
+consult me" on changes that follow from what he asked).
+
+**The dashed guide line is gone** (`charge.aimFromS / aimReachPx` and the timeline's `aim` deleted).
+
+**Impact frames along the shot.** `impactMaterial` draws in the beam's frame (s along, r across) and has
+two regions, `rigConfig.attack.impact.mode`: `"band"` (default), a cut strip from `backMul` x her height
+behind the muzzle to the window's edge, `bandHalfMul` x her height half-wide and widening a little away from
+her, both long edges cut with a saw of teeth plus a few shards; `"screen"`, the whole window. Same three
+drawings in both: speed lines from the muzzle + the cross (neg), dense ink lines + a ringed white heart
+(pos), the beam's torn white silhouette + a needle ring (neg). `backMul` 1.3 left her tail tip outside the
+band (white on white); it is 1.9.
+
+**The editor toggle.** With nothing selected: "Mew's hyper beam — impact frames", Along the beam / Whole
+screen. The store has a fourth kind of global data, `fx` (`model.js`), undoable and diffed like the
+palette; Save writes `rigConfig.attack.impact.mode` through the AST (`plugin.js`, `impactModeProp`), and
+`state()` reads it back. It also sets `__AW__.cfg.attack.impact.mode` on the running site, so a switch
+takes on the next shot. Verified with two real saves (screen, then back to band); the editor's own `npm
+test` passed after each, and the file ended where it started.
+
+**Her own blast** (`engine/behavior/wind.js`, constants `attack.wind`). One field published by the brain as
+`world.wind = {x, y, k, gust, cross}` from the shot until the air is still (null otherwise): a blast front
+that overshoots (x1.6), held through the beam, dying on a 0.22 s exponential once it goes; zero-mean gusts
+at ~3.2 Hz with an octave on top. Read by:
+
+- `brain.js`, "fire": the recoil is the jolt; then an anchor that slides back `slideMul` x her radius (her
+  radius is half her height, the owner's choice) and a near-critical hold (9 rad/s, zeta 0.7), with the
+  gusts shoving along and across the flow. Replaces the old damper.
+- `bodyPose.js`: gust TORQUE on the orientation spring's angular velocity (in-plane and about her long axis)
+  and a fast ripple down the spine.
+- `tailChain.js`: the drag now acts on velocity relative to the AIR; the gust travels down the strand.
+- `limbPose.js`: pushed further along the cruise-minus-hover direction, plus a per-limb flutter (7.5 Hz;
+  10 read as a buzz). `earSprings.js`: flattened, the gust on the spring target. `faceMorphs.js`: squint.
+  `mew.js`: a render-only buzz like the flail's.
+
+Measured in the Browser pane over 0.75 s of the hold, against a paired control with every wind amplitude
+zeroed: arm travel 326 deg vs 45, ear 105 vs 5, tail-tip spread +60%, body orientation spread 13.7 deg vs
+3.4 (after raising the torque: 34 gave only +40% body travel, the brace spring is stiff by design). Slide
+back 78 px against a 75 px radius.
+
+**A bug found and fixed on the way:** the ears read `wind.gust` with `world.wind` null, which threw inside
+the render loop and stopped her before she ever drew. The suite now runs every pose layer in still air
+first; with the guard removed that check fails (verified by putting the bug back).
+
+**Flicks only on text.** The cursor startle (`brain.js`) also requires
+`pathfinder.clearanceAt(pos, radius) < radius`, the aside's own test. The test "a pointer charging her
+startles her" now puts a paragraph under her, with a control in open paper (authorised).
+
+**Mew on Contact.** `MEW_PAGES = {home, contact}` in `mewPresence.js`. A page TURN off Contact fades her
+canvas at the router's `FADE_OUT` rate (the `navigating` event now carries `fadeMs`), then she sleeps
+(granted on `fadedOut` as well as `mewClear`) and is parked just off the nearer side, so her next page gives
+her the side entrance. The crossing back to Home is a return and she flees it as from Home. Checked
+through the real router with a stepped clock: opacity 0.5 at 150 ms, asleep at 300 ms with the clock
+stopped, side entrance on coming back, the double-take and bolt on Contact -> Home. Router presence test
+updated (authorised): Home and Contact present, a visit reaching Contact boots her, a visit reaching neither
+does not, reduced motion never does.
+
+**Performance** (headless Chrome over CDP, real GPU, two shots each): 390x844 at 6x CPU, band and screen,
+and 1512x867 at 4x: worst frame 16.8 ms, none over 20 ms, with the wind confirmed live. NOT measured on an
+iPhone.
+
+**Tests.** 1170 sim checks + the router harness, all green.

@@ -489,64 +489,92 @@ export function starMaterial(cfg) {
   });
 }
 
-// ── 5 · THE IMPACT BURST ────────────────────────────────────────────────────
-// The impact frames, NOT full screen: a hand-cut burst around her and the
-// muzzle, drawn in two inks only, alternating negative and positive. Every
-// frame is a different DRAWING -- a new cut edge, new speed lines -- because
-// an impact frame that is the same picture three times is a flash, not a hit.
+// ── 5 · THE IMPACT FRAMES ───────────────────────────────────────────────────
+// Drawn in two inks only, alternating negative and positive, and every frame
+// is a different DRAWING -- a new cut edge, new lines -- because an impact frame
+// that is the same picture three times is a flash, not a hit. Her silhouette
+// is drawn over it by the pixelate pass (setFlat), so the frame and the animal
+// are the same two inks.
 //
-//   frame 0  negative: ink ground, white speed lines converging on the
-//            muzzle, the origin's cross of light, a few glints
-//   frame 1  positive: white ground, dense ink speed lines, an ink cross
-//   frame 2  negative: a spiky ring round the muzzle, the shot's path drawn
-//            as a broken white line, glints
+// TWO REGIONS, one drawing (rigConfig.attack.impact.mode, which the editor
+// sets -- 2026-10-04, by instruction):
 //
-// Her silhouette is drawn over it by the pixelate pass (setFlat), so the
-// burst and the animal are the same two inks.
+//   "band"    a hand-cut strip ALONG THE SHOT, from just behind her to the
+//             edge of the window -- cmzw's black-and-white frames, which are the
+//             beam's own path inverted, not a hole around the shooter. It
+//             widens a little away from her, and its two long edges are cut
+//             with a saw of teeth and a few deep shards.
+//   "screen"  the whole window, the classic full-frame impact.
+//
+// Everything inside is drawn in the BEAM's frame (s along the shot from the
+// muzzle, r across it), so both regions share the same lines:
+//
+//   frame 0  negative: white speed lines bursting from the muzzle, the
+//            origin's cross of light, glints
+//   frame 1  positive: dense ink lines, an ink cross, a white heart ringed
+//   frame 2  negative: the beam itself as a torn white silhouette, still
+//            unlit, with a ring of needles at the muzzle -- the shot an instant
+//            before it is light
 export function impactMaterial(cfg) {
   const P = cfg.palette;
   return premul({
     uniforms: {
-      uC: { value: new THREE.Vector2() },
-      uExtent: { value: 100 },
-      uR: { value: 100 },
-      uM: { value: new THREE.Vector2() },     // the muzzle, relative to uC
-      uDir: { value: 0 },                     // the shot's angle
+      uO: { value: new THREE.Vector2() },      // the muzzle, document px
+      uD: { value: new THREE.Vector2(1, 0) },  // the shot's direction
+      uBack: { value: 100 },                   // band: how far behind the muzzle
+      uLen: { value: 1000 },                   // band: how far along the shot
+      uHalf: { value: 100 },                   // band: half-width, far end
+      uR: { value: 300 },                      // the scale the lines are drawn at
+      uScreen: { value: new THREE.Vector4() }, // screen: the window, document px
+      uWhole: { value: 0 },                    // 1 = the whole window
       uFrame: { value: 0 },
       uSeed: { value: new THREE.Vector4() },
-      uSpikes: { value: cfg.impact.spikes },
       uStars: { value: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] },
       cInk: { value: raw(P.ink) },
       cFlash: { value: raw(P.flash) }
     },
     vertexShader: /* glsl */ `
-      uniform vec2 uC;
-      uniform float uExtent;
-      varying vec2 vP;
+      uniform vec2 uO;
+      uniform vec2 uD;
+      uniform float uBack;
+      uniform float uLen;
+      uniform float uHalf;
+      uniform vec4 uScreen;
+      uniform float uWhole;
+      varying vec2 vSR;
       void main() {
-        vP = position.xy * uExtent;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(uC + vP, 0.0, 1.0);
+        vec2 a = position.xy * 0.5 + 0.5;
+        vec2 n = vec2(-uD.y, uD.x);
+        vec2 p;
+        if (uWhole > 0.5) {
+          p = uScreen.xy + a * uScreen.zw;
+        } else {
+          float s = mix(-uBack, uLen, a.x);
+          p = uO + uD * s + n * (position.y * uHalf * 1.45);
+        }
+        vec2 q = p - uO;
+        vSR = vec2(dot(q, uD), dot(q, n));
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 0.0, 1.0);
       }
     `,
     fragmentShader: /* glsl */ `
+      uniform float uBack;
+      uniform float uHalf;
       uniform float uR;
-      uniform vec2 uM;
-      uniform float uDir;
+      uniform float uWhole;
       uniform float uFrame;
       uniform vec4 uSeed;
-      uniform float uSpikes;
       uniform vec4 uStars[4];
       uniform vec3 cInk;
       uniform vec3 cFlash;
-      varying vec2 vP;
+      varying vec2 vSR;
 
       const float TAU = 6.2831853;
       float hash(float n) { return fract(sin(n * 127.1 + 311.7) * 43758.5453); }
-
       ${SHAPES}
 
-      // SPEED LINES converging on a point: wedges in polar bins that taper to
-      // nothing on the way in, each with its own start, width and presence.
+      // SPEED LINES bursting from the muzzle: wedges in polar bins that taper
+      // to nothing on the way in, each with its own start, width and presence.
       float speedLines(vec2 p, float n, float density, float inner, float seed) {
         float r = length(p);
         float t = (atan(p.y, p.x) / TAU + 0.5) * n;
@@ -559,80 +587,82 @@ export function impactMaterial(cfg) {
         float r0 = uR * (inner + (1.0 - inner) * 0.7 * h2);
         float taper = clamp((r - r0) / (uR * 0.28), 0.0, 1.0);
         float w = (0.2 + 0.4 * h3) * taper;
-        float px = abs(f) * TAU * r / n;      // distance from the line's centre, px
-        return smoothstep(w * TAU * r / n * 0.5 + 0.7, w * TAU * r / n * 0.5 - 0.7, px) * step(r0, r);
+        float px = abs(f) * TAU * r / n;
+        float hw = w * TAU * r / n * 0.5;
+        return smoothstep(hw + 0.7, hw - 0.7, px) * step(r0, r);
       }
 
       void main() {
-        float r = length(vP);
-        float th = atan(vP.y, vP.x);
+        float s = vSR.x, r = vSR.y, ar = abs(r);
 
-        // THE CUT EDGE: straight-sided spikes at irregular angles, the way a
-        // burst is cut from paper with scissors
-        // two scales of cut: a ragged saw of short teeth all the way round,
-        // and a few long shards where the blade went in deeper. One scale of
-        // even spikes is a flower or a sun; the two together are a burst.
-        float t = (th / TAU + 0.5) * uSpikes * 2.0 + uSeed.x * 40.0;
-        float k = floor(t);
-        float f = fract(t);
-        float ck = 0.25 + 0.5 * hash(k * 1.9 + uSeed.y * 7.0);
-        float saw = max(0.0, 1.0 - abs(f - ck) / 0.5) * (0.04 + 0.09 * hash(k + uSeed.y * 13.0));
-        float t2 = (th / TAU + 0.5) * 9.0 + uSeed.z;
-        float k2 = floor(t2);
-        float f2 = fract(t2);
-        float c2 = 0.3 + 0.4 * hash(k2 * 2.3 + uSeed.y);
-        float shard = step(0.5, hash(k2 * 5.7 + uSeed.w)) * max(0.0, 1.0 - abs(f2 - c2) / 0.14)
-                    * (0.14 + 0.24 * hash(k2 * 3.3 + uSeed.x * 9.0));
-        float rb = uR * (0.74 + 0.05 * hash(k * 3.1 + uSeed.z) + saw + shard);
-        float inside = smoothstep(rb + 0.8, rb - 0.8, r);
-        if (inside <= 0.0) discard;
+        float inside = 1.0;
+        if (uWhole < 0.5) {
+          // THE CUT EDGE of the band: widening away from her, a saw of short
+          // teeth down both long sides and a few deep shards, the two sides
+          // cut independently. Behind her it closes in a ragged round.
+          float side = r < 0.0 ? 0.0 : 1.0;
+          float hb = uHalf * (0.78 + 0.22 * smoothstep(0.0, uHalf * 6.0, s));
+          float tl = uHalf * 0.34;
+          float t = s / tl + uSeed.x * 40.0 + side * 17.0;
+          float k = floor(t);
+          float f = fract(t);
+          float ck = 0.25 + 0.5 * hash(k * 1.9 + uSeed.y * 7.0 + side);
+          float saw = max(0.0, 1.0 - abs(f - ck) / 0.5) * (0.06 + 0.14 * hash(k + uSeed.y * 13.0 + side * 3.0));
+          float t2 = s / (uHalf * 1.6) + uSeed.z + side * 5.0;
+          float k2 = floor(t2);
+          float f2 = fract(t2);
+          float c2 = 0.3 + 0.4 * hash(k2 * 2.3 + uSeed.y + side);
+          float shard = step(0.55, hash(k2 * 5.7 + uSeed.w + side * 9.0))
+                      * max(0.0, 1.0 - abs(f2 - c2) / 0.12) * (0.2 + 0.35 * hash(k2 * 3.3 + uSeed.x * 9.0));
+          float edge = hb * (0.86 + saw + shard);
+          // the round behind her, as ragged as the sides
+          float bk = max(0.0, -s - (uBack - hb));
+          float d = length(vec2(ar, bk));
+          inside = smoothstep(edge + 0.8, edge - 0.8, d);
+          if (inside <= 0.0) discard;
+        }
 
         bool neg = uFrame != 1.0;
         vec3 ground = neg ? cInk : cFlash;
         vec3 mark = neg ? cFlash : cInk;
         float m = 0.0;
-
-        vec2 pm = vP - uM;
-        vec2 q = rot(pm, uDir);
+        vec2 pm = vec2(s, r);
         float rm = length(pm);
 
         if (uFrame == 0.0) {
-          m = max(m, speedLines(pm, 64.0, 0.66, 0.22, uSeed.w));
-          float fl = flare(q, uR * 0.95, uR * 0.45, uR * 0.035, uR * 0.11);
+          m = max(m, speedLines(pm, 150.0, 0.6, 0.12, uSeed.w));
+          float fl = flare(pm, uR * 0.95, uR * 0.42, uR * 0.03, uR * 0.09);
           m = max(m, smoothstep(1.05, 0.95, fl));
-          m = max(m, smoothstep(uR * 0.075 + 0.8, uR * 0.075 - 0.8, rm));
+          m = max(m, smoothstep(uR * 0.06 + 0.8, uR * 0.06 - 0.8, rm));
         } else if (uFrame == 1.0) {
-          m = max(m, speedLines(pm, 110.0, 0.82, 0.26, uSeed.w + 3.0));
-          float fl = flare(q, uR * 0.7, uR * 0.32, uR * 0.03, uR * 0.08);
+          m = max(m, speedLines(pm, 230.0, 0.8, 0.08, uSeed.w + 3.0));
+          float fl = flare(pm, uR * 0.7, uR * 0.3, uR * 0.025, uR * 0.07);
           m = max(m, smoothstep(1.05, 0.95, fl));
-          // a white hole at the heart, outlined in ink: the light about to come
-          float hole = smoothstep(uR * 0.12 + 0.8, uR * 0.12 - 0.8, rm);
-          float ring = smoothstep(uR * 0.12 + 3.5, uR * 0.12 + 2.0, rm) - hole;
+          float hole = smoothstep(uR * 0.1 + 0.8, uR * 0.1 - 0.8, rm);
+          float ring = smoothstep(uR * 0.1 + 3.5, uR * 0.1 + 2.0, rm) - hole;
           m = max(m * (1.0 - hole), ring);
         } else {
-          // the spiky ring of ref 12: a band of needles of random length,
-          // pointing out and in
-          float R0 = uR * 0.3;
-          float tn = (atan(pm.y, pm.x) / TAU + 0.5) * 150.0;
+          // the shot an instant before it is light: the beam's own nose,
+          // torn along both edges, in white
+          float x = max(s, 0.0) / max(uR * 0.35, 1.0);
+          float hwS = uR * 0.2 * (0.22 + 0.78 * pow(x / (1.0 + x), 0.62));
+          float tb = s / (uR * 0.09) + uSeed.z * 7.0;
+          float tear = 0.18 * (hash(floor(tb) + (r < 0.0 ? 31.0 : 0.0)) - 0.5);
+          float body = step(0.0, s) * smoothstep(hwS * (1.0 + tear) + 0.8, hwS * (1.0 + tear) - 0.8, ar);
+          m = max(m, body);
+          // the needle ring at the muzzle
+          float R0 = uR * 0.16;
+          float tn = (atan(pm.y, pm.x) / TAU + 0.5) * 120.0;
           float kn = floor(tn);
           float fn = abs(fract(tn) - 0.5);
           float hn = hash(kn + uSeed.w * 11.0);
-          float out_ = R0 * (1.02 + 0.5 * hn * hn);
-          float in_ = R0 * (0.86 - 0.22 * hash(kn * 1.7 + uSeed.w));
+          float out_ = R0 * (1.02 + 0.6 * hn * hn);
+          float in_ = R0 * (0.84 - 0.22 * hash(kn * 1.7 + uSeed.w));
           float wn = 0.5 * (1.0 - smoothstep(R0, out_, rm)) + 0.5 * (1.0 - smoothstep(R0, in_, rm));
-          float needle = step(in_, rm) * step(rm, out_) * smoothstep(0.32 * wn + 0.05, 0.32 * wn - 0.05, fn);
-          m = max(m, needle);
+          m = max(m, step(in_, rm) * step(rm, out_) * smoothstep(0.32 * wn + 0.05, 0.32 * wn - 0.05, fn));
           m = max(m, smoothstep(2.2, 0.8, abs(rm - R0 * 0.93)));
-          // the path, a broken white line down the shot from the ring outward
-          float along = q.x;
-          float brk = step(0.3, hash(floor(along / (uR * 0.09)) + uSeed.z * 5.0));
-          m = max(m, smoothstep(2.2, 0.7, abs(q.y)) * step(R0 * 1.1, along) * brk);
-          // a sliver of the shot itself: the cross, thinner
-          float fl = flare(q, uR * 0.26, uR * 0.12, uR * 0.02, uR * 0.05);
-          m = max(m, smoothstep(1.05, 0.95, fl));
         }
 
-        // the glints this frame carries: x,y px from the muzzle, size, angle
         for (int i = 0; i < 4; i++) {
           vec4 S = uStars[i];
           if (S.z <= 0.0) continue;

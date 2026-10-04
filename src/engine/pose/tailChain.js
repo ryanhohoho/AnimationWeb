@@ -57,7 +57,7 @@
 //   - the teleport guard and the persistent bone-quat smoothing
 
 import * as THREE from "three";
-import { clamp, expDamp, mulberry32 } from "../../utils/math.js";
+import { clamp, expDamp, mulberry32, makeNoise1d2 } from "../../utils/math.js";
 
 const D2R = Math.PI / 180;
 
@@ -78,6 +78,10 @@ export function createTailChain({ config, world }) {
   let rampSq = null;      // ...squared, for a tip-weighted gesture
   let restDir = null;     // posed rest direction per segment, world space
   let smoothBuf = null;   // scratch for the target-smoothing pass
+  let air = null;         // the air's velocity at each particle, world space
+                          // (her own beam's blast; zero in still air)
+  let airOn = false;
+  const gustA = makeNoise1d2(4411), gustB = makeNoise1d2(4412);
   let prevDir = null;     // last frame's target, for the lag
   let lagInit = false;
   let aimAngle = 0;       // how far the rest curve is turned to trail the motion
@@ -156,6 +160,7 @@ export function createTailChain({ config, world }) {
     rampSq = new Float64Array(n - 1);
     restDir = new Float64Array((n - 1) * 3);
     smoothBuf = new Float64Array((n - 1) * 3);
+    air = new Float64Array(n * 3);
     prevDir = new Float64Array((n - 1) * 3);
     rootRestInv = rig.rest.get(rig.bones.root).charQuat.clone().invert();
     smoothed = rig.bones.tail.map((b) => rig.rest.get(b).localQuat.clone());
@@ -515,7 +520,12 @@ export function createTailChain({ config, world }) {
       // along the tail and the component across it and damp them at very
       // different rates; a slender body's normal drag coefficient is several
       // times its tangential one. this is the only damping in the solver.
+      // DRAG ACTS ON THE VELOCITY RELATIVE TO THE AIR. In still air that is
+      // the particle's own; in her blast the air is moving past the strand,
+      // and the same anisotropic drag that damps it now streams it and makes
+      // it flutter -- nothing else had to change for the tail to feel wind.
       _v.set(vel[j], vel[j + 1], vel[j + 2]);
+      if (airOn) { _v.x -= air[j]; _v.y -= air[j + 1]; _v.z -= air[j + 2]; }
       const vt = _v.dot(_seg);
       // ...and in flight there is MORE of it across the strand. That is the
       // water: dragNormal 6.9 -> 9.5, blended by swimAlign. A passive
@@ -723,6 +733,29 @@ export function createTailChain({ config, world }) {
       _accelRaw.set(body.accel.x * view.worldPerPx,
         -body.accel.y * view.worldPerPx, 0);
       _accelW.lerp(_accelRaw, 1 - Math.exp(-cfg.accelSmoothRate * dt));
+
+      // ── THE BLAST, AS AIR (behavior/wind.js) ───────────────────────────
+      // the flow opposite the shot, in world space (the page's y runs down,
+      // three's up), swung by a gust that TRAVELS down the strand -- each
+      // particle a little later than its parent -- and a smaller sideways one,
+      // so the tail ripples like a ribbon instead of standing straight out.
+      const wnd = world.wind;
+      const Wc = config.attack && config.attack.wind;
+      airOn = !!(wnd && Wc && wnd.k > 0.001);
+      if (airOn) {
+        const speedAir = Wc.tailAir * wnd.k;
+        const fx = wnd.x, fy = -wnd.y;
+        const tt = ctx.time * Wc.tailGustHz;
+        for (let i = 1; i < n; i++) {
+          const g = gustA(tt - i * Wc.tailGustLag);
+          const c = gustB(tt * 1.3 - i * Wc.tailGustLag + 7.7);
+          const along = speedAir * (1 + Wc.tailGust * g);
+          const across = speedAir * Wc.tailGust * 0.6 * c;
+          air[i * 3] = fx * along - fy * across;
+          air[i * 3 + 1] = fy * along + fx * across;
+          air[i * 3 + 2] = 0;
+        }
+      }
 
       // the path is recorded in the same world space the particles live in, so
       // it gets the same scroll shift, and the same teleport reset.

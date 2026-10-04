@@ -539,9 +539,19 @@ and the colours of regidrago's, in her pink. Every part answers to something:
   healed inside the shot. The words stay on top: type still never sits ON the
   print in a way you cannot read past, and the burn's edge is printed char, in
   the press's two inks, not a gradient.
-- **Three impact frames, in a burst round her, not the window.** Negative,
-  positive, negative, her as one flat ink: the anime convention, kept small,
-  because this is a portfolio and the rest of the page is somebody's reading.
+- **Three impact frames, along the shot, not the window.** Negative,
+  positive, negative, her as one flat ink, in a cut strip from behind her to
+  the window's edge -- the beam's own path, inverted, the way cmzw's frames
+  are drawn. Kept off the rest of the page because this is a portfolio and the
+  rest of the page is somebody's reading; the editor can switch it to the
+  whole window (2026-10-04, by instruction).
+- **And then her own blast batters her.** One wind field
+  (`behavior/wind.js`) that every part of her reads in its own physics: she is
+  shoved back half her height and grips there, the gusts torque a body her
+  brace has to haul back, the tail's drag streams and flutters it, the limbs
+  and ears flap, she squints into it. Nothing is keyframed onto a limb; the
+  air is a quantity and the animal answers it, which is the site's rule for
+  her from the first day.
 
 STATE.md §26 has the numbers and the measurements.
 

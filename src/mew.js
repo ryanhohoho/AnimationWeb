@@ -34,6 +34,7 @@ import { createStarBurst } from "./engine/fx/starBurst.js";
 import { createSweatDrops } from "./engine/fx/sweatDrops.js";
 import { createFaceOverlay } from "./engine/fx/faceOverlay.js";
 import { lerp } from "./utils/math.js";
+import { MEW_PAGES } from "./site/mewPresence.js";
 
 /**
  * @param world  the shared world -- one bus, one pointer, one scroll
@@ -230,8 +231,30 @@ export function bootMew({ world, deck, scope, enter = false }) {
     if (!wantSleep && asleep) {
       asleep = false;
       canvas.classList.remove("asleep");
+      canvas.style.opacity = "";
+      fadedOut = false;
       if (rig) loop.start();
     }
+  });
+
+  // ── LEAVING CONTACT ON A PAGE TURN (2026-10-04, by instruction) ──────────
+  // Home is only ever left through a crossing, and she flies out of those.
+  // Contact is mostly left by a page TURN, which covers nothing: there is no
+  // press to flee and no covered moment to hide a flight behind. So she goes
+  // the way the words go -- faded at their rate, linearly over the router's
+  // FADE_OUT -- and the moment she is gone she is put to sleep like any other
+  // absence (nothing simulated, nothing drawn) and parked just off the side,
+  // so that the next page she lives on gives her the side entrance
+  // (brain.js, recollect). A turn back to Home is a crossing and she flees it
+  // exactly as she does from Home.
+  let fading = 0;           // performance.now() the fade began, 0 = none
+  let fadeMs = 300;
+  let fadedOut = false;
+  world.on("navigating", (e) => {
+    if (asleep || !e || e.mode !== "fade") return;
+    if (!MEW_PAGES.has(e.from?.name) || MEW_PAGES.has(e.to?.name)) return;
+    fading = performance.now();
+    fadeMs = e.fadeMs || 300;
   });
 
   // pressing on the character starts a grab: the brain resolves it into a PET
@@ -373,6 +396,7 @@ export function bootMew({ world, deck, scope, enter = false }) {
       },
       charScale: () => characterPx() / cfg.sizing.characterHeightPx,
       getDocSize: () => world.docSize,
+      getView: () => ({ w: world.viewport.w, h: world.viewport.h, sy: window.scrollY }),
       present,
       // THE PAPER BURNING UNDER IT is the sheet's, not hers: the press draws it
       // below the words (site/deck.js, site/pressgl.js), so the type stays on
@@ -438,7 +462,10 @@ export function bootMew({ world, deck, scope, enter = false }) {
     // debug handle for devtools + automated checks
     window.__AW__ = {
       rig, world, body, brain, view, poser, face, faceOv, skinned, shade,
-      sparkle, sweat, isShiny, THREE, mouthDoc, beamOriginDoc
+      sparkle, sweat, isShiny, THREE, mouthDoc, beamOriginDoc,
+      // the live config: the editor sets impact.mode on it so a switch shows
+      // on the next shot without a reload
+      cfg
     };
     // ...and the rest of her: the stars, the sweat and the >.< face are hidden
     // until their moment, so they were compiled AT their moment -- the same
@@ -511,10 +538,24 @@ export function bootMew({ world, deck, scope, enter = false }) {
     },
     renderFrame(dt, alpha) {
       if (!rig || !poser) return;
-      if (wantSleep && !asleep && world.mewClear !== false) {
+      if (fading) {
+        const k = Math.min(1, (performance.now() - fading) / fadeMs);
+        canvas.style.opacity = String(1 - k);
+        if (k >= 1) { fading = 0; fadedOut = true; }
+      }
+      if (wantSleep && !asleep && (world.mewClear !== false || fadedOut)) {
         asleep = true;
         loop.stop();
         canvas.classList.add("asleep");
+        if (fadedOut) {
+          // invisible, so the teleport is free: just off the nearer side
+          const side = body.pos.x < world.viewport.w * 0.5 ? -1 : 1;
+          body.pos.x = side < 0 ? -4 * body.radius : world.viewport.w + 4 * body.radius;
+          body.prevPos.x = body.pos.x;
+          body.prevPos.y = body.pos.y;
+          body.vel.x = 0;
+          body.vel.y = 0;
+        }
         return;
       }
       // interpolate the fixed-step DOC position, then convert to viewport px by
@@ -535,6 +576,17 @@ export function bootMew({ world, deck, scope, enter = false }) {
         const w = simTime * cfg.limbs.flailShakeHz * 2 * Math.PI;
         px += Math.sin(w) * f;
         py += Math.cos(w * 1.37) * f * 0.7;
+      }
+      // ...and in her own blast, a buzz at a wind's amplitude, harder in the
+      // gusts (behavior/wind.js). Render-only, like the shake above: the push
+      // and the strain are physics in the brain; this is the air's rattle.
+      const wnd = world.wind;
+      if (wnd && wnd.k > 0.01) {
+        const W = cfg.attack.wind;
+        const f = W.shakePx * Math.min(wnd.k, 1.3) * (0.5 + 0.5 * Math.abs(wnd.gust));
+        const w = simTime * W.shakeHz * 2 * Math.PI;
+        px += Math.sin(w) * f;
+        py += Math.cos(w * 1.29) * f * 0.8;
       }
       const snap = present.snapPx();
       if (snap > 0) {

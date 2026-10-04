@@ -110,7 +110,6 @@ export function fireTimeline(t, cfg) {
  *
  *   ball     the gathering orb, 0..1
  *   crackle  how hard the lightning is working, 0..1
- *   aim      the dashed guide line toward the target, 0..1 of its reach
  *   impact   which impact frame is up (0, 1, 2) or -1 for none
  */
 export function chargeTimeline(t, cfg) {
@@ -123,7 +122,6 @@ export function chargeTimeline(t, cfg) {
   return {
     ball: easeOutCubic(k) * (0.35 + 0.65 * k),
     crackle: clamp01((t - C.crackleFromS) / Math.max(1e-6, t0 - C.crackleFromS)),
-    aim: easeOutCubic((t - C.aimFromS) / Math.max(1e-6, t0 - C.aimFromS)),
     impact,
     boil: Math.floor(Math.max(0, t) * (cfg.boilFps || 12))
   };

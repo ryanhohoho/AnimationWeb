@@ -7,11 +7,12 @@
 //
 //   CHARGE (1.5 s)   an orb gathers at the mouth, hand-drawn and boiling;
 //                    streaks of light are drawn into it; pink lightning
-//                    crackles round it; a dashed guide line reaches toward the
-//                    target. All of it follows the cursor, as she does.
+//                    crackles round it. (A dashed guide line toward the target
+//                    was here; removed 2026-10-04, by instruction.)
 //   IMPACT (the charge's last 0.2 s)
-//                    three drawings, negative / positive / negative, inside a
-//                    ragged burst around her -- not the whole window -- with
+//                    three drawings, negative / positive / negative, in a
+//                    hand-cut band along the shot's path from behind her to
+//                    the window's edge (or the whole window: impact.mode),
 //                    her as a flat silhouette in it and glints at the origin.
 //   FIRE (0.12 s)    the beam erupts: a point that opens like a bullet's nose
 //                    (fx/beamShape.js envelope), overshooting its width and
@@ -61,12 +62,13 @@ const rgb = (hex) => {
  * @param getAim        () => {x,y} unit vector toward the target right now
  * @param charScale     () => her height / the reference height
  * @param getDocSize    () => {w,h}
+ * @param getView       () => {w, h, sy} the window, and how far down the page it is
  * @param present       the presentation pass (setFlat paints her silhouette)
  * @param burn          { set(state), clear() } -- the paper under the beam
  */
 export function createBeamFx({
   under, over, config, getMouthDoc, getOriginDoc, getBodyDoc, getAim,
-  charScale, getDocSize, present, burn
+  charScale, getDocSize, getView, present, burn
 }) {
   const cfg = config;
   const P = cfg.palette;
@@ -289,26 +291,36 @@ export function createBeamFx({
     lv = 0; li = 0;
 
     if (ct.impact >= 0) {
-      // THE IMPACT FRAMES replace everything else: one drawing each, held
-      const body = getBodyDoc();
-      const C = { x: body.x + (origin.x - body.x) * 0.5, y: body.y + (origin.y - body.y) * 0.5 };
-      const R = cfg.impact.radiusMul * H;
+      // THE IMPACT FRAMES replace everything else: one drawing each, held.
+      // The region is read LIVE from the config, so the editor's switch
+      // (impact.mode, "band" | "screen") takes on the next shot.
+      const I = cfg.impact;
+      const whole = I.mode === "screen";
       const u = impactMat.uniforms;
-      u.uC.value.set(C.x, C.y);
-      u.uExtent.value = R * 1.1;
+      const vw = getView();
+      u.uO.value.set(origin.x, origin.y);
+      u.uD.value.set(aim.x, aim.y);
+      u.uBack.value = I.backMul * H;
+      u.uLen.value = beamLength(origin, aim, getDocSize());
+      u.uHalf.value = I.bandHalfMul * H;
+      u.uWhole.value = whole ? 1 : 0;
+      u.uScreen.value.set(0, vw.sy, vw.w, vw.h);
+      // the lines are drawn at the size of what they are in: the band's
+      // reach, or the window's
+      const R = whole ? Math.hypot(vw.w, vw.h) * 0.5 : I.bandHalfMul * H * 2.6;
       u.uR.value = R;
-      u.uM.value.set(origin.x - C.x, origin.y - C.y);
-      u.uDir.value = Math.atan2(aim.y, aim.x);
       u.uFrame.value = ct.impact;
       const fs = seed + ct.impact * 7919;
       u.uSeed.value.set(hash1(fs), hash1(fs + 1) * 10, hash1(fs + 2) * 10, hash1(fs + 3) * 10);
       const rng = mulberry32(fs >>> 0);
       const nStars = ct.impact === 1 ? 2 : 3 + Math.floor(rng() * 2);
+      // the glints sit round the muzzle, inside the band's width
+      const spread = I.bandHalfMul * H * 0.8;
       for (let i = 0; i < 4; i++) {
         const S = u.uStars.value[i];
         if (i >= nStars) { S.set(0, 0, 0, 0); continue; }
-        const a = rng() * Math.PI * 2, r = R * (0.3 + 0.45 * rng());
-        S.set(Math.cos(a) * r, Math.sin(a) * r, R * (0.05 + 0.06 * rng()), rng() < 0.5 ? 0 : Math.PI / 4);
+        S.set((rng() * 1.6 - 0.3) * spread * 1.6, (rng() - 0.5) * 2 * spread,
+          H * (0.07 + 0.08 * rng()), rng() < 0.5 ? 0 : Math.PI / 4);
       }
       impact.visible = true;
       setFlat(ct.impact === 1 ? P.ink : P.flash);
@@ -374,18 +386,6 @@ export function createBeamFx({
             2.6 * k, DEEP, a, 0);
     }
 
-    // the dashed guide line toward where the shot will go
-    if (ct.aim > 0) {
-      const reach = C.aimReachPx * k * ct.aim;
-      const dash = 15 * k, gap = 9 * k;
-      const crawl = (t * 90 * k) % (dash + gap);
-      for (let s = crawl; s < reach; s += dash + gap) {
-        const s1 = Math.min(reach, s + dash);
-        const fade = 1 - s / Math.max(reach, 1) * 0.6;
-        strip([origin.x + aim.x * s, origin.y + aim.y * s, origin.x + aim.x * s1, origin.y + aim.y * s1],
-              3.2 * k, DEEP, fade, 0, false);
-      }
-    }
     flushLines();
     drawStars(t - cfg.chargeS, origin, aim, k);
   }

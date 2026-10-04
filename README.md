@@ -9,7 +9,7 @@ as the only unprinted thing on it.
 Five cards — home, experience, projects, photos, contact — reached from a small
 bar at the top, with the project sheets hanging off the projects card. The deck shape
 exists so the work survives being skimmed; the sheet it is cut from has not
-changed. Mew is on Home, and nowhere else.
+changed. Mew is on Home and Contact, and nowhere else.
 
 One of the four sheets is not on the sheet at all: **digital motion graphics** is a showcase of short vertical works rendered live in the browser --
 a drifting wall of every one of them playing at once from one video, the
