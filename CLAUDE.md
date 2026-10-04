@@ -471,6 +471,23 @@ when only the numbers were.
   only; dev and the editor see the files as written. So no code may depend on
   a comment node, and a note meant for a reader of the source goes in a
   comment, never in visible markup. The build stops if one cannot be removed.
+- **The hyper beam's envelope is written three times** -- `envelope()` in
+  `fx/beamShape.js`, `ENV` in `fx/beamMaterials.js`, `beamEnv` in
+  `site/pressgl.js` (the burn under it). Change one, change all three, and
+  check them against each other on the GPU (STATE.md §26 says how).
+- **The beam is not drawn through the pixelate pass.** Its two scenes
+  (`fxUnder`, `fxOver` in `mew.js`) are document-px meshes under an
+  orthographic CSS-px camera, drawn either side of her sprite by the
+  presentation pass's `under`/`over`. Every beam material writes PREMULTIPLIED
+  colour (ONE, ONE_MINUS_SRC_ALPHA): additive blending is invisible on white
+  paper.
+- **Compile an effect at load, never at its moment.** three builds a program
+  the first time a material is drawn; the new beam's first shot was a 117 ms
+  frame on a phone-sized window until `mew.js` called `compileAsync` on its
+  scenes. Anything hidden until its moment needs the same.
+- **The burn under the beam is the sheet's** (`deck.setBeamBurn`, every frame
+  while the beam is out). It shows `#sheet` like a crossing does, and the
+  holes do NOT reprint for it; a burn not refreshed for 400 ms is dropped.
 - **A scanner strict enough to be useful catches documentation about itself.**
   The redaction check failed on `STATE.md` for spelling out a volume path while
   explaining the rule. Prose about those patterns must name them, not spell

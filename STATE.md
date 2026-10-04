@@ -132,7 +132,10 @@ src/engine/
   fx/spriteShade.js   PBR -> flat sprite sections
   fx/starBurst.js     four-pointed stars: the shiny, and annoyance
   fx/sweatDrops.js    汗マーク — panic sweat, thrown in waves
-  fx/beam.js + beamGeometry.js   the hyper beam (geometry is headless-testable)
+  fx/beam.js          the hyper beam: clock + geometry (redrawn 2026-10-04, §26)
+  fx/beamShape.js     ...its envelope, clocks, bolts, stars (pure, headless)
+  fx/beamMaterials.js ...its six shaders
+  fx/beamGeometry.js  beam length + corridor maths (pure, headless)
   fx/faceOverlay.js   the >.< face, drawn ON the eyes
   fx/alphaFlags.js    the alpha channel used as a side channel
   fx/presentMath.js   pure maths for the presentation passes
@@ -2547,3 +2550,83 @@ editor's client has no DOM harness).
   canvas as a picture, so the window had been a soft rect (an expensive place to stop) since holes got
   canvases. `colliders.js` now skips `.hole-cv`; a router test pairs it with a control.
 
+
+---
+
+# 26 · The hyper beam, redrawn (2026-10-04)
+
+By instruction: a completely new beam, the SHAPE of cmzw_'s hand-animated one (a point that opens like a
+bullet's nose, a parabolic sheath, lightning coiling round it, a cross of light at the origin), the
+COLOURS of regidrago's (a white core in pale pink, white streaks, a deeper pink edge), three impact frames
+with stars before the shot, and the paper burning away under it. Only the old TIMING is kept
+(`attack.chargeS / expandS / sustainS / fadeS`, which the brain reads too). One question round; the
+owner chose all four recommendations: drawn at screen resolution (not through the 4 px pixel pass), the
+words stay ON TOP of the burn, the burn heals inside the fade, the impact frames are a ragged burst round
+her (not the window).
+
+**Files.** `fx/beamShape.js` (pure: the envelope, the fire and charge clocks, bolts, the star schedule),
+`fx/beamMaterials.js` (six shaders: beam, orb, ink lines, stars, impact burst, shock rings),
+`fx/beam.js` (the clock and the geometry), the burn in `site/pressgl.js` + `site/deck.js`
+(`setBeamBurn`), and two small hooks in the presentation passes. Constants: `rigConfig.attack`, from
+`widthPx` down (`look`, `palette`, `charge`, `impact`, `stars`, `erosion`). `edgeDamagePx` and
+`destroyFractionDrop` were deleted: they belonged to the long-gone `fx/destruction.js`.
+
+**Where it is drawn.** Two scenes in `mew.js`, `fxUnder` (impact burst, beam, rings) and `fxOver` (orb,
+lightning, aim line, stars), authored in DOCUMENT px and drawn with an orthographic camera in CSS px
+(their roots move by `-scrollY`). The presentation pass draws them either side of her sprite, at the
+canvas's own resolution (`render(scene, camera, { under, over, fxCamera })` in `pixelate.js`, `cutout.js`
+and the passthrough). They are skipped entirely when the beam is idle. The old beam's planes sat at z=1
+under the perspective camera and were foreshortened by it; the ortho camera removes that.
+
+**The canvas is premultiplied** and every beam material blends ONE, ONE_MINUS_SRC_ALPHA with
+premultiplied output: a cel fill covers (alpha = its coverage), a glow adds (alpha under its colour). The
+old additive blend did nothing on `#FFFFFF` paper.
+
+**The shape.** `envelope(s) = (root + (1-root)·(x/(1+x))^power)·(1 + spread·s/W)`, `x = s/(flare·W)`.
+It is 80% open one beam-width out and nearly parallel after (the owner: "not too parabolic"). It exists
+THREE times: the JS (`beamShape.js`), the beam shader's `ENV` and the press's `beamEnv`. Checked on the GPU
+on 2026-10-04 (both GLSL twins against the JS over 0-2040 px: worst 0.0078, half an 8-bit step; control
+with the wrong power: 0.148). Change one, change all three.
+
+**The burn** is the press's own: a beam-shaped opening in the paper, under the type, its edge chewed by
+the weather (`dens`) plus two grains of value noise, translucent over the outer half of the way in. Just
+outside it the paper is SINGED: the rose screen, and at the very edge both inks overprinted (char). The
+beam hands `{origin, dir, reach, width, open, seed}` to `deck.setBeamBurn` every frame in document px; the
+deck converts to design px. While a burn is set the full-screen `#sheet` is shown (as for a crossing) and
+repainted every frame, but the HOLES reprint only on their own reasons (`paint(now, sy, holesToo)`). A burn
+not refreshed for 400 ms is dropped (she slept mid-shot), and `bind()` drops it with the page. At Home's
+hour (19:00) the middle of the page is clear sky, so the burn there shows a light tint of dots; fired up
+or down it opens onto the cloud bands. That is the print as it is; it was not darkened.
+
+**The impact frames** are the charge's last `frames/fps` = 0.2 s: negative, positive, negative. Each one is
+a new drawing (cut edge: a saw of short teeth plus a few deep shards; one scale of even spikes read as a
+flower). Her silhouette is the pixelate pass's `setFlat(hex)`: flat ink, outline included. Stars run from
+the frames into the shot (`starSchedule`, seeded per shot).
+
+**Hand-drawn timing.** Edges, lightning and the held width step at `boilFps` 12 (on twos); the flow of
+streaks down the beam stays continuous.
+
+**Performance, measured** (headless Chrome over CDP, real GPU, scratch harness not in the repo; frame
+times over a whole shot, twice):
+
+| viewport | throttle | worst frame | frames > 20 ms |
+|---|---|---|---|
+| 390x844 dpr3 | 4x CPU | 16.8 ms | 0 |
+| 390x844 dpr3 | 6x CPU | 16.8 ms | 0 |
+| 1512x867 dpr2 | 4x CPU | 16.8 ms | 0 |
+| 390x844, production bundle | 6x CPU | 16.8 ms | 0 |
+
+The control: before the programs were warmed, the first shot had a **117 ms** frame at 4x (three builds a
+program the first time a material is drawn). `mew.js` now calls `renderer.compileAsync` on both fx scenes
+and on her own scene at load, and uploads the noise tile; her stars, sweat and >.< face had the same
+latent hitch and get the same warm-up (not measured separately). NOT measured on a real iPhone.
+
+**Verified visually** in the Browser pane with a hand-driven clock (rAF and `performance.now` replaced,
+then stepped): charge, all three impact frames, the shot, the hold, the fade, desktop and phone, a
+horizontal and a diagonal shot. Motion itself was not watched live (the pane does not run rAF unaided).
+
+**Tests.** A new section in `test/sim.test.js` (28 checks, nothing existing changed): the envelope's shape
+with a cone as control, the clock ending on the brain's beat, the burn healing, the overshoot, the boil,
+the impact frames' order and window, the star schedule's determinism with a control, and the whole effect
+driven headless (her silhouette only in the frames' two inks, the burn handed over every frame and
+released once). 1153/1153.

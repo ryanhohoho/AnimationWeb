@@ -521,6 +521,30 @@ turns it back on with nothing else to change.
 
 ---
 
+### The hyper beam (2026-10-04)
+
+Her one attack, redrawn from nothing: the shape of a hand-animated anime beam
+and the colours of regidrago's, in her pink. Every part answers to something:
+
+- **It leaves her mouth as a point and opens like a bullet's nose**, then runs
+  nearly parallel, because every reference does and a constant bar reads as a
+  laser, not as something she threw.
+- **It is drawn, not pixelated.** She is a sprite; the light she throws is
+  fx, and its streaks and its nose do not survive a 4 px grid (owner's choice).
+- **It is cel-shaded and on twos**: hard-edged bands, edges and lightning that
+  change drawing twelve times a second, while the flow down it stays smooth.
+  That step is what keeps it from reading as a running function (§0).
+- **The paper burns away under it** to the sky -- the site's own idea, a field
+  showing through where something passes, made violent for one second and
+  healed inside the shot. The words stay on top: type still never sits ON the
+  print in a way you cannot read past, and the burn's edge is printed char, in
+  the press's two inks, not a gradient.
+- **Three impact frames, in a burst round her, not the window.** Negative,
+  positive, negative, her as one flat ink: the anime convention, kept small,
+  because this is a portfolio and the rest of the page is somebody's reading.
+
+STATE.md §26 has the numbers and the measurements.
+
 ## 5. Narrow
 
 Below 860 px a plate stops being a four-corner composition and becomes a column,

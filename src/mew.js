@@ -395,6 +395,7 @@ export function bootMew({ world, deck, scope, enter = false }) {
     renderer.compileAsync(fxOver, fxCamera).catch(() => {});
     beamFx.warm(renderer);
 
+
     // THE SPAWN. the sparkle hangs off characterRoot, which carries position and
     // nothing else, so the burst follows mew around without inheriting the body's
     // rotation or the model's scale and its sizes stay honest screen pixels.
@@ -439,6 +440,11 @@ export function bootMew({ world, deck, scope, enter = false }) {
       rig, world, body, brain, view, poser, face, faceOv, skinned, shade,
       sparkle, sweat, isShiny, THREE, mouthDoc, beamOriginDoc
     };
+    // ...and the rest of her: the stars, the sweat and the >.< face are hidden
+    // until their moment, so they were compiled AT their moment -- the same
+    // hitch, in the middle of a bump. Now that everything is in the scene.
+    // (The beam's fix, applied here too; not measured separately.)
+    renderer.compileAsync(scene, camera).catch(() => {});
     loop.start();
   }, undefined, (err) => console.error("[mew] failed to load model:", err));
 
