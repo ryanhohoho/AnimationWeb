@@ -33,44 +33,44 @@
 
 export const WORKS = [
   // ── the featured wall ──
-  { id: "firmament",  name: "the heavens, tiled",       on: ["top"] },
-  { id: "chrome",     name: "liquid chrome",            on: ["top"] },
-  { id: "undercroft", name: "the undercroft",           on: ["top"] },
+  { id: "firmament",  name: "peace.",       on: ["top"] },
+  { id: "chrome",     name: "this cool render i did",            on: ["top"] },
+  { id: "undercroft", name: "collapse",           on: ["top"] },
   { id: "poster",     name: "science.",                 on: ["top"] },
-  { id: "pool",       name: "the pool",                 on: ["top"], sound: true },
-  { id: "angels",     name: "the angels",               on: ["top"] },
+  { id: "pool",       name: "RHINO IN THE POOOOOOL.",                 on: ["top"], sound: true },
+  { id: "angels",     name: "coexistence",               on: ["top"] },
   { id: "flower-19",  name: "stripes",                  on: ["top", "flower"] },
 
   // ── the scatter ──
-  { id: "whale",      name: "the loneliest whale",      on: ["mix"] },
+  { id: "whale",      name: "whale trauma",      on: ["mix"] },
   { id: "wings",      name: "wings",                    on: ["mix"] },
-  { id: "hallway",    name: "the hallway",              on: ["mix"] },
-  { id: "topo",       name: "cajal's terrain",          on: ["mix"] },
-  { id: "sky",        name: "a sky with no clouds",     on: ["mix"] },
+  { id: "hallway",    name: "dark hallway",              on: ["mix"] },
+  { id: "topo",       name: "neuron map",          on: ["mix"] },
+  { id: "sky",        name: "powerline of peace",     on: ["mix"] },
   { id: "flower-12",  name: "kaleidoscope",             on: ["mix", "flower"] },
   { id: "providence", name: "dio vede tutto",           on: ["mix"] },
-  { id: "boxers",     name: "the boxers",               on: ["mix"] },
-  { id: "world",      name: "a world",                  on: ["mix"] },
-  { id: "earth",      name: "the world, spun out",      on: ["mix"] },
+  { id: "boxers",     name: "fighting",               on: ["mix"] },
+  { id: "world",      name: "hes poking the earth",                  on: ["mix"] },
+  { id: "earth",      name: "spin",      on: ["mix"] },
   { id: "flower-03",  name: "lines",                    on: ["mix", "flower"] },
-  { id: "clouds",     name: "clouds without a sky",     on: ["mix"], sound: true },
-  { id: "credits",    name: "the credits",              on: ["mix"] },
-  { id: "lonely",     name: "the light goes out",       on: ["mix"] },
-  { id: "moire",      name: "an eye in rings",          on: ["mix"] },
+  { id: "clouds",     name: "heavily filtered clouds",     on: ["mix"], sound: true },
+  { id: "credits",    name: "crt credits",              on: ["mix"] },
+  { id: "lonely",     name: "flower death",       on: ["mix"] },
+  { id: "moire",      name: "ringed eye",          on: ["mix"] },
   { id: "flower-09",  name: "halftone",                 on: ["mix", "flower"] },
-  { id: "factory",    name: "the factory, 1895",        on: ["mix"] },
-  { id: "gaze",       name: "the stares",               on: ["mix"] },
-  { id: "towers",     name: "the towers",               on: ["mix"] },
-  { id: "particles",  name: "the flower, taken apart",  on: ["mix"] },
+  { id: "factory",    name: "crowd walking",        on: ["mix"] },
+  { id: "gaze",       name: "creepy faces",               on: ["mix"] },
+  { id: "towers",     name: "cutting-edge",               on: ["mix"] },
+  { id: "particles",  name: "find the needle",  on: ["mix"] },
   { id: "flower-16",  name: "one bit",                  on: ["mix", "flower"] },
   { id: "like",       name: "eyes like mine",           on: ["mix"] },
   { id: "desktop",    name: "my world",                 on: ["mix"] },
-  { id: "watch",      name: "the eye that watched",     on: ["mix"] },
-  { id: "poppies",    name: "the poppies",              on: ["mix"] },
+  { id: "watch",      name: "freaky pupil",     on: ["mix"] },
+  { id: "poppies",    name: "super creepy poppies",              on: ["mix"] },
   { id: "flower-04",  name: "the real one",             on: ["mix", "flower"] },
-  { id: "alone",      name: "the empty hall",           on: ["mix"] },
-  { id: "tower",      name: "disconnected",             on: ["mix"] },
-  { id: "company",    name: "company",                  on: ["mix"] },
+  { id: "alone",      name: "dark hall",           on: ["mix"] },
+  { id: "tower",      name: "crow signal",             on: ["mix"] },
+  { id: "company",    name: "next generation",                  on: ["mix"] },
 
   // ── the flower's run (the ones above that are also in it keep their place there) ──
   { id: "flower-01",  name: "circles",                  on: ["flower"] },
@@ -106,7 +106,7 @@ export const GROUND = "flower-13";
 // them). A stretch can name a work the page shows (its name is the hover
 // label) or give its own name; two stretches can be the same work (the sky
 // tiles are shown twice in the film and once, whole, on the page).
-export const FILM = { id: "film", name: "main composition", dur: 143.2 };
+export const FILM = { id: "film", name: "godhood", dur: 143.2 };
 
 /** does this scene have a sound track? the film does, and the works marked `sound` */
 export const hasSound = (id) => id === FILM.id || WORKS.some((w) => w.id === id && w.sound === true);
