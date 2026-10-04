@@ -179,6 +179,7 @@ export function createFaceOverlay({ rig, eyes, config, world, view, mesh }) {
 
   let t = -1;
   let hit = 0;
+  let held = 0;   // the hyper beam's hold on the face, 0..1
   if (world) {
     // A HARD KNOCK. The strength is an impact speed, because that is what a
     // collision has to offer.
@@ -237,6 +238,14 @@ export function createFaceOverlay({ rig, eyes, config, world, view, mesh }) {
         }
       }
       amount *= hit;
+      // THE HYPER BEAM HOLDS IT. Not an event with a duration but a state: up
+      // for as long as she is firing, and off as the beam finishes, however
+      // long that is -- so it reads the brain rather than arming a timer.
+      // Only the face: nothing here touches the stars or the limbs.
+      const firing = ctx.brain?.state === "fire";
+      held = firing ? Math.min(1, held + dt / cfg.fireInS)
+        : Math.max(0, held - dt / cfg.fireOutS);
+      amount = Math.max(amount, held);
       // FACING: the quads ignore depth so they can sit on top of the face, which
       // means nothing stops them sitting on top of the back of the head either.
       head.getWorldQuaternion(_q);

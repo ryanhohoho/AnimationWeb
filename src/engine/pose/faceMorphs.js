@@ -71,11 +71,7 @@ export function createFaceMorphs({ config, world, brain, body, mesh }) {
       const wantSmile = st === "startle" ? 0
         : cfg.smileBase + cfg.smilePerSpeed * spd;
 
-      // narrowed against her own blast, whatever else she feels
-      const wind = world.wind;
-      const windSquint = wind && config.attack && config.attack.wind
-        ? config.attack.wind.squint * Math.min(1, wind.k) : 0;
-      squint = expDamp(squint, Math.max(wantSquint * (1 - agit), windSquint), cfg.moodRate, dt);
+      squint = expDamp(squint, wantSquint * (1 - agit), cfg.moodRate, dt);
       smile = expDamp(smile, wantSmile * (1 - agit * 0.6), cfg.moodRate, dt);
 
       // a blink overrides the squint rather than stacking into a crease.

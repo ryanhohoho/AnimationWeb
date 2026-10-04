@@ -7,7 +7,6 @@
 
 import { v2, makeNoise1d2, clamp, smoothstep } from "../../utils/math.js";
 import { createPathfinder } from "./pathfinder.js";
-import { createWind } from "./wind.js";
 
 export function createBrain({ body, world, config, pathConfig, attackConfig }) {
   const cfg = config;
@@ -15,10 +14,6 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
   const nx = makeNoise1d2(Math.floor(world.random() * 1e9));
   const ny = makeNoise1d2(Math.floor(world.random() * 1e9));
   const pathfinder = createPathfinder(world, pathConfig);
-  // her own beam's blast (behavior/wind.js). Published on the world every step
-  // while it blows, for every part of her that would feel air.
-  const wind = atk && atk.wind ? createWind(atk) : null;
-  world.wind = null;
 
   const brain = {
     state: "hover",
@@ -33,9 +28,6 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     flourish: null,       // { heading0, sign, speed, durationS } while looping
     held: null,           // { pending, downX, downY, offX, offY } while grabbed
     beamCooldownUntil: -Infinity,
-    shotAt: -Infinity,          // world.time of the last shot, for the wind
-    shotDir: v2.make(1, 0),     // ...and which way it went
-    shotAnchor: v2.make(0, 0),  // where she was when she fired
     gazeHoldUntil: -Infinity,   // headLook freezes the stare until this time
     gazeAt: null,               // { x, y } doc coords the head is FORCED onto,
                                 // overriding the cursor
@@ -840,18 +832,6 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
     // have.
     world.mewClear = clearOfWindow();
 
-    // ── THE BLAST ────────────────────────────────────────────────────────
-    // blowing opposite the shot, from the moment of it until the air is still
-    if (wind) {
-      const tw = world.time - brain.shotAt;
-      if (tw >= 0 && tw < wind.endS) {
-        const w = wind.at(tw);
-        world.wind = { x: -brain.shotDir.x, y: -brain.shotDir.y, k: w.k, gust: w.gust, cross: w.cross };
-      } else {
-        world.wind = null;
-      }
-    }
-
     // ── AND THE EXIT IS FINISHED THE MOMENT SHE IS OUT OF SIGHT ──────────
     // Armed by `recollect` when the sheet changed while she was still flying.
     // The cap is the backstop: thrown into a corner, or an odd viewport, and
@@ -1105,9 +1085,6 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
           v2.norm(d, d);
           world.emit("beamFire", { dir: d });
           body.addImpulse(v2.scale(v2.make(), d, -atk.recoil));
-          brain.shotAt = world.time;
-          v2.copy(brain.shotDir, d);
-          v2.copy(brain.shotAnchor, body.pos);
           brain.agitation = Math.min(brain.agitation + 0.35, 1);
           brain.state = "fire";
           brain.stateTime = 0;
@@ -1117,32 +1094,9 @@ export function createBrain({ body, world, config, pathConfig, attackConfig }) {
         break;
       }
       case "fire": {
-        // ── HELD AGAINST HER OWN BLAST ─────────────────────────────────────
-        // It used to be one recoil impulse and a damper, so she coasted back
-        // and stopped like something slid across a table. Now the recoil is
-        // the jolt, and then the wind (behavior/wind.js) does what wind does:
-        // the place she holds slides back half her height and she grips it
-        // with a near-critical spring, while the gusts shove her about along
-        // the flow and across it. The resisting is what reads as effort.
-        const W = atk.wind;
-        if (W) {
-          const e = 1 - Math.exp(-brain.stateTime / W.slideTau);
-          const back = W.slideMul * body.radius * e;
-          const ax = brain.shotAnchor.x - brain.shotDir.x * back;
-          const ay = brain.shotAnchor.y - brain.shotDir.y * back;
-          const kp = W.holdOmega * W.holdOmega, kd = 2 * W.holdZeta * W.holdOmega;
-          const w = world.wind;
-          const g = w ? w.k * w.gust : 0, c = w ? w.k * w.cross : 0;
-          // along the flow (-shotDir) and across it
-          const fx = -brain.shotDir.x, fy = -brain.shotDir.y;
-          body.addForce(v2.set(tmpF,
-            (ax - body.pos.x) * kp - body.vel.x * kd + fx * g * W.buffetAccel - fy * c * W.crossAccel,
-            (ay - body.pos.y) * kp - body.vel.y * kd + fy * g * W.buffetAccel + fx * c * W.crossAccel));
-        } else {
-          const damp = 1 / (1 + 2.5 * dt);
-          body.vel.x *= damp;
-          body.vel.y *= damp;
-        }
+        const damp = 1 / (1 + 2.5 * dt);
+        body.vel.x *= damp;
+        body.vel.y *= damp;
         if (brain.stateTime >= atk.expandS + atk.sustainS + atk.fadeS) {
           brain.beamCooldownUntil = world.time + atk.cooldownS;
           settle();

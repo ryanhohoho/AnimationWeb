@@ -30,13 +30,6 @@ const FRAG = /* glsl */ `
   uniform float inkGate;
   uniform float fxGate;
   uniform float softGate;
-  // THE IMPACT FRAMES' SILHOUETTE. For the three drawings before a hyper beam
-  // (fx/beam.js) she is one flat ink -- white on the burst's black, black on
-  // its white -- the way every anime impact frame flattens its subject. 0 is
-  // off; while on, her line is drawn in the same ink so the silhouette reads
-  // as one shape.
-  uniform float flatOn;
-  uniform vec3 flatColor;
   varying vec2 vUv;
 
   ${GLSL_LINEAR_TO_SRGB}
@@ -64,7 +57,6 @@ const FRAG = /* glsl */ `
           // hyper beam, which is the one place the silhouette colour was
           // actively wrong. Additive fx get a hot rim instead.
           vec3 oc = a < fxGate ? fxOutlineColor : outlineColor;
-          oc = mix(oc, flatColor, flatOn);
           gl_FragColor = vec4(linearToSrgb(oc), 1.0);
           return;
         }
@@ -75,10 +67,6 @@ const FRAG = /* glsl */ `
     // default framebuffer, and a raw ShaderMaterial never gets the encode
     // injected). do it here or the whole character comes out gamma-dark.
     vec3 s = linearToSrgb(c.rgb);
-    if (flatOn > 0.5) {
-      gl_FragColor = vec4(linearToSrgb(flatColor), 1.0);
-      return;
-    }
 
     // PAINTED ART PASSES THROUGH UNTOUCHED. fx/spriteShade.js writes this alpha
     // on the eyes and the blush; they are a decal a dozen pixels across, and
@@ -139,9 +127,7 @@ export function createPixelate({ renderer, config }) {
     // see fx/alphaFlags.js.
     inkGate: { value: INK_GATE },
     fxGate: { value: FX_GATE },
-    softGate: { value: SOFT_GATE },
-    flatOn: { value: 0 },
-    flatColor: { value: new THREE.Color(0, 0, 0) }
+    softGate: { value: SOFT_GATE }
   };
   const blitScene = new THREE.Scene();
   const blitCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -187,11 +173,6 @@ export function createPixelate({ renderer, config }) {
       renderer.render(blitScene, blitCam);
       if (over) renderer.render(over, fxCam);
       renderer.autoClear = ac;
-    },
-    /** her flat silhouette for the impact frames: a css colour, or null */
-    setFlat(hex) {
-      uniforms.flatOn.value = hex ? 1 : 0;
-      if (hex) uniforms.flatColor.value.set(hex);
     },
     dispose() {
       rt.dispose();

@@ -9,7 +9,7 @@
 //   site/pressgl.js   the paper burning away under it, drawn on the sheet below
 //                     the words (its GLSL `beamEnv` is a TRANSCRIPTION of
 //                     envelope() below -- change one, change the other)
-//   fx/beam.js again  the impact frames and the stars, scheduled off the charge
+//   fx/beam.js again  the stars, scheduled off the charge and the shot
 //
 // THE ENVELOPE. The old beam was a constant-width bar. Every reference the owner
 // gave (cmzw's frames, regidrago, genesect) leaves the mouth as a POINT and opens
@@ -105,24 +105,18 @@ export function fireTimeline(t, cfg) {
 
 /**
  * THE CHARGE, as a function of time since the press. chargeS is the brain's
- * own number; the impact frames are the LAST beats of it, so the shot comes
- * out of them rather than after them.
+ * own number.
  *
  *   ball     the gathering orb, 0..1
  *   crackle  how hard the lightning is working, 0..1
- *   impact   which impact frame is up (0, 1, 2) or -1 for none
+ *   boil     which drawing the edges are on (on twos, like the fire's)
  */
 export function chargeTimeline(t, cfg) {
   const C = cfg.charge;
-  const n = cfg.impact.frames;
-  const impactS = n / cfg.impact.fps;
-  const t0 = cfg.chargeS - impactS;
-  const impact = t >= t0 && t < cfg.chargeS ? Math.min(n - 1, Math.floor((t - t0) * cfg.impact.fps)) : -1;
   const k = clamp01(t / cfg.chargeS);
   return {
     ball: easeOutCubic(k) * (0.35 + 0.65 * k),
-    crackle: clamp01((t - C.crackleFromS) / Math.max(1e-6, t0 - C.crackleFromS)),
-    impact,
+    crackle: clamp01((t - C.crackleFromS) / Math.max(1e-6, cfg.chargeS - C.crackleFromS)),
     boil: Math.floor(Math.max(0, t) * (cfg.boilFps || 12))
   };
 }
@@ -214,6 +208,48 @@ export function starSchedule(seed, cfg) {
       kind: rng() < S.flareShare ? 1 : 0,
       rot: rng() < 0.5 ? 0 : Math.PI / 4
     });
+  }
+  return out;
+}
+
+/**
+ * THE ROW OF GLINTS ALONG THE PATH, in the place of the dashed guide line
+ * (removed 2026-10-04, with the impact frames). Waves of small twinkles pop
+ * outward from the muzzle, each a beat after the one before, a new wave every
+ * waveS until the shot. Decided once per press from the same seed as the
+ * origin's stars.
+ *
+ * Times are since the PRESS (the charge's own clock). `along` is 0..1 of the
+ * row's reach down the aim; `side` is off the line, in character heights.
+ * Every glint is over before the shot leaves, so the row hands over to the
+ * beam rather than sitting on top of it.
+ */
+export function pathStarSchedule(seed, cfg) {
+  const S = cfg.pathStars;
+  let a = (seed ^ 0x9e3779b9) >>> 0;
+  const rng = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const out = [];
+  for (let w = 0; ; w++) {
+    const t0w = S.fromS + w * S.waveS;
+    if (t0w + S.life > cfg.chargeS) break;
+    for (let i = 0; i < S.count; i++) {
+      const t0 = t0w + i * S.stepS;
+      if (t0 + S.life > cfg.chargeS) break;
+      out.push({
+        t0, life: S.life,
+        along: (i + 0.6 + (rng() - 0.5) * 0.4) / S.count,
+        side: (rng() - 0.5) * 2 * S.jitter,
+        size: S.size * (0.7 + 0.6 * rng()),
+        rot: rng() < 0.5 ? 0 : Math.PI / 4,
+        kind: 0
+      });
+    }
   }
   return out;
 }

@@ -15,7 +15,7 @@
 
 import { fromCss, clone } from "../shared/editsCss.js";
 
-export function createStore({ css, palette, tokens, projects, fx }) {
+export function createStore({ css, palette, tokens, projects }) {
   const inks = {};
   for (const p of projects) inks[p.slug] = { inkA: p.inkA, ink: p.ink };
   const st = {
@@ -23,9 +23,6 @@ export function createStore({ css, palette, tokens, projects, fx }) {
     palette: { ...palette },
     tokens: { ...tokens },
     inks,
-    // settings that are not colours: Mew's hyper beam's impact frames
-    // ("band" | "screen"), written to rigConfig.js
-    fx: { impactMode: "band", ...(fx || {}) },
     done: [],
     undone: [],
     base: null,
@@ -34,7 +31,7 @@ export function createStore({ css, palette, tokens, projects, fx }) {
   st.base = snapshot();
 
   function snapshot() {
-    return JSON.stringify({ s: st.styles, p: st.palette, t: st.tokens, i: st.inks, f: st.fx });
+    return JSON.stringify({ s: st.styles, p: st.palette, t: st.tokens, i: st.inks });
   }
   const emit = () => st.listeners.forEach((f) => f());
 
@@ -43,16 +40,15 @@ export function createStore({ css, palette, tokens, projects, fx }) {
     get palette() { return st.palette; },
     get tokens() { return st.tokens; },
     get inks() { return st.inks; },
-    get fx() { return st.fx; },
     get done() { return st.done; },
     on(f) { st.listeners.add(f); return () => st.listeners.delete(f); },
 
     /** a change to the global data, as one undoable step */
     global(label, mutate, after) {
-      const before = { s: clone(st.styles), p: { ...st.palette }, t: { ...st.tokens }, i: clone(st.inks), f: { ...st.fx } };
+      const before = { s: clone(st.styles), p: { ...st.palette }, t: { ...st.tokens }, i: clone(st.inks) };
       mutate(st);
-      const now = { s: clone(st.styles), p: { ...st.palette }, t: { ...st.tokens }, i: clone(st.inks), f: { ...st.fx } };
-      const set = (v) => { st.styles = clone(v.s); st.palette = { ...v.p }; st.tokens = { ...v.t }; st.inks = clone(v.i); st.fx = { ...v.f }; after(); };
+      const now = { s: clone(st.styles), p: { ...st.palette }, t: { ...st.tokens }, i: clone(st.inks) };
+      const set = (v) => { st.styles = clone(v.s); st.palette = { ...v.p }; st.tokens = { ...v.t }; st.inks = clone(v.i); after(); };
       st.done.push({ label, global: true, do: () => set(now), undo: () => set(before) });
       st.undone = [];
       after();
@@ -140,8 +136,7 @@ export function createStore({ css, palette, tokens, projects, fx }) {
         css: toCss(st.styles),
         palette: changed(base.p, st.palette) ? st.palette : null,
         tokens: Object.keys(tokens).length ? tokens : null,
-        projectInks: Object.keys(inks).length ? inks : null,
-        fx: changed(base.f, st.fx) ? st.fx : null
+        projectInks: Object.keys(inks).length ? inks : null
       };
     },
 

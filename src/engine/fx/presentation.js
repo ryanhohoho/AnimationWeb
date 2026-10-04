@@ -8,7 +8,6 @@
 //   render(scene, camera, { dt, scrollY, under, over, fxCamera })
 //                               under/over: the hyper beam's scenes, drawn at
 //                               full resolution either side of the character
-//   setFlat(hex | null)         her flat silhouette for the impact frames
 //   dispose()
 //
 // "none" is a passthrough that just renders the scene straight to the canvas.
@@ -61,7 +60,6 @@ export function createPresentation({ renderer, config }) {
       if (over) renderer.render(over, fxCam);
       renderer.autoClear = ac;
     },
-    setFlat() {},
     dispose() {}
   };
 }

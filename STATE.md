@@ -2558,20 +2558,20 @@ editor's client has no DOM harness).
 By instruction: a completely new beam, the SHAPE of cmzw_'s hand-animated one (a point that opens like a
 bullet's nose, a parabolic sheath, lightning coiling round it, a cross of light at the origin), the
 COLOURS of regidrago's (a white core in pale pink, white streaks, a deeper pink edge), three impact frames
-with stars before the shot, and the paper burning away under it. Only the old TIMING is kept
+with stars before the shot (the impact frames are gone since §27), and the paper burning away under it. Only the old TIMING is kept
 (`attack.chargeS / expandS / sustainS / fadeS`, which the brain reads too). One question round; the
 owner chose all four recommendations: drawn at screen resolution (not through the 4 px pixel pass), the
 words stay ON TOP of the burn, the burn heals inside the fade, the impact frames are a ragged burst round
 her (not the window).
 
 **Files.** `fx/beamShape.js` (pure: the envelope, the fire and charge clocks, bolts, the star schedule),
-`fx/beamMaterials.js` (six shaders: beam, orb, ink lines, stars, impact burst, shock rings),
+`fx/beamMaterials.js` (five shaders since §27: beam, orb, ink lines, stars, shock rings),
 `fx/beam.js` (the clock and the geometry), the burn in `site/pressgl.js` + `site/deck.js`
 (`setBeamBurn`), and two small hooks in the presentation passes. Constants: `rigConfig.attack`, from
 `widthPx` down (`look`, `palette`, `charge`, `impact`, `stars`, `erosion`). `edgeDamagePx` and
 `destroyFractionDrop` were deleted: they belonged to the long-gone `fx/destruction.js`.
 
-**Where it is drawn.** Two scenes in `mew.js`, `fxUnder` (impact burst, beam, rings) and `fxOver` (orb,
+**Where it is drawn.** Two scenes in `mew.js`, `fxUnder` (beam, rings) and `fxOver` (orb,
 lightning, aim line, stars), authored in DOCUMENT px and drawn with an orthographic camera in CSS px
 (their roots move by `-scrollY`). The presentation pass draws them either side of her sprite, at the
 canvas's own resolution (`render(scene, camera, { under, over, fxCamera })` in `pixelate.js`, `cutout.js`
@@ -2598,7 +2598,7 @@ not refreshed for 400 ms is dropped (she slept mid-shot), and `bind()` drops it 
 hour (19:00) the middle of the page is clear sky, so the burn there shows a light tint of dots; fired up
 or down it opens onto the cloud bands. That is the print as it is; it was not darkened.
 
-**The impact frames** are the charge's last `frames/fps` = 0.2 s: negative, positive, negative. Each one is
+**The impact frames** (REMOVED, §27) were the charge's last `frames/fps` = 0.2 s: negative, positive, negative. Each one is
 a new drawing (cut edge: a saw of short teeth plus a few deep shards; one scale of even spikes read as a
 flower). Her silhouette is the pixelate pass's `setFlat(hex)`: flat ink, outline included. Stars run from
 the frames into the shot (`starSchedule`, seeded per shot).
@@ -2633,67 +2633,47 @@ released once). 1153/1153.
 
 ---
 
-# 27 · Impact frames along the shot, her own blast, flicks on text, Mew on Contact (2026-10-04)
+# 27 · Stars instead of impact frames, the >.< while firing, flicks on text, Mew on Contact (2026-10-04)
 
-One question round plus two test authorisations (the owner: "for tests specifically, you do not need to
-consult me" on changes that follow from what he asked).
+Two rounds on the same day; this section is what is left after the second.
 
-**The dashed guide line is gone** (`charge.aimFromS / aimReachPx` and the timeline's `aim` deleted).
+**Removed by the owner, every trace:**
 
-**Impact frames along the shot.** `impactMaterial` draws in the beam's frame (s along, r across) and has
-two regions, `rigConfig.attack.impact.mode`: `"band"` (default), a cut strip from `backMul` x her height
-behind the muzzle to the window's edge, `bandHalfMul` x her height half-wide and widening a little away from
-her, both long edges cut with a saw of teeth plus a few shards; `"screen"`, the whole window. Same three
-drawings in both: speed lines from the muzzle + the cross (neg), dense ink lines + a ringed white heart
-(pos), the beam's torn white silhouette + a needle ring (neg). `backMul` 1.3 left her tail tip outside the
-band (white on white); it is 1.9.
+- **The wind** (her own blast pushing her back, gust torque on the body, air in the tail's drag, limb and
+  ear flutter, the squint, a render buzz). It was built and measured, and on screen it read as jitter; the
+  owner's judgement is that her rig cannot make it look good. `behavior/wind.js`, `attack.wind`, every
+  reader in the pose layers, the brain's slide-and-hold and its tests are gone, and the fire state is the
+  old recoil-and-damper again.
+- **All impact frames**: the burst round her (§26), the band along the shot that replaced it, the
+  whole-screen mode, the editor's switch for them (store `fx`, the `impactMode` save), the pixelate
+  pass's flat silhouette (`setFlat`) and `attack.impact` / `palette.ink` / `palette.flash`.
+- **The dashed guide line** (`charge.aimFromS / aimReachPx`).
 
-**The editor toggle.** With nothing selected: "Mew's hyper beam — impact frames", Along the beam / Whole
-screen. The store has a fourth kind of global data, `fx` (`model.js`), undoable and diffed like the
-palette; Save writes `rigConfig.attack.impact.mode` through the AST (`plugin.js`, `impactModeProp`), and
-`state()` reads it back. It also sets `__AW__.cfg.attack.impact.mode` on the running site, so a switch
-takes on the next shot. Verified with two real saves (screen, then back to band); the editor's own `npm
-test` passed after each, and the file ended where it started.
+**What replaced them:**
 
-**Her own blast** (`engine/behavior/wind.js`, constants `attack.wind`). One field published by the brain as
-`world.wind = {x, y, k, gust, cross}` from the shot until the air is still (null otherwise): a blast front
-that overshoots (x1.6), held through the beam, dying on a 0.22 s exponential once it goes; zero-mean gusts
-at ~3.2 Hz with an octave on top. Read by:
+- **The stars that form** round the origin are kept as they were (`attack.stars`, from the charge's last
+  0.12 s into the shot).
+- **A row of glints along the path**, in the guide line's place (`attack.pathStars`,
+  `beamShape.pathStarSchedule`): waves of small twinkles pop outward from the muzzle, on the LIVE aim,
+  from 0.8 s into the charge, every one over before the shot leaves. Drawn by the same star quads as the
+  origin's (`beam.js`, `pushStar`).
+- **The >.< for the whole shot** (`fx/faceOverlay.js`): a held envelope that follows
+  `brain.state === "fire"` (on in `face.overlay.fireInS`, off in `fireOutS` once the beam is done). No
+  event is emitted, so no stars and no flail. Checked: amount 1.00 mid-shot, 0 within 0.2 s after.
 
-- `brain.js`, "fire": the recoil is the jolt; then an anchor that slides back `slideMul` x her radius (her
-  radius is half her height, the owner's choice) and a near-critical hold (9 rad/s, zeta 0.7), with the
-  gusts shoving along and across the flow. Replaces the old damper.
-- `bodyPose.js`: gust TORQUE on the orientation spring's angular velocity (in-plane and about her long axis)
-  and a fast ripple down the spine.
-- `tailChain.js`: the drag now acts on velocity relative to the AIR; the gust travels down the strand.
-- `limbPose.js`: pushed further along the cruise-minus-hover direction, plus a per-limb flutter (7.5 Hz;
-  10 read as a buzz). `earSprings.js`: flattened, the gust on the spring target. `faceMorphs.js`: squint.
-  `mew.js`: a render-only buzz like the flail's.
+**Kept from the first round of the day:**
 
-Measured in the Browser pane over 0.75 s of the hold, against a paired control with every wind amplitude
-zeroed: arm travel 326 deg vs 45, ear 105 vs 5, tail-tip spread +60%, body orientation spread 13.7 deg vs
-3.4 (after raising the torque: 34 gave only +40% body travel, the brace spring is stiff by design). Slide
-back 78 px against a 75 px radius.
+- **Flicks only on text.** The cursor startle (`brain.js`) also requires
+  `pathfinder.clearanceAt(pos, radius) < radius`, the aside's own test. The test "a pointer charging her"
+  puts a paragraph under her, with a control in open paper.
+- **Mew on Contact.** `MEW_PAGES = {home, contact}` in `mewPresence.js`. A page TURN off Contact fades her
+  canvas at the router's `FADE_OUT` rate (the `navigating` event carries `fadeMs`), then she sleeps
+  (granted on `fadedOut` as well as `mewClear`) and is parked off the nearer side, so her next page gives
+  her the side entrance. The crossing back to Home is a return and she flees it as from Home. Checked
+  through the real router with a stepped clock. Router presence test updated: Home and Contact present, a
+  visit reaching Contact boots her, one reaching neither does not, reduced motion never does.
 
-**A bug found and fixed on the way:** the ears read `wind.gust` with `world.wind` null, which threw inside
-the render loop and stopped her before she ever drew. The suite now runs every pose layer in still air
-first; with the guard removed that check fails (verified by putting the bug back).
-
-**Flicks only on text.** The cursor startle (`brain.js`) also requires
-`pathfinder.clearanceAt(pos, radius) < radius`, the aside's own test. The test "a pointer charging her
-startles her" now puts a paragraph under her, with a control in open paper (authorised).
-
-**Mew on Contact.** `MEW_PAGES = {home, contact}` in `mewPresence.js`. A page TURN off Contact fades her
-canvas at the router's `FADE_OUT` rate (the `navigating` event now carries `fadeMs`), then she sleeps
-(granted on `fadedOut` as well as `mewClear`) and is parked just off the nearer side, so her next page gives
-her the side entrance. The crossing back to Home is a return and she flees it as from Home. Checked
-through the real router with a stepped clock: opacity 0.5 at 150 ms, asleep at 300 ms with the clock
-stopped, side entrance on coming back, the double-take and bolt on Contact -> Home. Router presence test
-updated (authorised): Home and Contact present, a visit reaching Contact boots her, a visit reaching neither
-does not, reduced motion never does.
-
-**Performance** (headless Chrome over CDP, real GPU, two shots each): 390x844 at 6x CPU, band and screen,
-and 1512x867 at 4x: worst frame 16.8 ms, none over 20 ms, with the wind confirmed live. NOT measured on an
-iPhone.
-
-**Tests.** 1170 sim checks + the router harness, all green.
+**Tests.** 1159 sim checks + the router harness, all green. The beam section now checks that no impact
+frames or guide line are scheduled, the path glints (determinism, window, outward waves, drawn late in
+the charge and not before), and the >.< hold (none in the charge, up within a beat of the shot, gone after,
+with no flail or startle emitted).

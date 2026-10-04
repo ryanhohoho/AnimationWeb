@@ -487,11 +487,6 @@ when only the numbers were.
   the first time a material is drawn; the new beam's first shot was a 117 ms
   frame on a phone-sized window until `mew.js` called `compileAsync` on its
   scenes. Anything hidden until its moment needs the same.
-- **`world.wind` is null in still air.** Her own beam's blast
-  (`behavior/wind.js`) is published by the brain only while it blows, and
-  every pose layer reads it; one that dereferences it unguarded throws inside
-  the render loop and stops her for good (the ears did, 2026-10-04). There is
-  a still-air check in the suite.
 - **A cursor only flicks her off TEXT** (brain.js, the startle): her circle has
   to overlap a soft rect, the same test the aside uses. In open paper a fast
   pointer does nothing.

@@ -35,7 +35,6 @@ its behind-the-scenes figures take **Replace…**.
 | show or hide on a device | **Show on** in the inspector: Desktop, Tablet and Phone are three separate switches (see below) |
 | paper and ink colours | click empty space, so that nothing is selected: the inspector shows the page's colours |
 | FIG. 2's backlight colours | on the USB sheet, with nothing selected: six colours and two presets (Apple Intelligence, Vivid). The light is shown in full while the panel is open, because on the page it follows the reader's scroll |
-| Mew's impact frames | with nothing selected: **Along the beam** (a cut strip on the shot's path) or **Whole screen**. Takes on the running site at once; tick Preview and click Mew to see it |
 | try the page as a visitor | tick **Preview** |
 | undo / redo | ⌘Z / ⇧⌘Z (everything, including text and media, until you save) |
 
@@ -75,7 +74,6 @@ You can still save them.
 | sky inks | `site/palette.js` (home), `projects.js` (each project) |
 | text colours | the `:root` tokens in `site.css` |
 | FIG. 2's backlight colours | `--glow-1` to `--glow-6` in `:root` in `site.css` |
-| Mew's impact frames | `rigConfig.attack.impact.mode` in `src/config/rigConfig.js` (`"band"` or `"screen"`) |
 | a figure's picture | `src/assets/media/<id>.webp` (or `.mp4` + `-still.webp`), and its `ratio` in `capture()` |
 | a card's picture / hover clip | `src/assets/media/card-<slug>.webp` / `.mp4` |
 | a card's icon | `tools/icons/icon-<slug>.*`, then `tools/bake_icons.mjs` runs |

@@ -88,8 +88,6 @@ export function createLimbPose({ config, world }) {
   const _qInv = new THREE.Quaternion();
 
   let flailOut = 0;
-  // the blast's flutter: one integrated phase per limb, each at its own rate
-  const windPh = { armL: 0, armR: 1.7, footL: 3.1, footR: 4.6 };
 
   return {
     /** the flail envelope, 0..1, for whatever else wants to ride it */
@@ -180,17 +178,6 @@ export function createLimbPose({ config, world }) {
       const swimPhase = ctx.shared.swimPhase || 0;
       const swimAlign = ctx.shared.swimAlign || 0;
 
-      // ── IN HER OWN BLAST (behavior/wind.js) ─────────────────────────────
-      // Two things a limb in a gale does. It is pushed further the way the
-      // flow already holds it -- past the streamlined pose, along the same
-      // per-axis direction the cruise pose sits from the hover one, so nothing
-      // here guesses an axis -- and it FLUTTERS, small and fast, each limb at
-      // its own rate and harder in the gusts. The gusts also reach her through
-      // body.accel, so the follow-through below swings with them for free.
-      const wind = world && world.wind;
-      const W = config.attack && config.attack.wind;
-      const wk = wind && W ? Math.min(wind.k, 1.3) : 0;
-
       for (const role of ROLES) {
         const bone = rig.bones[role];
         if (!bone) continue;
@@ -235,20 +222,10 @@ export function createLimbPose({ config, world }) {
           flutter = Math.sin(ph) * cfg.armPaddleDeg * D2R * (0.45 + 0.55 * swimAlign);
         }
 
-        let wX = 0, wY = 0, wZ = 0;
-        if (wk > 0.001) {
-          windPh[role] += W.limbFlutterHz * (0.85 + 0.12 * fi + 0.3 * wind.gust) * 2 * Math.PI * dt;
-          const fa = W.limbFlutterDeg * D2R * wk * (0.55 + 0.45 * Math.abs(wind.gust)) * (isFoot ? 1.25 : 1);
-          const st = W.limbStream * wk;
-          wX = (cruise[0] - hover[0]) * D2R * st + Math.sin(windPh[role]) * fa;
-          wY = (cruise[1] - hover[1]) * D2R * st;
-          wZ = (cruise[2] - hover[2]) * D2R * st + Math.cos(windPh[role] * 1.31) * fa * 0.6 * sideSign;
-        }
-
         _e.set(
-          (hover[0] + (cruise[0] - hover[0]) * blend) * D2R + n[0](t) * na + fxS * followMul - tuck * 0.6 + flutter + flailX + wX,
-          (hover[1] + (cruise[1] - hover[1]) * blend) * D2R + n[1](t + 3.1) * na * 0.5 + wY,
-          (hover[2] + (cruise[2] - hover[2]) * blend) * D2R + n[2](t + 6.2) * na + fzS * followMul + tuck * sideSign + wZ
+          (hover[0] + (cruise[0] - hover[0]) * blend) * D2R + n[0](t) * na + fxS * followMul - tuck * 0.6 + flutter + flailX,
+          (hover[1] + (cruise[1] - hover[1]) * blend) * D2R + n[1](t + 3.1) * na * 0.5,
+          (hover[2] + (cruise[2] - hover[2]) * blend) * D2R + n[2](t + 6.2) * na + fzS * followMul + tuck * sideSign
             + flailZ * sideSign
             + (isFoot ? 0 : Math.cos(swimPhase * cfg.armPaddleRatio + sideSign * 0.9)
               * cfg.armPaddleDeg * 0.5 * D2R * sideSign),

@@ -34,17 +34,6 @@ export function createEarSprings({ config, world }) {
 
       // startle flattens both ears back, fast in, slow out via agitation decay
       const flatten = brain.agitation * cfg.startleFlattenDeg * D2R;
-      // ...and her own blast presses them flat and FLAPS them: the gust moves
-      // the spring's target, and the springs are underdamped, so each gust
-      // leaves a flap behind it (behavior/wind.js)
-      const wind = world.wind;
-      const W = config.attack && config.attack.wind;
-      let windX = 0, windZ = 0;
-      if (wind && W) {
-        const wk = Math.min(wind.k, 1.3);
-        windX = wk * (W.earFlattenDeg + W.earGustDeg * wind.gust) * D2R;
-        windZ = wk * W.earGustDeg * 0.6 * D2R * wind.cross;
-      }
 
       for (const key of ["earL", "earR"]) {
         const bone = rig.bones[key];
@@ -60,8 +49,8 @@ export function createEarSprings({ config, world }) {
           ear.nextTwitchAt = time + cfg.twitchMeanS * (0.35 + world.random() * 1.6);
         }
 
-        const x = ear.sx.step(flatten + followX + windX, dt);
-        const z = ear.sz.step(followZ * ear.sign + windZ * ear.sign, dt);
+        const x = ear.sx.step(flatten + followX, dt);
+        const z = ear.sz.step(followZ * ear.sign, dt);
         _e.set(x, 0, z, "XYZ");
         // body-frame application so twitches stay ear-relative at any roll
         const bq = ctx.shared.bodyQuat;

@@ -4549,7 +4549,7 @@ section("the motion-graphics page: only the works marked `sound` have a sound tr
 }
 
 // ---------------------------------------------------------------------------
-section("the hyper beam (2026-10-04): its shape, its clock, its frames and its burn");
+section("the hyper beam (2026-10-04): its shape, its clock, its stars and its burn");
 {
   // the new modules carry shaders in template literals: the backtick hazard
   const mods = ["../src/engine/fx/beamShape.js", "../src/engine/fx/beamMaterials.js", "../src/site/pressgl.js"];
@@ -4589,18 +4589,24 @@ section("the hyper beam (2026-10-04): its shape, its clock, its frames and its b
   ok(b0 === b1 && S.fireTimeline(A.expandS + 0.30 + 1.01 / A.boilFps, A).boil !== b0,
     "its edges hold one drawing for a frame of film, then change (on twos)");
 
-  // THE IMPACT FRAMES are the charge's LAST beats, in order, and only there.
-  const n = A.impact.frames, impS = n / A.impact.fps;
-  const seen = [];
-  for (let t = 0; t < A.chargeS; t += 1 / 240) {
-    const f = S.chargeTimeline(t, A).impact;
-    if (f >= 0 && seen[seen.length - 1] !== f) seen.push(f);
-    if (f >= 0 && t < A.chargeS - impS - 1e-6) { seen.push("early"); break; }
-  }
-  ok(seen.join() === [...Array(n).keys()].join(), `${n} impact frames, in order, in the last ${impS.toFixed(2)} s (${seen.join()})`);
-  ok(!("aim" in S.chargeTimeline(1, A)) && !("aimFromS" in A.charge),
-    "there is no dashed guide line any more (removed by instruction)");
-  ok(A.impact.mode === "band" || A.impact.mode === "screen", `the impact frames' region is one of the two (${A.impact.mode})`);
+  // NO IMPACT FRAMES AND NO GUIDE LINE: both were tried and removed by the
+  // owner (2026-10-04). Nothing in the charge's clock may still schedule them.
+  const ct1 = S.chargeTimeline(1.45, A);
+  ok(!("impact" in ct1) && !("impact" in A) && !("aim" in ct1) && !("aimFromS" in A.charge),
+    "there are no impact frames and no dashed guide line any more (removed by instruction)");
+
+  // THE ROW OF GLINTS ALONG THE PATH, in the line's place
+  const P = A.pathStars;
+  const p1 = S.pathStarSchedule(42, A), p2 = S.pathStarSchedule(42, A), p3 = S.pathStarSchedule(43, A);
+  ok(p1.length >= P.count && JSON.stringify(p1) === JSON.stringify(p2) && JSON.stringify(p1) !== JSON.stringify(p3),
+    `the path's glints are decided once per press, from the seed (${p1.length} of them)`);
+  ok(p1.every((g) => g.t0 >= P.fromS - 1e-9 && g.t0 + g.life <= A.chargeS + 1e-9),
+    "they run where the guide line did, and every one is over before the shot leaves");
+  ok(p1.every((g) => g.along > 0 && g.along <= 1.05 && Math.abs(g.side) <= P.jitter),
+    "they lie along the path, a little off it at most");
+  const wave0 = p1.filter((g) => g.t0 < P.fromS + P.waveS - 1e-9);
+  ok(wave0.length === P.count && wave0.every((g, i) => i === 0 || g.along > wave0[i - 1].along),
+    "each wave pops outward from the muzzle, one glint after another");
 
   // THE STARS are decided once per shot, from a seed
   const s1 = S.starSchedule(42, A), s2 = S.starSchedule(42, A), s3 = S.starSchedule(43, A);
@@ -4616,137 +4622,69 @@ section("the hyper beam (2026-10-04): its shape, its clock, its frames and its b
   ok(pts.length === 2 * 17 && pts[0] === 0 && pts[1] === 0 && pts[32] === 100 && pts[33] === 0,
     "a bolt is rough in the middle and pinned at both ends");
 
-  // THE WHOLE EFFECT, driven headless: what it asks of the page and of her.
+  // THE WHOLE EFFECT, driven headless: what it asks of the page.
   const { createBeamFx } = await import("../src/engine/fx/beam.js");
-  const flats = [], burns = [];
+  const burns = [];
   let cleared = 0;
+  const over = new THREE.Group();
   const fx = createBeamFx({
-    under: new THREE.Group(), over: new THREE.Group(), config: A,
+    under: new THREE.Group(), over, config: A,
     getMouthDoc: () => ({ x: 600, y: 400 }),
     getOriginDoc: (d) => ({ x: 600 + d.x * 48, y: 400 + d.y * 48 }),
-    getBodyDoc: () => ({ x: 640, y: 420 }),
     getAim: () => ({ x: -1, y: 0 }),
     charScale: () => 1,
     getDocSize: () => ({ w: 1512, h: 867 }),
-    getView: () => ({ w: 1512, h: 867, sy: 0 }),
-    present: { setFlat: (h) => flats.push([fxT, h]) },
     burn: { set: (b) => burns.push(b), clear: () => { cleared++; } }
   });
+  const starMesh = over.children.find((m) => m.geometry?.attributes?.aShape);
+  const drawn = () => (starMesh.visible ? starMesh.geometry.drawRange.count / 6 : 0);
   let fxT = 0;
   const dt = 1 / 60;
+  let starsBefore = 0, starsOnRow = 0;
   fx.startCharge();
-  for (; fxT < A.chargeS; fxT += dt) fx.update(dt);
+  for (; fxT < A.chargeS; fxT += dt) {
+    fx.update(dt);
+    if (fxT < P.fromS - 2 * dt) starsBefore = Math.max(starsBefore, drawn());
+    if (fxT > P.fromS + 0.1 && fxT < A.chargeS - 0.2) starsOnRow = Math.max(starsOnRow, drawn());
+  }
+  ok(starsBefore === 0 && starsOnRow >= 2,
+    `the glints appear along the path late in the charge, not before (${starsBefore} -> ${starsOnRow})`);
   fx.fire(null, { x: -1, y: 0 });
   let tf = 0;
   for (; tf < end + 0.1; tf += dt, fxT += dt) fx.update(dt);
-  const inks = new Set(flats.filter(([, h]) => h).map(([, h]) => h));
-  ok(inks.size === 2 && inks.has(A.palette.ink) && inks.has(A.palette.flash),
-    "during the frames she is a flat silhouette, in the frames' two inks and only those");
-  ok(flats.filter(([t, h]) => h && t < A.chargeS - impS - dt).length === 0,
-    "...never before them");
-  ok(flats.length > 0 && flats[flats.length - 1][1] === null, "...and herself again for the shot");
   ok(burns.length > 30 && burns.every((b) => b.open >= 0 && b.width === W && b.reach >= 0),
     `the paper under it is handed to the sheet every frame of the shot (${burns.length} frames)`);
   ok(burns.some((b) => b.open > 0.95), "...burned through while held");
   ok(cleared === 1 && !fx.active, "and released exactly once, when the beam is gone");
-}
 
-// ---------------------------------------------------------------------------
-section("her own blast (2026-10-04): the wind field, the push, and every part that feels it");
-{
-  const { createWind } = await import("../src/engine/behavior/wind.js");
-  const A = rigConfig.attack, W = A.wind;
-  const wind = createWind(A);
-  ok(wind.at(-0.1).k === 0, "still air before the shot");
-  let peak = 0;
-  for (let t = 0; t < 0.3; t += 0.005) peak = Math.max(peak, wind.at(t).k);
-  ok(peak > 1.2, `the blast front overshoots as it arrives (peak ${peak.toFixed(2)})`);
-  const mid = wind.at(A.expandS + A.sustainS * 0.6).k;
-  ok(Math.abs(mid - 1) < 0.05, `and holds at full while the beam pours out (${mid.toFixed(2)})`);
-  const end = A.expandS + A.sustainS + A.fadeS;
-  ok(wind.at(end).k < 0.3 && wind.at(end).k > 0.02, `it is dying, not dead, as the beam goes (${wind.at(end).k.toFixed(2)})`);
-  ok(wind.at(wind.endS).k < 0.011 * (1 + W.blast), "and still by endS");
-  let sum = 0, n = 0;
-  for (let t = 0.2; t < end; t += 0.01, n++) sum += wind.at(t).gust;
-  ok(Math.abs(sum / n) < 0.35, `a gust is a change in the wind, not more of it (mean ${(sum / n).toFixed(2)})`);
-
-  // THE PUSH: she is shoved back about half her height and holds there,
-  // unsteadily. Driven through the real brain, firing to the right.
-  const world = createWorld({ headless: true, seed: 9 });
-  world.viewport.w = 1400; world.viewport.h = 900;
-  world.docSize = { w: 1400, h: 900 };
-  const body = createBody({ x: 700, y: 450, radius: 75, config: rigConfig.physics });
-  const brain = createBrain({ body, world, config: rigConfig.behavior, pathConfig: rigConfig.path, attackConfig: A });
-  world.pointer.active = true; world.pointer.pos = { x: 1200, y: 450 }; world.pointer.lastMoveAt = 0;
-  world.emit("pet", { point: { x: 700, y: 450 } });
-  const dt = 1 / 120;
-  let fired = false;
-  const xs = [];
-  let blew = false;
-  while (world.time < A.chargeS + end + 1.2) {
-    world.time += dt; brain.step(dt); body.step(dt);
-    if (brain.state === "fire") { fired = true; xs.push(body.pos.x); }
-    if (world.wind && world.wind.x < -0.99) blew = true;
-  }
-  ok(fired && blew, "the wind blows opposite the shot while she fires");
-  ok(world.wind === null, "...and the air is still again afterwards");
-  const hold = xs.slice(Math.floor(xs.length * 0.4), Math.floor(xs.length * 0.75));
-  const meanBack = 700 - hold.reduce((a, b) => a + b, 0) / hold.length;
-  ok(meanBack > 0.6 * body.radius && meanBack < 1.6 * body.radius,
-    `she is pushed back about half her height and holds there (${meanBack.toFixed(0)} px; her radius is ${body.radius})`);
-  const sd = Math.sqrt(hold.reduce((a, x) => a + (700 - x - meanBack) ** 2, 0) / hold.length);
-  ok(sd > 1.5, `...unsteadily, not pinned (${sd.toFixed(1)} px of buffeting)`);
-
-  // EVERY PART THAT FEELS IT, on a miniature rig: run in still air first --
-  // world.wind is null then, and a pose layer that reads through it throws
-  // and stops her loop for good (it happened: the ears, 2026-10-04) -- then in
-  // the wind, against a control rig that never feels any.
-  const mkRig = () => {
+  // THE >.< WHILE SHE FIRES, and only the face: the overlay holds it for as
+  // long as the brain says "fire" and lets it go when the beam is done.
+  {
+    const wF = createWorld({ headless: true, seed: 12 });
     const root = new THREE.Group();
-    const rb = new THREE.Bone(); rb.name = "root"; root.add(rb);
-    for (const [nm, x, y] of [["armL", 0.2, 0.3], ["armR", -0.2, 0.3], ["footL", 0.15, -0.2], ["footR", -0.15, -0.2], ["earL", 0.1, 0.6], ["earR", -0.1, 0.6]]) {
-      const b = new THREE.Bone(); b.name = nm; b.position.set(x, y, 0); rb.add(b);
-    }
-    root.updateMatrixWorld(true);
-    return buildRig(root, { root: "root", armL: "armL", armR: "armR", footL: "footL", footR: "footR", earL: "earL", earR: "earR", tail: [] });
-  };
-  const { createEarSprings } = await import("../src/engine/pose/earSprings.js");
-  const make = (seed) => {
-    const w = createWorld({ headless: true, seed });
-    const rig = mkRig();
-    const layers = [createLimbPose({ config: rigConfig, world: w }), createEarSprings({ config: rigConfig, world: w })];
-    const ctx = { rig, body: { pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 }, accel: { x: 0, y: 0 } },
-      brain: { agitation: 0, state: "fire" }, world: w, dt: 1 / 60, time: 0,
-      shared: { bodyQuat: new THREE.Quaternion() }, visual: { bobPx: { x: 0, y: 0 } } };
-    return { w, rig, layers, ctx };
-  };
-  const a = make(21), c = make(21);
-  let threw = null;
-  const stepBoth = (windOn, t) => {
-    for (const s of [a, c]) {
-      s.ctx.time = t;
-      s.w.wind = s === a && windOn ? { x: -1, y: 0, ...wind.at(t - 0.5) } : null;
-      s.rig.resetToRest();
-      for (const l of s.layers) l.update(s.ctx);
-    }
-  };
-  try { for (let i = 0; i < 30; i++) stepBoth(false, i / 60); } catch (e) { threw = e.message; }
-  ok(!threw, `every pose layer runs in still air, with world.wind null (${threw || "no throw"})`);
-  const parts = ["armL", "footR", "earL", "earR"];
-  const travel = Object.fromEntries(parts.map((p) => [p, 0]));
-  const prev = Object.fromEntries(parts.map((p) => [p, a.rig.bones[p].quaternion.clone()]));
-  const prevC = Object.fromEntries(parts.map((p) => [p, c.rig.bones[p].quaternion.clone()]));
-  const travelC = Object.fromEntries(parts.map((p) => [p, 0]));
-  for (let i = 30; i < 90; i++) {
-    stepBoth(true, i / 60);
-    for (const p of parts) {
-      travel[p] += prev[p].angleTo(a.rig.bones[p].quaternion); prev[p].copy(a.rig.bones[p].quaternion);
-      travelC[p] += prevC[p].angleTo(c.rig.bones[p].quaternion); prevC[p].copy(c.rig.bones[p].quaternion);
-    }
-  }
-  for (const p of parts) {
-    ok(travel[p] > travelC[p] * 2.5,
-      `the ${p} flaps in the blast (${(travel[p] * 57.3).toFixed(0)} deg of travel in a second, against ${(travelC[p] * 57.3).toFixed(0)} in still air)`);
+    const rb = new THREE.Bone(); rb.name = "root";
+    const hb = new THREE.Bone(); hb.name = "head"; hb.position.set(0, 0.6, 0);
+    rb.add(hb); root.add(rb); root.updateMatrixWorld(true);
+    const rigH = buildRig(root, { root: "root", head: "head", tail: [] });
+    const ovF = createFaceOverlay({ rig: rigH, config: rigConfig.face.overlay, world: wF, view: {},
+      eyes: [{ cx: -0.3, cy: 0.96, hx: 0.13, hy: 0.12, z: 0.38 }, { cx: 0.29, cy: 1.03, hx: 0.14, hy: 0.13, z: 0.38 }] });
+    const brainF = { state: "charge" };
+    const fctx = { dt: 1 / 60, brain: brainF };
+    let flails = 0, startles = 0;
+    wF.on("flail", () => flails++); wF.on("startle", () => startles++);
+    for (let i = 0; i < 30; i++) ovF.update(fctx);
+    const beforeShot = ovF.amount;
+    brainF.state = "fire";
+    let onAt = -1;
+    for (let i = 0; i < 90; i++) { ovF.update(fctx); if (onAt < 0 && ovF.amount > 0.95) onAt = i / 60; }
+    const holding = ovF.amount;
+    brainF.state = "hover";
+    for (let i = 0; i < 30; i++) ovF.update(fctx);
+    ok(beforeShot === 0, "no >.< while she charges");
+    ok(onAt >= 0 && onAt < 0.12 && holding > 0.95,
+      `the >.< is up within a beat of the shot and held through it (${onAt.toFixed(3)} s, ${holding.toFixed(2)})`);
+    ok(ovF.amount === 0, "and gone again once the beam is done");
+    ok(flails === 0 && startles === 0, "...with no stars or flail: the face is the whole reaction");
   }
 }
 

@@ -830,9 +830,9 @@ export const rigConfig = {
     }
   },
 
-  // hyper beam: click mew (petting) -> 1.5s charge staring at the cursor ->
-  // three impact frames -> beam from the mouth, aimed once, burning the paper
-  // away under it to the sky. The TIMING below is the old beam's and the brain
+  // hyper beam: click mew (petting) -> 1.5s charge staring at the cursor, a
+  // line of glints along the path -> beam from the mouth, aimed once, burning
+  // the paper away under it to the sky. The TIMING below is the old beam's and the brain
   // reads it; everything from `look` down is the 2026-10-04 redesign
   // (fx/beam.js, fx/beamShape.js, and the burn in site/pressgl.js).
   attack: {
@@ -936,12 +936,7 @@ export const rigConfig = {
       deep: "#D6318F",
       glow: "#FF6EC7",
       bolt: "#FFE6F6",          // lightning core
-      boltGlow: "#F25DB6",      // ...and its halo
-      // the impact frames are black and white, as they are in every reference;
-      // the black is the character outline's plum taken to its darkest so the
-      // silhouette and the frame read as one ink
-      ink: "#150E1A",
-      flash: "#FFFBFE"
+      boltGlow: "#F25DB6"       // ...and its halo
     },
 
     // ── THE CHARGE ─────────────────────────────────────────────────────────
@@ -952,31 +947,28 @@ export const rigConfig = {
       gatherFromPx: 120
     },
 
-    // ── THE IMPACT FRAMES ──────────────────────────────────────────────────
-    // the last beats of the charge, drawn negative, positive, negative, with
-    // her as a flat silhouette in them. WHERE, by the owner's choice
-    // (2026-10-04), and switchable in the editor (it writes `mode` here):
-    //   "band"    a hand-cut strip along the shot, from just behind her to the
-    //             edge of the window -- the beam's own path, inverted
-    //   "screen"  the whole window
-    impact: {
-      mode: "band",
-      frames: 3,
-      fps: 15,                  // each drawing up for one 15 fps frame, so
-                                // the three take the charge's last 0.2 s
-      bandHalfMul: 1.05,        // the band's half-width at its far end, in
-                                // character heights: about two and a half
-                                // beam-widths across, so the beam it previews
-                                // sits well inside it
-      backMul: 1.9              // how far it reaches behind the muzzle: past
-                                // her tail (measured: 1.3 left the tail tip
-                                // out, white on white), so all of her is in it
+    // ── THE PATH ───────────────────────────────────────────────────────────
+    // (the impact frames that were here were removed by the owner on
+    // 2026-10-04, and so was the dashed guide line.) In the line's place: a
+    // row of glints along the path the shot will take, popping outward from
+    // the muzzle in waves, aimed at the live cursor as she is. Sizes and
+    // offsets are in character heights.
+    pathStars: {
+      fromS: 0.8,               // into the charge: where the guide line began
+      reachPx: 420,             // how far down the path the row runs, at the
+                                // reference character height
+      count: 6,                 // glints in one wave
+      stepS: 0.05,              // ...each this long after the one before
+      waveS: 0.3,               // a new wave this often, until the shot
+      life: 0.26,
+      size: 0.075,
+      jitter: 0.12              // how far off the line a glint may sit
     },
 
     // ── THE STARS ──────────────────────────────────────────────────────────
-    // around the origin, from the impact frames into the shot. Sizes and
-    // distances are in character heights. Not limited to the three frames:
-    // they pop through the eruption and out the other side.
+    // around the origin, from the charge's last beat into the shot. Sizes
+    // and distances are in character heights. They pop through the eruption
+    // and out the other side.
     stars: {
       count: 7,
       fromS: -0.12,
@@ -990,65 +982,6 @@ export const rigConfig = {
       maxR: 0.85,
       spread: 0.42,             // of a full turn either side of the beam axis
       lead: 0.18                // pushed down the beam: knocked loose by it
-    },
-
-    // ── THE BLAST (engine/behavior/wind.js) ────────────────────────────────
-    // her own beam's wind, pushing her back and battering her while it pours
-    // out (2026-10-04, by instruction; the owner chose "hold ground, slight
-    // slide"). One field, read by every part that would feel air.
-    wind: {
-      riseS: 0.05,              // the blast front arrives this fast...
-      blast: 0.6,               // ...overshooting by this much...
-      blastS: 0.12,             // ...and settling over this
-      decayS: 0.22,             // once the beam starts to go, the air dies on
-                                // this time constant (k is 16% at the end of
-                                // the fade, gone a third of a second later)
-      gustHz: 3.2,              // the turbulence's main rate: gusts, not buzz.
-                                // a second octave rides 2.7x faster on it
-
-      // THE PUSH (brain.js, "fire"). She is shoved back slideMul x her radius
-      // (her radius is half her height: the owner's "about half her height")
-      // on an exponential, held there by a near-critical spring she resists
-      // with, and the gusts shove her around that point.
-      slideMul: 1.0,
-      slideTau: 0.2,
-      holdOmega: 9,             // rad/s: the grip. Stiff enough to read as
-      holdZeta: 0.7,            // gripping, loose enough to be knocked about
-      buffetAccel: 2400,        // px/s^2 of shove along the flow, at full wind
-      crossAccel: 1100,         // ...and across it: the unsteady sideways sway
-
-      // THE BODY (bodyPose.js): gust torque on her orientation spring, in
-      // rad/s^2 at full wind -- in the page's plane, and about her own long
-      // axis (a twist, the roll a flag makes)
-      torque: 80,               // (34 was measured as only +40% body travel over
-                                // no wind: the brace spring is stiff, by design)
-      rollTorque: 60,
-      rippleDeg: 6,             // a wave down the spine, the streamlined body
-      rippleHz: 6.5,            // waving in the flow
-      ripplePhase: 0.9,         // rad per spine bone: it travels tailward
-
-      // THE LIMBS (limbPose.js)
-      limbStream: 0.4,          // pushed this much further past the cruise pose
-      limbFlutterDeg: 13,       // ...and fluttering, each limb at its own rate
-      limbFlutterHz: 7.5,       // round this. 10 read as a buzz: the panic's
-                                // lesson (limbPose.js) -- above ~10 Hz a limb
-                                // vibrates rather than flaps
-
-      // THE EARS (earSprings.js)
-      earFlattenDeg: 38,
-      earGustDeg: 16,           // the gust on top: the underdamped springs flap
-
-      // THE TAIL (tailChain.js): air velocity past it, world units/s at full
-      // wind, fed into its drag. The tail's drag is anisotropic, so a strand in
-      // a flow streams AND flutters; the gust term travels down it.
-      tailAir: 2.6,
-      tailGust: 0.6,            // how much of the flow the gusts swing
-      tailGustHz: 4.5,
-      tailGustLag: 0.55,        // rad per particle: the gust travels down it
-
-      squint: 0.75,             // eyes narrowed into it
-      shakePx: 2.5,             // the render-only buzz on top (mew.js), the
-      shakeHz: 13               // flail's own trick, at a wind's amplitude
     },
 
     // ── THE BURN (site/pressgl.js) ─────────────────────────────────────────
@@ -1271,6 +1204,12 @@ export const rigConfig = {
       durS: 1.5,              // the same length as the flail
       attack: 0.05,           // drawn on fast, tip first
       release: 0.14,          // ...and whipped off at the end: the eyes OPEN
+      // AND HELD FOR THE WHOLE HYPER BEAM (2026-10-04, by instruction): the
+      // >.< is up for as long as she is firing -- no stars, no flail, only
+      // the face -- drawn on this fast at the shot and off this fast as the
+      // beam finishes. Seconds.
+      fireInS: 0.06,
+      fireOutS: 0.2,
       fullSpeed: 1100,        // impact px/s that draws it at full strength
       // it ignores depth so it can sit on the face, which means nothing stops
       // it sitting on the back of the skull either. fade it by how squarely the

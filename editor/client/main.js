@@ -214,7 +214,7 @@ async function save() {
   if (ed.editing) ed.finishText();
   const body = store.payload(toCss);
   const cssChanged = body.css !== state.css;
-  if (!body.ops.length && !cssChanged && !body.palette && !body.tokens && !body.projectInks && !body.fx) {
+  if (!body.ops.length && !cssChanged && !body.palette && !body.tokens && !body.projectInks) {
     toast("Nothing to save.");
     return;
   }
@@ -231,7 +231,6 @@ async function save() {
   if (cssChanged) lines.push(`styles → src/styles/edits.css (${Object.keys(store.styles.rules).length} rules)`);
   if (body.palette || body.tokens) lines.push("colours → site.css, palette.js" + (body.tokens?.["--paper"] ? ", index.html" : ""));
   if (body.projectInks) lines.push(`project inks → projects.js (${Object.keys(body.projectInks).join(", ")})`);
-  if (body.fx) lines.push(`Mew's impact frames: ${body.fx.impactMode === "screen" ? "the whole screen" : "along the beam"} → rigConfig.js`);
 
   const warns = [];
   for (const [sel, bps] of Object.entries(store.styles.rules)) {

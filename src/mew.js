@@ -385,9 +385,8 @@ export function bootMew({ world, deck, scope, enter = false }) {
       under: fxUnderRoot, over: fxOverRoot, config: cfg.attack,
       getMouthDoc: mouthDoc,
       getOriginDoc: beamOriginDoc,
-      getBodyDoc: () => ({ x: body.pos.x, y: body.pos.y }),
       // the same aim the brain takes at the shot (behavior/brain.js, "charge"),
-      // so the guide line and the impact frames point where the beam will go
+      // so the row of glints along the path points where the beam will go
       getAim: () => {
         const p = world.pointer.pos;
         const dx = p.x - body.pos.x, dy = p.y - body.pos.y;
@@ -396,8 +395,6 @@ export function bootMew({ world, deck, scope, enter = false }) {
       },
       charScale: () => characterPx() / cfg.sizing.characterHeightPx,
       getDocSize: () => world.docSize,
-      getView: () => ({ w: world.viewport.w, h: world.viewport.h, sy: window.scrollY }),
-      present,
       // THE PAPER BURNING UNDER IT is the sheet's, not hers: the press draws it
       // below the words (site/deck.js, site/pressgl.js), so the type stays on
       // top of the sky it exposes. Without a deck it simply does not happen.
@@ -462,10 +459,7 @@ export function bootMew({ world, deck, scope, enter = false }) {
     // debug handle for devtools + automated checks
     window.__AW__ = {
       rig, world, body, brain, view, poser, face, faceOv, skinned, shade,
-      sparkle, sweat, isShiny, THREE, mouthDoc, beamOriginDoc,
-      // the live config: the editor sets impact.mode on it so a switch shows
-      // on the next shot without a reload
-      cfg
+      sparkle, sweat, isShiny, THREE, mouthDoc, beamOriginDoc
     };
     // ...and the rest of her: the stars, the sweat and the >.< face are hidden
     // until their moment, so they were compiled AT their moment -- the same
@@ -576,17 +570,6 @@ export function bootMew({ world, deck, scope, enter = false }) {
         const w = simTime * cfg.limbs.flailShakeHz * 2 * Math.PI;
         px += Math.sin(w) * f;
         py += Math.cos(w * 1.37) * f * 0.7;
-      }
-      // ...and in her own blast, a buzz at a wind's amplitude, harder in the
-      // gusts (behavior/wind.js). Render-only, like the shake above: the push
-      // and the strain are physics in the brain; this is the air's rattle.
-      const wnd = world.wind;
-      if (wnd && wnd.k > 0.01) {
-        const W = cfg.attack.wind;
-        const f = W.shakePx * Math.min(wnd.k, 1.3) * (0.5 + 0.5 * Math.abs(wnd.gust));
-        const w = simTime * W.shakeHz * 2 * Math.PI;
-        px += Math.sin(w) * f;
-        py += Math.cos(w * 1.29) * f * 0.8;
       }
       const snap = present.snapPx();
       if (snap > 0) {

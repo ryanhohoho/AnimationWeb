@@ -804,17 +804,6 @@ export function createInspector(ed, mount) {
       else ed.store.global(`${slug} ink`, mutate, after);
     };
     const val = (v) => () => ({ value: v, from: ed.bp, computed: v });
-    const applyImpact = () => {
-      const cfg = ed.win?.__AW__?.cfg;
-      if (cfg?.attack?.impact) cfg.attack.impact.mode = ed.store.fx.impactMode;
-    };
-    const setImpact = (mode) => {
-      if (ed.store.fx.impactMode === mode) return;
-      ed.store.global(`Impact frames: ${mode === "screen" ? "whole screen" : "along the beam"}`,
-        (st) => { st.fx.impactMode = mode; }, () => { applyImpact(); render(); });
-    };
-    // a frame that reloaded since the switch carries the file's value again
-    applyImpact();
 
     // ── FIG. 2's backlight ─────────────────────────────────────────────────
     // Six :root tokens, so each colour goes through setTok like any other and
@@ -864,16 +853,6 @@ export function createInspector(ed, mount) {
           h("button", { class: `ghost${same(VIVID_GLOW) ? " on" : ""}`, onclick: () => setGlow("Backlight: Vivid", VIVID_GLOW) }, "Vivid")),
         h("div", { style: { fontSize: "10.5px", color: "var(--faint)", marginTop: "8px", lineHeight: 1.5 } },
           "The six colours the light round the figure is mixed from. They drift round the frame and blend where they meet, so it is the set that matters more than the order. Lit in full while this panel is open. Saved to --glow-1…6 in site.css.")]) : null,
-      // ── Mew's hyper beam ─────────────────────────────────────────────────
-      // where the three impact frames before the shot are drawn. Applied to
-      // the running site at once (its config object is live, and the beam
-      // reads it on every shot), saved to rigConfig.attack.impact.mode.
-      sec("Mew's hyper beam — impact frames", [
-        h("div", { class: "glow-presets" },
-          h("button", { class: `ghost${ed.store.fx.impactMode !== "screen" ? " on" : ""}`, onclick: () => setImpact("band") }, "Along the beam"),
-          h("button", { class: `ghost${ed.store.fx.impactMode === "screen" ? " on" : ""}`, onclick: () => setImpact("screen") }, "Whole screen")),
-        h("div", { style: { fontSize: "10.5px", color: "var(--faint)", marginTop: "8px", lineHeight: 1.5 } },
-          "The three black-and-white frames just before she fires: a cut strip along the shot's path from behind her to the edge of the window, or the whole window. Tick Preview and click Mew to see it. Saved to rigConfig.js.")]),
       sec("Type and line colours", [h("div", { class: "pal-row" },
         colorField({ label: "Ink (--ink)", get: val(T["--ink"]), set: setTok("--ink"), allowVars: false, allowNone: false }),
         colorField({ label: "Labels (--n3)", get: val(T["--n3"]), set: setTok("--n3"), allowVars: false, allowNone: false }),

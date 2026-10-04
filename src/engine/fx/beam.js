@@ -1,19 +1,18 @@
 // beam.js
 // MEW'S HYPER BEAM, redrawn from nothing on 2026-10-04 (owner's brief: the shape
-// of cmzw_'s hand-animated beam, the colours of regidrago's, impact frames with
-// stars before the shot, and the paper burning away under it). Only the old
+// of cmzw_'s hand-animated beam, the colours of regidrago's, stars round the
+// shot, and the paper burning away under it). Only the old
 // beam's TIMING survives -- rigConfig.attack.chargeS / expandS / sustainS /
 // fadeS, which the brain reads too -- and everything inside those beats is new:
 //
 //   CHARGE (1.5 s)   an orb gathers at the mouth, hand-drawn and boiling;
 //                    streaks of light are drawn into it; pink lightning
-//                    crackles round it. (A dashed guide line toward the target
-//                    was here; removed 2026-10-04, by instruction.)
-//   IMPACT (the charge's last 0.2 s)
-//                    three drawings, negative / positive / negative, in a
-//                    hand-cut band along the shot's path from behind her to
-//                    the window's edge (or the whole window: impact.mode),
-//                    her as a flat silhouette in it and glints at the origin.
+//                    crackles round it; a row of glints pops outward along
+//                    the path the shot will take. All of it follows the
+//                    cursor, as she does. In its last beat the first stars
+//                    form round the origin.
+//                    (Impact frames and a dashed guide line were both here
+//                    for a day; the owner removed them, 2026-10-04.)
 //   FIRE (0.12 s)    the beam erupts: a point that opens like a bullet's nose
 //                    (fx/beamShape.js envelope), overshooting its width and
 //                    snapping back; a parabolic sheath and two shock rings
@@ -40,11 +39,11 @@ import * as THREE from "three";
 import { beamLength } from "./beamGeometry.js";
 import {
   envelope, fireTimeline, chargeTimeline, jaggedPath, wrapArc,
-  starSchedule, starScale, hash1
+  starSchedule, pathStarSchedule, starScale, hash1
 } from "./beamShape.js";
 import {
   makeNoiseTexture, beamMaterial, orbMaterial, lineMaterial, starMaterial,
-  impactMaterial, ringMaterial
+  ringMaterial
 } from "./beamMaterials.js";
 import { mulberry32 } from "../../utils/math.js";
 
@@ -58,17 +57,14 @@ const rgb = (hex) => {
  * @param config        rigConfig.attack
  * @param getMouthDoc   () => {x,y} the mouth, document px
  * @param getOriginDoc  (dir) => {x,y} where the shot leaves (clear of the head)
- * @param getBodyDoc    () => {x,y} her centre
  * @param getAim        () => {x,y} unit vector toward the target right now
  * @param charScale     () => her height / the reference height
  * @param getDocSize    () => {w,h}
- * @param getView       () => {w, h, sy} the window, and how far down the page it is
- * @param present       the presentation pass (setFlat paints her silhouette)
  * @param burn          { set(state), clear() } -- the paper under the beam
  */
 export function createBeamFx({
-  under, over, config, getMouthDoc, getOriginDoc, getBodyDoc, getAim,
-  charScale, getDocSize, getView, present, burn
+  under, over, config, getMouthDoc, getOriginDoc, getAim,
+  charScale, getDocSize, burn
 }) {
   const cfg = config;
   const P = cfg.palette;
@@ -110,12 +106,9 @@ export function createBeamFx({
   const beamMat = beamMaterial(noise, cfg);
   const beam = keep(new THREE.Mesh(beamGeo, beamMat), 2);
 
-  const impactMat = impactMaterial(cfg);
-  const impact = keep(new THREE.Mesh(quad, impactMat), 1);
-
   const rings = [];
   for (let i = 0; i < cfg.look.rings; i++) rings.push(keep(new THREE.Mesh(quad, ringMaterial(cfg)), 3 + i));
-  under.add(impact, beam, ...rings);
+  under.add(beam, ...rings);
 
   const orbMat = orbMaterial(cfg);
   const orb = keep(new THREE.Mesh(quad, orbMat), 1);
@@ -188,8 +181,8 @@ export function createBeamFx({
     lines.visible = li > 0;
   }
 
-  // ── stars: a quad each, rebuilt per frame (a dozen at most)
-  const SV = 16;
+  // ── stars: a quad each, rebuilt per frame (the origin's and the path's)
+  const SV = 24;
   const sPos = new Float32Array(SV * 4 * 3), sLoc = new Float32Array(SV * 4 * 2), sShape = new Float32Array(SV * 4 * 4);
   const sIdx = new Uint16Array(SV * 6);
   for (let i = 0; i < SV; i++) {
@@ -213,27 +206,25 @@ export function createBeamFx({
   let seed = 1;
   let dir = { x: 1, y: 0 };
   let sched = [];
+  let pathSched = [];
   let lastBoil = -1;
   let arcs = [];                // the current drawing's bolts, in a local frame
-  let flat = null;
-
-  function setFlat(hex) {
-    if (flat === hex) return;
-    flat = hex;
-    present?.setFlat?.(hex);
-  }
 
   function hideAll() {
-    for (const m of [beam, impact, orb, lines, stars, ...rings]) m.visible = false;
-    setFlat(null);
+    for (const m of [beam, orb, lines, stars, ...rings]) m.visible = false;
+  }
+
+  function newSeed() {
+    seed = (Math.random() * 0xffffffff) >>> 0;
+    sched = starSchedule(seed, cfg);
+    pathSched = pathStarSchedule(seed, cfg);
   }
 
   function startCharge() {
     mode = "charge";
     t = 0;
     lastBoil = -1;
-    seed = (Math.random() * 0xffffffff) >>> 0;
-    sched = starSchedule(seed, cfg);
+    newSeed();
   }
 
   function fire(_origin, d) {
@@ -241,96 +232,72 @@ export function createBeamFx({
     t = 0;
     lastBoil = -1;
     dir = { x: d.x, y: d.y };
-    if (!sched.length) { seed = (Math.random() * 0xffffffff) >>> 0; sched = starSchedule(seed, cfg); }
-    impact.visible = false;
-    setFlat(null);
+    if (!sched.length) newSeed();
   }
 
-  // ── the stars, both sides of the shot
-  function drawStars(tShot, origin, d, k) {
-    const H = k * 150;   // the character's height in px (sizing.characterHeightPx)
-    let n = 0;
-    for (const s of sched) {
-      if (n >= SV) break;
-      const sc = starScale(tShot, s);
-      if (sc <= 0) continue;
-      const cx = origin.x + d.x * s.fwd * H - d.y * s.side * H;
-      const cy = origin.y + d.y * s.fwd * H + d.x * s.side * H;
-      const ax = s.size * H * sc * (s.kind ? 1 : 1);
-      const ay = s.kind ? ax * 0.48 : ax;
-      // a flare lies along the beam; a twinkle is upright or turned 45
-      const ang = s.kind ? Math.atan2(d.y, d.x) : s.rot;
-      const c = Math.cos(ang), sn = Math.sin(ang);
-      const ext = Math.max(ax, ay) + 3;
-      const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
-      for (let v = 0; v < 4; v++) {
-        const [lx, ly] = corners[v];
-        const px = lx * ext, py = ly * ext;
-        const o = (n * 4 + v);
-        sPos[o * 3] = cx + px * c - py * sn;
-        sPos[o * 3 + 1] = cy + px * sn + py * c;
-        sPos[o * 3 + 2] = 0;
-        sShape[o * 4] = ax; sShape[o * 4 + 1] = ay; sShape[o * 4 + 2] = 1; sShape[o * 4 + 3] = s.kind;
-      }
-      n++;
+  // ── the stars: one quad each, filled into the buffer as they are placed
+  let nStars = 0;
+  const CORNERS = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+  function pushStar(cx, cy, ax, ay, ang, kind) {
+    if (nStars >= SV) return;
+    const c = Math.cos(ang), sn = Math.sin(ang);
+    const ext = Math.max(ax, ay) + 3;
+    for (let v = 0; v < 4; v++) {
+      const px = CORNERS[v][0] * ext, py = CORNERS[v][1] * ext;
+      const o = nStars * 4 + v;
+      sPos[o * 3] = cx + px * c - py * sn;
+      sPos[o * 3 + 1] = cy + px * sn + py * c;
+      sPos[o * 3 + 2] = 0;
+      sShape[o * 4] = ax; sShape[o * 4 + 1] = ay; sShape[o * 4 + 2] = 1; sShape[o * 4 + 3] = kind;
     }
+    nStars++;
+  }
+  function flushStars() {
     sAttr.position.needsUpdate = true;
     sAttr.aShape.needsUpdate = true;
-    starGeo.setDrawRange(0, n * 6);
-    stars.visible = n > 0;
+    starGeo.setDrawRange(0, nStars * 6);
+    stars.visible = nStars > 0;
+  }
+
+  /** the stars round the origin, both sides of the shot (tShot: time since it) */
+  function originStars(tShot, origin, d, k) {
+    const H = k * 150;   // the character's height in px (sizing.characterHeightPx)
+    for (const s of sched) {
+      const sc = starScale(tShot, s);
+      if (sc <= 0) continue;
+      const ax = s.size * H * sc;
+      const ay = s.kind ? ax * 0.48 : ax;
+      // a flare lies along the beam; a twinkle is upright or turned 45
+      pushStar(origin.x + d.x * s.fwd * H - d.y * s.side * H,
+        origin.y + d.y * s.fwd * H + d.x * s.side * H,
+        ax, ay, s.kind ? Math.atan2(d.y, d.x) : s.rot, s.kind);
+    }
+  }
+
+  /** THE ROW ALONG THE PATH, in the dashed guide line's place: glints popping
+      outward from the muzzle toward where the shot will go, laid on the LIVE
+      aim each frame, as the line was (tCharge: time since the press) */
+  function pathStars(tCharge, origin, d, k) {
+    const H = k * 150;
+    const reach = cfg.pathStars.reachPx * k;
+    for (const s of pathSched) {
+      const sc = starScale(tCharge, s);
+      if (sc <= 0) continue;
+      const ax = s.size * H * sc;
+      pushStar(origin.x + d.x * s.along * reach - d.y * s.side * H,
+        origin.y + d.y * s.along * reach + d.x * s.side * H,
+        ax, ax, s.rot, 0);
+    }
   }
 
   // ── CHARGE ──────────────────────────────────────────────────────────────
   function updateCharge(dt) {
     const ct = chargeTimeline(t, cfg);
     const k = charScale();
-    const H = 150 * k;
     const aim = getAim();
     const mouth = getMouthDoc();
     const origin = getOriginDoc(aim);
     lv = 0; li = 0;
-
-    if (ct.impact >= 0) {
-      // THE IMPACT FRAMES replace everything else: one drawing each, held.
-      // The region is read LIVE from the config, so the editor's switch
-      // (impact.mode, "band" | "screen") takes on the next shot.
-      const I = cfg.impact;
-      const whole = I.mode === "screen";
-      const u = impactMat.uniforms;
-      const vw = getView();
-      u.uO.value.set(origin.x, origin.y);
-      u.uD.value.set(aim.x, aim.y);
-      u.uBack.value = I.backMul * H;
-      u.uLen.value = beamLength(origin, aim, getDocSize());
-      u.uHalf.value = I.bandHalfMul * H;
-      u.uWhole.value = whole ? 1 : 0;
-      u.uScreen.value.set(0, vw.sy, vw.w, vw.h);
-      // the lines are drawn at the size of what they are in: the band's
-      // reach, or the window's
-      const R = whole ? Math.hypot(vw.w, vw.h) * 0.5 : I.bandHalfMul * H * 2.6;
-      u.uR.value = R;
-      u.uFrame.value = ct.impact;
-      const fs = seed + ct.impact * 7919;
-      u.uSeed.value.set(hash1(fs), hash1(fs + 1) * 10, hash1(fs + 2) * 10, hash1(fs + 3) * 10);
-      const rng = mulberry32(fs >>> 0);
-      const nStars = ct.impact === 1 ? 2 : 3 + Math.floor(rng() * 2);
-      // the glints sit round the muzzle, inside the band's width
-      const spread = I.bandHalfMul * H * 0.8;
-      for (let i = 0; i < 4; i++) {
-        const S = u.uStars.value[i];
-        if (i >= nStars) { S.set(0, 0, 0, 0); continue; }
-        S.set((rng() * 1.6 - 0.3) * spread * 1.6, (rng() - 0.5) * 2 * spread,
-          H * (0.07 + 0.08 * rng()), rng() < 0.5 ? 0 : Math.PI / 4);
-      }
-      impact.visible = true;
-      setFlat(ct.impact === 1 ? P.ink : P.flash);
-      orb.visible = false;
-      flushLines();
-      drawStars(t - cfg.chargeS, origin, aim, k);
-      return;
-    }
-    impact.visible = false;
-    setFlat(null);
 
     // the orb, at the mouth
     const C = cfg.charge;
@@ -387,7 +354,10 @@ export function createBeamFx({
     }
 
     flushLines();
-    drawStars(t - cfg.chargeS, origin, aim, k);
+    nStars = 0;
+    pathStars(t, origin, aim, k);
+    originStars(t - cfg.chargeS, origin, aim, k);
+    flushStars();
   }
 
   // ── FIRE ────────────────────────────────────────────────────────────────
@@ -489,7 +459,9 @@ export function createBeamFx({
       bolt(pts, k, ft.alpha * (1 - ft.breakup) * (1 - ft.breakup));
     }
     flushLines();
-    drawStars(t, origin, dir, k);
+    nStars = 0;
+    originStars(t, origin, dir, k);
+    flushStars();
 
     // THE PAPER UNDER IT (site/pressgl.js). Handed over in document px; the
     // deck converts to the plate's design px.

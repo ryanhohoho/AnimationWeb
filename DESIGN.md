@@ -539,19 +539,15 @@ and the colours of regidrago's, in her pink. Every part answers to something:
   healed inside the shot. The words stay on top: type still never sits ON the
   print in a way you cannot read past, and the burn's edge is printed char, in
   the press's two inks, not a gradient.
-- **Three impact frames, along the shot, not the window.** Negative,
-  positive, negative, her as one flat ink, in a cut strip from behind her to
-  the window's edge -- the beam's own path, inverted, the way cmzw's frames
-  are drawn. Kept off the rest of the page because this is a portfolio and the
-  rest of the page is somebody's reading; the editor can switch it to the
-  whole window (2026-10-04, by instruction).
-- **And then her own blast batters her.** One wind field
-  (`behavior/wind.js`) that every part of her reads in its own physics: she is
-  shoved back half her height and grips there, the gusts torque a body her
-  brace has to haul back, the tail's drag streams and flutters it, the limbs
-  and ears flap, she squints into it. Nothing is keyframed onto a limb; the
-  air is a quantity and the animal answers it, which is the site's rule for
-  her from the first day.
+- **No impact frames: stars.** Black-and-white impact frames were built
+  twice (round her, then along the shot) and removed both times by the owner
+  (2026-10-04): on this page they were louder than the beam. What stayed is
+  the stars that form round the origin, and a row of glints popping outward
+  along the path the shot will take, where a dashed guide line used to be.
+- **Her face, not her body.** She wears the >.< for the whole shot and opens
+  her eyes when it ends -- the same glyph a bump gives her, without the
+  stars or the flail. A wind that battered her whole body was tried and
+  removed: on her rig it read as jitter.
 
 STATE.md §26 has the numbers and the measurements.
 

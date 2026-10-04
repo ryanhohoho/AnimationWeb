@@ -226,7 +226,6 @@ export function createCutout({ renderer, config }) {
       if (over) renderer.render(over, fxCam);
       renderer.autoClear = ac;
     },
-    setFlat() {},
     dispose() {
       rt.dispose();
       blitMat.dispose();
