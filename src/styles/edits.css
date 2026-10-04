@@ -86,11 +86,15 @@
 
 /* @hide t */
 @media (min-width:561px) and (max-width:860px) {
+  #doc[data-page="home"] [data-e="label-hp1n"] { display:none; }
+  #doc[data-page="home"] [data-e="label-hs1y"] { display:none; }
   #doc[data-page="home"] [data-e="t-3pyx"] { display:none; }
   #doc[data-page="project:iclicker"] [data-e="t-fdqs"] { display:none; }
 }
 
 /* @hide p */
 @media (max-width:560px) {
+  #doc[data-page="home"] [data-e="label-hp1n"] { display:none; }
+  #doc[data-page="home"] [data-e="label-hs1y"] { display:none; }
   #doc[data-page="home"] [data-e="t-3pyx"] { display:none; }
 }

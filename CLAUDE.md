@@ -401,7 +401,9 @@ when only the numbers were.
   anything in another face -- FIG. 2's terminal, the vendored demo's shadow
   root -- sets `font-size-adjust:none` or it is scaled 1.265x.
 - **Mew sleeps with a CLASS, not an inline style** (`#stage.asleep`). The editor
-  hides her with the inline visibility; waking must not overrule it.
+  hides her with the inline visibility; waking must not overrule it. And the
+  class comes off in `renderFrame`, after the first frame drawn on waking --
+  the canvas still holds her last picture from before she slept.
 - **The motion page's viewer lives on `<body>`, and its ground canvas moves into
   it while open.** `#doc` is a stacking context under the grain; a canvas moved
   in the DOM keeps its WebGL context, so the ground travels rather than being

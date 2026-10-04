@@ -230,12 +230,17 @@ export function bootMew({ world, deck, scope, enter = false }) {
     wantSleep = !!(e && e.sleep);
     if (!wantSleep && asleep) {
       asleep = false;
-      canvas.classList.remove("asleep");
-      canvas.style.opacity = "";
       fadedOut = false;
+      // ...but NOT shown yet. The canvas still holds the last picture it drew
+      // before she slept -- her, wherever she was standing -- and showing it now
+      // put that stale frame on screen for one frame before the first new one
+      // replaced it (the flicker entering Contact, 2026-10-04). It is revealed
+      // by renderFrame, in the same task as the first frame drawn after waking.
+      reveal = true;
       if (rig) loop.start();
     }
   });
+  let reveal = false;
 
   // ── LEAVING CONTACT ON A PAGE TURN (2026-10-04, by instruction) ──────────
   // Home is only ever left through a crossing, and she flies out of those.
@@ -600,6 +605,11 @@ export function bootMew({ world, deck, scope, enter = false }) {
         }
       }
       present.render(scene, camera, { dt, scrollY: window.scrollY, ...fx });
+      if (reveal) {
+        reveal = false;
+        canvas.classList.remove("asleep");
+        canvas.style.opacity = "";
+      }
     }
   });
 }

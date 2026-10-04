@@ -2673,6 +2673,13 @@ Two rounds on the same day; this section is what is left after the second.
   through the real router with a stepped clock. Router presence test updated: Home and Contact present, a
   visit reaching Contact boots her, one reaching neither does not, reduced motion never does.
 
+**A one-frame flicker entering Contact, fixed.** Coming to Contact from any page but Home, she showed
+for one frame at the spot she had left before flying in from the side. Her BODY was already parked off
+screen; the CANVAS still held the last picture drawn before she slept, and waking removed `.asleep`
+before the loop had drawn a new one. The wake now only arms `reveal`, and `renderFrame` removes the class
+in the same task as the first frame drawn after it (`mew.js`). Reproduced, then checked, with a stepped
+clock: on the frame the canvas is shown again she is off the right edge and nothing of her is on it.
+
 **Tests.** 1159 sim checks + the router harness, all green. The beam section now checks that no impact
 frames or guide line are scheduled, the path glints (determinism, window, outward waves, drawn late in
 the charge and not before), and the >.< hold (none in the charge, up within a beat of the shot, gone after,
