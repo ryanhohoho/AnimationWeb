@@ -5,7 +5,10 @@
 //   pixelRatio(dpr) -> number   what the renderer should draw at
 //   snapPx()        -> number   render-position quantization (0 = none)
 //   resize(w, h)
-//   render(scene, camera, { dt, scrollY })
+//   render(scene, camera, { dt, scrollY, under, over, fxCamera })
+//                               under/over: the hyper beam's scenes, drawn at
+//                               full resolution either side of the character
+//   setFlat(hex | null)         her flat silhouette for the impact frames
 //   dispose()
 //
 // "none" is a passthrough that just renders the scene straight to the canvas.
@@ -46,9 +49,19 @@ export function createPresentation({ renderer, config }) {
     pixelRatio: (dpr) => dpr,
     snapPx: () => 0,
     resize() {},
-    render(scene, camera) {
+    // the hyper beam's two scenes, either side of her (see pixelate.js)
+    render(scene, camera, opts) {
+      const under = opts?.under, over = opts?.over, fxCam = opts?.fxCamera;
+      if (!fxCam || (!under && !over)) { renderer.render(scene, camera); return; }
+      const ac = renderer.autoClear;
+      renderer.clear();
+      renderer.autoClear = false;
+      if (under) renderer.render(under, fxCam);
       renderer.render(scene, camera);
+      if (over) renderer.render(over, fxCam);
+      renderer.autoClear = ac;
     },
+    setFlat() {},
     dispose() {}
   };
 }

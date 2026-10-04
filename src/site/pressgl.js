@@ -187,6 +187,33 @@ uniform float uEatIdn;
 uniform float uOverlay;    // 1 = draw ONLY the eating, with alpha, for the
                            //     layer that sits above the type
 
+// ── THE BURN: WHERE MEW'S HYPER BEAM HAS EATEN THE PAPER (2026-10-04) ────────
+// By the owner's brief, the beam "exposes the dither on areas it hits by making
+// parts of the background translucent", fading toward the beam's edges "so it
+// looks like natural erosion". The paper is what this shader paints, so the
+// paper is what burns: a beam-shaped opening onto the print, under the type
+// (the owner's choice -- the words stay on top of the sky they are standing
+// on), with the beam itself drawn over everything in mew's canvas.
+//
+// It is the crossing's idea at a different scale: an opening whose edge is
+// chewed by the WEATHER, so it tears along the clouds rather than along a
+// gradient. Its shape is the beam's own envelope -- beamEnv below is a
+// TRANSCRIPTION of envelope() in engine/fx/beamShape.js; change one, change
+// the other -- widened by uBurnD.x, so the paper is gone well past the beam's
+// edge and the sky shows there through its haze. Just outside the opening the
+// paper is SINGED: a fringe of the second ink's dots, printed by the same
+// screen as everything else, which is the press's own way of saying heat.
+//
+//   uBurnA  origin xy, direction xy        (design px of the plate)
+//   uBurnB  reach, full width, open 0..1, seed
+//   uBurnC  envelope: root, flare, power, spread
+//   uBurnD  width multiplier, muzzle radius (of the full width), -, -
+// uBurnB.z <= 0 is off.
+uniform vec4  uBurnA;
+uniform vec4  uBurnB;
+uniform vec4  uBurnC;
+uniform vec4  uBurnD;
+
 // ── A HOLE THAT IS A SHAPE RATHER THAN A RECTANGLE ───────────────────────────
 // Every other die-cut on this sheet is an axis-aligned rectangle, because that
 // is what a die-cut is. This one is a project's own ICON, cut through the card
@@ -364,6 +391,20 @@ vec3 printAt(vec2 px, vec3 inkA, vec3 inkB, float idn) {
   return PAPER * mix(vec3(1.0), inkA, cA) * mix(vec3(1.0), inkB, cB);
 }
 
+float beamEnv(float s, float W) {
+  float d = max(s, 0.0);
+  float x = d / max(1e-4, uBurnC.y * W);
+  float k = pow(x / (1.0 + x), uBurnC.z);
+  return (uBurnC.x + (1.0 - uBurnC.x) * k) * (1.0 + uBurnC.w * d / max(1e-4, W));
+}
+float hash21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x),
+             mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
 void main() {
   // gl_FragCoord counts up from the bottom; a sheet of paper counts down from
   // the top. Everything below is in the paper's coordinates.
@@ -471,6 +512,40 @@ void main() {
     open = max(open, eaten);
   }
 
+  // THE BURN. g is 1 on the beam's axis and 0 at the burn's edge; the edge is
+  // pushed in and out by the weather and by a finer grain, and the paper
+  // fades over the last half of the way in, so near the edge it is
+  // translucent and patchy and on the axis it is simply gone.
+  float burnt = 0.0, singe = 0.0;
+  if (uBurnB.z > 0.0) {
+    vec2 q = doc - uBurnA.xy;
+    float s = dot(q, uBurnA.zw);
+    float r = abs(q.x * uBurnA.w - q.y * uBurnA.z);
+    float W = uBurnB.y;
+    float hw = 0.5 * W * beamEnv(s, W) * uBurnD.x * uBurnB.z;
+    float mz = 0.5 * W * uBurnD.y * uBurnB.z;
+    // the cheap reject: most of the window is nowhere near it
+    if (r < hw * 1.5 + 24.0 || length(q) < mz * 1.5 + 24.0) {
+      // past the front the burn ends in a round, behind the origin it is the
+      // muzzle's circle
+      float front = max(s - uBurnB.x, 0.0);
+      float g = s >= 0.0 ? 1.0 - length(vec2(r, front)) / max(hw, 1.0) : -1.0;
+      g = max(g, 1.0 - length(q) / max(mz, 1.0));
+      // two scales of bite: the weather for the big bays, a grain for the
+      // fibres of the paper. Pushed hard enough that the edge wanders and
+      // leaves islands -- an even margin reads as a stencil, not a burn.
+      vec2 nuv = vec2(doc.x / uPlate.x * 1.7, foldV(doc.y * 1.7));
+      float n = 0.55 * dens(nuv) + 0.3 * vnoise(doc / 23.0 + uBurnB.w * 97.0)
+              + 0.15 * vnoise(doc / 6.0 + uBurnB.w * 31.0);
+      float ge = g - (n - 0.5) * 0.85;
+      burnt = smoothstep(0.0, 0.55, ge);
+      // the singe peaks AT the burnt edge and dies a short way out: a char
+      // line, not a border
+      singe = smoothstep(-0.1, 0.0, ge) * (1.0 - smoothstep(0.0, 0.12, ge));
+    }
+    open = max(open, burnt);
+  }
+
   // ── THE OVERLAY PASS ─────────────────────────────────────────────────
   // The eating has to be able to cover the TYPE, and the type sits above the
   // sheet. So during a crossing the same shader is run a second time in this
@@ -483,7 +558,16 @@ void main() {
     return;
   }
 
-  if (open <= 0.0) { OUT = vec4(PAPER, 1.0); return; }
+  // THE SINGED FRINGE is printed ON the paper, by the same two screens as the
+  // sky: rose where it is warm, and at the very edge both inks overprinted,
+  // which on this press is the darkest thing it can lay -- char.
+  vec3 paper = PAPER;
+  if (singe > 0.0) {
+    paper *= mix(vec3(1.0), uInkB, screenDot(singe * 0.5, doc + REG, ANG_B));
+    paper *= mix(vec3(1.0), uInkA, screenDot(singe * singe * 0.3, doc, ANG_A));
+  }
+
+  if (open <= 0.0) { OUT = vec4(paper, 1.0); return; }
 
   // The gate prints in the project it is a window onto — and so does the
   // CROSSING, from its very first frame. It used to eat outward in the home
@@ -499,7 +583,7 @@ void main() {
   vec3 iA = eat ? uEatA : (gate ? uInkA2 : uInkA);
   vec3 iB = eat ? uEatB : (gate ? uInkB2 : uInkB);
   float idn = eat ? uEatIdn : (gate ? uAltIdn : uIdentity);
-  OUT = vec4(mix(PAPER, printAt(doc, iA, iB, idn), open), 1.0);
+  OUT = vec4(mix(paper, printAt(doc, iA, iB, idn), open), 1.0);
 }`;
 
 const FRAG_300 = `#version 300 es
@@ -573,7 +657,8 @@ export function createSheetPress(canvas, sheet, frames) {
   for (const n of ["uDens", "uTex", "uFrames", "uF", "uRes", "uScroll", "uOrigin", "uZoom", "uPlate", "uRefH", "uSky", "uSkyRamp", "uBand",
                    "uInkA", "uInkB", "uInkA2", "uInkB2", "uAltHole", "uAltIdn", "uOverlay", "uIdentity", "uRuling", "uHoles", "uHoleCount", "uCross", "uCross2", "uEatOut", "uEatA", "uEatB", "uEatIdn",
                    "uRoundHole", "uHoleFade",
-                   "uMask", "uMaskBox", "uMaskUV", "uMaskAmt", "uPaper"]) {
+                   "uMask", "uMaskBox", "uMaskUV", "uMaskAmt", "uPaper",
+                   "uBurnA", "uBurnB", "uBurnC", "uBurnD"]) {
     U[n] = gl.getUniformLocation(prog, n);
   }
 
@@ -646,7 +731,14 @@ export function createSheetPress(canvas, sheet, frames) {
    *                 Defaults to {x:0, y:scrollY}, the window over the page.
    * @param zoom     real px per design px (styles/designPx.js). Default 1.
    */
-  function draw({ w, h, scrollY, origin, zoom, plate, bandPx, inkA, inkB, alt, holes, f, ruling, cross, eat, overlay, sky, skyRamp, mask, holeDX, holeFade, roundHole, scissor }) {
+  /**
+   * @param burn     the hyper beam's burn, in DESIGN px of the plate:
+   *                 {x, y, dx, dy, reach, width, open, seed, env:{root, flare,
+   *                 power, spread}, widthMul, muzzleMul}, or null. Written on
+   *                 EVERY draw, off when absent: uniforms persist between
+   *                 draws, and a hole pass must not inherit the sheet's burn.
+   */
+  function draw({ w, h, scrollY, origin, zoom, plate, bandPx, inkA, inkB, alt, holes, f, ruling, cross, eat, overlay, sky, skyRamp, mask, holeDX, holeFade, roundHole, scissor, burn }) {
     if (w < 2 || h < 2) return false;
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w; canvas.height = h;
@@ -728,6 +820,14 @@ export function createSheetPress(canvas, sheet, frames) {
     }
 
     gl.uniform1f(U.uOverlay, overlay ? 1 : 0);
+    if (burn && burn.open > 0) {
+      gl.uniform4f(U.uBurnA, burn.x, burn.y, burn.dx, burn.dy);
+      gl.uniform4f(U.uBurnB, burn.reach, burn.width, burn.open, burn.seed || 0);
+      gl.uniform4f(U.uBurnC, burn.env.root, burn.env.flare, burn.env.power, burn.env.spread);
+      gl.uniform4f(U.uBurnD, burn.widthMul, burn.muzzleMul, 0, 0);
+    } else {
+      gl.uniform4f(U.uBurnB, 0, 0, 0, 0);
+    }
 
     // ── A SCISSORED PASS PAINTS ONE SMALL THING ──────────────────────────
     // The back arrow on a project sheet is a hole, and a hole lives on the

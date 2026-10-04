@@ -101,6 +101,13 @@ export function createDeck({ scope }) {
   let cross = null;         // { dir, t, cx, cy, r0, rFull, rEnd, mess } in DOC space
   let crossCovered = false;
   let xCrossLast = null;    // the last computed opening, for the checks
+  // THE HYPER BEAM'S BURN (engine/fx/beam.js hands it over every frame while
+  // the beam is out). Real document px as it arrives; converted to the plate's
+  // design px at draw time, like every hole. While it is set the full-screen
+  // sheet is shown -- it is what paints the paper -- exactly as for a crossing.
+  let burn = null;
+  let burnAt = 0;           // when it was last handed over (performance.now)
+  let burnDirty = false;
   let clip = null;
   let clipSettled = !hasSkyClip;
 
@@ -200,7 +207,10 @@ export function createDeck({ scope }) {
     }
   }
 
-  function paint(now, scrollOverride) {
+  // holesToo: false repaints ONLY the sheet. The burn changes every frame for a
+  // second and a half and the holes do not; they still reprint on their own
+  // reasons (the cloud tick, a scroll, a change), which the caller passes in.
+  function paint(now, scrollOverride, holesToo = true) {
     if (!ensure()) return false;
     const w = window.innerWidth, h = window.innerHeight;
     // THE WEATHER CLOCK IS ABSOLUTE. Wall-clock modulo the loop length cannot
@@ -298,7 +308,7 @@ export function createDeck({ scope }) {
     }
 
     // ── EVERY HOLE ON SCREEN PRINTS ITSELF ───────────────────────────────
-    for (const q of holes) {
+    for (const q of holesToo ? holes : []) {
       if (!q.box || !q.seen) continue;
       // an icon is white at rest: it has sky only while it is open
       const open = mask && mask.rec === q;
@@ -326,8 +336,15 @@ export function createDeck({ scope }) {
     // is hidden rather than drawn -- and its buffer, which the hole passes
     // above have just used as scratch, is never shown.
     const origin = { x: -stageX, y: sy };
-    if (xCross) {
-      if (eatCtx) {
+    // the burn, in the plate's design px (pressgl.js: doc = (vp + origin)/zoom,
+    // so a real document point is (x - stageX, y) / k)
+    const burnU = burn && burn.open > 0 ? {
+      x: (burn.x - stageX) / k, y: burn.y / k, dx: burn.dx, dy: burn.dy,
+      reach: burn.reach / k, width: burn.width / k, open: burn.open,
+      seed: burn.seed, env: burn.env, widthMul: burn.widthMul, muzzleMul: burn.muzzleMul
+    } : null;
+    if (xCross || burnU) {
+      if (eatCtx && xCross) {
         if (eatEl.width !== w || eatEl.height !== h) { eatEl.width = w; eatEl.height = h; }
         sheet.draw({
           w, h, scrollY: sy, origin, zoom: k, plate, bandPx: band,
@@ -341,9 +358,15 @@ export function createDeck({ scope }) {
       sheet.draw({
         w, h, scrollY: sy, origin, zoom: k, plate, bandPx: band,
         inkA, inkB, alt: null, eat, holes: [], f, sky, skyRamp,
-        cross: xCross, mask: null, holeDX: 0, holeFade: 1, roundHole: -1
+        cross: xCross, mask: null, holeDX: 0, holeFade: 1, roundHole: -1,
+        burn: burnU
       });
       canvas.style.visibility = "";
+      // a burn with no crossing leaves the eating layer as it was: off
+      if (!xCross && eatCtx && eatEl.classList.contains("on")) {
+        eatEl.classList.remove("on");
+        eatCtx.clearRect(0, 0, eatEl.width, eatEl.height);
+      }
     } else {
       canvas.style.visibility = "hidden";
       if (eatCtx && eatEl.classList.contains("on")) {
@@ -380,16 +403,19 @@ export function createDeck({ scope }) {
     // the window (its place on the plate changes as the page passes under it)
     // and the crossing, which is mounted to the document.
     const moved = window.scrollY !== lastScroll
-      && (!!cross || holes.some((q) => q.fixed && q.seen && q.box));
+      && (!!cross || !!burn || holes.some((q) => q.fixed && q.seen && q.box));
+    // a burn nobody has updated for a while belongs to a beam that stopped
+    // being drawn (she fell asleep mid-shot, the tab went away): let it go
+    if (burn && performance.now() - burnAt > 400) { burn = null; dirty = true; }
     // ...and with the weather held there is no tick, so the deck only ever
     // repaints for a real change
     const ticked = !reducedMotion &&
       Math.abs(f - lastF) >= (clip ? clip.frames / (LOOP_S * FPS) : 1);
 
-    if (onScreen && (dirty || moved || ticked)) {
-      if (paint(now)) dirty = false;
+    if (onScreen && (dirty || moved || ticked || burnDirty)) {
+      if (paint(now, undefined, dirty || moved || ticked)) { dirty = false; burnDirty = false; }
     }
-    if (onScreen || jobs.length) raf = requestAnimationFrame(tick);
+    if (onScreen || jobs.length || burn) raf = requestAnimationFrame(tick);
   }
 
   function kick() { if (!raf) raf = requestAnimationFrame(tick); }
@@ -442,6 +468,8 @@ export function createDeck({ scope }) {
     seeing?.disconnect();
     // before measure(): a stale record would hold a hole open on the old page
     mask = null;
+    // ...and a burn belongs to the page it was fired at
+    burn = null;
     alt = null;
     holes = [];
     const take = (el, kind, fixed) => {
@@ -610,6 +638,22 @@ export function createDeck({ scope }) {
       const rec = holes.find((q) => q.el === el && q.kind === "icon");
       return rec?.box ? { ...rec.box, fixed: rec.fixed } : null;
     },
+    /**
+     * THE HYPER BEAM'S BURN: where the paper has been eaten away under the
+     * beam (engine/fx/beam.js, every frame while it is out). Real document px:
+     * {x, y, dx, dy, reach, width, open, seed, env, widthMul, muzzleMul}.
+     * null ends it, and the next paint hides the sheet again.
+     */
+    setBeamBurn(b) {
+      if (!b) {
+        if (burn) { burn = null; dirty = true; kick(); }
+        return;
+      }
+      burn = b;
+      burnAt = performance.now();
+      burnDirty = true;
+      kick();
+    },
     /** The gate: one die-cut printed in a project's own pair. */
     setAltInk(el, a, b) {
       const rec = holes.find((q) => q.el === el);
@@ -627,7 +671,7 @@ export function createDeck({ scope }) {
     get debug() {
       return {
         holes, mask, jobs, pw, ph, k, stageX, raf, docDX, docFade, clipSettled,
-        gpu: !!sheet, webgl2: sheet?.webgl2, cross: xCrossLast, crossCovered,
+        gpu: !!sheet, webgl2: sheet?.webgl2, cross: xCrossLast, crossCovered, burn,
         /** Draw one frame by hand. rAF is throttled to nothing in a hidden
             preview pane and the pane refuses to scroll at all, so the checks
             need both a clock and a scroll position they can set. */

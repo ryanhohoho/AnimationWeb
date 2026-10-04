@@ -4528,6 +4528,107 @@ section("the motion-graphics page: only the works marked `sound` have a sound tr
   ok(handlers("sheet").every((x) => x !== "soun"), "the contact sheet is silent too");
 }
 
+// ---------------------------------------------------------------------------
+section("the hyper beam (2026-10-04): its shape, its clock, its frames and its burn");
+{
+  // the new modules carry shaders in template literals: the backtick hazard
+  const mods = ["../src/engine/fx/beamShape.js", "../src/engine/fx/beamMaterials.js", "../src/site/pressgl.js"];
+  const loaded = await Promise.all(mods.map((m) =>
+    import(m).then(() => null).catch((e) => `${m}: ${e.message}`)));
+  loaded.forEach((err, i) => ok(!err, err || `${mods[i]} parses`));
+
+  const S = await import("../src/engine/fx/beamShape.js");
+  const A = rigConfig.attack, L = A.look, W = A.widthPx;
+
+  // THE SHAPE. A point that opens like a bullet's nose, "not too parabolic".
+  ok(Math.abs(S.envelope(0, W, L) - L.root) < 1e-9, `it leaves the mouth narrow (${L.root} of full width)`);
+  let mono = true;
+  for (let s = 0; s < 3000; s += 7) if (S.envelope(s + 7, W, L) < S.envelope(s, W, L) - 1e-9) mono = false;
+  ok(mono, "and only ever widens down its length");
+  const open1 = S.envelope(W, W, L);
+  ok(open1 > 0.8, `the nose is mostly open one beam-width out (${open1.toFixed(2)})`);
+  const grow = S.envelope(4 * W, W, L) / S.envelope(2 * W, W, L);
+  ok(grow < 1.25, `...and nearly parallel after that, not a cone (x${grow.toFixed(2)} from 2 to 4 widths)`);
+  const cone = { ...L, power: 1, flare: 3 };
+  ok(S.envelope(W, W, cone) < 0.6 && S.envelope(4 * W, W, cone) / S.envelope(2 * W, W, cone) > 1.25,
+    "control: a slow cone fails both of those checks");
+
+  // THE CLOCK. The brain reads expandS + sustainS + fadeS to know the shot is
+  // over; the drawing must end on exactly the same beat.
+  const end = A.expandS + A.sustainS + A.fadeS;
+  ok(!S.fireTimeline(end - 1e-3, A).done && S.fireTimeline(end, A).done,
+    "the beam ends on the brain's own beat");
+  const mid = S.fireTimeline(A.expandS + A.sustainS * 0.5, A);
+  ok(mid.open > 0.95 && mid.alpha === 1, `while held, the paper under it is burned through (${mid.open.toFixed(2)})`);
+  ok(S.fireTimeline(end - 1e-3, A).open < 0.01, "and it has healed by the time the beam is gone");
+  let peak = 0;
+  for (let t = 0; t < A.expandS; t += 0.002) peak = Math.max(peak, S.fireTimeline(t, A).widthK);
+  ok(peak > 1.05, `it arrives too wide and snaps back (peak x${peak.toFixed(2)})`);
+  ok(S.fireTimeline(end - 0.01, A).widthK < 0.35, "and it goes out by thinning to its core, not by swelling");
+  const b0 = S.fireTimeline(A.expandS + 0.30, A).boil, b1 = S.fireTimeline(A.expandS + 0.30 + 0.5 / A.boilFps, A).boil;
+  ok(b0 === b1 && S.fireTimeline(A.expandS + 0.30 + 1.01 / A.boilFps, A).boil !== b0,
+    "its edges hold one drawing for a frame of film, then change (on twos)");
+
+  // THE IMPACT FRAMES are the charge's LAST beats, in order, and only there.
+  const n = A.impact.frames, impS = n / A.impact.fps;
+  const seen = [];
+  for (let t = 0; t < A.chargeS; t += 1 / 240) {
+    const f = S.chargeTimeline(t, A).impact;
+    if (f >= 0 && seen[seen.length - 1] !== f) seen.push(f);
+    if (f >= 0 && t < A.chargeS - impS - 1e-6) { seen.push("early"); break; }
+  }
+  ok(seen.join() === [...Array(n).keys()].join(), `${n} impact frames, in order, in the last ${impS.toFixed(2)} s (${seen.join()})`);
+  ok(S.chargeTimeline(A.charge.aimFromS - 0.01, A).aim === 0 && S.chargeTimeline(A.chargeS - impS - 0.01, A).aim > 0.95,
+    "the guide line starts late in the charge and has reached the target before the frames");
+
+  // THE STARS are decided once per shot, from a seed
+  const s1 = S.starSchedule(42, A), s2 = S.starSchedule(42, A), s3 = S.starSchedule(43, A);
+  ok(JSON.stringify(s1) === JSON.stringify(s2), "the same seed is the same constellation");
+  ok(JSON.stringify(s1) !== JSON.stringify(s3), "control: another seed is another one");
+  ok(s1[0].kind === 1 && s1[0].fwd === 0 && s1[0].side === 0 && s1[0].size === A.stars.flareSize,
+    "the first star is the cross of light on the origin itself");
+  ok(s1.some((s) => s.t0 < 0) && s1.some((s) => s.t0 > 0.3),
+    "and the rest are not limited to the frames: they run from the charge into the shot");
+  ok(s1.every((s) => Math.hypot(s.fwd - A.stars.lead, s.side) <= A.stars.maxR + 1e-9 || s === s1[0]),
+    "every star stays round the origin");
+  const pts = S.jaggedPath(mulberry32(5), 0, 0, 100, 0, 4, 0.3);
+  ok(pts.length === 2 * 17 && pts[0] === 0 && pts[1] === 0 && pts[32] === 100 && pts[33] === 0,
+    "a bolt is rough in the middle and pinned at both ends");
+
+  // THE WHOLE EFFECT, driven headless: what it asks of the page and of her.
+  const { createBeamFx } = await import("../src/engine/fx/beam.js");
+  const flats = [], burns = [];
+  let cleared = 0;
+  const fx = createBeamFx({
+    under: new THREE.Group(), over: new THREE.Group(), config: A,
+    getMouthDoc: () => ({ x: 600, y: 400 }),
+    getOriginDoc: (d) => ({ x: 600 + d.x * 48, y: 400 + d.y * 48 }),
+    getBodyDoc: () => ({ x: 640, y: 420 }),
+    getAim: () => ({ x: -1, y: 0 }),
+    charScale: () => 1,
+    getDocSize: () => ({ w: 1512, h: 867 }),
+    present: { setFlat: (h) => flats.push([fxT, h]) },
+    burn: { set: (b) => burns.push(b), clear: () => { cleared++; } }
+  });
+  let fxT = 0;
+  const dt = 1 / 60;
+  fx.startCharge();
+  for (; fxT < A.chargeS; fxT += dt) fx.update(dt);
+  fx.fire(null, { x: -1, y: 0 });
+  let tf = 0;
+  for (; tf < end + 0.1; tf += dt, fxT += dt) fx.update(dt);
+  const inks = new Set(flats.filter(([, h]) => h).map(([, h]) => h));
+  ok(inks.size === 2 && inks.has(A.palette.ink) && inks.has(A.palette.flash),
+    "during the frames she is a flat silhouette, in the frames' two inks and only those");
+  ok(flats.filter(([t, h]) => h && t < A.chargeS - impS - dt).length === 0,
+    "...never before them");
+  ok(flats.length > 0 && flats[flats.length - 1][1] === null, "...and herself again for the shot");
+  ok(burns.length > 30 && burns.every((b) => b.open >= 0 && b.width === W && b.reach >= 0),
+    `the paper under it is handed to the sheet every frame of the shot (${burns.length} frames)`);
+  ok(burns.some((b) => b.open > 0.95), "...burned through while held");
+  ok(cleared === 1 && !fx.active, "and released exactly once, when the beam is gone");
+}
+
 console.log(`\n${checks - failures}/${checks} checks passed`);
 if (failures > 0) process.exit(1);
 console.log("ALL PASS");

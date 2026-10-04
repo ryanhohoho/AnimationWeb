@@ -831,13 +831,23 @@ export const rigConfig = {
   },
 
   // hyper beam: click mew (petting) -> 1.5s charge staring at the cursor ->
-  // beam from the mouth, stationary in document space, disintegrates elements
+  // three impact frames -> beam from the mouth, aimed once, burning the paper
+  // away under it to the sky. The TIMING below is the old beam's and the brain
+  // reads it; everything from `look` down is the 2026-10-04 redesign
+  // (fx/beam.js, fx/beamShape.js, and the burn in site/pressgl.js).
   attack: {
     chargeS: 1.5,
     expandS: 0.12,              // point -> full width
     sustainS: 0.95,
     fadeS: 0.4,
-    widthPx: 82,                // full beam width, about the head size
+    // FULL width where the envelope has saturated, at the reference character
+    // height (sizing.characterHeightPx) -- it scales with her, so on a phone
+    // the beam is as wide against her as it is on the laptop. 82 was the old
+    // bar, "about the head size"; the references are all broader than the
+    // body that fires them (regidrago's fills a third of the frame), and the
+    // envelope starts at a fifth of this at the mouth, so the head-size
+    // reading is still there where the beam leaves her.
+    widthPx: 124,
     recoil: 430,                // impulse opposite the beam
     cooldownS: 1.2,             // after firing before another pet registers
     mouthOffset: [0, 0.224, 0.50], // model units from the head bone origin in
@@ -874,8 +884,114 @@ export const rigConfig = {
                                 // forces downward braces to fold through the FRONT
                                 // (fixes the wrong-way 180 spin on downward beams)
     fireAlignOmegaMul: 2.4,     // muscle: orientation spring boost through the brace
-    edgeDamagePx: 26,           // scorch/nibble zone beyond the beam proper
-    destroyFractionDrop: 0.5    // removed-area fraction that kills a collider
+    // (edgeDamagePx and destroyFractionDrop went with this redesign: they were
+    // the deleted fx/destruction.js's, and nothing had read them since.)
+
+    // hand-drawn fx are on twos: the edges, the lightning and the width boil
+    // hold for one frame of 24 fps film and then jump to the next drawing.
+    // The FLOW down the beam stays continuous -- a stepped flow is a stutter,
+    // and RYAN.txt IX: he forgives an ugly frame, not a dropped one.
+    boilFps: 12,
+
+    // ── THE SHAPE ──────────────────────────────────────────────────────────
+    // envelope(s) = (root + (1-root)*(x/(1+x))^power) * (1 + spread*s/W),
+    // x = s/(flare*W). See fx/beamShape.js; pressgl.js carries a GLSL twin.
+    look: {
+      root: 0.2,                // width at the muzzle, of the full width
+      flare: 0.55,              // how many beam-widths the nose takes to open.
+                                // the owner: "do not make it too parabolic" --
+                                // at 0.55 it is 80% open one width out and
+                                // nearly parallel by two
+      power: 0.62,              // <1 rounds the nose (1 = a sharp cone)
+      spread: 0.07,             // the slow widening after that, per width
+      introWidth: 0.25,         // how thin it is the instant it leaves
+      overshoot: 2.2,           // ...and how far past full it punches on arrival
+      ringDown: 0.12,           // the arrival's overshoot ringing out
+      boilWidth: 0.045,         // the held vibration, a pick between drawings
+      fadeThin: 0.82,           // the fade thins it to its core rather than
+                                // swelling it (the old fade grew 45% wider,
+                                // which read as it going soft, not going out)
+      shellS: 0.34,             // the parabolic sheath of the eruption: how long
+      shellLenPx: 620,          // ...and how far down the beam it carries
+      flowPxS: 2400,            // how fast the streaks pour down the beam
+      streakPx: 520,            // one streak's length
+      glowMul: 2.3,             // the haze reaches this many half-widths out
+      bodyAlpha: 0.9,           // the light-pink body lets the sky show through
+                                // a little: the beam is light, not paint
+      rings: 2,                 // shock rings thrown down the beam at the shot
+      ringS: 0.42,
+      ringTravelPx: 520
+    },
+
+    // ── THE COLOURS: regidrago's beam, in her pink ──────────────────────────
+    // A white core in a body of pale pink, streaked with white, edged in a
+    // deeper pink. The deep edge is the one that does the work on this site:
+    // the paper is #FFFFFF, so a white-and-pale-pink beam is invisible against
+    // it EXCEPT where the deep edge draws it and where the burn below has
+    // opened the paper onto the darker sky -- which is what the burn is for.
+    palette: {
+      core: "#FFFFFF",
+      light: "#FFC6EC",
+      mid: "#FF7FCF",
+      deep: "#D6318F",
+      glow: "#FF6EC7",
+      bolt: "#FFE6F6",          // lightning core
+      boltGlow: "#F25DB6",      // ...and its halo
+      // the impact frames are black and white, as they are in every reference;
+      // the black is the character outline's plum taken to its darkest so the
+      // silhouette and the frame read as one ink
+      ink: "#150E1A",
+      flash: "#FFFBFE"
+    },
+
+    // ── THE CHARGE ─────────────────────────────────────────────────────────
+    charge: {
+      ballPx: 26,               // the orb's radius at full charge
+      crackleFromS: 0.45,       // lightning starts round the orb
+      aimFromS: 0.8,            // the dashed guide line starts toward the target
+      aimReachPx: 420,          // ...and reaches this far by the impact frames
+      gatherCount: 9,           // streaks of light drawn into the mouth
+      gatherFromPx: 120
+    },
+
+    // ── THE IMPACT FRAMES ──────────────────────────────────────────────────
+    // the last beats of the charge, NOT the whole window: a ragged burst
+    // centred between her and the muzzle (owner's choice, 2026-10-04), drawn
+    // negative, positive, negative, with her as a flat silhouette in it.
+    impact: {
+      frames: 3,
+      fps: 15,                  // each drawing up for one 15 fps frame, so
+                                // the three take the charge's last 0.2 s
+      radiusMul: 1.75,          // burst radius, in character heights
+      spikes: 15                // how many points its cut edge has
+    },
+
+    // ── THE STARS ──────────────────────────────────────────────────────────
+    // around the origin, from the impact frames into the shot. Sizes and
+    // distances are in character heights. Not limited to the three frames:
+    // they pop through the eruption and out the other side.
+    stars: {
+      count: 7,
+      fromS: -0.12,
+      toS: 0.55,
+      life: 0.32,
+      size: 0.17,
+      flareSize: 0.95,          // the origin's cross of light
+      flareLife: 0.36,
+      flareShare: 0.3,
+      minR: 0.28,
+      maxR: 0.85,
+      spread: 0.42,             // of a full turn either side of the beam axis
+      lead: 0.18                // pushed down the beam: knocked loose by it
+    },
+
+    // ── THE BURN (site/pressgl.js) ─────────────────────────────────────────
+    erosion: {
+      widthMul: 1.6,            // the paper burns this far past the beam's edge
+      openS: 0.3,
+      creep: 0.14,              // ...and keeps eating outward while it is held
+      muzzleMul: 0.9            // a round burn at the origin, of the full width
+    }
   },
 
   // pathfinding grid (document space)

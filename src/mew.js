@@ -28,7 +28,6 @@ import { createEarSprings } from "./engine/pose/earSprings.js";
 import { createTailChain } from "./engine/pose/tailChain.js";
 import { createFaceMorphs } from "./engine/pose/faceMorphs.js";
 import { createBeamFx } from "./engine/fx/beam.js";
-import { beamLength } from "./engine/fx/beamGeometry.js";
 import { createPresentation } from "./engine/fx/presentation.js";
 import { applySpriteShade } from "./engine/fx/spriteShade.js";
 import { createStarBurst } from "./engine/fx/starBurst.js";
@@ -115,21 +114,19 @@ export function bootMew({ world, deck, scope, enter = false }) {
   }
   aimKey();
 
-  // doc-anchored fx group: children are authored in DOCUMENT pixels and this
-  // group's transform maps them into world space, compensating scroll each
-  // frame. the beam and cinders stay nailed to the page while it scrolls.
-  const docFxGroup = new THREE.Group();
-  scene.add(docFxGroup);
-
-  function updateDocFxGroup() {
-    const wpp = view.worldPerPx;
-    docFxGroup.scale.set(wpp, -wpp, 1);
-    docFxGroup.position.set(
-      (-world.viewport.w / 2) * wpp,
-      (world.viewport.h / 2 + window.scrollY) * wpp,
-      0
-    );
-  }
+  // THE HYPER BEAM'S TWO SCENES (fx/beam.js). Authored in DOCUMENT pixels and
+  // drawn with their own orthographic camera in CSS pixels, so the beam is
+  // nailed to the page while it scrolls and a number in the fx is a pixel on
+  // screen -- the perspective camera foreshortened the old beam's planes by
+  // their z. `under` is drawn before her sprite, `over` after it, both at the
+  // canvas's own resolution rather than through the pixelate pass.
+  const fxCamera = new THREE.OrthographicCamera(0, 1, 0, 1, -10, 10);
+  const fxUnder = new THREE.Scene();
+  const fxOver = new THREE.Scene();
+  const fxUnderRoot = new THREE.Group();
+  const fxOverRoot = new THREE.Group();
+  fxUnder.add(fxUnderRoot);
+  fxOver.add(fxOverRoot);
 
   // view mapping shared with pose layers
   const view = {
@@ -175,6 +172,10 @@ export function bootMew({ world, deck, scope, enter = false }) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    // y runs DOWN the page, like the document the fx are authored in
+    fxCamera.right = w;
+    fxCamera.bottom = h;
+    fxCamera.updateProjectionMatrix();
     view.worldPerPx = (2 * Math.tan((cfg.sizing.fovDeg * Math.PI) / 360) * cfg.sizing.camDistance) / h;
     present.resize(w, h);
   }
@@ -357,18 +358,42 @@ export function bootMew({ world, deck, scope, enter = false }) {
       const lead = characterPx() * cfg.attack.muzzleClearFactor;
       return { x: m.x + dir.x * lead, y: m.y + dir.y * lead };
     }
-    beamFx = createBeamFx({ docFxGroup, config: cfg.attack, getMouthDoc: mouthDoc });
+    beamFx = createBeamFx({
+      under: fxUnderRoot, over: fxOverRoot, config: cfg.attack,
+      getMouthDoc: mouthDoc,
+      getOriginDoc: beamOriginDoc,
+      getBodyDoc: () => ({ x: body.pos.x, y: body.pos.y }),
+      // the same aim the brain takes at the shot (behavior/brain.js, "charge"),
+      // so the guide line and the impact frames point where the beam will go
+      getAim: () => {
+        const p = world.pointer.pos;
+        const dx = p.x - body.pos.x, dy = p.y - body.pos.y;
+        const l = Math.hypot(dx, dy);
+        return l < 1 ? { x: 1, y: 0 } : { x: dx / l, y: dy / l };
+      },
+      charScale: () => characterPx() / cfg.sizing.characterHeightPx,
+      getDocSize: () => world.docSize,
+      present,
+      // THE PAPER BURNING UNDER IT is the sheet's, not hers: the press draws it
+      // below the words (site/deck.js, site/pressgl.js), so the type stays on
+      // top of the sky it exposes. Without a deck it simply does not happen.
+      burn: deck?.setBeamBurn ? {
+        set: (b) => deck.setBeamBurn(b),
+        clear: () => deck.setBeamBurn(null)
+      } : null
+    });
 
     world.on("beamCharge", () => beamFx.startCharge());
-    world.on("beamFire", ({ dir }) => {
-      const origin = beamOriginDoc(dir);
-      // THE BEAM DOES NOT TOUCH THE SHEET. fx/destruction.js -- which carved
-      // permanent alpha masks into DOM elements -- is long deleted, and nothing
-      // in this build reacts to the shot: the print is a still image and the type
-      // is on paper. All that is left here is how far the shot reaches, which is
-      // pure geometry (see DESIGN.md).
-      beamFx.fire(origin, dir, beamLength(origin, dir, world.docSize));
-    });
+    world.on("beamFire", ({ dir }) => beamFx.fire(null, dir));
+    // COMPILE THE BEAM NOW, NOT ON THE FIRST CLICK. three builds a program the
+    // first time a material is drawn, and six of them landing in the charge's
+    // first frame was a 117 ms frame on a phone-sized window at 4x CPU throttle
+    // (measured headless, real GPU). compileAsync hands them to the driver's
+    // parallel compiler where it has one, and nothing waits on the promise.
+    // The noise tile goes up with them.
+    renderer.compileAsync(fxUnder, fxCamera).catch(() => {});
+    renderer.compileAsync(fxOver, fxCamera).catch(() => {});
+    beamFx.warm(renderer);
 
     // THE SPAWN. the sparkle hangs off characterRoot, which carries position and
     // nothing else, so the burst follows mew around without inheriting the body's
@@ -520,13 +545,20 @@ export function bootMew({ world, deck, scope, enter = false }) {
       // on the page dirtying the sheet on every pixel of her movement, so the
       // deck now genuinely idles when nothing is happening.
       aimKey();
-      updateDocFxGroup();
       // the sparkle drives the material flash: one clock, so the stars and the
       // blow-out can never drift apart
       if (sparkle && sparkle.running) shadeFx.setFlash(sparkle.update(dt));
       if (sweat && sweat.running) sweat.update(dt);
-      if (beamFx) beamFx.update(dt, simTime);
-      present.render(scene, camera, { dt, scrollY: window.scrollY });
+      let fx = null;
+      if (beamFx) {
+        beamFx.update(dt);
+        if (beamFx.active) {
+          fxUnderRoot.position.y = -window.scrollY;
+          fxOverRoot.position.y = -window.scrollY;
+          fx = { under: fxUnder, over: fxOver, fxCamera };
+        }
+      }
+      present.render(scene, camera, { dt, scrollY: window.scrollY, ...fx });
     }
   });
 }

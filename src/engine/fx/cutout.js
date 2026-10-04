@@ -215,8 +215,18 @@ export function createCutout({ renderer, config }) {
       renderer.clear();
       renderer.render(scene, camera);
       renderer.setRenderTarget(null);
+      // the hyper beam's scenes either side of her, as in pixelate.js
+      const under = opts?.under, over = opts?.over, fxCam = opts?.fxCamera;
+      if (!fxCam || (!under && !over)) { renderer.render(blitScene, blitCam); return; }
+      const ac = renderer.autoClear;
+      renderer.clear();
+      renderer.autoClear = false;
+      if (under) renderer.render(under, fxCam);
       renderer.render(blitScene, blitCam);
+      if (over) renderer.render(over, fxCam);
+      renderer.autoClear = ac;
     },
+    setFlat() {},
     dispose() {
       rt.dispose();
       blitMat.dispose();
