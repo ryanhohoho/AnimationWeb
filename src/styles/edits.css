@@ -23,8 +23,8 @@
 #doc[data-page="home"] [data-e="d-d2e9"] { font-size:110px; font-weight:500; letter-spacing:-2.45px; line-height:76.2px; translate:74px -125px; }
 #doc[data-page="home"] [data-e="deck-in-w257"] { translate:-122px 174px; }
 #doc[data-page="home"] [data-e="label-qbzw"] { max-width:none; text-transform:none; translate:-40px 352px; width:285px; }
-#doc[data-page="home"] [data-e="t-3e44"] { font-size:24.01px; line-height:1.8; max-width:none; translate:74px -46px; width:534px; }
-#doc[data-page="home"] [data-e="t-3pyx"] { font-size:24.01px; line-height:1.8; max-width:none; translate:74px -53px; width:709px; }
+#doc[data-page="home"] [data-e="t-3e44"] { font-size:24.01px; line-height:1.8; max-width:none; translate:74px -104px; width:534px; }
+#doc[data-page="home"] [data-e="t-3pyx"] { font-size:24.01px; line-height:1.8; max-width:none; translate:74px -111px; width:709px; }
 #doc[data-page="home"] [data-e="t-kxel"] { font-size:24.01px; line-height:1.8; max-width:none; translate:74px 37px; width:709px; }
 #doc[data-page="home"] [data-e="t-wxlk"] { font-size:39.49px; line-height:1.85; max-width:none; translate:74px -115px; width:106px; }
 #doc[data-page="home"] [data-e="t-zx0b"] { translate:176px 136px; }
@@ -61,7 +61,7 @@
   #doc[data-page="home"] [data-e="label-qbzw"] { translate:-5px 30px; }
   #doc[data-page="home"] [data-e="link-oar7"] { display:none; }
   #doc[data-page="home"] [data-e="t-3e44"] { translate:75px -1px; }
-  #doc[data-page="home"] [data-e="t-kxel"] { translate:75px 5px; }
+  #doc[data-page="home"] [data-e="t-kxel"] { max-width:none; translate:75px 5px; width:407px; }
   #doc[data-page="home"] [data-e="t-wxlk"] { font-size:29.43px; line-height:1.85; max-width:none; translate:75px 34px; width:81px; }
 }
 
@@ -74,8 +74,8 @@
   #doc[data-page="home"] [data-e="d-d2e9"] { font-size:17.8vw; letter-spacing:-.04em; line-height:1.01; text-align:left; translate:-8px 121px; }
   #doc[data-page="home"] [data-e="deck-in-w257"] { translate:179px -33px; }
   #doc[data-page="home"] [data-e="label-qbzw"] { translate:25px 147px; }
-  #doc[data-page="home"] [data-e="t-3e44"] { font-size:16px; line-height:1.5; max-width:none; text-align:right; translate:-207px 63px; width:372px; }
-  #doc[data-page="home"] [data-e="t-kxel"] { font-size:16px; line-height:1.5; max-width:none; text-align:right; translate:-116px 52px; width:268px; }
+  #doc[data-page="home"] [data-e="t-3e44"] { font-size:16px; line-height:1.5; max-width:none; text-align:right; translate:-207px 60px; width:372px; }
+  #doc[data-page="home"] [data-e="t-kxel"] { font-size:16px; line-height:1.5; max-width:none; text-align:right; translate:-103px 72px; width:268px; }
   #doc[data-page="home"] [data-e="t-wxlk"] { font-size:26px; line-height:1.15; translate:4px 111px; width:auto; }
 }
 

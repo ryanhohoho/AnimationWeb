@@ -72,7 +72,7 @@ export const EXPERIENCE = [
 export const SOCIALS = [
   { label: "Email",    shown: "ryanho333@gmail.com",  url: "mailto:ryanho333@gmail.com" },
   { label: "GitHub",   shown: "github.com/ryanhohoho", url: "https://github.com/ryanhohoho" },
-  { label: "LinkedIn", shown: "linkedin.com/in/ryan-ho-a30168251/",    url: "https://linkedin.com/in/ryan-ho-a30168251/",  placeholder: false }
+  { label: "LinkedIn", shown: "https://www.linkedin.com/in/ryanh0/",    url: "https://www.linkedin.com/in/ryanh0/",  placeholder: false }
 ];
 
 // ── the card media ──────────────────────────────────────────────────────────
