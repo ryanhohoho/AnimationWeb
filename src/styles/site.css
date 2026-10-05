@@ -163,6 +163,17 @@
   --glow-4: #2D68C8;
   --glow-5: #2D68C8;
   --glow-6: #2D85C8;
+
+  /* THE BINDER ON THE ABOUT CARD (site/binder.js), the owner's to change in
+     the editor (select nothing on the About card). The board is the press's
+     rose, the window on its cover the cerulean, the rings a pale steel. Same
+     rule as the backlight's six above: plain six-digit hexes, and this the
+     first place each name appears with a colon after it. */
+  --binder-board: #CF69AB;
+  --binder-spine: #A9508A;
+  --binder-lining: #F2D9E8;
+  --binder-rings: #A8C6DA;
+  --binder-window: #1A71AF;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -964,6 +975,242 @@ html[data-shiny="1"] .mew-hint > [data-hint="shiny"] { display:block; }
   .sheet-ap { aspect-ratio:5/2; }
   .sheet-in .fig.narrow { width:100%; }
   .sheet.deep { min-height:100svh; }
+}
+
+/* ── HOME: THREE WAYS TO REACH HIM (index.html, site/homeLinks.js) ────────
+   By instruction (2026-10-04): LinkedIn, GitHub and email under the bio, as
+   glyphs. Each is ink in a hairline square, and each glyph is also a cut in
+   the paper: pointed at, the ink goes and the same shape shows the sky (the
+   project icons' kind of hole, deck.js). The glyphs are filled shapes rather
+   than lines on purpose -- a 1.5 px stroke of sky is a few scattered dots,
+   and the hole would not read as a hole.
+
+   The row sits under the last line of the bio, which on a laptop has been
+   moved there by the editor (edits.css: t-3e44), so the row is moved by the
+   same amount; an edit of the row's own in the editor (hs-row) wins over
+   this, being the more specific rule. It FADES in and never slides: it
+   carries holes, and a hole is measured where it stands at commit. */
+.hs { display:flex; gap:12px; align-items:center; animation-name:deck-fade; }
+.hs-li { --g:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M4 2h16a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm2.4 7.6h2.9V18H6.4zM7.85 5.2a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2zM11 9.6h2.75v1.2c.45-.8 1.5-1.45 2.95-1.45 2.75 0 3.3 1.75 3.3 4.05V18h-2.9v-4c0-1.05-.15-2.2-1.5-2.2s-1.7 1-1.7 2.15V18H11z'/%3E%3C/svg%3E"); }
+.hs-gh { --g:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z'/%3E%3C/svg%3E"); }
+.hs-em { --g:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M3 4.5h18A1.5 1.5 0 0 1 22.5 6v12a1.5 1.5 0 0 1-1.5 1.5H3A1.5 1.5 0 0 1 1.5 18V6A1.5 1.5 0 0 1 3 4.5zM3.6 7.1V9l8.4 5.6L20.4 9V7.1L12 12.7z'/%3E%3C/svg%3E"); }
+.hs-a { position:relative; display:block; width:44px; height:44px; border:1px solid var(--n4);
+        color:var(--ink); transition:border-color var(--t2) var(--e); }
+.hs-g, .hs-ap { position:absolute; left:50%; top:50%; width:22px; height:22px; translate:-50% -50%; }
+.hs-g { background:var(--ink);
+        -webkit-mask:var(--g) center / contain no-repeat; mask:var(--g) center / contain no-repeat; }
+.hs-ap { pointer-events:none; z-index:1; }
+.hs-ap > .hole-cv { opacity:var(--open, 0);
+        -webkit-mask:var(--g) center / contain no-repeat; mask:var(--g) center / contain no-repeat; }
+@media (hover:hover) { .hs-a:hover { border-color:var(--ink); } }
+.hs-a:focus-visible { border-color:var(--ink); outline-offset:3px; }
+@media (min-width:861px) { #s0 .hs { translate:74px -92px; } }
+@media (min-width:561px) and (max-width:860px) { #s0 .hs { translate:75px -1px; } }
+/* a phone: the owner's phone layout right-aligns the last bio line to the
+   window's edge (edits.css), so the row hangs under it, flush right. Measured
+   at 375 wide: the line ends at 372 and its foot is at 563 */
+@media (max-width:560px) { #s0 .hs { translate:25px 59px; gap:10px; } #s0 .hs-a { width:40px; height:40px; } }
+
+/* ── 04 · ABOUT (pages/deck.js, site/about.js, aboutMusic.js, binder.js) ────
+   By instruction (2026-10-04), in the photos card's slot: an intro with his
+   picture, the life pictures hung in the margins, the photography and the
+   music side by side, the binder centred under them. The column is the deck's
+   own (960 design px); the life hangs in the paper either side of it, as it
+   does on the photos sheet. The card is longer than a screen, and scrolls. */
+#p-about { overflow-x:clip; }
+/* the whole body carries holes (the picture's cut, the binder's canvas is
+   not one but sits among them), so it fades and never slides in */
+.deck-in > .ab { animation-name:deck-fade; }
+.ab { position:relative; width:100%; display:grid; gap:64px; margin-top:.6rem; }
+.ab-k { margin-bottom:16px; }
+.ab-intro { display:grid; grid-template-columns:minmax(0,1fr) 250px; gap:80px; align-items:start; }
+.t.body.ab-text { max-width:54ch; font-size:15px; line-height:1.75; }
+.ab-k2 { margin-top:34px; }
+/* NOT HIS WORDS YET: set the way an unset contact handle is, so a stand-in
+   never passes for the real thing (content.js, ABOUT.placeholder) */
+.ab-text.is-ph { font-style:italic; color:var(--n3); }
+.ab-text + .ab-text { margin-top:12px; }
+/* his picture, or until there is one, a cut in the paper the shape of it */
+.ab-me { width:100%; }
+.ap.ab-me-ap, .ab-me-f { position:relative; left:auto; top:auto; display:block;
+                         width:100%; height:auto; aspect-ratio:4 / 5; }
+.ab-me-f img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+.ab-me-f::before, .ab-me-f::after { content:""; position:absolute; width:9px; height:9px; z-index:1; opacity:.85; }
+.ab-me-f::before { left:-5px; top:-5px; border-left:1px solid var(--n3); border-top:1px solid var(--n3); }
+.ab-me-f::after { right:-5px; bottom:-5px; border-right:1px solid var(--n3); border-bottom:1px solid var(--n3); }
+#doc[data-page="about"] .pc, #doc[data-page="about"] .md, #doc[data-page="about"] .bd, #doc[data-page="about"] .ar {
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+#doc[data-page="about"] img { -webkit-user-drag:none; user-drag:none; }
+
+/* ── THE LIFE, IN THE MARGINS ──────────────────────────────────────────────
+   Four small frames hung in the paper either side of the column (about.js,
+   FRAMES, design px against the 960 column), each turning through its own
+   share of the reel. Since 2026-10-04's second pass, by instruction, they are
+   POLAROIDS: the photograph itself (no print filter -- printed, six of them
+   made the page busy), on a white mount with the deeper foot of an instant
+   print, a soft shadow, and a lean of their own. No caption. Pressed, one
+   opens large in the photos sheet's viewer. The mount is the picture's
+   MARGIN in percentages, which resolve against the frame's width on every
+   side, so it keeps its shape at any size. (Not the frame's own padding: a
+   percentage padding resolves against the frame's containing block -- the
+   960 column -- and the first build of this was 230 px of white foot.) */
+.ar { position:absolute; inset:0; pointer-events:none; z-index:2; }
+.ar-f { position:absolute; left:calc(var(--x) * var(--u)); top:calc(var(--y) * var(--u));
+        width:calc(var(--w) * var(--u)); padding:0; display:block; border:0;
+        background:#FFFFFF; pointer-events:auto; cursor:zoom-in; rotate:var(--r, 0deg);
+        box-shadow:0 8px 20px rgba(22,21,15,.13), 0 1px 3px rgba(22,21,15,.10);
+        transition:rotate .45s var(--e), translate .45s var(--e), box-shadow .45s var(--e); }
+.ar-win { position:relative; display:block; aspect-ratio:4 / 5; overflow:hidden; margin:7% 7% 24%;
+          background:color-mix(in srgb, var(--n4) 16%, var(--paper)); }
+.ar-l { position:absolute; inset:0; opacity:0; transition:opacity .9s var(--e); }
+.ar-l.is-on { opacity:1; }
+.ar-l img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+.ar-pic { position:absolute; inset:0; pointer-events:none; }
+@media (hover:hover) {
+  .ar-f:hover { z-index:3; rotate:0deg; translate:0 -4px;
+                box-shadow:0 14px 30px rgba(22,21,15,.18), 0 2px 5px rgba(22,21,15,.10); }
+}
+.ar-f:focus-visible { rotate:0deg; outline-offset:4px; }
+@media (prefers-reduced-motion:reduce) { .ar-f, .ar-f:hover { transition:none; translate:none; } }
+
+/* ── PHOTOGRAPHY AND MUSIC, SIDE BY SIDE ───────────────────────────────────
+   Each section is a box the editor can RESIZE (its width), and everything
+   inside it is sized from that width -- the photography by container units,
+   the wheel by its own measure (aboutMusic.js) -- so a smaller box is a
+   smaller carousel, not a clipped one. */
+.ab-row { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:48px; }
+.ab-sec { min-width:0; }
+.ab-photo { width:440px; max-width:100%; }
+.ab-music { width:300px; max-width:100%; }
+
+/* THE PHOTOGRAPHY: one picture at a time, each in its OWN frosted frame (the
+   owner's pick from claireyluo's site, 2026-10-04: the frame travels with its
+   picture). The neighbours wait either side, smaller and soft, under the edge
+   of the middle one's frame. Only transform and opacity ever animate; a
+   neighbour is soft because it shows a blurred copy, not because a blur is
+   animated. Every length is a share of the section's width (cqw). */
+.pc { container-type:inline-size; --pc-w:52cqw; }
+.pc-stage { position:relative; height:calc(var(--pc-w) * 1.3 + 28px); overflow:hidden; touch-action:pan-y;
+            -webkit-mask-image:linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
+                    mask-image:linear-gradient(to right, transparent, #000 9%, #000 91%, transparent); }
+.pc-s { position:absolute; left:50%; top:50%; width:var(--pc-w);
+        margin:calc(var(--pc-w) * -0.6467) 0 0 calc(var(--pc-w) / -2); display:block;
+        z-index:1; opacity:0; transform:scale(.7);
+        transition:transform .7s cubic-bezier(.22,.8,.24,1), opacity .7s cubic-bezier(.22,.8,.24,1); }
+.pc-s.is-wrap { transition:none; }
+.pc-s[data-o="0"] { z-index:3; opacity:1; transform:none; cursor:pointer; }
+.pc-s[data-o="-1"] { z-index:2; opacity:.9; transform:translateX(calc(var(--pc-w) * -.74)) scale(.84); cursor:w-resize; }
+.pc-s[data-o="1"]  { z-index:2; opacity:.9; transform:translateX(calc(var(--pc-w) * .74)) scale(.84); cursor:e-resize; }
+.pc-s[data-o="-2"] { transform:translateX(calc(var(--pc-w) * -1.5)) scale(.7); }
+.pc-s[data-o="2"]  { transform:translateX(calc(var(--pc-w) * 1.5)) scale(.7); }
+.pc-glass { display:block; padding:calc(var(--pc-w) * .06); border-radius:calc(var(--pc-w) * .085);
+            background:rgba(255,255,255,.58); border:1px solid rgba(255,255,255,.9);
+            box-shadow:0 12px 30px rgba(22,21,15,.12), 0 1px 3px rgba(22,21,15,.07), inset 0 1px 0 rgba(255,255,255,.95); }
+.pc-pic { position:relative; display:block; aspect-ratio:3 / 4; overflow:hidden; border-radius:calc(var(--pc-w) * .045);
+          background:color-mix(in srgb, var(--n4) 14%, var(--paper)); }
+.pc-pic img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+.pc-soft { filter:blur(5px); transform:scale(1.08); }
+.pc-sharp { opacity:0; transition:opacity .7s cubic-bezier(.22,.8,.24,1); }
+.pc-s[data-o="0"] .pc-sharp { opacity:1; }
+/* the real frosting on the picture in front, where a pointer is (a desktop):
+   its frame blurs the neighbours tucked under it. A touch screen keeps the
+   translucent frame, which reads the same over pictures that are already
+   soft, and does not re-blur on every frame of a swipe */
+@media (hover:hover) {
+  @supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))) {
+    .pc-s[data-o="0"] .pc-glass { background:rgba(255,255,255,.44);
+      -webkit-backdrop-filter:blur(12px) saturate(1.15); backdrop-filter:blur(12px) saturate(1.15); }
+  }
+}
+@keyframes pc-jump { from { opacity:0; } to { opacity:1; } }
+.pc.is-jump .pc-s[data-o="0"] .pc-pic { animation:pc-jump .45s var(--e); }
+.pc-dots { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:4px; }
+.pc-dot { position:relative; width:6px; height:6px; padding:0; border:1px solid var(--n4);
+          background:transparent; cursor:pointer; transition:background var(--t2) var(--e), border-color var(--t2) var(--e); }
+.pc-dot::after { content:""; position:absolute; inset:-8px -3px; }
+.pc-dot.on { background:var(--ink); border-color:var(--ink); }
+.pc-bar { position:relative; width:60%; height:1px; margin:14px auto 0; background:var(--n4); }
+.pc-bar > span { position:absolute; left:0; top:-1px; width:12%; height:3px; background:var(--ink);
+                 transition:transform .7s var(--e); }
+
+/* THE MUSIC: the albums on a drum turning about a horizontal axis
+   (aboutMusic.js). The cover's side and the drum's radius are set by the
+   script from the section's own width (--md-c, --md-r, real px), so the
+   editor's resize scales the whole wheel. The window carries the perspective,
+   the drum turns, each slot is rotated into place once and pushed out to the
+   rim; the far half is hidden by backface-visibility; top and bottom fade. */
+.md { position:relative; --md-c:150px; --md-r:300px; }
+.md:focus-visible { outline-offset:6px; }
+.md-win { position:relative; height:calc(var(--md-c) * 2.45); perspective:calc(var(--md-c) * 6); overflow:hidden;
+          touch-action:none; cursor:grab;
+          -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 24%, #000 76%, transparent 100%);
+                  mask-image:linear-gradient(to bottom, transparent 0, #000 24%, #000 76%, transparent 100%); }
+.md-win:active { cursor:grabbing; }
+.md-drum { position:absolute; left:50%; top:50%; width:0; height:0; transform-style:preserve-3d; will-change:transform; }
+.md-s { position:absolute; display:block; overflow:hidden; border-radius:3px;
+        width:var(--md-c); height:var(--md-c);
+        left:calc(var(--md-c) / -2); top:calc(var(--md-c) / -2);
+        transform:rotateX(var(--a)) translateZ(var(--md-r));
+        -webkit-backface-visibility:hidden; backface-visibility:hidden;
+        background:color-mix(in srgb, var(--n4) 18%, var(--paper));
+        box-shadow:0 8px 20px rgba(22,21,15,.16), 0 0 0 1px rgba(22,21,15,.06); }
+.md-s img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+.md-s img:not([src]) { visibility:hidden; }
+.md-s.is-front { cursor:pointer; }
+/* A BLANK SLEEVE, while the list is empty or a cover has not been baked: a
+   record's paper sleeve with the disc's label showing through its hole */
+.md.is-blank .md-s, .md-s.no-cover {
+  background:radial-gradient(circle at 50% 50%, var(--paper) 0 6%, var(--ink-b) 6.5% 17%, rgba(0,0,0,0) 17.5%),
+             radial-gradient(circle at 50% 50%, rgba(22,21,15,.82) 0 40%, rgba(22,21,15,.0) 40.5%),
+             color-mix(in srgb, var(--ink-a) 10%, var(--paper)); }
+.md-s[data-blank="1"], .md-s[data-blank="4"] { background-color:color-mix(in srgb, var(--ink-b) 12%, var(--paper)); }
+.md-s[data-blank="2"] { background-color:color-mix(in srgb, var(--n4) 22%, var(--paper)); }
+.t.body.md-name { max-width:none; text-align:center; font-size:14px; min-height:1.8em; margin-top:8px; }
+
+/* THE BINDER (binder.js): one canvas, a drag turns it, a press opens it and
+   turns its pages, and the two buttons do the same for a keyboard or a
+   reader who would rather not guess. About the photographs' size, centred,
+   and resizable in the editor like them (the canvas follows its box). */
+.ab-binder { justify-self:center; width:440px; max-width:100%; }
+.ab-binder > .ab-k { text-align:center; }
+.bd-stage { position:relative; width:100%; aspect-ratio:600 / 440; touch-action:none; cursor:grab; }
+.bd-stage:active { cursor:grabbing; }
+.bd-stage:focus-visible { outline-offset:2px; }
+.bd-cv { position:absolute; inset:0; width:100%; height:100%; display:block; }
+/* the buttons: round, and frosted like the photographs' frames */
+.bd-ctl { display:flex; justify-content:center; gap:16px; margin-top:6px; }
+.bd-b { width:42px; height:42px; padding:12px; border-radius:50%; color:var(--ink); cursor:pointer;
+        background:rgba(255,255,255,.62); border:1px solid rgba(255,255,255,.95);
+        box-shadow:0 6px 16px rgba(22,21,15,.12), 0 1px 2px rgba(22,21,15,.08), inset 0 1px 0 #FFFFFF;
+        -webkit-backdrop-filter:blur(10px) saturate(1.1); backdrop-filter:blur(10px) saturate(1.1);
+        transition:translate var(--t2) var(--e), box-shadow var(--t2) var(--e), opacity var(--t2) var(--e); }
+.bd-b svg { width:100%; height:100%; display:block; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+@media (hover:hover) { .bd-b:not(:disabled):hover { translate:0 -1px; box-shadow:0 10px 22px rgba(22,21,15,.16), 0 1px 3px rgba(22,21,15,.1), inset 0 1px 0 #FFFFFF; } }
+.bd-b:not(:disabled):active { translate:0 1px; box-shadow:0 3px 8px rgba(22,21,15,.12), inset 0 1px 0 #FFFFFF; }
+.bd-b:disabled { opacity:.35; cursor:default; }
+.bd.is-flat .bd-stage { display:flex; gap:8px; justify-content:center; align-items:center; cursor:default; }
+.bd-flat { height:92%; aspect-ratio:3 / 4; object-fit:cover; display:block; background:var(--paper); border:1px solid var(--n4); }
+
+/* A TABLET: no margins, so the polaroids are a row under the intro, and the
+   photography and the music stack, centred */
+@media (max-width:860px){
+  .ab { gap:52px; }
+  .ab-intro { grid-template-columns:minmax(0,1fr) 200px; gap:40px; }
+  .ar { position:static; display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:18px; padding:4px 6px; }
+  .ar-f { position:relative; left:auto; top:auto; width:auto; }
+  .ab-row { flex-direction:column; align-items:center; gap:52px; }
+  .ab-photo { width:min(100%, 440px); }
+  .ab-music { width:min(100%, 320px); }
+}
+/* A PHONE: one column, his picture above his words */
+@media (max-width:560px){
+  .ab { gap:44px; }
+  .ab-intro { grid-template-columns:1fr; gap:28px; }
+  .ab-me { order:-1; width:58%; }
+  .t.body.ab-text { font-size:15px; }
+  .ar { gap:12px; }
+  .pc { --pc-w:58cqw; }
+  .bd-stage { aspect-ratio:1 / 1; }
 }
 
 /* ══ THE PROJECT-SHEET PALETTE ═══════════════════════════════════════════

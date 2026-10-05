@@ -60,10 +60,12 @@ A personal portfolio site that is **one document**, printed as a **two-ink riso
 sky** seen through **die-cut apertures**, with **Mew** — a procedurally animated
 3D character — loose on the page as the only unprinted thing on it.
 
-It reads as a **deck of five cards** — home, experience, projects, photos,
+It reads as a **deck of five cards** — home, experience, projects, about,
 contact — reached from a small nav bar at the top middle -- no box, a hairline
 over the five names, out of the way while scrolling down (the arrow keys and a swipe
-still turn it, unadvertised), with four project sheets hanging off the projects card.
+still turn it, unadvertised), with four project sheets hanging off the projects card
+and the photos sheet (`/photos`) hanging off About (`SHEETS_OFF` in `site/router.js`;
+About replaced Photos in the nav on 2026-10-04). Mew is not on About.
 The deck shape exists so the work survives being skimmed; the sheet it is cut
 from has not changed. **Mew is on Home and Contact** (`MEW_PAGES` in
 `site/mewPresence.js`; Contact since 2026-10-04): she leaves Home through its
@@ -183,18 +185,23 @@ node tools/motion/credits.mjs ../VisualAudialExperience/CREDITS.md   # -> site/m
 not edit them.** The works' names, and where each is shown, are
 `src/site/motion.js`, which is hand-written.
 
-The photos card's pictures. The two FOLDERS are the list: `src/assets/photos/reel/`
-(the snapshots hung in the margins) and `src/assets/photos/photography/` (the
-block in the middle). `site/photoassets.js` is a hand-written glob over them, so
+The photos' pictures (the photos sheet, and the About card's frames, carousel,
+binder and portrait). The FOLDERS are the list: `src/assets/photos/reel/`
+(the snapshots), `src/assets/photos/photography/` (the photography),
+`src/assets/photos/binder/` (the Pokémon binder's pages: one photograph per side
+of a nine-pocket sheet, 3:4 like the reel; file-name order pairs them front,
+back, front..., and a name ending `-front` / `-back` pins it to that side of
+its own sheet -- `pagesFor` in `site/binderModel.js`) and
+`src/assets/photos/portrait/` (About's picture of him: the first file). `site/photoassets.js` is a hand-written glob over them, so
 a picture added there is on the card and one deleted there is gone, with no code
 to edit and nothing to run. (Which picture sits in which frame is
 `src/assets/photos/arrangement.json`, written by the editor's drag-to-swap: optional,
 and it follows the folders.) Only a picture a browser cannot show needs the bake:
-drop it straight off the iPhone -- HEIC is fine -- into `photos-source/reel/` or
-`photos-source/photography/` (git ignores both), then:
+drop it straight off the iPhone -- HEIC is fine -- into `photos-source/reel/`,
+`photography/`, `binder/` or `portrait/` (git ignores all of them), then:
 
 ```bash
-npm run photos                   # = node tools/bake_photos.mjs -> src/assets/photos/{reel,photography}/
+npm run photos                   # = node tools/bake_photos.mjs -> src/assets/photos/{reel,photography,binder,portrait}/
 node tools/bake_photos.mjs --dry|--prune|--restore|--all
 ```
 
@@ -207,6 +214,19 @@ in a folder as a WebP/JPEG/PNG can simply be copied in. A picture you delete fro
 the site's folder while its original is still in `photos-source/` is not baked
 again (`photos-source/.baked` remembers what it made); `--restore` brings
 it back and `--prune` removes what has no original.
+
+The About card's albums: one Spotify link per line in **`src/site/music.js`**
+(hand-written), then
+
+```bash
+npm run music                    # = node tools/bake_music.mjs -> src/assets/music/<id>.webp + albums.json
+```
+
+which asks Spotify's public oEmbed for each album's name and cover. Both outputs
+are **generated -- do not edit them**; it exits non-zero if a link fails. The
+About card's words are `ABOUT` in `content.js` (placeholders, set italic, until
+`placeholder` is removed). The binder's colours are the `--binder-*` tokens in
+`site.css`, changed in the editor (select nothing on About).
 
 The site's name, the link card and the tab mark: **`src/site/identity.js`**,
 edited in the editor's **Link & icon** tab (or by hand). `siteIdentity()` in
@@ -513,6 +533,24 @@ when only the numbers were.
 - **The burn under the beam is the sheet's** (`deck.setBeamBurn`, every frame
   while the beam is out). It shows `#sheet` like a crossing does, and the
   holes do NOT reprint for it; a burn not refreshed for 400 ms is dropped.
+- **The binder keeps ONE WebGLRenderer for the session** (`site/binder.js`,
+  `shared`), its canvas moved into each About visit and out again. A renderer
+  per visit is a GPU context leaked per visit. three.js is imported only once
+  the page has SETTLED and the reader is near the binder -- never during the
+  move, where evaluating it is a long task inside a transition.
+- **The binder's pages are drawn twice on purpose**: the pixel pass (board,
+  rings, plain sleeves), then the sleeves' photographs at full resolution,
+  depth-tested against the board redrawn into depth only. Share the sleeve
+  geometry between the two, keep the photographs' `polygonOffset`, or they
+  z-fight.
+- **A hole that is a CONTROL prints at the controls' hour**
+  (`data-control-hour`, deck.js): Home's link glyphs at their own place print
+  232,235,245 -- paper. A die-cut that is not a control never takes it.
+- **The music wheel's slots never move**: slot j is rotated into place once and
+  the drum turns. A slot is given a new album only while it is behind the drum
+  (`slotAlbum`); re-pointing a visible cover flashes it.
+- **A sheet's way back is `SHEETS_OFF`** (router.js): project -> Projects,
+  photos -> About, for Escape and for which nav name is marked.
 - **A scanner strict enough to be useful catches documentation about itself.**
   The redaction check failed on `STATE.md` for spelling out a volume path while
   explaining the rule. Prose about those patterns must name them, not spell

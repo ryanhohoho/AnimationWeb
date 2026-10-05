@@ -87,7 +87,7 @@ export function printFilter(id = "ph-print") {
 }
 
 /** the screen laid over a print: ink A dots on a 45 degree lattice, as a tiny tile */
-function screenTile() {
+export function screenTile() {
   const c = PALETTE.homeInkA;
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><circle cx='1' cy='1' r='.62' fill='${c}' fill-opacity='.30'/><circle cx='3' cy='3' r='.62' fill='${c}' fill-opacity='.30'/></svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
@@ -247,7 +247,7 @@ const EASE = "cubic-bezier(.2,.8,.2,1)";
 const OPEN_MS = reducedMotion ? 0 : 340;
 const TURN_MS = reducedMotion ? 0 : 240;
 
-function makeViewer(scope, byId, listOf, cellOf) {
+export function makeViewer(scope, byId, listOf, cellOf) {
   const el = document.createElement("div");
   el.className = "phv";
   el.hidden = true;

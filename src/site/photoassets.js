@@ -122,4 +122,9 @@ export const compact = (full) => Object.fromEntries(Object.entries(full || {}).f
 // (a glob's pattern has to be a literal, so the extensions are written twice)
 export const REEL = collect(import.meta.glob("../assets/photos/reel/*.{webp,jpg,jpeg,png,avif}", { eager: true, query: "?url", import: "default" }));
 export const PHOTOGRAPHY = collect(import.meta.glob("../assets/photos/photography/*.{webp,jpg,jpeg,png,avif}", { eager: true, query: "?url", import: "default" }));
+// the About card's binder pages, in file-name order (a page per photograph, one
+// side of a sheet each: front, back, next front...), and its portrait
+// (2026-10-04). The same folders-are-the-list rule as the two above.
+export const BINDER = collect(import.meta.glob("../assets/photos/binder/*.{webp,jpg,jpeg,png,avif}", { eager: true, query: "?url", import: "default" }));
+export const PORTRAIT = collect(import.meta.glob("../assets/photos/portrait/*.{webp,jpg,jpeg,png,avif}", { eager: true, query: "?url", import: "default" }));
 export const ARRANGEMENT = sanitize(Object.values(import.meta.glob("../assets/photos/arrangement.json", { eager: true, import: "default" }))[0]);

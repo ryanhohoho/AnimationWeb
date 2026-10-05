@@ -5,7 +5,7 @@ is the argument for the look. This file is the system.
 
 Last consolidated after the phone pass, the counter, the sweat rewrite, the
 sweat's time scale and the home disc.
-Suite: **842 sim checks + the router harness** (`npm test`), build clean.
+Suite: **1251 sim checks + the router harness** (`npm test`, 2026-10-04), build clean.
 
 ---
 
@@ -2773,4 +2773,97 @@ ground) -- while `apple-touch-icon.png` stays opaque on `bg`, since iOS fills a 
 applies to an uploaded icon too (it replaced the upload's own "keep transparency" switch, and an uploaded
 svg is kept as favicon.svg only when clear). Tests: alpha exactly when clear, the 180 always opaque, the
 svg's rect, and the setting's check. Seen in the editor with the switch on; not baked by the owner yet.
+
+---
+
+# 30 · About replaces Photos in the nav; Home's links; the wheel and the binder (2026-10-04)
+
+By instruction, after two question rounds (and two mid-build notes: no copying the references,
+no years on the music, Claire's frosted border on the photography; the binder's colour editable,
+interests as plain text). Memory: `about-page-2026-10-04`.
+
+**Routes.** `DECK` is home, experience, projects, **about**, contact. `/photos` still exists, off
+the deck, hanging off About the way a project hangs off Projects (`SHEETS_OFF` in router.js): the
+nav marks About as `location`, About -> photos CROSSES out of the frame pressed (the carousel's
+`.pc-pic` or a life frame's `.ar-pic` carry `data-cross-from`), photos -> anything RETURNS, Escape
+goes back to About. Old `/photos` links work. About sits at 23:30, the photos card's old hour.
+The photos sheet's heading became "what i've seen." (About took "me and what i like."). Mew is not
+on About (`MEW_PAGES` unchanged; router harness checks it, with the reaching-Home control).
+
+**Home's links** (index.html, `site/homeLinks.js`): LinkedIn, GitHub, email as filled glyphs in
+hairline squares, written as CSS masks (site.css, `.hs-li/.hs-gh/.hs-em`; the GitHub mark is the
+Octicons path, MIT). Each is a `data-icon-ap` hole (the project icons' kind): pointed at with a
+mouse, the ink fades and the glyph prints the sky. At Home's hour the print at that height measured
+232,235,245, so these holes carry `data-control-hour` and print at `SKY_BTN_DEPTH` like the old sky
+buttons (measured after: 92,152,197). Placement copies the bio's own editor translate per width
+(desktop 74,-92; tablet 75,-1; phone 25,59 at 375 wide, measured against the last bio line) -- the
+owner can move `hs-row` in the editor. The addresses are written in index.html (first paint) and
+SOCIALS; a check holds them together.
+
+**About** (`pages/deck.js` -> `site/about.js`):
+- intro: `ABOUT` in content.js, placeholder text set italic `--n3` while `placeholder: true`;
+  interests are plain paragraphs (one per list entry), not a grid. Portrait: the first picture in
+  `src/assets/photos/portrait/`, else a die-cut of its shape.
+- life frames: six, in the margins on a desktop (`FRAMES`, design px against the 960 column), a
+  row of six under the intro on a tablet or phone. Seeded deal of the reel (`dealReel`), one frame
+  turns every 2.6 s, only on screen, not under the pointer, decoded before shown; printed through
+  the photos sheet's own `printFilter` until hovered (or in the middle band on a touch screen).
+- photography: five recycled frames (`NEAR`), only transform/opacity animate, neighbours show a
+  pre-blurred copy. The frosted pane is `backdrop-filter` only on hover-capable screens (a phone
+  keeps a translucent pane over already-soft pictures: no re-blur per swipe frame). Auto every
+  4.2 s, paused on hover/focus/drag/off screen. Dots up to 24, a bar beyond.
+- music (`site/aboutMusic.js`, `site/music.js`, `tools/bake_music.mjs`): the drum. 12 slots at 30
+  degrees, R from the cover (`radiusFor`), `slotAlbum` recycles behind the drum, `expDamp` settle,
+  drag in albums (pointer captured only past 6 px, or the click lands on the drum not the cover),
+  fling, auto every 3.4 s, keyboard up/down/Enter. A click on the front cover opens Spotify; on
+  another, turns it to the front. Empty list -> blank sleeves. `npm run music` checked live with
+  three real links (names and covers fetched, wheel drawn, then reverted and pruned).
+- binder (`site/binder.js`, pure model `site/binderModel.js`, constants `rigConfig.binder`):
+  described in CLAUDE.md's invariants. Pages = `src/assets/photos/binder/`, seeded with the one page
+  the owner attached (img-3366, copied from the reel). Colours = `--binder-board/-spine/-lining/
+  -rings/-window` in site.css; the editor shows them under "The binder" with nothing selected on
+  About, and binder.js follows the root's style while previewing. No WebGL -> two flat pictures
+  and the same buttons.
+
+**Editor**: About in the page list (Photos moved under the sheets), `about.js` is marked for
+selection and its words resolve to content.js / about.js / deck.js.
+
+**Seen in the Browser pane** (desktop 1512x867 and 375x812, `#doc` shifted by a transform since
+the pane cannot scroll): the intro, the margins turning, the carousel turning by itself, the
+wheel with real covers, the binder closed, dragged (it swings back), opened by its button and by a
+press, a page turned to empty pockets; Home's glyph opening onto the sky; About -> photos crossing
+and Escape back. NOT seen: a real phone or Safari, a real swipe, the backdrop blur's cost on a weak
+GPU, and the editor's binder colour fields used by hand (the code path is the glow's).
+
+**Cost**: main chunk 193.6 -> 211.0 KB (77.8 -> 82.9 gzip). The binder is a 13 KB chunk; three.js
+stays in the chunk Mew already uses (`pixelate-*.js`), so a visit that saw Home has it cached.
+
+**Tests**: 1246 sim checks + the router harness, all green (new: "the about card" section --
+wheel recycling with a control, album list, binder model, reel deal with a control, deck order,
+Home's links vs SOCIALS with a control, the binder's tokens; router: Mew off About and photos).
+
+### Second pass, the same day (owner's notes)
+
+- **Photography**: the frosted frame is each picture's own now (`.pc-glass` inside every slide), so
+  it travels with it; only the front one's frame really blurs (`backdrop-filter`, hover screens).
+- **Sizes**: photography 440, music 300, binder 440 design px wide by default (they were "way too
+  big"), each a box the editor can resize (`data-e` ab-photo-s1 / ab-music-s1 / ab-binder-s1).
+  Everything inside follows the box: the carousel in container units (`.pc` is an inline-size
+  container, `--pc-w: 52cqw`), the wheel by a ResizeObserver (cover = half the section, real px),
+  the binder's canvas by its own ResizeObserver.
+- **Life frames**: four POLAROIDS (white mount, deeper foot, soft shadow, a lean each; no caption,
+  no print filter -- six printed frames read as crowded). The mount is the picture's percentage
+  MARGIN, not the frame's padding: a percentage padding resolves against the containing block (the
+  960 column) and the first try had a 230 px white foot. Pressed, one opens in the photos sheet's
+  viewer (`makeViewer`, now exported), paging the whole reel and closing into the polaroid showing
+  it; nothing turns while it is open. The photos sheet is unchanged.
+- **Binder**: two-sided as before (owner confirmed); names may say `-front` / `-back`
+  (`pagesFor`). Its buttons are round and frosted.
+- **The editor's "found 0" identity error**: index.html read half-written while it was being
+  saved (this session's own rewrites, with the editor running). The editor's pre hook now reads
+  it again until it ends in `</html>` (`readWhole`, plugin.js). Reloading the editor clears it.
+- Seen in the pane at 1512x867: the polaroids, per-picture frames, the smaller row, a polaroid
+  opening in the viewer and Esc closing it, the round buttons. Not seen: tablet and phone after
+  this pass, Safari. Tests: 1251 + the router harness, all green (new: page pairing, with a
+  control).
 

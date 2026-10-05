@@ -6,7 +6,7 @@ as the only unprinted thing on it.
 
 ![The link card: bone paper with a rectangle cut out of it, and Mew standing in the hole in cerulean.](public/og.png)
 
-Five cards — home, experience, projects, photos, contact — reached from a small
+Five cards — home, experience, projects, about, contact — reached from a small
 bar at the top, with the project sheets hanging off the projects card. The deck shape
 exists so the work survives being skimmed; the sheet it is cut from has not
 changed. Mew is on Home and Contact, and nowhere else.
@@ -23,7 +23,14 @@ Another is locked: **Softshield**, the confidential encryption tool (slug
 rest "This work is confidential" with a way to ask. The other two are **Laser
 Processing** (slug `usb-provisioning`, the engraving pipeline) and **iclicker**.
 
-The **photos** card is the photography as one justified block, its pictures in
+The **about** card is who he is away from the work: a few words, his
+picture, his snapshots turning in the margins, the photography one picture at a
+time in a frosted frame (press it for the photos sheet), his albums on a wheel
+that turns by itself, and his Pokémon cards in a small 3D binder drawn the way
+Mew is drawn, which can be turned in the hand and paged through. Albums are one
+Spotify link each in `src/site/music.js` (`npm run music` bakes the covers).
+
+The **photos** sheet, which hangs off About, is the photography as one justified block, its pictures in
 different sizes but ending on the same edges, with the snapshots of his life hung
 in the paper either side of it, printed in the sky's two inks until you look at
 one. The folders `src/assets/photos/reel/` and `photography/` are the list: add a
@@ -62,6 +69,7 @@ hashed URLs, `public/`, the SPA fallback — for checking the bundle as a bundle
 | `src/site/sky.js` | the same press on the CPU. The reference implementation. |
 | `src/site/deck.js` | the mask: every hole prints its own sky into a canvas inside its element; the full-screen canvas is used only for the crossing. |
 | `src/site/photos.js`, `photolayout.js`, `photoassets.js` | the photos card: the block and the margins, how they are worked out from the pictures (pure), and the folder glob that is the list. Pictures: `tools/bake_photos.mjs` from `photos-source/` (git-ignored). |
+| `src/site/about.js`, `aboutMusic.js`, `binder.js`, `binderModel.js`, `music.js` | the about card: its markup, carousel and snapshot frames; the album wheel; the binder (three.js, its own chunk) and its pure model; the album list. |
 | `src/styles/designPx.js` | the design pixel: every px/vw/vh in the stylesheets rewritten to scale from the 1512 x 867 reference window. |
 | `src/site/router.js` | going through the hole. Page scopes, generation-guarded watchdogs, the swipe. |
 | `src/site/pages/sheet.js` | the two-plate trim the USB and iClicker sheets are cut to. Their page files are only the **words**. |

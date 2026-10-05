@@ -4927,6 +4927,131 @@ section("identity: the head a link preview is made from");
     `...with the long sentence wrapped over ${descLines.length} lines, not written as one`);
 }
 
+// ---------------------------------------------------------------------------
+section("the about card (2026-10-04): a wheel of any length, a binder that turns, and the deck that holds them");
+{
+  const M = await import("../src/site/aboutMusic.js");
+  const S = M.SLOTS;
+  // every slot shows an album congruent to it, and the nearest one to the front
+  let congruent = true, nearest = true, changesBehind = true, seenMax = 0;
+  const prev = Array.from({ length: S }, (_, j) => M.slotAlbum(j, 0));
+  for (let k = 1; k <= 3000; k++) {
+    const u = k * 0.01;
+    for (let j = 0; j < S; j++) {
+      const n = M.slotAlbum(j, u);
+      if (((n - j) % S + S) % S !== 0) congruent = false;
+      if (Math.abs(n - u) > S / 2 + 1e-9) nearest = false;
+      // a slot is given a new album only when it is round the back of the drum
+      if (n !== prev[j]) { if (Math.abs(prev[j] - u) < S / 2 - 0.02) changesBehind = false; prev[j] = n; }
+      seenMax = Math.max(seenMax, n);
+    }
+  }
+  ok(congruent && nearest, "the wheel: each slot shows the album congruent to it that is nearest the front");
+  ok(changesBehind, "...and a slot only takes a new album while it is half a turn away, behind the drum, where it cannot be seen");
+  ok(seenMax >= 30, `...so twelve slots carry the wheel past album 30 (${seenMax}), however long the list`);
+  ok(Array.from({ length: S }, (_, j) => j).every((j) => j < S) && Math.max(...Array.from({ length: S }, (_, j) => j)) === S - 1,
+    "control: a fixed slot-per-album mapping would stop at album 11");
+  ok(M.wrap(-1, 5) === 4 && M.wrap(12, 5) === 2, "a negative album number wraps round the list as well");
+  ok(Math.abs(2 * M.radiusFor(186) * Math.sin(Math.PI / S) - 186 * 1.06) < 1e-9,
+    "the drum's radius leaves neighbours 6% of a cover apart at the front");
+
+  const Mu = await import("../src/site/music.js");
+  const list = Mu.albums([
+    { spotify: "https://open.spotify.com/album/4xkM0BwLM9H2IUcbYzpcBI?si=abc" },
+    { spotify: "https://example.com/album/nothing" },
+    { spotify: "https://open.spotify.com/intl-fr/album/392p3shh2jkxUxY2VHvlH8", name: "channel ORANGE · Frank Ocean" },
+    {}
+  ], { "4xkM0BwLM9H2IUcbYzpcBI": "/c.webp" }, { "4xkM0BwLM9H2IUcbYzpcBI": { title: "I Love You." }, "392p3shh2jkxUxY2VHvlH8": { title: "channel ORANGE" } });
+  ok(list.length === 2 && list[0].title === "I Love You." && list[0].cover === "/c.webp" && list[0].url === "https://open.spotify.com/album/4xkM0BwLM9H2IUcbYzpcBI",
+    "music.js: a Spotify link becomes an album with its baked name and cover, its tracking query dropped");
+  ok(list[1].title === "channel ORANGE · Frank Ocean" && list[1].cover === null,
+    "...a hand-written name wins, and a cover not yet baked is a blank sleeve rather than an error");
+  ok(Mu.albums([{ spotify: "https://example.com/album/x" }]).length === 0, "control: a line that is not a Spotify link is not an album");
+  const empty = M.musicHTML([]);
+  ok((empty.match(/class="md-s"/g) || []).length === S && empty.includes("is-blank"), "an empty list still draws a whole wheel, of blank sleeves");
+
+  const Bm = await import("../src/site/binderModel.js");
+  ok(Bm.sheetsFor(0) === 1 && Bm.sheetsFor(1) === 1 && Bm.sheetsFor(2) === 1 && Bm.sheetsFor(3) === 2,
+    "the binder: one photograph a side, two sides a sheet, and at least one sheet of empty pockets");
+  const T0 = Bm.targets(0, 3), T1 = Bm.targets(1, 3), Tend = Bm.targets(4, 3);
+  ok(T0.cover === 0 && T0.sheets.every((a) => a === 0), "closed, the cover and every sheet lie on the right");
+  ok(T1.cover === Math.PI && T1.sheets.every((a) => a === 0), "opened, only the cover has turned");
+  ok(Tend.sheets.every((a) => a === Math.PI) && Bm.clampPos(9, 3) === 4 && Bm.clampPos(-2, 3) === 0, "at the end every sheet is on the left, and the ends are ends");
+  ok(Bm.sidesOf(1, 3).front === 2 && Bm.sidesOf(1, 3).back === -1, "sheet 1 carries photograph 2 on its front, and empty pockets where there is no fourth");
+  const bendLen = (pts) => pts.slice(1).reduce((a, p, i) => a + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
+  let keeps = true, above = true;
+  for (let a = 0; a <= Math.PI + 1e-9; a += Math.PI / 24) {
+    for (const lag of [-0.6, 0, 0.6]) {
+      const pts = Bm.sheetCurve(a, lag, 0.75, 12);
+      if (Math.abs(bendLen(pts) - 0.75) > 1e-9) keeps = false;
+      if (pts.some(([, z]) => z < -1e-12)) above = false;
+    }
+  }
+  ok(keeps && above, "a turning sleeve keeps its length exactly however it bends, and never goes under the board");
+  ok(Bm.lagAt(0, 0.55, 1) === 0 && Math.abs(Bm.lagAt(1, 0.55, 1)) < 1e-12 && Bm.lagAt(0.5, 0.55, 1) === 0.55 && Bm.lagAt(0.5, 0.55, -1) === -0.55,
+    "...and its free edge lags most mid-turn, not at all at either end, the other way going back");
+  const pts = Bm.sheetCurve(Math.PI / 2, 0.55, 0.75, 12);
+  ok(pts[12][0] > 0.05, "control: a lagging sleeve leans its edge back toward where it came from");
+  ok(Bm.stackZ(0, 0, 3, 0, 0.01) > Bm.stackZ(1, 0, 3, 0, 0.01) && Bm.stackZ(2, Math.PI, 3, 0, 0.01) > Bm.stackZ(1, Math.PI, 3, 0, 0.01),
+    "the next sleeve to read is on top of the right-hand stack, and the last one turned on top of the left");
+  ok(Bm.sheetsNear(5, 40).length <= 4 && Bm.sheetsNear(0, 40).includes(0) && Bm.sheetsNear(41, 40).includes(39),
+    "only the sleeves round the open spread hold a picture, at the start and at the end alike");
+  ok(Bm.easeTurn(0) === 0 && Bm.easeTurn(1) === 1 && Math.abs(Bm.easeTurn(0.5) - 0.5) < 1e-12, "a turn eases off its rest and onto the other side");
+  const pageIds = (pages) => pages.map((p) => (p ? p.id : "-")).join();
+  const P = (...xs) => xs.map((id) => ({ id }));
+  ok(pageIds(Bm.pagesFor(P("img-2", "img-10", "img-1"))) === "img-1,img-2,img-10,-",
+    "binder pages: the folder's order pairs them, front then back, read as people read numbers (2 before 10)");
+  ok(pageIds(Bm.pagesFor(P("a-back", "a-front", "b-back", "c-front"))) === "a-front,a-back,-,b-back,c-front,-",
+    "...a name ending -front or -back goes on that side of its own sheet, and a lone side leaves the other as pockets");
+  ok(pageIds(Bm.pagesFor(P("x1", "a-front"))) === "a-front,-,x1,-" && pageIds(Bm.pagesFor([])) === "",
+    "...named and unnamed pages mix, and an empty folder is no pages");
+  ok(pageIds(Bm.pagesFor(P("a-backup", "a-fronts"))) === "a-backup,a-fronts", "control: a name that merely contains front or back is not a side");
+  const sides = Bm.pagesFor(P("a-back"));
+  ok(Bm.sidesOf(0, sides).front === -1 && Bm.sidesOf(0, sides).back === 1, "...and a sheet whose front is empty shows pockets there, its back the photograph");
+
+  const A = await import("../src/site/about.js");
+  const reel = Array.from({ length: 50 }, (_, i) => ({ id: `r${i}` }));
+  const dealt = A.dealReel(reel, 6, 151);
+  const ids = dealt.flat().map((p) => p.id);
+  ok(ids.length === 50 && new Set(ids).size === 50 && dealt.every((d) => d.length >= 8),
+    "the life frames: every snapshot dealt once, round six frames");
+  ok(JSON.stringify(A.dealReel(reel, 6, 151)) === JSON.stringify(dealt) && JSON.stringify(A.dealReel(reel, 6, 152)) !== JSON.stringify(dealt),
+    "...the same every visit (control: another seed deals another hand)");
+  const html = A.aboutHTML(3);
+  ok(html.includes("data-md") && html.includes("data-bd") && html.includes('class="ab-intro"'),
+    "the about card carries its words, its wheel and its binder");
+  ok(html.includes("is-ph"), "...and its words are marked as stand-ins while ABOUT.placeholder says they are");
+
+  const R = await import("../src/site/router.js");
+  ok(R.DECK.join() === "home,experience,projects,about,contact" && R.PATH.about === "/about" && !("photos" in R.PATH),
+    "the deck: About is the fourth card, where Photos was");
+  ok(R.SHEETS_OFF.photos === "about" && R.SHEETS_OFF.project === "projects", "...and the photos sheet hangs off it, the way a project hangs off Projects");
+  ok(R.RAMP.about === R.RAMP.photos, "...at the same hour of the night the photos card had");
+
+  // HOME'S LINKS ARE WRITTEN TWICE (index.html is the first paint and needs no
+  // script; SOCIALS in content.js is the contact card), so they are held together
+  const { SOCIALS } = await import("../src/site/content.js");
+  const { readFileSync } = await import("node:fs");
+  const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const homeLinks = [...index.matchAll(/class="hs-a[^"]*"[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+  ok(homeLinks.length === 3 && SOCIALS.filter((x) => !x.placeholder).every((x) => homeLinks.includes(x.url)),
+    `the three links under Home's bio go where the contact card says (${homeLinks.length})`);
+  ok(!homeLinks.includes("https://github.com/someone-else"), "control: a link the contact card does not list would not be found there");
+  ok(/data-nav="about"/.test(index) && !/data-nav="photos"/.test(index), "the nav bar names About, not Photos");
+
+  // THE BINDER'S COLOURS ARE THE OWNER'S: five :root tokens the editor finds
+  // by name and writes back by name (editor/server/plugin.js), so each must be
+  // declared once as a plain hex, before any other mention with a colon
+  const { BINDER_TOKENS } = await import("../src/site/binder.js");
+  const css = readFileSync(new URL("../src/styles/site.css", import.meta.url), "utf8");
+  const first = (tok) => new RegExp(`${tok}:\\s*([^;]+);`).exec(css)?.[1]?.trim();
+  const toks = Object.values(BINDER_TOKENS);
+  ok(toks.length === 5 && toks.every((t) => /^#[0-9A-Fa-f]{6}$/.test(first(t) || "")),
+    "the binder's five colours are editor tokens in site.css, each a plain hex where the editor looks for it");
+  ok(toks.every((a) => toks.every((b) => a === b || !b.startsWith(a))), "...and no token's name is the start of another's, so a save cannot write one into the other");
+  ok(!/^#[0-9A-Fa-f]{6}$/.test(first("--binder-nothing") || ""), "control: a token that is not declared is not found");
+}
+
 console.log(`\n${checks - failures}/${checks} checks passed`);
 if (failures > 0) process.exit(1);
 console.log("ALL PASS");

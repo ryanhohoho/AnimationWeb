@@ -24,6 +24,7 @@ import { glyphUrl } from "../iconatlas.js";
 import { cardStill, cardVideo } from "../content.js";
 import { REEL, PHOTOGRAPHY } from "../photoassets.js";
 import { photosHTML } from "../photos.js";
+import { aboutHTML } from "../about.js";
 
 const esc = (v) => String(v ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -139,7 +140,17 @@ function projects() {
 // site/photos.js; the pictures are tools/bake_photos.mjs's.
 function photos() {
   const hang = PHOTOGRAPHY.length || REEL.length ? photosHTML({ REEL, PHOTOGRAPHY }, 4) : "";
-  return shell("p-photos", "04", "23:30", "PHOTOS", "me and what i like.", hang);
+  return shell("p-photos", "04", "23:30", "PHOTOS", "what i've seen.", hang);
+}
+
+// ── 04 · ABOUT ──────────────────────────────────────────────────────────────
+// Since 2026-10-04 the fourth card, by instruction, in the photos card's slot:
+// who he is away from the work -- a few words, his picture, his photography,
+// his music and his binder. The photos card above is now a sheet reached from
+// this one (router.js, SHEETS_OFF), so it keeps its renderer here. Everything
+// about how the card is drawn is in site/about.js.
+function about() {
+  return shell("p-about", "04", "23:30", "ABOUT", "me and what i like.", aboutHTML(3));
 }
 
 // ── 05 · CONTACT ────────────────────────────────────────────────────────────
@@ -159,7 +170,7 @@ function contact() {
     <p class="t dim back-hint" style="--i:6"><a class="link" href="/" data-route>← GO BACK</a></p>`);
 }
 
-const PAGES = { experience, projects, photos, contact };
+const PAGES = { experience, projects, about, photos, contact };
 
 /** @param name one of the deck route names other than "home" */
 export function renderDeckPage(name) {

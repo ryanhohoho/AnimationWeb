@@ -26,7 +26,7 @@
 // something) or reach the top: the pattern every long-form reading site uses.
 // A little hysteresis on each side, so a trackpad's jitter does not flap it.
 
-import { DECK } from "./router.js";
+import { DECK, SHEETS_OFF } from "./router.js";
 
 export function createChrome({ scope } = {}) {
   const root = document.getElementById("chrome");
@@ -37,13 +37,15 @@ export function createChrome({ scope } = {}) {
     const name = route?.name;
     // A PROJECT SHEET IS INSIDE CARD THREE, so the bar marks Projects there --
     // as where you are, not as the page you are on: `location` rather than
-    // `page`, because the link goes to the card and not to this sheet. Off the
-    // deck (a 404) nothing is marked, because the reader is not in the piece.
-    const here = name === "project" ? "projects" : DECK.includes(name) ? name : null;
+    // `page`, because the link goes to the card and not to this sheet. The
+    // photos sheet is inside About the same way (SHEETS_OFF, router.js). Off
+    // the deck (a 404) nothing is marked, because the reader is not in the piece.
+    const off = SHEETS_OFF[name];
+    const here = off || (DECK.includes(name) ? name : null);
     for (const a of links) {
       const on = a.dataset.nav === here;
       a.classList.toggle("on", on);
-      if (on) a.setAttribute("aria-current", name === "project" ? "location" : "page");
+      if (on) a.setAttribute("aria-current", off ? "location" : "page");
       else a.removeAttribute("aria-current");
     }
     document.body.classList.toggle("on-project", name === "project");

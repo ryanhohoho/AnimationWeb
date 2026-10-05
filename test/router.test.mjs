@@ -12,7 +12,7 @@ const VH = 900, VW = 1400;
 // document. That asymmetry IS the bug this file exists for -- landing on a much
 // shorter page is what makes the browser clamp the scroll on the spot.
 const HEIGHT = {
-  home: 1000, experience: 1000, projects: 2200, contact: 1000, project: 9000
+  home: 1000, experience: 1000, projects: 2200, about: 2400, contact: 1000, project: 9000
 };
 
 let page = "home";
@@ -48,6 +48,7 @@ const docEl = {
       : v.includes('id="p-experience"') ? "experience"
       : v.includes('id="p-projects"') ? "projects"
       : v.includes('id="p-contact"') ? "contact"
+      : v.includes('id="p-about"') ? "about"
       : "project";
     scrollY = Math.min(scrollY, maxScroll());   // <- the browser does this, here
   },
@@ -719,6 +720,11 @@ console.log("\n== mew is on home and contact, and nowhere else");
   const viaContact = run(["experience", "contact", "home"]);
   ok(viaContact.boots.length === 1 && viaContact.boots[0].enter === true,
     "contact is one of her pages: reaching it fetches the engine, and she enters from the side");
+  const ab = run(["home", "about", "photos", "about", "home"]);
+  ok(ab.said.join() === "false,true,true,true,false",
+    `she is not on About or on the photos sheet that hangs off it (${ab.said.join()})`);
+  const onlyAbout = run(["about", "photos"]);
+  ok(onlyAbout.boots.length === 0, "a visit that only reads About never fetches the engine");
   const noMew = run(["experience", "projects", "project", "photos"]);
   ok(noMew.boots.length === 0, "control: a visit that never reaches home or contact never fetches the engine");
   // THE PAIRED CONTROL: the same visit with less motion asked for never boots

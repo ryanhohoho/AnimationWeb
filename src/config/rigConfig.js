@@ -1614,5 +1614,54 @@ export const rigConfig = {
     quatDampRate: 30          // final smoothing on the bone quats. the strand is
                               // already smooth, so this only kills single-frame
                               // sparkle
+  },
+
+  // ── THE BINDER (src/site/binder.js, the About card, 2026-10-04) ─────────────
+  // Not Mew, but drawn the way she is, by instruction: the same pixel pass
+  // (presentation.pixelate, read as it is, so the binder and she can never
+  // drift apart), the same banded light (presentation.spriteShade's bands,
+  // floor, gain and tints). What is HERS alone lives above; what is the
+  // binder's is here. Lengths are world units with the page 1 tall.
+  binder: {
+    // a page is a photograph of a nine-pocket sheet, and every one of those
+    // the owner takes is the reel's 3:4 (1536x2048): the page IS that shape
+    pageW: 0.75, pageH: 1.0,
+    coverPad: 0.05,           // the cover's overhang round the page, each side
+    coverT: 0.035,            // a cover's thickness: chunky enough to read as
+                              // board at a 4 px texel, which is ~1.5 texels
+    ringX: 0.055,             // the rings' centre from the spine's hinge
+    sheetDz: 0.006,           // one sleeve's thickness in the stack
+    spineMin: 0.12,           // the closed binder's depth, at least: thinner
+                              // than this the rings stand taller than the box
+    flipS: 0.62,              // a page turn. CHOSEN, not measured: near the
+                              // site's own 0.6 s moves (the fade is 0.8 in all),
+                              // so a turn feels like the rest of the site
+    coverS: 0.8,              // the cover is heavier and wider: slower
+    bend: 0.55,               // how far the free edge lags the ring, radians at
+                              // mid-turn: a sleeve is stiff plastic, so it is a
+                              // lean rather than a curl
+    // at rest it leans its face toward the top right of the window (owner's
+    // brief): yaw turns the face right, a negative pitch turns it up. Open,
+    // the lean halves, because a spread at 22 degrees is hard to read
+    restYaw: 0.42, restPitch: -0.24, restRoll: 0.035, openLean: 0.45,
+    dragRad: 0.0085,          // radians per CSS px of drag
+    maxYaw: 1.25, maxPitch: 0.85,
+    springOmega: 7.5,         // the swing back to rest after a drag: under-
+    springZeta: 0.48,         // damped, so it overshoots once and settles --
+                              // a binder let go of, not a dial returning to zero
+    fovDeg: 26,
+    fitMargin: 1.32,          // the frame round the binder, so a lean or a drag
+                              // does not put a corner off the canvas
+    // THE BINDER'S COLOURS ARE NOT HERE: they are the owner's, the
+    // --binder-board / -spine / -lining / -rings / -window tokens in
+    // styles/site.css, which the editor changes (binder.js reads them, and
+    // again whenever the editor previews one). Only these two are fixed: the
+    // plain sleeves, and her, who is in her own pink whatever the board is.
+    sleeve: "#F4F4F2",
+    mew: "#F7A8D8",
+    // the light: from the upper left, in front, fixed to the WORLD -- so
+    // turning the binder turns it through the light, which is what reads as 3D
+    light: [-0.45, 0.6, 0.66],
+    ambient: 0.42
   }
 };

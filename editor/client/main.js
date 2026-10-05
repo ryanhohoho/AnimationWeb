@@ -65,9 +65,11 @@ const PAGES = [
   { path: "/", key: "home", label: "Home" },
   { path: "/experience", key: "experience", label: "Experience" },
   { path: "/projects", key: "projects", label: "Projects" },
-  { path: "/photos", key: "photos", label: "Photos" },
+  { path: "/about", key: "about", label: "About" },
   { path: "/contact", key: "contact", label: "Contact" },
   ...state.projects.map((p) => ({ path: `/projects/${p.slug}`, key: `project:${p.slug}`, label: p.title, sub: true })),
+  // the photos sheet hangs off About now (2026-10-04); its frames still swap here
+  { path: "/photos", key: "photos", label: "Photos", sub: true },
   { path: "/not-printed", key: "404", label: "404", sub: true }
 ];
 function renderPages() {

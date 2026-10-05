@@ -1,6 +1,6 @@
 // bake_photos.mjs — THE PHOTOS CARD'S PICTURES, STRAIGHT OFF A PHONE
 //
-//   npm run photos                       # photos-source/{reel,photography} -> the folders
+//   npm run photos                       # photos-source/{reel,photography,binder,portrait} -> the folders
 //   node tools/bake_photos.mjs --dry     # say what it would do, write nothing
 //   node tools/bake_photos.mjs --prune   # also remove pictures whose original is gone
 //   node tools/bake_photos.mjs --restore # bring back pictures you removed on purpose
@@ -62,7 +62,12 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = join(ROOT, "photos-source");
 const OUT = join(ROOT, "src", "assets", "photos");
 const LEDGER = join(SRC, ".baked");
-const SETS = { reel: [320, 640, 1280, 2048], photography: [640, 1280, 2048] };
+// binder: the pages of the About card's Pokémon binder (one photograph per side
+// of a nine-pocket page, drawn as a texture: 640 for a phone, 1280 for a
+// desktop). portrait: the About card's picture of him, the first one in the
+// folder. Both since 2026-10-04.
+const SETS = { reel: [320, 640, 1280, 2048], photography: [640, 1280, 2048],
+               binder: [640, 1280], portrait: [640, 1280] };
 const QUALITY = { 320: 78, 640: 80, 1280: 80, 2048: 80 };
 const TAKE = new Set([".heic", ".heif", ".jpg", ".jpeg", ".png", ".dng", ".tif", ".tiff", ".webp"]);
 const SRGB = "/System/Library/ColorSync/Profiles/sRGB Profile.icc";
@@ -174,4 +179,4 @@ try {
 }
 for (const s of report.skipped) console.log(`skipped  ${s}  (removed from the site earlier; --restore brings it back)`);
 console.log(dry ? "(dry run, nothing written)"
-  : `photos: ${report.made} made, ${report.kept} kept${report.skipped.length ? `, ${report.skipped.length} skipped` : ""}${prune ? `, ${report.pruned} pruned` : ""} -> src/assets/photos/{reel,photography}`);
+  : `photos: ${report.made} made, ${report.kept} kept${report.skipped.length ? `, ${report.skipped.length} skipped` : ""}${prune ? `, ${report.pruned} pruned` : ""} -> src/assets/photos/{reel,photography,binder,portrait}`);

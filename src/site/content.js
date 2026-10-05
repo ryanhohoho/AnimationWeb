@@ -94,3 +94,18 @@ const pick = (slug, exts) => {
 };
 export const cardStill = (slug) => pick(slug, ["webp", "png", "jpg"]);
 export const cardVideo = (slug) => pick(slug, ["mp4", "webm"]);
+
+// ── THE ABOUT CARD ──────────────────────────────────────────────────────────
+// PLACEHOLDERS, by instruction (2026-10-04): the owner writes these himself.
+// While `placeholder` is true the words are set dashed and italic, the way an
+// unset contact handle is, so the page never passes a stand-in off as his.
+// Change the words (here or in the editor), then delete the flag.
+export const ABOUT = {
+  placeholder: true,
+  me: "A few sentences about you go here: where you grew up, what you do away from a keyboard, and what you have been into lately.",
+  // plain words, by instruction: a sentence or two, not a grid of chips. Add
+  // more lines to the list and each is its own paragraph.
+  interests: [
+    "What you are into outside of work goes here, the way you would say it: the games you play, what you collect, the places you keep going back to, and what you listen to while you build."
+  ]
+};

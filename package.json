@@ -12,7 +12,8 @@
     "test": "node --import ./test/viteStubRegister.mjs test/sim.test.js && node --import ./test/viteStubRegister.mjs test/router.test.mjs",
     "test:sim": "node --import ./test/viteStubRegister.mjs test/sim.test.js",
     "test:router": "node --import ./test/viteStubRegister.mjs test/router.test.mjs",
-    "photos": "node tools/bake_photos.mjs"
+    "photos": "node tools/bake_photos.mjs",
+    "music": "node tools/bake_music.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

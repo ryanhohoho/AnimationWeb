@@ -38,7 +38,8 @@ The page is **two sheets of paper and one animal.**
 | **THE ANIMAL** | Mew. The one thing on the page that is not printed. | `src/engine/**` — untouched |
 
 It is a **deck of five cards**, one screen each, read with the arrow keys —
-home, experience, projects, photos, contact (photos joined on 2026-09-27) —
+home, experience, projects, about, contact (photos joined on 2026-09-27; about
+took its place on 2026-10-04, and the photos became a sheet hanging off it) —
 with the four project sheets hanging off card three as long documents.
 
 That is a change of shape, and the reason is worth stating plainly because it
@@ -781,3 +782,41 @@ Two structural changes, both by instruction after a question round.
 The Photos card (§ in STATE.md, 18 and 22) follows the same rules: the
 snapshots of life hung small in the paper beside the work, printed in the sky's
 two inks until looked at, and the photography one justified block in the middle.
+
+## 12. About — who he is away from the work (2026-10-04)
+
+By instruction, after two question rounds, in the photos card's slot. Each part
+and why it is there:
+
+- **The intro** is his words and his picture; until he writes them they are
+  set italic and grey, the way an unset contact handle is dashed, so a stand-in
+  never passes for him. Until there is a picture, its place is a cut in the
+  paper the shape of it: the honest empty state on this sheet is a hole.
+- **The life, in the margins**, as on the photos sheet: small frames printed in
+  the sky's two inks until looked at. They turn, one at a time on one clock,
+  because a reel is many pictures and the margin has room for six.
+- **The photography, one at a time, in a frosted frame** -- the owner's pick from
+  claireyluo's site, and the one place on the sheet that is glass rather than
+  print. It is a doorway: pressed, it opens the photos sheet with the crossing,
+  out of the picture pressed.
+- **The music, on a wheel.** Covers stand on the rim of a drum seen edge-on, each
+  facing out from its centre, turning upward by itself. Twelve slots, given a
+  new album only while round the back, so any length of list is the same twelve
+  covers and one transform a frame. Nothing taken from liumichelle.com's shelf
+  but the idea of showing albums: no years, no counts (§4).
+- **The binder, drawn the way Mew is drawn**: her pixel pass, her banded light,
+  her ink line, his rose board with a cerulean window and her in it from the tab
+  icon's grid. The card pages are the one thing NOT pixelated, because they are
+  the point; they are drawn at full resolution over the pixel pass, depth-tested
+  against the board. It rests leaning toward the top right, turns in the hand
+  and swings back, opens on a press, and pages turn as stiff sleeves (a lean, not
+  a curl). Its colours are the owner's (`--binder-*`, the editor).
+- **Mew is not on it.** It is a page to look through, and the binder is the
+  thing on it that moves.
+
+Home gained three ways to reach him under the bio: ink glyphs in hairline
+squares that become windows onto the sky when pointed at -- the project icons'
+kind of hole, printed at the controls' fixed hour, because at its own place near
+the top of Home the print is nearly paper (measured 232,235,245) and a glyph of
+it would vanish.
+

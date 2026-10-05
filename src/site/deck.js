@@ -316,7 +316,7 @@ export function createDeck({ scope }) {
       const docY = q.fixed ? q.box.y + sy : q.box.y;
       // A SKY CONTROL PRINTS AT A FIXED HOUR, 2,640 px down the plate, wherever
       // it stands (SKY_BTN_DEPTH says why); every other hole at the sheet's own.
-      const ramp = q.kind === "sky" ? SKY_BTN_DEPTH - docY / k : skyRamp;
+      const ramp = q.kind === "sky" || q.hour ? SKY_BTN_DEPTH - docY / k : skyRamp;
       // A control belongs to the site, so it is the home pair; an open icon is
       // a window onto its project, so it is that project's; the gate likewise.
       const pair = q.kind === "sky" ? null
@@ -482,7 +482,12 @@ export function createDeck({ scope }) {
         cv.setAttribute("aria-hidden", "true");
         el.prepend(cv);
       }
-      holes.push({ el, cv, ctx: cv.getContext("2d"), kind, fixed, box: null, seen: true });
+      // data-control-hour: a hole that is a CONTROL (Home's three link glyphs)
+      // prints at the controls' fixed hour, like a sky button, for the same
+      // measured reason (SKY_BTN_DEPTH): at its own place near the top of
+      // Home the print is 232,235,245 -- a glyph of it on white paper is gone
+      holes.push({ el, cv, ctx: cv.getContext("2d"), kind, fixed, box: null, seen: true,
+                   hour: el.hasAttribute("data-control-hour") });
     };
     for (const el of document.querySelectorAll("[data-ap]")) {
       el.classList.add("on");

@@ -39,14 +39,19 @@ import { tabTitle } from "./identityHead.js";
 // he has done, what he has made, what he has seen, how to reach him. A hiring
 // manager reads it in that order or reads the first card and leaves, and
 // either is a complete visit. (Photos joined on 2026-09-27, before Contact:
-// the way to reach him stays the last thing on the deck.)
+// the way to reach him stays the last thing on the deck. On 2026-10-04 About
+// took its place, by instruction: who he is outside the work -- the
+// photography, the music, the binder -- and the photos page hangs off it.)
 //
-// Project sheets are NOT on the deck. They hang off card three, which is why
-// they get a back arrow and the deck cards do not.
-export const DECK = ["home", "experience", "projects", "photos", "contact"];
+// Project sheets are NOT on the deck. They hang off card three, and the photos
+// sheet hangs off About (SHEETS_OFF), which is why the nav marks the card they
+// belong to rather than a name of their own.
+export const DECK = ["home", "experience", "projects", "about", "contact"];
 export const PATH = {
-  home: "/", experience: "/experience", projects: "/projects", photos: "/photos", contact: "/contact"
+  home: "/", experience: "/experience", projects: "/projects", about: "/about", contact: "/contact"
 };
+// the sheets that are not on the deck, and the card each hangs off
+export const SHEETS_OFF = { project: "projects", photos: "about" };
 
 // ── AND WHAT TIME IT IS ON EACH ──────────────────────────────────────────────
 // The sheet used to be one tall document and the night fell as you scrolled it:
@@ -69,7 +74,9 @@ export const RAMP = {
   home:       0,             // 19:00  - unchanged from the sheet it came from
   experience: Math.round(HOUR * 1.8),   // ~20:50
   projects:   Math.round(HOUR * 3.75),  // ~22:45
-  photos:     Math.round(HOUR * 4.5),   // ~23:30
+  about:      Math.round(HOUR * 4.5),   // ~23:30
+  // the photos sheet keeps the hour it had as a card: it is the same pictures
+  photos:     Math.round(HOUR * 4.5),
   contact:    Math.round(HOUR * 5.25),  // ~00:15
   // a project sheet is still a tall document and still walks its own night
   // down its own length, exactly as it does today
@@ -97,6 +104,7 @@ const DESC = {
   projects: "Three pieces of work — a commissioned provisioning and engraving " +
         "pipeline, a vertical motion-graphics piece rendered live in the browser, " +
         "and a case study of a standardised attendance system.",
+  about: "Ryan Ho outside the work: his photography, his music, and his binder.",
   photos: "Pictures of Ryan Ho's life, and his photography.",
   contact: "How to reach Ryan Ho.",
   404: "Nothing was pulled here."
@@ -172,6 +180,7 @@ export function createRouter({ scope, deck, world, onPage }) {
     if (p === "/") return { name: "home" };
     if (p === "/experience") return { name: "experience" };
     if (p === "/projects") return { name: "projects" };
+    if (p === "/about") return { name: "about" };
     if (p === "/photos") return { name: "photos" };
     if (p === "/contact") return { name: "contact" };
     const m = p.match(/^\/projects\/([a-z0-9-]+)$/i);
@@ -186,7 +195,7 @@ export function createRouter({ scope, deck, world, onPage }) {
     if (route.name === "home") {
       return { html: homeHTML, title: SITE.title, desc: DESC.home, ink: null, inkA: null };
     }
-    if (DECK.includes(route.name)) {
+    if (DECK.includes(route.name) || route.name === "photos") {
       return { html: renderDeckPage(route.name), title: tabTitle(SITE, route.name),
                desc: DESC[route.name], ink: null, inkA: null };
     }
@@ -423,12 +432,16 @@ export function createRouter({ scope, deck, world, onPage }) {
   //   project <-> project           turns: they are siblings, and an opening
   //                                 that eats the screen to show you the next of
   //                                 the same kind is a lie about the distance
+  //
+  //   about <-> photos              the same as a card and its project sheet
+  //                                 (2026-10-04): the photos sheet hangs off
+  //                                 About, and opens out of the frame clicked
   function transitionFor(from, to) {
     const f = from?.name, t = to.name;
     if (f === t) return "fade";
     if (f === "project" && t === "project") return "fade";
-    if (t === "project") return "cross";           // from a card, or a deep link
-    if (f === "project") return "return";
+    if (t === "project" || t === "photos") return "cross";   // from a card, or a deep link
+    if (f === "project" || f === "photos") return "return";
     if (f === "home") return "cross";              // out through the summary window
     if (t === "home") return "return";             // and back into it
     return "fade";
@@ -985,8 +998,9 @@ export function createRouter({ scope, deck, world, onPage }) {
     else if (e.key === "ArrowLeft") d = -1;
     else if (e.key === "ArrowDown" || e.key === " ") { d = 1; scrolls = true; }
     else if (e.key === "ArrowUp") { d = -1; scrolls = true; }
-    else if (e.key === "Escape" && current?.name === "project") {
-      e.preventDefault(); go("/projects"); return;
+    else if (e.key === "Escape" && SHEETS_OFF[current?.name]) {
+      // a sheet's way back is the card it hangs off
+      e.preventDefault(); go(PATH[SHEETS_OFF[current.name]]); return;
     }
     if (!d) return;
     // Enter and Space belong to a focused link or button first

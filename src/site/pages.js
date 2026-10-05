@@ -18,6 +18,8 @@ import { mountCards } from "./cards.js";
 import { mountMedia } from "./media.js";
 import { mountPhotos } from "./photos.js";
 import { REEL, PHOTOGRAPHY } from "./photoassets.js";
+import { mountAbout } from "./about.js";
+import { mountHomeLinks } from "./homeLinks.js";
 export { afterArrival } from "../utils/arrival.js";
 
 // the three deck cards that are not the summary. The summary ships as markup in
@@ -43,6 +45,10 @@ export function mountPage(route, ctx) {
   if (route.name === "projects") mountCards(ctx);
   // ...and the photos card, whose strip can be pulled and whose pictures open
   if (route.name === "photos") mountPhotos(ctx, { REEL, PHOTOGRAPHY });
+  // ...and About, whose pictures, albums and binder turn
+  if (route.name === "about") mountAbout(ctx);
+  // ...and Home's three links, whose glyphs open onto the sky
+  if (route.name === "home") mountHomeLinks(ctx);
   // ...and every project sheet carries figures. ONE call here rather than an
   // identical three-line mount() in each of the three sheet files: mountMedia
   // returns immediately when a page has no <video> in a figure, and it puts its

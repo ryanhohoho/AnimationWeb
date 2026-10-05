@@ -43,7 +43,7 @@ const read = (f) => readFileSync(R(f), "utf8");
 // its figure template is shared by every capture on every sheet, so a mark in
 // it could not tell two figures apart. A figure gets its identity through
 // capture({ e }) instead (see setCaptureId below).
-const MARKED = /\/src\/site\/(pages\/[a-z0-9-]+|pages)\.js$/;
+const MARKED = /\/src\/site\/(pages\/[a-z0-9-]+|pages|about)\.js$/;
 
 // a sheet whose words are kept in a data file of their own, beside its page
 // file: the motion-graphics page names its works in site/motion.js
@@ -53,6 +53,8 @@ const DATA = { "motion-graphics": ["src/site/motion.js"] };
 function filesFor(page) {
   if (page === "home") return ["index.html"];
   if (page === "experience" || page === "photos" || page === "contact") return ["src/site/content.js", "src/site/pages/deck.js"];
+  // the About card: its words in content.js (ABOUT), its labels in about.js
+  if (page === "about") return ["src/site/content.js", "src/site/about.js", "src/site/pages/deck.js"];
   if (page === "projects") return ["src/site/projects.js", "src/site/pages/deck.js"];
   if (page?.startsWith("project:")) {
     const slug = page.slice(8);
@@ -733,6 +735,18 @@ async function state() {
   return { css, tokens, palette, projects, identity: await loadIdentity(), publicFiles: publicFiles() };
 }
 
+// A FILE CAUGHT HALF-WRITTEN. Another tool saving index.html (a script, an
+// editor, a formatter) truncates it and then writes it; a reload landing in
+// between read an empty or partial file, and the site's identity hook stopped
+// the page with "found 0" markers (2026-10-04). The whole file ends in
+// </html>, so a read that does not is read again, a few times, briefly.
+function readWhole(f) {
+  let t = read(f);
+  const nap = new Int32Array(new SharedArrayBuffer(4));
+  for (let i = 0; i < 12 && !/<\/html>\s*$/i.test(t); i++) { Atomics.wait(nap, 0, 0, 25); t = read(f); }
+  return t;
+}
+
 export default function editorPlugin() {
   // a fresh session starts with an empty staging folder: anything in it was
   // an upload for a session that has ended, saved or not
@@ -753,7 +767,7 @@ export default function editorPlugin() {
       order: "pre",
       handler(html, ctx) {
         if (!/index\.html$/.test(ctx.filename || "index.html")) return html;
-        const raw = read("index.html");
+        const raw = readWhole("index.html");
         seen.set("index.html", raw);
         // mark against the file ON DISK, so the offsets are the file's own
         return mark(raw, "index.html", [bodyRange(raw)], false);

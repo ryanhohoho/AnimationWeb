@@ -13,6 +13,9 @@ import { classesOf, nameOf, lockReason } from "./identity.js";
 // The backlight's tokens and presets, from the site's own model rather than
 // copied here: the page and the editor must agree on which six names exist.
 import { GLOW_TOKENS, APPLE_GLOW, VIVID_GLOW } from "../../src/site/glowField.js";
+// the binder on the About card (src/site/binder.js reads these five tokens)
+const BINDER_FIELDS = [["--binder-board", "Board"], ["--binder-spine", "Spine"], ["--binder-lining", "Inside"],
+  ["--binder-rings", "Rings"], ["--binder-window", "Cover window"]];
 import { scaleText, round } from "../shared/scale.js";
 
 const WEIGHTS = [300, 400, 500, 600, 700];
@@ -853,6 +856,11 @@ export function createInspector(ed, mount) {
           h("button", { class: `ghost${same(VIVID_GLOW) ? " on" : ""}`, onclick: () => setGlow("Backlight: Vivid", VIVID_GLOW) }, "Vivid")),
         h("div", { style: { fontSize: "10.5px", color: "var(--faint)", marginTop: "8px", lineHeight: 1.5 } },
           "The six colours the light round the figure is mixed from. They drift round the frame and blend where they meet, so it is the set that matters more than the order. Lit in full while this panel is open. Saved to --glow-1…6 in site.css.")]) : null,
+      ed.page === "about" ? sec("The binder", [
+        h("div", { class: "pal-row" }, ...BINDER_FIELDS.map(([tok, label]) =>
+          colorField({ label, get: val(T[tok]), set: setTok(tok), allowVars: false, allowNone: false }))),
+        h("div", { style: { fontSize: "10.5px", color: "var(--faint)", marginTop: "8px", lineHeight: 1.5 } },
+          "The Pokémon binder at the foot of this card. It turns to the new colour as you choose it; Mew on its cover keeps her own pink. Saved to --binder-* in site.css.")]) : null,
       sec("Type and line colours", [h("div", { class: "pal-row" },
         colorField({ label: "Ink (--ink)", get: val(T["--ink"]), set: setTok("--ink"), allowVars: false, allowNone: false }),
         colorField({ label: "Labels (--n3)", get: val(T["--n3"]), set: setTok("--n3"), allowVars: false, allowNone: false }),
@@ -885,7 +893,7 @@ export function createInspector(ed, mount) {
     apply();
   }
 
-  const pageName = () => ({ home: "Home", experience: "Experience", projects: "Projects", photos: "Photos", contact: "Contact" }[ed.page]
+  const pageName = () => ({ home: "Home", experience: "Experience", projects: "Projects", about: "About", photos: "Photos", contact: "Contact" }[ed.page]
     || (ed.page?.startsWith("project:") ? ed.page.slice(8) : ed.page));
 
   return { render, closePop };
