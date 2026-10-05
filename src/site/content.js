@@ -70,7 +70,7 @@ export const EXPERIENCE = [
 // The flag is what makes the row render dashed and italic instead of as a
 // plausible-looking link. Fill in `url` and `shown` and delete it.
 export const SOCIALS = [
-  { label: "Email",    shown: "ryanho333@gmail.com",  url: "mailto:ryanho333@gmail.com" },
+  { label: "Email",    shown: "ryanhoubc@gmail.com",  url: "mailto:ryanhoubc@gmail.com" },
   { label: "GitHub",   shown: "github.com/ryanhohoho", url: "https://github.com/ryanhohoho" },
   { label: "LinkedIn", shown: "https://www.linkedin.com/in/ryanh0/",    url: "https://www.linkedin.com/in/ryanh0/",  placeholder: false }
 ];
