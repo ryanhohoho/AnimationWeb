@@ -120,7 +120,7 @@ ${ABOUT.interests.map((t) => `
           <p data-e="t-w0q6" class="t dim ab-k">photography</p>${carouselHTML(PHOTOGRAPHY)}
         </section>
         <section class="ab-sec ab-music" data-e="ab-music-s1" aria-label="Music">
-          <p data-e="t-obye" class="t dim ab-k">music</p>${musicHTML(ALBUMS)}
+          <p data-e="t-obye" class="t dim ab-k">music i like</p>${musicHTML(ALBUMS)}
         </section>
       </div>
       <section class="ab-sec ab-binder" data-e="ab-binder-s1" aria-label="Pokemon binder" style="--i:${i + 2}">

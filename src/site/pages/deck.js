@@ -126,7 +126,7 @@ function projects() {
         </a>
       </li>`;
   }).join("");
-  return shell("p-projects", "03", "22:45", "PROJECTS", "what i've built.",
+  return shell("p-projects", "03", "22:45", "PROJECTS", "what i've built",
     `<ul data-e="cards-0frh" class="cards">${cards}\n    </ul>`);
 }
 
@@ -140,7 +140,7 @@ function projects() {
 // site/photos.js; the pictures are tools/bake_photos.mjs's.
 function photos() {
   const hang = PHOTOGRAPHY.length || REEL.length ? photosHTML({ REEL, PHOTOGRAPHY }, 4) : "";
-  return shell("p-photos", "04", "23:30", "PHOTOS", "what i've seen.", hang);
+  return shell("p-photos", "04", "23:30", "PHOTOS", "some moments in my life", hang);
 }
 
 // ── 04 · ABOUT ──────────────────────────────────────────────────────────────
