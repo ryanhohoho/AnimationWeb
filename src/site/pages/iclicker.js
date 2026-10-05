@@ -17,10 +17,10 @@ import { capture } from "../media.js";
 
 export function html(p) {
   return renderSheet(p, {
-    headline: "iClicker",
-    lead: "← GO BACK",
+    headline: "iClicker study",
+    lead: "work in progress.",
 
-    hero: capture({ id: "stand-iclicker-hero", ratio: "1.7778",
+    hero: capture({ id: "stand-iclicker-hero", ratio: "1.0000",
       alt: "Reference artwork standing in for a capture of the client." }),
 
     // THE EMPTY ROW IS THE FINDING, and `.check.none` was written for exactly

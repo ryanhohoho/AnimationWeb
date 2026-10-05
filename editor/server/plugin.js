@@ -378,8 +378,16 @@ function plan(body, { identityNow = null } = {}) {
               const r = resolveData(op.page, probe, 0, 1);
               if (!r.ok) continue;
               const { code, ast } = src(r.file);
-              const it = S.arrayItemAt(ast, r.start);
+              let it = S.arrayItemAt(ast, r.start);
               if (!it) continue;
+              // a [label, value] pair in a list of them (the RCMP sheet's
+              // YEAR / ROLE / ORG / TOOLS row): the item is the whole pair,
+              // not the one string in it -- deleting only the label shifted
+              // the value into its place
+              if (it.array.elements.every((e) => e && (e.type === "Literal" || e.type === "TemplateLiteral"))) {
+                const up = S.arrayItemAt(ast, it.array.start);
+                if (up && up.item === it.array) it = up;
+              }
               const els = it.array.elements;
               const i = els.indexOf(it.item);
               if (op.type === "delete") {
@@ -393,7 +401,16 @@ function plan(body, { identityNow = null } = {}) {
               done = true;
               break;
             }
-            if (!done) throw new Error("this repeated element could not be traced to a list in the source");
+            // NOT a reason to lose the rest of the save (owner's report,
+            // 2026-10-05: one of 62 changes stopped all of them). This one is
+            // left out and named, and the page reloads with the element back,
+            // to be hidden instead
+            if (!done) {
+              const words = String((op.texts || [])[0] || "").replace(/<[^>]+>/g, "").trim().slice(0, 40);
+              const what = `the ${op.type === "delete" ? "delete" : "duplicate"} of a list item on ${op.page}${words ? ` ("${words}")` : ""}`;
+              warnings.push(`Not saved: ${what} -- it could not be traced to a list in the source. Everything else was saved. ${op.type === "delete" ? "Use Delete -> Hide on this screen only, for each screen, instead." : ""}`.trim());
+              console.warn(`[editor] skipped ${what}: not traced to a list in the source`);
+            }
           }
           break;
         }
@@ -451,7 +468,10 @@ function plan(body, { identityNow = null } = {}) {
           throw new Error(`unknown change: ${op.type}`);
       }
     } catch (e) {
-      batch.errors.push(e.message);
+      if (e.gone) {
+        const what = op.type === "insert" ? "a new figure" : `a new picture for ${op.id || op.slot || "a slot"}`;
+        warnings.push(`Not saved: ${what} -- its upload is gone from staging. Everything else was saved; upload it again.`);
+      } else batch.errors.push(e.message);
     }
   }
 
@@ -568,10 +588,20 @@ function publicFiles() {
   return out;
 }
 
+// an upload no longer in staging stops only its own change: the rest of the
+// save goes ahead and this one is named (owner's report, 2026-10-05: a
+// restart emptied staging and two uploads stopped 60 other changes). Thrown
+// before the change has queued anything, so leaving it out is clean.
+function goneUpload() {
+  const e = new Error("the uploaded file is gone from staging; upload it again");
+  e.gone = true;
+  return e;
+}
+
 /** encode a staged upload as media id `id`; returns what it made */
 function encodeInto(staged, id, slot, moves, warnings) {
   const file = join(STAGE, staged);
-  if (!existsSync(file)) throw new Error("the uploaded file is gone from staging; upload it again");
+  if (!existsSync(file)) throw goneUpload();
   const d = M.probe(file);
   const old = slot?.oldFile ? M.slotShape(R(slot.oldFile)) : null;
   const out = join(STAGE, `out-${randomUUID()}`);
@@ -593,7 +623,7 @@ function encodeInto(staged, id, slot, moves, warnings) {
 
 function mediaOp(op, batch, src, moves, warnings, runAfter) {
   const staged = join(STAGE, op.staged);
-  if (!existsSync(staged)) throw new Error("the uploaded file is gone from staging; upload it again");
+  if (!existsSync(staged)) throw goneUpload();
   const isVideo = M.probe(staged).video;
 
   if (op.slot === "card-still" || op.slot === "card-video") {
@@ -748,11 +778,14 @@ function readWhole(f) {
 }
 
 export default function editorPlugin() {
-  // a fresh session starts with an empty staging folder: anything in it was
-  // an upload for a session that has ended, saved or not
+  // a fresh session clears out OLD uploads: anything a day old was for a
+  // session that has ended, saved or not. Not everything: a restart in the
+  // middle of a session (vite restarts when this file changes) used to empty
+  // staging under an open editor, and its unsaved uploads went with it
   if (existsSync(STAGE)) {
+    const old = Date.now() - 24 * 3600 * 1000;
     for (const f of readdirSync(STAGE)) {
-      try { rmSync(join(STAGE, f), { recursive: true, force: true }); } catch {}
+      try { if (statSync(join(STAGE, f)).mtimeMs < old) rmSync(join(STAGE, f), { recursive: true, force: true }); } catch {}
     }
   }
   mkdirSync(STAGE, { recursive: true });

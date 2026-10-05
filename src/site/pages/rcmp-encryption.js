@@ -60,7 +60,7 @@ export function html(p) {
         <p class="t dim conf-k">summary</p>
         <ul class="conf-list">
           <li class="t body">CLI application that reads and writes encrypted drives.</li>
-          <li class="t body">Accesses and pre-configures encryption architecture on all connected storage devices.</li>
+          <li data-e="t-h16x" class="t body">Accesses and pre-configures encryption architecture on all connected storage devices.</li>
           <li data-e="t-as53" class="t body">Fully documented SOP.</li>
         </ul>
       </div>

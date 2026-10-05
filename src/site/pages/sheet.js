@@ -87,7 +87,7 @@ export function renderSheet(p, {
     : "";
 
   return `
-  <section class="plate sheet" id="p0">
+  <section data-e="plate-8hvc" class="plate sheet" id="p0">
     <div data-e="sheet-in-ecsx" class="sheet-in">
       <h1 data-e="d-zsf3" class="d sheet-h">${headline}</h1>
       ${hero}
