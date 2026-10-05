@@ -4997,6 +4997,22 @@ section("the about card (2026-10-04): a wheel of any length, a binder that turns
   ok(Bm.sheetsNear(5, 40).length <= 4 && Bm.sheetsNear(0, 40).includes(0) && Bm.sheetsNear(41, 40).includes(39),
     "only the sleeves round the open spread hold a picture, at the start and at the end alike");
   ok(Bm.easeTurn(0) === 0 && Bm.easeTurn(1) === 1 && Math.abs(Bm.easeTurn(0.5) - 0.5) < 1e-12, "a turn eases off its rest and onto the other side");
+  // THE SPREAD IS CENTRED ON THE SPINE (owner's note, 2026-10-04): open, the
+  // rings stand on the spine's middle, so a sleeve lying left and one lying
+  // right are mirror images about it
+  const Dsp = 0.12, Wsp = 0.75, gap = 0.03;
+  const hxOpen = Bm.ringX(Bm.spineAngle(1), Dsp);
+  const xs = (pts) => pts.map(([x]) => x);
+  const right = xs(Bm.sleeveAt(0, 0, Wsp, 12, hxOpen, gap)), left = xs(Bm.sleeveAt(Math.PI, 0, Wsp, 12, hxOpen, gap));
+  const mid = -Dsp / 2;
+  ok(Math.abs(hxOpen - mid) < 1e-12 && Math.abs((Math.min(...left) + Math.max(...right)) / 2 - mid) < 1e-9
+    && Math.abs((mid - Math.max(...left)) - (Math.min(...right) - mid)) < 1e-9,
+    "open, the binder's two pages lie either side of the spine's middle, the same distance from it");
+  const leftOld = xs(Bm.sleeveAt(Math.PI, 0, Wsp, 12, 0.055, 0)), rightOld = xs(Bm.sleeveAt(0, 0, Wsp, 12, 0.055, 0));
+  ok(Math.abs((Math.min(...leftOld) + Math.max(...rightOld)) / 2 - mid) > 0.05,
+    "control: rings fixed to the back board right of its hinge put the spread right of the spine");
+  ok(Math.abs(Bm.ringX(Bm.spineAngle(0), Dsp)) < 1e-12 && Math.min(...xs(Bm.sleeveAt(0, 0, Wsp, 12, 0, gap))) > 0,
+    "...and closed, the rings point into the binder from the standing spine, with the pages clear of it");
   const pageIds = (pages) => pages.map((p) => (p ? p.id : "-")).join();
   const P = (...xs) => xs.map((id) => ({ id }));
   ok(pageIds(Bm.pagesFor(P("img-2", "img-10", "img-1"))) === "img-1,img-2,img-10,-",
@@ -5039,15 +5055,17 @@ section("the about card (2026-10-04): a wheel of any length, a binder that turns
   ok(!homeLinks.includes("https://github.com/someone-else"), "control: a link the contact card does not list would not be found there");
   ok(/data-nav="about"/.test(index) && !/data-nav="photos"/.test(index), "the nav bar names About, not Photos");
 
-  // THE BINDER'S COLOURS ARE THE OWNER'S: five :root tokens the editor finds
+  // THE BINDER'S COLOURS ARE THE OWNER'S: six :root tokens the editor finds
   // by name and writes back by name (editor/server/plugin.js), so each must be
   // declared once as a plain hex, before any other mention with a colon
   const { BINDER_TOKENS } = await import("../src/site/binder.js");
   const css = readFileSync(new URL("../src/styles/site.css", import.meta.url), "utf8");
   const first = (tok) => new RegExp(`${tok}:\\s*([^;]+);`).exec(css)?.[1]?.trim();
   const toks = Object.values(BINDER_TOKENS);
-  ok(toks.length === 5 && toks.every((t) => /^#[0-9A-Fa-f]{6}$/.test(first(t) || "")),
-    "the binder's five colours are editor tokens in site.css, each a plain hex where the editor looks for it");
+  ok(toks.length === 6 && toks.includes("--binder-mew") && toks.every((t) => /^#[0-9A-Fa-f]{6}$/.test(first(t) || "")),
+    "the binder's six colours (Mew on the cover among them) are editor tokens in site.css, each a plain hex where the editor looks for it");
+  const insp = readFileSync(new URL("../editor/client/inspector.js", import.meta.url), "utf8");
+  ok(toks.every((t) => insp.includes(`"${t}"`)), "...and the editor offers every one of them");
   ok(toks.every((a) => toks.every((b) => a === b || !b.startsWith(a))), "...and no token's name is the start of another's, so a save cannot write one into the other");
   ok(!/^#[0-9A-Fa-f]{6}$/.test(first("--binder-nothing") || ""), "control: a token that is not declared is not found");
 }

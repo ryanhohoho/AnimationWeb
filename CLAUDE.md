@@ -546,6 +546,10 @@ when only the numbers were.
 - **A hole that is a CONTROL prints at the controls' hour**
   (`data-control-hour`, deck.js): Home's link glyphs at their own place print
   232,235,245 -- paper. A die-cut that is not a control never takes it.
+- **The binder's rings are the SPINE's children**, on its middle, and the
+  sleeves hang `ringGap` either side of `binderModel.ringX` -- so the open
+  spread is centred on the spine. Bolted to the back board, the spread sat
+  right of the spine and the left page lay over it.
 - **The music wheel's slots never move**: slot j is rotated into place once and
   the drum turns. A slot is given a new album only while it is behind the drum
   (`slotAlbum`); re-pointing a visible cover flashes it.

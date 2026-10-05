@@ -165,15 +165,17 @@
   --glow-6: #2D85C8;
 
   /* THE BINDER ON THE ABOUT CARD (site/binder.js), the owner's to change in
-     the editor (select nothing on the About card). The board is the press's
-     rose, the window on its cover the cerulean, the rings a pale steel. Same
+     the editor (select nothing on the About card). The first colours
+     were the press's rose board, a cerulean window and Mew in her own pink;
+     each one, Mew included (2026-10-04), is the owner's choice now. Same
      rule as the backlight's six above: plain six-digit hexes, and this the
      first place each name appears with a colon after it. */
-  --binder-board: #B6E4EC;
-  --binder-spine: #B6E4EC;
-  --binder-lining: #FFFFFF;
+  --binder-board: #ECB6BE;
+  --binder-spine: #ECB6BE;
+  --binder-lining: #F0EFEB;
   --binder-rings: #A8C6DA;
   --binder-window: #FFFFFF;
+  --binder-mew: #B6E4EC;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -994,16 +996,16 @@ html[data-shiny="1"] .mew-hint > [data-hint="shiny"] { display:block; }
 .hs-li { --g:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M4 2h16a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm2.4 7.6h2.9V18H6.4zM7.85 5.2a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2zM11 9.6h2.75v1.2c.45-.8 1.5-1.45 2.95-1.45 2.75 0 3.3 1.75 3.3 4.05V18h-2.9v-4c0-1.05-.15-2.2-1.5-2.2s-1.7 1-1.7 2.15V18H11z'/%3E%3C/svg%3E"); }
 .hs-gh { --g:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z'/%3E%3C/svg%3E"); }
 .hs-em { --g:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M3 4.5h18A1.5 1.5 0 0 1 22.5 6v12a1.5 1.5 0 0 1-1.5 1.5H3A1.5 1.5 0 0 1 1.5 18V6A1.5 1.5 0 0 1 3 4.5zM3.6 7.1V9l8.4 5.6L20.4 9V7.1L12 12.7z'/%3E%3C/svg%3E"); }
-.hs-a { position:relative; display:block; width:44px; height:44px; border:1px solid var(--n4);
-        color:var(--ink); transition:border-color var(--t2) var(--e); }
+/* no square round them (owner's note, 2026-10-04): the glyph alone, in a box
+   still 44 px for a finger, drawn with nothing */
+.hs-a { position:relative; display:block; width:44px; height:44px; color:var(--ink); }
 .hs-g, .hs-ap { position:absolute; left:50%; top:50%; width:22px; height:22px; translate:-50% -50%; }
 .hs-g { background:var(--ink);
         -webkit-mask:var(--g) center / contain no-repeat; mask:var(--g) center / contain no-repeat; }
 .hs-ap { pointer-events:none; z-index:1; }
 .hs-ap > .hole-cv { opacity:var(--open, 0);
         -webkit-mask:var(--g) center / contain no-repeat; mask:var(--g) center / contain no-repeat; }
-@media (hover:hover) { .hs-a:hover { border-color:var(--ink); } }
-.hs-a:focus-visible { border-color:var(--ink); outline-offset:3px; }
+.hs-a:focus-visible { outline-offset:3px; }
 @media (min-width:861px) { #s0 .hs { translate:74px -92px; } }
 @media (min-width:561px) and (max-width:860px) { #s0 .hs { translate:75px -1px; } }
 /* a phone: the owner's phone layout right-aligns the last bio line to the
@@ -1043,7 +1045,7 @@ html[data-shiny="1"] .mew-hint > [data-hint="shiny"] { display:block; }
 #doc[data-page="about"] img { -webkit-user-drag:none; user-drag:none; }
 
 /* ── THE LIFE, IN THE MARGINS ──────────────────────────────────────────────
-   Four small frames hung in the paper either side of the column (about.js,
+   Six small frames hung in the paper either side of the column (about.js,
    FRAMES, design px against the 960 column), each turning through its own
    share of the reel. Since 2026-10-04's second pass, by instruction, they are
    POLAROIDS: the photograph itself (no print filter -- printed, six of them
@@ -1191,12 +1193,12 @@ html[data-shiny="1"] .mew-hint > [data-hint="shiny"] { display:block; }
 .bd.is-flat .bd-stage { display:flex; gap:8px; justify-content:center; align-items:center; cursor:default; }
 .bd-flat { height:92%; aspect-ratio:3 / 4; object-fit:cover; display:block; background:var(--paper); border:1px solid var(--n4); }
 
-/* A TABLET: no margins, so the polaroids are a row under the intro, and the
-   photography and the music stack, centred */
+/* A TABLET: no margins, so the polaroids are a row under the intro (all six
+   in one), and the photography and the music stack, centred */
 @media (max-width:860px){
   .ab { gap:52px; }
   .ab-intro { grid-template-columns:minmax(0,1fr) 200px; gap:40px; }
-  .ar { position:static; display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:18px; padding:4px 6px; }
+  .ar { position:static; display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:18px; padding:4px 6px; }
   .ar-f { position:relative; left:auto; top:auto; width:auto; }
   .ab-row { flex-direction:column; align-items:center; gap:52px; }
   .ab-photo { width:min(100%, 440px); }
@@ -1208,7 +1210,7 @@ html[data-shiny="1"] .mew-hint > [data-hint="shiny"] { display:block; }
   .ab-intro { grid-template-columns:1fr; gap:28px; }
   .ab-me { order:-1; width:58%; }
   .t.body.ab-text { font-size:15px; }
-  .ar { gap:12px; }
+  .ar { grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px 12px; }
   .pc { --pc-w:58cqw; }
   .bd-stage { aspect-ratio:1 / 1; }
 }

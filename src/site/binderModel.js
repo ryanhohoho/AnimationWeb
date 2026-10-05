@@ -84,6 +84,36 @@ export function sheetCurve(angle, lag, W, n = 12) {
   return pts;
 }
 
+/**
+ * THE RINGS RIDE ON THE SPINE (owner's note, 2026-10-04: "the cards should be
+ * centred at the middle of the spine"). They were first bolted to the back
+ * board a little right of its hinge, so open, both pages sat right of the
+ * spine and the left one lay across it. Now they stand on the spine's middle,
+ * the way an O-ring binder's do: closed, the spine stands up and they point
+ * into the binder; open, it lies flat between the boards and they stand up
+ * from its middle, so the spread is a mirror image about it.
+ *
+ * `spineAngle` is the spine's turn as the cover opens (c, 0 closed .. 1 open):
+ * it stands while the cover lifts and lies down as it comes over. `ringX` is
+ * where the rings' middle is along the binder at that angle, D the spine's
+ * width, with x = 0 the back board's hinge.
+ */
+export const spineAngle = (c) => Math.PI / 2 + (Math.PI / 2) * Math.max(0, Math.min(1, (c - 0.35) / 0.65));
+export const ringX = (sig, D) => (D / 2) * Math.cos(sig);
+
+/**
+ * A sleeve hung on the rings: its curve (sheetCurve) from a point `gap` out
+ * from the rings' middle along its own first direction -- the strip with the
+ * holes in it, which the rings pass through -- so it turns ABOUT the rings and
+ * lies at the same distance from them on either side. [x, z] pairs, x along
+ * the binder, from `hx` (ringX).
+ */
+export function sleeveAt(angle, lag, W, n, hx, gap) {
+  const a = Math.max(0, Math.min(Math.PI, angle));
+  const ox = hx + gap * Math.cos(a), oz = gap * Math.sin(a);
+  return sheetCurve(angle, lag, W, n).map(([x, z]) => [ox + x, oz + z]);
+}
+
 /** how far the free edge lags at a point of a turn: nothing at either end,
     most in the middle -- the sleeve is pulled, then catches up */
 export const lagAt = (progress, bend, dir) => bend * Math.sin(Math.PI * Math.max(0, Math.min(1, progress))) * Math.sign(dir || 0);

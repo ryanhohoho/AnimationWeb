@@ -102,10 +102,10 @@ export const cardVideo = (slug) => pick(slug, ["mp4", "webm"]);
 // Change the words (here or in the editor), then delete the flag.
 export const ABOUT = {
   placeholder: true,
-  me: "A few sentences about you go here: where you grew up, what you do away from a keyboard, and what you have been into lately.",
+  me: "I am studying computer science and biology at the University of British Columbia. I am also currently engineering private encryption architecture  for the Government of Canada (RCMP).",
   // plain words, by instruction: a sentence or two, not a grid of chips. Add
   // more lines to the list and each is its own paragraph.
   interests: [
-    "What you are into outside of work goes here, the way you would say it: the games you play, what you collect, the places you keep going back to, and what you listen to while you build."
+    "I love solving complex problems using clean, modular approaches. When I'm off the clock, you can find me playing multiplayer strategy games, climbing at the nearest bouldering gym, or expanding my Pokemon card collection. I do my best work in collaborative teams that value a balance between innovation, fun, and continuous learning. :))"
   ]
 };

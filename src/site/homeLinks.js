@@ -1,7 +1,7 @@
 // homeLinks.js — THE THREE WAYS TO REACH HIM, UNDER THE HOME BIO
 //
-// LinkedIn, GitHub and email, each a glyph in ink inside a hairline square
-// (index.html, by instruction 2026-10-04). Pointed at, the ink clears and the
+// LinkedIn, GitHub and email, each a glyph in ink (index.html, by instruction
+// 2026-10-04; the hairline square round each went the same day). Pointed at, the ink clears and the
 // same glyph becomes a window onto the sky: the hole is the project cards'
 // icon (deck.js, kind "icon"), a canvas masked to the glyph and faded by
 // --open, so there is nothing new in the press for it.
@@ -64,9 +64,24 @@ export function mountHomeLinks({ scope, deck }) {
     // tap on these leaves the page anyway
     r.a.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") open(r); }, { signal: sig });
     r.a.addEventListener("pointerleave", () => close(r), { signal: sig });
-    r.a.addEventListener("focus", () => open(r), { signal: sig });
+    // a KEYBOARD's focus only. A click focuses the link too, and that focus
+    // stays on it in the tab left behind, so the sky stood open until the
+    // reader came back and hovered it again (owner's report, 2026-10-04)
+    r.a.addEventListener("focus", () => { if (r.a.matches(":focus-visible")) open(r); }, { signal: sig });
     r.a.addEventListener("blur", () => close(r), { signal: sig });
   }
+  // leaving for the link's page (a new tab, the mail app) sends no
+  // pointerleave: the pointer never left the glyph, the window did. So the
+  // window going is the glyph being left, at once, with no tween to run in a
+  // hidden tab
+  const shut = () => {
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    last = 0; want = 0; amt = 0;
+    if (active?.glyph) active.glyph.style.opacity = "";
+    active = null; deck.setMaskHole(null);
+  };
+  window.addEventListener("blur", shut, { signal: sig });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) shut(); }, { signal: sig });
   scope?.add(() => {
     if (raf) cancelAnimationFrame(raf);
     for (const r of recs) if (r.glyph) r.glyph.style.opacity = "";

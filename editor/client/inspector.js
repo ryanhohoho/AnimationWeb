@@ -13,9 +13,9 @@ import { classesOf, nameOf, lockReason } from "./identity.js";
 // The backlight's tokens and presets, from the site's own model rather than
 // copied here: the page and the editor must agree on which six names exist.
 import { GLOW_TOKENS, APPLE_GLOW, VIVID_GLOW } from "../../src/site/glowField.js";
-// the binder on the About card (src/site/binder.js reads these five tokens)
+// the binder on the About card (src/site/binder.js reads these six tokens)
 const BINDER_FIELDS = [["--binder-board", "Board"], ["--binder-spine", "Spine"], ["--binder-lining", "Inside"],
-  ["--binder-rings", "Rings"], ["--binder-window", "Cover window"]];
+  ["--binder-rings", "Rings"], ["--binder-window", "Cover window"], ["--binder-mew", "Mew"]];
 import { scaleText, round } from "../shared/scale.js";
 
 const WEIGHTS = [300, 400, 500, 600, 700];
@@ -860,7 +860,7 @@ export function createInspector(ed, mount) {
         h("div", { class: "pal-row" }, ...BINDER_FIELDS.map(([tok, label]) =>
           colorField({ label, get: val(T[tok]), set: setTok(tok), allowVars: false, allowNone: false }))),
         h("div", { style: { fontSize: "10.5px", color: "var(--faint)", marginTop: "8px", lineHeight: 1.5 } },
-          "The Pokémon binder at the foot of this card. It turns to the new colour as you choose it; Mew on its cover keeps her own pink. Saved to --binder-* in site.css.")]) : null,
+          "The Pokémon binder at the foot of this card. It turns to the new colour as you choose it, Mew on its cover too. Saved to --binder-* in site.css.")]) : null,
       sec("Type and line colours", [h("div", { class: "pal-row" },
         colorField({ label: "Ink (--ink)", get: val(T["--ink"]), set: setTok("--ink"), allowVars: false, allowNone: false }),
         colorField({ label: "Labels (--n3)", get: val(T["--n3"]), set: setTok("--n3"), allowVars: false, allowNone: false }),

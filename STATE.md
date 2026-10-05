@@ -5,7 +5,7 @@ is the argument for the look. This file is the system.
 
 Last consolidated after the phone pass, the counter, the sweat rewrite, the
 sweat's time scale and the home disc.
-Suite: **1251 sim checks + the router harness** (`npm test`, 2026-10-04), build clean.
+Suite: **1255 sim checks + the router harness** (`npm test`, 2026-10-04), build clean.
 
 ---
 
@@ -2866,4 +2866,25 @@ Home's links vs SOCIALS with a control, the binder's tokens; router: Mew off Abo
   opening in the viewer and Esc closing it, the round buttons. Not seen: tablet and phone after
   this pass, Safari. Tests: 1251 + the router harness, all green (new: page pairing, with a
   control).
+
+### Third pass, the same day (owner's notes)
+
+- **Binder spread centred on the spine.** The rings were fixed to the back board `ringX` right
+  of its hinge, so open, both pages sat right of the spine and the left one lay over it. The
+  rings are now the SPINE's children, on its middle (`binderModel.ringX(spineAngle(c), D)`), and
+  a sleeve hangs `ringGap` (0.03) out from them on either side (`sleeveAt`), so the open spread
+  is a mirror image about the spine's middle. Closed, the spine stands and the rings point into
+  the binder. The board is `W + ringGap + coverPad` wide (the side overhang equals the top's when
+  closed). Test, with the old fixed rings as the control.
+- **Open zoom**: the camera stands back only `openZoom` (0.35, CHOSEN) of the way it would to fit
+  the whole open spread, so the cards stay large; the boards' outer edges may touch the canvas.
+- **Mew's colour on the cover** is the sixth token, `--binder-mew`, in the editor's binder section.
+- **Polaroids**: six. The owner's desktop moves stay; two new frames hang low in the right margin
+  beside the binder. Tablet: one row of six; phone: two rows of three. The owner's tablet and
+  phone nudges were reset to 0 (edits.css), by instruction.
+- **Home links**: no square round the glyphs. The sky stayed open after a click (the link kept
+  focus in the tab left behind, and no pointerleave comes when the WINDOW goes): focus opens it
+  only when `:focus-visible`, and window blur or a hidden tab shuts it at once.
+- Seen in the pane at 1512x867: the open spread centred on the spine, the two new polaroids. Not
+  seen: tablet and phone, the Home links after a real click. Tests: 1255 + the router harness.
 

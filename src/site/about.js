@@ -36,13 +36,15 @@ const srcset = (p) => copies(p).map(([e, u]) => `${u} ${Math.round(p.w * Math.mi
 
 // ── THE LIFE: WHERE THE POLAROIDS HANG ────────────────────────────────────
 // Design px against the column (960 wide on a desktop): negative x is the left
-// margin, past 960 the right; r is each one's lean. Four, not six (2026-10-04,
-// second pass: six printed frames made the page busy), staggered so no two
-// line up like a ruler, beside the intro and the photographs. On a tablet or
-// a phone there is no margin, and they become a row under the intro.
+// margin, past 960 the right; r is each one's lean. The first four the owner
+// has since moved in the editor (edits.css). The last two (owner's note,
+// 2026-10-04, third pass) hang low in the right margin beside the binder,
+// staggered so they do not line up like a ruler. On a tablet or a phone
+// there is no margin, and they become rows under the intro.
 const FRAMES = [
   { x: -232, y: 10, w: 128, r: -5 }, { x: -190, y: 520, w: 116, r: 4 },
-  { x: 1036, y: 190, w: 124, r: 5 }, { x: 1066, y: 700, w: 112, r: -3 }
+  { x: 1036, y: 190, w: 124, r: 5 }, { x: 1066, y: 700, w: 112, r: -3 },
+  { x: 1004, y: 1110, w: 122, r: 6 }, { x: 1076, y: 1330, w: 110, r: -4 }
 ];
 const CYCLE_MS = 3400;             // one frame turns every this; each, every 4x
 const AUTO_MS = 4200;              // the photography's own turn
@@ -104,17 +106,16 @@ export function aboutHTML(i = 3) {
     : `<div class="ap ab-me-ap" data-ap></div>`;
   return `
     <div data-e="ab-m7aw" class="ab">
-      <div class="ab-intro" style="--i:${i}">
+      <div data-e="ab-intro-ciex" class="ab-intro" style="--i:${i}">
         <div class="ab-words">
-          <p class="t dim ab-k">ABOUT ME</p>
           <p class="t body ab-text${ph}">${esc(ABOUT.me)}</p>
           <p class="t dim ab-k ab-k2">INTERESTS</p>
 ${ABOUT.interests.map((t) => `
-          <p class="t body ab-text${ph}">${esc(t)}</p>`).join("")}
+          <p data-e="t-pn8o" class="t body ab-text${ph}">${esc(t)}</p>`).join("")}
         </div>
       </div>
       ${REEL.length ? reelHTML(dealReel(REEL)) : ""}
-      <div class="ab-row" style="--i:${i + 1}">
+      <div data-e="ab-row-dvw5" class="ab-row" style="--i:${i + 1}">
         <section class="ab-sec ab-photo" data-e="ab-photo-s1" aria-label="Photography">
           <p data-e="t-w0q6" class="t dim ab-k">photography</p>${carouselHTML(PHOTOGRAPHY)}
         </section>

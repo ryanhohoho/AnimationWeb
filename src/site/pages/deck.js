@@ -150,7 +150,7 @@ function photos() {
 // this one (router.js, SHEETS_OFF), so it keeps its renderer here. Everything
 // about how the card is drawn is in site/about.js.
 function about() {
-  return shell("p-about", "04", "23:30", "ABOUT", "me and what i like.", aboutHTML(3));
+  return shell("p-about", "04", "23:30", "ABOUT", "hi, i'm ryan!", aboutHTML(3));
 }
 
 // ── 05 · CONTACT ────────────────────────────────────────────────────────────

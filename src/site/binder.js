@@ -40,7 +40,7 @@ import { ICON } from "./identity.js";
 import { copyFor } from "./photoassets.js";
 import {
   lastPos, clampPos, targets, sidesOf, sheetsNear, stackZ,
-  sheetCurve, lagAt, easeTurn, spineDepth, pagesFor
+  sleeveAt, lagAt, easeTurn, spineDepth, pagesFor, spineAngle, ringX
 } from "./binderModel.js";
 
 const B = rigConfig.binder;
@@ -123,12 +123,12 @@ const PAGE_F = /* glsl */ `
 const lin = (hex) => new THREE.Color(hex);       // ColorManagement: stored linear
 
 // ── THE OWNER'S COLOURS ──────────────────────────────────────────────────
-// Five :root tokens in styles/site.css, changed in the editor. Read when the
+// Six :root tokens in styles/site.css, changed in the editor. Read when the
 // binder is mounted and again whenever the root's style changes, which is how
 // the editor previews a colour (the same arrangement as FIG. 2's backlight,
 // glow.js). On the published site nothing writes that attribute.
 export const BINDER_TOKENS = { board: "--binder-board", spine: "--binder-spine", lining: "--binder-lining",
-                               rings: "--binder-rings", window: "--binder-window" };
+                               rings: "--binder-rings", window: "--binder-window", mew: "--binder-mew" };
 function readColours() {
   const cs = getComputedStyle(document.documentElement);
   const out = {};
@@ -174,7 +174,7 @@ function drawCover(cv, w, h, col) {
     if (on(x, y)) continue;
     if (on(x + 1, y) || on(x - 1, y) || on(x, y + 1) || on(x, y - 1)) g.fillRect(ox + x * cell, oy + y * cell, cell, cell);
   }
-  g.fillStyle = B.mew;
+  g.fillStyle = col.mew;
   for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) if (on(x, y)) g.fillRect(ox + x * cell, oy + y * cell, cell, cell);
   // a label strip low on the board, the way a binder has one: blank, it is a
   // binder and not a product
@@ -211,7 +211,10 @@ function ensureShared() {
 // ── THE MODEL ────────────────────────────────────────────────────────────
 function buildModel(S, col) {
   const W = B.pageW, H = B.pageH;
-  const CW = W + B.ringX + 2 * B.coverPad, CH = H + 2 * B.coverPad, CT = B.coverT;
+  // closed, the rings' middle is at the hinge (x = 0) and a sleeve runs from
+  // ringGap to ringGap + W, so the board is that and one overhang: the same
+  // overhang the top and the foot have
+  const CW = W + B.ringGap + B.coverPad, CH = H + 2 * B.coverPad, CT = B.coverT;
   const D = spineDepth(S, B.sheetDz, B.spineMin);
   const body = new THREE.Scene();       // the pixel pass: board, spine, rings, plain sleeves
   const pages = new THREE.Scene();      // the full-resolution sleeves
@@ -242,15 +245,17 @@ function buildModel(S, col) {
   inner.add(spine);
   const front = new THREE.Mesh(boardGeo, coverMats);
   inner.add(front);
-  // the rings, standing up from the back board beside the spine
+  // the rings, on the spine's middle (binderModel.ringX says why), so they
+  // are the spine's children and turn with it: the spine's inside face is its
+  // local z = 0 and inward is its local -z, so the half-rings arch that way
   const ringR = D * 0.42;
   const ringGeo = new THREE.TorusGeometry(ringR, 0.011, 6, 14, Math.PI);
-  ringGeo.rotateX(Math.PI / 2);
+  ringGeo.rotateX(-Math.PI / 2);
   const ringMat = mats.rings;
   for (const y of [-H * 0.36, 0, H * 0.36]) {
     const r = new THREE.Mesh(ringGeo, ringMat);
-    r.position.set(B.ringX, y, 0);
-    inner.add(r);
+    r.position.set(D / 2, y, 0);
+    spine.add(r);
   }
 
   // the sleeves: one geometry each, shared by its plain twin and its picture
@@ -272,7 +277,7 @@ function buildModel(S, col) {
     sheets.push({ s, geo, plain, pic, mat, a: 0, from: 0, to: 0, t0: 0, dur: 0, dir: 0, tex: { front: null, back: null } });
   }
   const depthOnly = new THREE.MeshBasicMaterial({ colorWrite: false });
-  return { S, W, H, CW, CH, CT, D, body, pages, mats, pivot, inner, pivotP, innerP, front, spine, sheets, depthOnly,
+  return { S, W, H, CW, CH, CT, D, hx: 0, body, pages, mats, pivot, inner, pivotP, innerP, front, spine, sheets, depthOnly,
            cover: { a: 0, from: 0, to: 0, t0: 0, dur: 0 } };
 }
 
@@ -288,24 +293,25 @@ function recolour(m, col) {
 function pose(m) {
   const c = m.cover.a / Math.PI;                           // 0 closed .. 1 open
   // the spine stands while the cover lifts, and lies down as it comes over
-  const sig = Math.PI / 2 + (Math.PI / 2) * Math.max(0, Math.min(1, (c - 0.35) / 0.65));
+  const sig = spineAngle(c);
   m.spine.rotation.y = -sig;
   const tx = m.D * Math.cos(sig), tz = m.D * Math.sin(sig);
   m.front.position.set(tx, 0, tz);
   m.front.rotation.y = -m.cover.a;
-  // the sleeves hang from the rings
+  // the sleeves hang from the rings, which ride on the spine
+  m.hx = ringX(sig, m.D);
   const base = 0.004;
   for (const sh of m.sheets) {
     const z = stackZ(sh.s, sh.a, m.S, base, B.sheetDz);
     const prog = sh.dur ? (performance.now() - sh.t0) / (sh.dur * 1000) : 1;
-    const pts = sheetCurve(sh.a, lagAt(prog, B.bend, sh.dir), m.W, SEG);
+    const pts = sleeveAt(sh.a, lagAt(prog, B.bend, sh.dir), m.W, SEG, m.hx, B.ringGap);
     const pos = sh.geo.attributes.position;
     // PlaneGeometry(W, H, SEG, 1): two rows of SEG + 1, top row first
     for (let row = 0; row < 2; row++) {
       const y = row === 0 ? m.H / 2 : -m.H / 2;
       for (let i = 0; i <= SEG; i++) {
         const [x, zz] = pts[i];
-        pos.setXYZ(row * (SEG + 1) + i, B.ringX + x, y, z + zz);
+        pos.setXYZ(row * (SEG + 1) + i, x, y, z + zz);
       }
     }
     pos.needsUpdate = true;
@@ -429,10 +435,12 @@ export function mountBinder(host, photos, ctx) {
     const cz = (m.D / 2) * (1 - open);
     for (const g of [m.inner, m.innerP]) g.position.set(-cx, 0, -cz);
 
-    // the camera stands back far enough for the binder, closed or open
-    const halfW = (m.CW / 2) * (1 - open) + (m.CW + m.D / 2) * open, halfH = m.CH / 2;
-    const tan = Math.tan((B.fovDeg * Math.PI) / 360);
-    const need = Math.max(halfH / tan, halfW / (tan * camera.aspect)) * B.fitMargin + m.D;
+    // the camera stands back far enough for the closed binder, and only
+    // openZoom of the further way for the open one (rigConfig says why)
+    const tan = Math.tan((B.fovDeg * Math.PI) / 360), halfH = m.CH / 2;
+    const fitW = (halfW) => Math.max(halfH / tan, halfW / (tan * camera.aspect)) * B.fitMargin + m.D;
+    const shut = fitW(m.CW / 2);
+    const need = shut + (fitW(m.CW + m.D / 2) - shut) * open * B.openZoom;
     camZ = camZ ? expDamp(camZ, need, 8, dt) : need;
     camera.position.set(0, 0, camZ);
     camera.lookAt(0, 0, 0);
@@ -508,8 +516,8 @@ export function mountBinder(host, photos, ctx) {
   stage.addEventListener("pointercancel", release, { signal: sig });
   function press(e) {
     if (pos === 0) { go(1); return; }
-    // which side of the spine: the spine's own place on the screen
-    const v = new THREE.Vector3(0, 0, 0);
+    // which side of the spine: the rings' own place on the screen
+    const v = new THREE.Vector3(m.hx, 0, 0);
     m.inner.updateMatrixWorld(true);
     v.applyMatrix4(m.inner.matrixWorld).project(camera);
     const r = stage.getBoundingClientRect();

@@ -1629,7 +1629,13 @@ export const rigConfig = {
     coverPad: 0.05,           // the cover's overhang round the page, each side
     coverT: 0.035,            // a cover's thickness: chunky enough to read as
                               // board at a 4 px texel, which is ~1.5 texels
-    ringX: 0.055,             // the rings' centre from the spine's hinge
+    ringGap: 0.03,            // a sleeve's inner edge from the rings' middle:
+                              // less than a ring's radius (0.42 of the spine,
+                              // 0.05 at the least), so the rings pass through
+                              // the sleeve's punched strip, not past its edge.
+                              // The rings stand on the spine's middle
+                              // (binderModel.ringX), so open, the spread is a
+                              // mirror image about it
     sheetDz: 0.006,           // one sleeve's thickness in the stack
     spineMin: 0.12,           // the closed binder's depth, at least: thinner
                               // than this the rings stand taller than the box
@@ -1652,13 +1658,19 @@ export const rigConfig = {
     fovDeg: 26,
     fitMargin: 1.32,          // the frame round the binder, so a lean or a drag
                               // does not put a corner off the canvas
+    openZoom: 0.35,           // opened, the camera stands back only this share
+                              // of the way it would to fit the whole spread.
+                              // Owner's note (2026-10-04): stepping back the
+                              // whole way shrank the cards, so sizing the box
+                              // for them was hard; it should still step back a
+                              // little. CHOSEN: the open boards' outer edges
+                              // may touch the canvas, the cards stay inside it
     // THE BINDER'S COLOURS ARE NOT HERE: they are the owner's, the
-    // --binder-board / -spine / -lining / -rings / -window tokens in
+    // --binder-board / -spine / -lining / -rings / -window / -mew tokens in
     // styles/site.css, which the editor changes (binder.js reads them, and
-    // again whenever the editor previews one). Only these two are fixed: the
-    // plain sleeves, and her, who is in her own pink whatever the board is.
+    // again whenever the editor previews one). Mew on the cover is one of them
+    // since 2026-10-04 (owner's note). Only the plain sleeves are fixed here.
     sleeve: "#F4F4F2",
-    mew: "#F7A8D8",
     // the light: from the upper left, in front, fixed to the WORLD -- so
     // turning the binder turns it through the light, which is what reads as 3D
     light: [-0.45, 0.6, 0.66],
