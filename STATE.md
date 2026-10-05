@@ -5,7 +5,7 @@ is the argument for the look. This file is the system.
 
 Last consolidated after the phone pass, the counter, the sweat rewrite, the
 sweat's time scale and the home disc.
-Suite: **1255 sim checks + the router harness** (`npm test`, 2026-10-04), build clean.
+Suite: **1258 sim checks + the router harness** (`npm test`, 2026-10-04), build clean.
 
 ---
 
@@ -2887,4 +2887,8 @@ Home's links vs SOCIALS with a control, the binder's tokens; router: Mew off Abo
   only when `:focus-visible`, and window blur or a hidden tab shuts it at once.
 - Seen in the pane at 1512x867: the open spread centred on the spine, the two new polaroids. Not
   seen: tablet and phone, the Home links after a real click. Tests: 1255 + the router harness.
+- **The albums** (2026-10-05): 48 in music.js. The bake also saves each release date (the album
+  page's `music:release_date` tag; oEmbed has none) in albums.json, and `byRelease` (music.js)
+  orders the wheel: newest in front, then alternately below and above it, so the two oldest meet
+  at the back. Tests: 1258 + the router harness.
 

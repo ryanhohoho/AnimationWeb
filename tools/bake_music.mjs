@@ -12,7 +12,11 @@
 //
 //   src/assets/music/<id>.webp     480 px, the wheel's largest cover is ~190
 //                                  design px, so 480 holds a 2.5x screen
-//   src/assets/music/albums.json   { "<id>": { "title": "..." } }
+//   src/assets/music/albums.json   { "<id>": { "title": "...", "released": "YYYY-MM-DD" } }
+//
+// The release date is not in the oEmbed answer, so it is read from the
+// album's own public page, the music:release_date tag in its head (the one a
+// link preview reads). The wheel orders the albums by it (music.js, byRelease).
 //
 // Both are GENERATED: the page reads them through a glob, so a cover that is
 // missing is a blank sleeve, not an error. A cover already made is kept.
@@ -53,9 +57,24 @@ mkdirSync(tmp, { recursive: true });
 
 const failed = [];
 let made = 0, kept = 0;
+// the album's release date, from its public page's music:release_date tag
+async function released(it) {
+  const res = await fetch(`https://open.spotify.com/${it.kind}/${it.id}`, { headers: { "user-agent": "Mozilla/5.0" } });
+  if (!res.ok) throw new Error(`album page answered ${res.status}`);
+  const m = /music:release_date"\s+content="(\d{4}(?:-\d{2}(?:-\d{2})?)?)"/.exec(await res.text());
+  if (!m) throw new Error("no release date on the album page");
+  return m[1];
+}
+
 for (const it of items) {
   const file = join(OUT, `${it.id}.webp`);
-  if (!all && existsSync(file) && names[it.id]) { kept++; continue; }
+  if (!all && existsSync(file) && names[it.id]) {
+    // made before dates were kept: fetch only the date
+    if (!names[it.id].released && !dry) {
+      try { names[it.id].released = await released(it); } catch (e) { failed.push(`${it.kind}/${it.id}: ${e.message}`); }
+    }
+    kept++; continue;
+  }
   if (dry) { console.log(`fetch  ${it.kind}/${it.id}`); made++; continue; }
   try {
     const page = `https://open.spotify.com/${it.kind}/${it.id}`;
@@ -72,7 +91,7 @@ for (const it of items) {
     writeFileSync(raw, Buffer.from(await img.arrayBuffer()));
     execFileSync(ffmpeg, ["-y", "-v", "error", "-i", raw, "-map_metadata", "-1",
       "-vf", `scale='min(${EDGE},iw)':-2:flags=lanczos`, "-c:v", "libwebp", "-quality", "82", file]);
-    names[it.id] = { title: String(o.title || "") };
+    names[it.id] = { title: String(o.title || ""), released: await released(it) };
     made++;
     console.log(`made   ${it.id}  ${names[it.id].title}`);
   } catch (e) {

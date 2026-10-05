@@ -1,8 +1,8 @@
 // music.js — THE ALBUMS ON THE ABOUT CARD'S WHEEL
 //
-// HAND-WRITTEN. One line per album, in the order the wheel turns through them:
-// paste the album's Spotify link (Share -> Copy link to album) and nothing
-// else. Then run
+// HAND-WRITTEN. One line per album, in any order (the wheel orders them by
+// release date, byRelease below): paste the album's Spotify link (Share ->
+// Copy link to album) and nothing else. Then run
 //
 //   npm run music          (= node tools/bake_music.mjs)
 //
@@ -94,9 +94,28 @@ export function albums(list, covers = {}, names = {}) {
       id: s.id,
       url: `https://open.spotify.com/${s.kind}/${s.id}`,
       title: String(it.name || names[s.id]?.title || ""),
+      released: String(names[s.id]?.released || ""),
       cover: covers[s.id] || null
     });
   }
+  return out;
+}
+
+/**
+ * THE WHEEL'S ORDER, BY RELEASE DATE (owner's instruction, 2026-10-05): the
+ * newest in front, the second newest one below it, the third one above it,
+ * and so on alternating, so turning either way goes back in time and the
+ * two oldest meet at the back of the circle. (On the wheel the album after
+ * the front one is the one BELOW it: aboutMusic.js turns the drum by +1 for
+ * ArrowDown.) So rank r goes to place 0, 1, n-1, 2, n-2, ... An album with
+ * no date yet counts as the oldest; equal dates keep music.js's order.
+ */
+export function byRelease(list) {
+  const n = list.length;
+  const ranked = list.map((a, i) => ({ a, i })).sort((x, y) =>
+    (y.a.released || "").localeCompare(x.a.released || "") || x.i - y.i);
+  const out = new Array(n);
+  ranked.forEach(({ a }, r) => { out[r === 0 ? 0 : r % 2 ? (r + 1) / 2 : n - r / 2] = a; });
   return out;
 }
 
@@ -105,4 +124,4 @@ const COVERS = Object.fromEntries(Object.entries(
 ).map(([p, u]) => [p.slice(p.lastIndexOf("/") + 1, -5), u]));
 const NAMES = Object.values(import.meta.glob("../assets/music/albums.json", { eager: true, import: "default" }))[0] || {};
 
-export const ALBUMS = albums(MUSIC, COVERS, NAMES);
+export const ALBUMS = byRelease(albums(MUSIC, COVERS, NAMES));

@@ -4967,6 +4967,17 @@ section("the about card (2026-10-04): a wheel of any length, a binder that turns
   ok(list[1].title === "channel ORANGE · Frank Ocean" && list[1].cover === null,
     "...a hand-written name wins, and a cover not yet baked is a blank sleeve rather than an error");
   ok(Mu.albums([{ spotify: "https://example.com/album/x" }]).length === 0, "control: a line that is not a Spotify link is not an album");
+  // BY RELEASE DATE: newest in front, then one below, one above, alternating,
+  // so the two oldest meet at the back (owner's instruction, 2026-10-05)
+  const dated = ["2019-01-01", "2024-05-01", "2010-03-03", "2025-11-14", "2022-02-02", "2015-06-06"]
+    .map((released, i) => ({ id: `a${i}`, released }));
+  const wheel = Mu.byRelease(dated).map((a) => a.released.slice(0, 4)).join();
+  ok(wheel === "2025,2024,2019,2010,2015,2022",
+    `the wheel: newest in front, the next below it, the third above, and the two oldest together at the back (${wheel})`);
+  ok(Mu.byRelease([{ id: "x", released: "" }, { id: "y", released: "2020-01-01" }])[0].id === "y" && Mu.byRelease([]).length === 0,
+    "...an album with no date yet counts as the oldest, and an empty list is an empty wheel");
+  ok(Mu.albums(dated.map((a) => ({ spotify: `https://open.spotify.com/album/${a.id}xxxxxxxxxx` }))).map((a) => a.id).join() === dated.map((a) => `${a.id}xxxxxxxxxx`).join(),
+    "control: without byRelease the list is in music.js's order");
   const empty = M.musicHTML([]);
   ok((empty.match(/class="md-s"/g) || []).length === S && empty.includes("is-blank"), "an empty list still draws a whole wheel, of blank sleeves");
 
