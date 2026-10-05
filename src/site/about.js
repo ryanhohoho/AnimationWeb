@@ -59,7 +59,7 @@ export function dealReel(list, frames = FRAMES.length, seed = 151) {
 function reelHTML(decks) {
   const layer = (p, on) => `<span class="ar-l${on ? " is-on" : ""}">${p ? `<img src="${copyFor(p, 640)}" alt="" draggable="false" loading="lazy" decoding="async" />` : ""}</span>`;
   return `
-      <div class="ar" role="group" aria-label="Snapshots">${FRAMES.map((f, i) => decks[i]?.length ? `
+      <div data-e="ar-8n5r" class="ar" role="group" aria-label="Snapshots">${FRAMES.map((f, i) => decks[i]?.length ? `
         <button type="button" class="ar-f" data-f="${i}" data-photo="reel/${esc(decks[i][0].id)}" aria-label="Open this snapshot" style="--x:${f.x}; --y:${f.y}; --w:${f.w}; --r:${f.r}deg"><span class="ar-win">${layer(decks[i][0], true)}${layer(null, false)}<span class="ar-pic"></span></span></button>` : "").join("")}
       </div>`;
 }
@@ -103,7 +103,7 @@ export function aboutHTML(i = 3) {
     ? `<div class="ab-me-f"><img src="${copyFor(me, 1280)}" srcset="${srcset(me)}" sizes="(max-width:860px) 40vw, 260px" width="${me.w}" height="${me.h}" alt="Ryan Ho" draggable="false" decoding="async" /></div>`
     : `<div class="ap ab-me-ap" data-ap></div>`;
   return `
-    <div class="ab">
+    <div data-e="ab-m7aw" class="ab">
       <div class="ab-intro" style="--i:${i}">
         <div class="ab-words">
           <p class="t dim ab-k">ABOUT ME</p>
@@ -112,21 +112,20 @@ export function aboutHTML(i = 3) {
 ${ABOUT.interests.map((t) => `
           <p class="t body ab-text${ph}">${esc(t)}</p>`).join("")}
         </div>
-        <div class="ab-me">${portrait}</div>
       </div>
       ${REEL.length ? reelHTML(dealReel(REEL)) : ""}
       <div class="ab-row" style="--i:${i + 1}">
         <section class="ab-sec ab-photo" data-e="ab-photo-s1" aria-label="Photography">
-          <p class="t dim ab-k">PHOTOGRAPHY</p>${carouselHTML(PHOTOGRAPHY)}
+          <p data-e="t-w0q6" class="t dim ab-k">photography</p>${carouselHTML(PHOTOGRAPHY)}
         </section>
         <section class="ab-sec ab-music" data-e="ab-music-s1" aria-label="Music">
-          <p class="t dim ab-k">MUSIC</p>${musicHTML(ALBUMS)}
+          <p data-e="t-obye" class="t dim ab-k">music</p>${musicHTML(ALBUMS)}
         </section>
       </div>
       <section class="ab-sec ab-binder" data-e="ab-binder-s1" aria-label="Pokemon binder" style="--i:${i + 2}">
-        <p class="t dim ab-k">BINDER</p>
-        <div class="bd" data-bd data-noswipe>
-          <div class="bd-stage" tabindex="0" role="img" aria-label="A binder of Pokemon cards. Drag to turn it; press it to open it and turn the pages."></div>
+        <p data-e="t-dxsp" class="t dim ab-k">my pokemon cards!</p>
+        <div data-e="bd-h0yq" class="bd" data-bd data-noswipe>
+          <div data-e="bd-stage-iq1h" class="bd-stage" tabindex="0" role="img" aria-label="A binder of Pokemon cards. Drag to turn it; press it to open it and turn the pages."></div>
           <div class="bd-ctl">
             <button type="button" class="bd-b" data-step="-1" aria-label="Previous page" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4.5 7.5 12 15 19.5"/></svg></button>
             <button type="button" class="bd-b" data-step="1" aria-label="Open the binder"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5 16.5 12 9 19.5"/></svg></button>

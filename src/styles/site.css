@@ -130,7 +130,7 @@
      home sheet is this hue exactly: the last warm light in the sky is the
      colour of the animal standing in front of it. */
   --mew:    #F7A8D8;
-  --ink-b:  #CF69AB;   /* base Mew's rose, printed */
+  --ink-b:  #B6E4EC;   /* base Mew's rose, printed */
 
   --e: cubic-bezier(0.2,0.6,0.2,1);
   --t1:140ms; --t2:340ms; --t3:900ms;
@@ -169,11 +169,11 @@
      rose, the window on its cover the cerulean, the rings a pale steel. Same
      rule as the backlight's six above: plain six-digit hexes, and this the
      first place each name appears with a colon after it. */
-  --binder-board: #CF69AB;
-  --binder-spine: #A9508A;
-  --binder-lining: #F2D9E8;
+  --binder-board: #B6E4EC;
+  --binder-spine: #B6E4EC;
+  --binder-lining: #FFFFFF;
   --binder-rings: #A8C6DA;
-  --binder-window: #1A71AF;
+  --binder-window: #FFFFFF;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }

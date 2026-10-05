@@ -18,7 +18,9 @@ export default defineConfig((env) => {
     plugins: [...(c.plugins || []), editor()],
     server: {
       ...(c.server || {}),
-      port: 5275,
+      // 5275 by hand (npm run edit); a launcher that assigns its own port
+      // (the preview tool, beside another session's editor) passes PORT
+      port: Number(process.env.PORT) || 5275,
       strictPort: true,
       open: "/editor/",
       // the staging folder is written to on every upload; it is nothing the

@@ -29,14 +29,17 @@
     },
     {
       "name": "mew-edit",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "env",
       "runtimeArgs": [
+        "ED_STAGE=node_modules/.editor-staging-preview",
+        "npm",
         "run",
         "edit",
         "--",
         "--no-open"
       ],
-      "port": 5275
+      "port": 5275,
+      "autoPort": true
     },
     {
       "name": "mew-edit-2",
