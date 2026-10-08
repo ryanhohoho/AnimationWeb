@@ -4184,10 +4184,13 @@ section("the motion-graphics page: every work has its words, its clip and its pl
   const { existsSync } = await import("node:fs");
   const { join } = await import("node:path");
   const ROOT = new URL("..", import.meta.url).pathname;
-  const { FILM, WORKS, FLOWER, GROUND, CUT, ACTS, worksOn } = await import("../src/site/motion.js");
+  const { FILM, FILMS, WORKS, FLOWER, GROUND, CUT, ACTS, worksOn } = await import("../src/site/motion.js");
   const { CLIPS, SHEET } = await import("../src/site/motionassets.js");
   const { CREDITS } = await import("../src/site/motioncredits.js");
-  const ids = [FILM.id, ...WORKS.map((w) => w.id)];
+  // (2026-10-08) the page ends on more than one film -- "godhood", then "hope."
+  // -- so every check that was about THE film is now about each of them
+  const filmIds = FILMS.map((f) => f.id);
+  const ids = [...filmIds, ...WORKS.map((w) => w.id)];
   const clipIds = Object.keys(CLIPS);
   const missing = ids.filter((id) => !CLIPS[id]), orphan = clipIds.filter((id) => !ids.includes(id));
   ok(missing.length === 0 && orphan.length === 0,
@@ -4206,7 +4209,7 @@ section("the motion-graphics page: every work has its words, its clip and its pl
   ok(!!CLIPS[GROUND], `the page's resting ground (${GROUND}) is a work with a poster`);
 
   // the contact sheet: every work that plays in a tile has its own place on it
-  const tiled = [FILM.id, ...new Set([...worksOn("top"), ...worksOn("mix")].map((w) => w.id))];
+  const tiled = [...filmIds, ...new Set([...worksOn("top"), ...worksOn("mix")].map((w) => w.id))];
   const cells = tiled.map((id) => CLIPS[id]?.cell);
   ok(cells.every((c) => Number.isInteger(c) && c >= 0 && c < SHEET.cols * SHEET.rows) && new Set(cells).size === cells.length,
     `every tile has its own cell on the ${SHEET.cols}x${SHEET.rows} sheet`);
@@ -4215,12 +4218,24 @@ section("the motion-graphics page: every work has its words, its clip and its pl
   const absent = files.filter((f) => !existsSync(join(ROOT, f.replace(/^\.\.\//, "src/"))));
   ok(absent.length === 0, absent.length ? `not on disk: ${absent.slice(0, 4).join(", ")}` : `all ${files.length} video and poster files are on disk`);
 
-  // the film's own cut: in order, inside the film, one of its parts each, and
+  // each film's own cut: in order, inside the film, one of its parts each, and
   // every stretch named by a work the page has
-  ok(Math.abs(CLIPS[FILM.id].dur - FILM.dur) < .1, `the film's length (${FILM.dur} s) is its clip's`);
-  const inOrder = CUT.every(([, , a, b], k) => a < b && b <= FILM.dur && (k === 0 || a >= CUT[k - 1][3] - 1e-6));
-  ok(inOrder, "every stretch of the film's timeline is inside it and in order");
-  ok(CUT.every(([id, act]) => ACTS[act] && ids.includes(id)), "and each belongs to one of its four parts and names a work");
+  ok(FILMS[0].id === FILM.id && FILMS[0].cut === CUT && FILMS[0].acts === ACTS && new Set(filmIds).size === FILMS.length,
+    `the films are ${FILMS.map((f) => f.name).join(", ")}, the first of them the flower's film with its four parts`);
+  for (const f of FILMS) {
+    ok(Math.abs(CLIPS[f.id].dur - f.dur) < .1, `${f.name}: its length (${f.dur} s) is its clip's`);
+    const inOrder = f.cut.length > 0 && f.cut.every(([, , a, b], k) => a < b && b <= f.dur + 1e-6 && (k === 0 || a >= f.cut[k - 1][3] - 1e-6));
+    ok(inOrder, `${f.name}: every stretch of its timeline is inside it and in order`);
+    ok(f.cut.every(([id, act]) => f.acts[act] && ids.includes(id)), `${f.name}: and each belongs to one of its ${f.acts.length} parts and names a work`);
+  }
+  // the timeline is the WHOLE film: hope's stretches butt end to end from its
+  // first frame to its last (a gap would be a stretch of black it does not have)
+  const hope = FILMS.find((f) => f.id === "hope");
+  ok(!!hope && hope.cut[0][2] === 0 && Math.abs(hope.cut.at(-1)[3] - hope.dur) < 1e-6 && hope.cut.every(([, , a], k) => k === 0 || Math.abs(a - hope.cut[k - 1][3]) < 1e-6),
+    "hope.'s timeline covers it from its first frame to its last, with no gap");
+  // control: the same check on a cut with one stretch taken out of its middle fails
+  const holed = hope.cut.filter((_, k) => k !== 5);
+  ok(!holed.every(([, , a], k) => k === 0 || Math.abs(a - holed[k - 1][3]) < 1e-6), "control: a timeline with a stretch missing is caught by it");
 
   // the credits
   const bad = CREDITS.filter((c) => c.in.some((id) => !ids.includes(id)));
@@ -4542,8 +4557,8 @@ section("the motion-graphics page: only the works marked `sound` have a sound tr
   }
   ok(blind.length === 0, `every clip's header can be read (${blind.join(", ") || "all"})`);
   ok(wrong.length === 0, `each clip has a sound track exactly when motion.js says so (${wrong.join(", ") || "all agree"})`);
-  ok(hasSound("pool") && hasSound("clouds") && hasSound("film") && !hasSound("firmament") && !hasSound("flower-13") && !hasSound("not-a-work"),
-    "the pool, the clouds and the film speak, and nothing else does");
+  ok(hasSound("pool") && hasSound("clouds") && hasSound("film") && hasSound("hope") && !hasSound("firmament") && !hasSound("flower-13") && !hasSound("reflect") && !hasSound("not-a-work"),
+    "the pool, the clouds and the films speak, and nothing else does");
   ok(WORKS.filter((w) => w.sound).map((w) => w.id).sort().join() === "clouds,pool", "two works are marked `sound`");
   ok(handlers("sheet").every((x) => x !== "soun"), "the contact sheet is silent too");
 }

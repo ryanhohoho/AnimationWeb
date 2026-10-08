@@ -16,7 +16,11 @@
 // row that says "same" takes the scenes of the row above it.
 //
 // Rows that OPEN with "(no longer in the cut)" or "(unused fallback" are
-// skipped: they are not in anything this page shows.
+// skipped: they are not in anything this page shows. So is a row whose rule
+// says `false` (2026-10-08): CREDITS.md is the whole project's list, and the
+// pieces the page does not show (apex, hollow, the first heavens, the 3D calc
+// reels) and the sound of the heavens' reels (their clips here are silent) are
+// in it too.
 //
 // Writes src/site/motioncredits.js (GENERATED).
 
@@ -35,8 +39,26 @@ const PHOTO_CUTS = ["flower-01", "flower-02", "flower-03", "flower-04", "flower-
 const MONTAGE = ["wings", "credits", "firmament", "tower", "providence", "particles", "chrome", "moire", "topo", "earth",
   "poster", "pool", "desktop", "angels"];
 
-// [pattern on "used in" (lower case), scene ids]. First match wins.
+// "hope." is cut from the heavens' scenes (and the rift of "we survive.", and the
+// angels' plane, whose rows below stay theirs: the colophon lists every row)
+const HOPE = "hope";
+
+// [pattern on "used in" (lower case), scene ids, or false: not on the page]. First match wins.
 const RULES = [
+  // ── 2026-10-08: the heavens, the calculator and "hope." (CREDITS.md's later sections) ──
+  [/^(the euphoric one, )?"apex"|^(the empty one, )?"hollow"/, false],
+  [/^"calc": mew on the lcd|^"calc2"/, false],                                  // the 3D reels; the page shows the clips' one
+  [/^"calc" \(standalone reel|^"calc3|^"calc4"/, ["calculator"]],
+  [/^(doubled|floored|ringed|upheld|crowned):|^the hands: doubled/, false],     // the first heavens
+  [/^to reflect: (high-desert|the sky's tension|the cracks|the tearing|the bones|its weight)|^folded: (the sea|wind singing)|^kindled: (the night wind|our steps|the spirits' light|walking through)|^crossed: (thumps|the tape edit|feet on|breathing|the far booms|the cabin|the wind of running|insects|the level crossing|the vending machines' and|the lamps arcing)|^the cuts' sound|^\(all the round-2 sounds|^the cuts \(standalone and together\)|^the look \(reference/, false],
+  [/^to reflect:/, ["reflect", HOPE]],
+  [/^folded:/, ["folded"]],
+  [/^kindled:/, ["kindled", HOPE]],
+  [/^crossed, the street:/, ["crossed", HOPE]],
+  [/^crossed: the (planet|clouds|relief)/, ["crossed", HOPE]],
+  [/^crossed:/, ["crossed"]],
+  [/^the reel's music|^her voice|^when she says|^\(choosing her take|^her recording|^the chinese words|^"hope\."|^the english words|^the plane on the slam|^the caustic/, [HOPE]],
+
   // the rows that span several scenes come first, or a narrower rule below takes them
   [/god's voice, cut off/, ["watch", "world", "like", ...MONTAGE, "lonely"]],
   [/"we live\." \/ \(remembered/, ["factory", "lonely"]],
@@ -94,8 +116,9 @@ for (const line of md.split("\n")) {
   let ids = null;
   if (/^same\b/.test(u)) ids = last;
   else for (const [re, list] of RULES) if (re.test(u)) { ids = list; break; }
-  if (!ids) { console.warn("no rule for:", used.slice(0, 90)); ids = []; }
   last = ids;
+  if (ids === false) continue;                       // not on the page
+  if (!ids) { console.warn("no rule for:", used.slice(0, 90)); ids = []; last = ids; }
   // the whale's close-up is also a tile on the poster (CREDITS.md says so in prose, under the table)
   if (/48771144812/.test(c[1])) ids = [...ids, "poster"];
   out.push({ kind: section === "Sound" ? "sound" : "image", used: plain(used), work: plain(c[1]),

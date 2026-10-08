@@ -175,7 +175,7 @@ never in it; `tools/motion/README.md` is the whole procedure:
 
 ```bash
 node tools/bake_motion.mjs --add <video> --id <id>        # a new work from any video, then one line in site/motion.js
-                                                          # silent by default: --sound keeps its track, with `sound: true` on its line in site/motion.js (only the pool, the clouds and the film have one)
+                                                          # silent by default: --sound keeps its track, with `sound: true` on its line in site/motion.js (only the pool, the clouds and the films -- FILMS in site/motion.js -- have one)
 node tools/bake_motion.mjs --sheet                        # rebuild the contact sheet from the site's own clips
 node tools/bake_motion.mjs --renders <sandbox>/renders    # re-cut every work from the piece's renders
 node tools/motion/credits.mjs ../VisualAudialExperience/CREDITS.md   # -> site/motioncredits.js

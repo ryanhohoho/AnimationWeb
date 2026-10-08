@@ -10,7 +10,7 @@
 
 import { CREDITS } from "./motioncredits.js";
 import { CLIPS } from "./motionassets.js";
-import { GROUND, FILM, worksOn } from "./motion.js";
+import { GROUND, FILM, FILMS, worksOn } from "./motion.js";
 import { lay } from "./motionLayout.js";
 import { mountSheet } from "./motionSheet.js";
 import { mountBloom } from "./motionBloom.js";
@@ -144,13 +144,15 @@ export function mountMotion(ctx, root) {
 
     // THE VIEWER PAGES WITHIN WHAT YOU OPENED IT FROM, the way Photos pages
     // within the album: a tile on the wall pages through the wall, the flower
-    // through its 21 cuts in order, and the film is on its own.
+    // through its 21 cuts in order, and each film is on its own (its list is
+    // named by its id, as its section's data-list is).
     const tileOf = (id) => root.querySelector(`.mg-wall [data-scene="${CSS.escape(id)}"] .mg-frame-cut`);
     const wallIds = [...new Set([...worksOn("top"), ...worksOn("mix")].map((w) => w.id))].filter((id) => CLIPS[id]);
     const lists = {
       works: { ids: wallIds, cellOf: tileOf, reveal: (id) => tileOf(id)?.scrollIntoView({ block: "nearest", behavior: "instant" }) },
       flower: bloom && { ids: bloom.ids, cellOf: () => bloom.frame(), reveal: (id) => bloom.reveal(id) },
-      film: { ids: [FILM.id], cellOf: () => root.querySelector(".mg-end .mg-frame-cut"), reveal: () => {} }
+      ...Object.fromEntries(FILMS.map((f) => [f.id,
+        { ids: [f.id], cellOf: () => root.querySelector(`.mg-end[data-list="${CSS.escape(f.id)}"] .mg-frame-cut`), reveal: () => {} }]))
     };
     mountViewer(ctx.scope, root, {
       lists,

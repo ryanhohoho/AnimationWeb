@@ -33,6 +33,15 @@
 
 export const WORKS = [
   // ── the featured wall ──
+  // (2026-10-08) "the heavens" -- four scenes found on a camcorder tape (crossed
+  // is its orbit, then the street with the cross as big as a state, then the
+  // white) -- and Mew in a calculator; all from ../VisualAudialExperience
+  // (renders/site/), all silent
+  { id: "crossed",    name: "thirteenth impact",                  on: ["top"] },
+  { id: "reflect",    name: "WHO IS THAT IN THE DISTANCE?",               on: ["top"] },
+  { id: "kindled",    name: "whispies",                  on: ["top"] },
+  { id: "folded",     name: "marble run",                   on: ["top"] },
+  { id: "calculator", name: "mew in my calculator",     on: ["top"] },
   { id: "firmament",  name: "peace.",       on: ["top"] },
   { id: "chrome",     name: "this cool render i did",            on: ["top"] },
   { id: "undercroft", name: "collapse",           on: ["top"] },
@@ -98,7 +107,7 @@ export const FLOWER = Array.from({ length: 21 }, (_, k) => `flower-${String(k + 
 // is calm until the reader points at something (the pixelated pink flower)
 export const GROUND = "flower-13";
 
-// ── THE FILM ───────────────────────────────────────────────────────────────
+// ── THE FILMS ──────────────────────────────────────────────────────────────
 // "let me be a flower", whole: the conclusion at the foot of the page. The CUT
 // below is ITS OWN: the timeline under it and the ticks on its scrub bar, and
 // nowhere else. [work id, part, from, to] in the film's seconds -- the piece's
@@ -108,8 +117,6 @@ export const GROUND = "flower-13";
 // tiles are shown twice in the film and once, whole, on the page).
 export const FILM = { id: "film", name: "godhood", dur: 143.2 };
 
-/** does this scene have a sound track? the film does, and the works marked `sound` */
-export const hasSound = (id) => id === FILM.id || WORKS.some((w) => w.id === id && w.sound === true);
 
 export const ACTS = ["nothing", "god", "us", "company"];
 
@@ -151,6 +158,51 @@ export const CUT = [
   ["lonely", 3, 120.773, 132.273],
   ["company", 3, 132.273, 141.673]
 ];
+
+// "hope." (2026-10-08), under it: the reel cut to Kensuke Ushio's "In the Pool"
+// out of the heavens' scenes -- a mother's voice, then the drop, then the white
+// (../VisualAudialExperience, tools/heavens/hope_reel.py: its CUTS, in song
+// seconds, less FROM 104.08, on whole frames; its clip ends on the last whole
+// frame, 45.7). Its own timeline, like the film's.
+export const HOPE = { id: "hope", name: "hope.", dur: 45.7 };
+
+export const HOPE_ACTS = ["her voice", "the drop", "the white"];
+
+export const HOPE_CUT = [
+  ["reflect", 0, 0, 2.633],
+  ["kindled", 0, 2.633, 4.4],
+  ["undercroft", 0, 4.4, 7.933],
+  ["reflect", 0, 7.933, 9.733],
+  ["undercroft", 0, 9.733, 10.6],
+  ["crossed", 0, 10.6, 12.333],
+  ["kindled", 0, 12.333, 14.333],
+  ["undercroft", 0, 14.333, 16.233],
+  ["reflect", 0, 16.233, 17.567],
+  ["kindled", 0, 17.567, 20.167],
+  ["angels", 1, 20.167, 21.8],
+  ["crossed", 1, 21.8, 22.6],
+  ["crossed", 1, 22.6, 24.2],
+  ["crossed", 1, 24.2, 25.0],
+  ["crossed", 1, 25.0, 26.6],
+  ["reflect", 1, 26.6, 29.0],
+  ["kindled", 1, 29.0, 29.767],
+  ["undercroft", 1, 29.767, 31.367],
+  ["reflect", 1, 31.367, 33.8],
+  ["crossed", 1, 33.8, 35.367],
+  ["kindled", 1, 35.367, 37.8],
+  ["undercroft", 1, 37.8, 39.367],
+  ["crossed", 2, 39.367, 45.7]
+];
+
+// every film the page ends on, top to bottom: each its own tile, name and
+// timeline (pages/motion-graphics.js), and its own sound
+export const FILMS = [
+  { ...FILM, acts: ACTS, cut: CUT },
+  { ...HOPE, acts: HOPE_ACTS, cut: HOPE_CUT }
+];
+
+/** does this scene have a sound track? the films do, and the works marked `sound` */
+export const hasSound = (id) => FILMS.some((f) => f.id === id) || WORKS.some((w) => w.id === id && w.sound === true);
 
 /** the works shown in one place, in their order there */
 export const worksOn = (place) => place === "flower"

@@ -1,8 +1,8 @@
 {
-  "note": "Where each work's clip is cut from. src: a render in <renders> (film = the full piece; clean = the piece with no words; montage / flower / sky = the standalone takes, tools/motion/sandbox_takes.js), from/to in seconds on that render's own clock; or src \"file\" with a \"file\" path, for a work that is just a video. The NAMES and where each work is shown are not here: they live in src/site/motion.js, which the editor edits. Read by tools/bake_motion.mjs, which also appends to it (--add).",
+  "note": "Where each work's clip is cut from. src: a render in <renders> (film = the full piece; clean = the piece with no words; montage / flower / sky = the standalone takes, tools/motion/sandbox_takes.js), from/to in seconds on that render's own clock; or src \"file\" with a \"file\" path (relative to this repository), for a work that is just a video. \"poster\": the second of the clip its still and, for a film, its tile are cut from. The NAMES and where each work is shown are not here: they live in src/site/motion.js, which the editor edits. Read by tools/bake_motion.mjs, which also appends to it (--add).",
   "fps": 30,
   "scenes": [
-    { "id": "film",        "src": "film",    "from": 0,     "to": 143.2 },
+    { "id": "film",        "src": "film",    "from": 0,     "to": 143.2, "poster": 38.9 },
     { "id": "hallway",     "src": "clean",   "from": 5.8,   "to": 15.0 },
     { "id": "flower-01",   "src": "flower",  "from": 0.5,   "to": 4.5 },
     { "id": "flower-02",   "src": "flower",  "from": 5.0,   "to": 9.0 },
@@ -53,6 +53,12 @@
     { "id": "boxers",      "src": "clean",   "from": 108.77, "to": 112.27 },
     { "id": "poppies",     "src": "clean",   "from": 112.27, "to": 118.77 },
     { "id": "lonely",      "src": "clean",   "from": 120.77, "to": 132.27 },
-    { "id": "company",     "src": "clean",   "from": 132.27, "to": 141.67 }
+    { "id": "company",     "src": "clean",   "from": 132.27, "to": 141.67 },
+    { "id": "reflect", "src": "file", "file": "../VisualAudialExperience/renders/site/reflect.mp4", "from": 0, "to": 30.0 },
+    { "id": "kindled", "src": "file", "file": "../VisualAudialExperience/renders/site/kindled.mp4", "from": 0, "to": 24.0, "poster": 21.0 },
+    { "id": "folded", "src": "file", "file": "../VisualAudialExperience/renders/site/folded.mp4", "from": 0, "to": 26.0 },
+    { "id": "crossed", "src": "file", "file": "../VisualAudialExperience/renders/site/crossed.mp4", "from": 0, "to": 20.4, "poster": 11.8 },
+    { "id": "calculator", "src": "file", "file": "../VisualAudialExperience/renders/site/calculator.mp4", "from": 0, "to": 19.5 },
+    { "id": "hope", "src": "file", "file": "../VisualAudialExperience/renders/site/hope.mp4", "from": 0, "to": 45.733, "poster": 42.5 }
   ]
 }

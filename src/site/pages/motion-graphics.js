@@ -15,10 +15,11 @@
 //   · THE FLOWER: every cut of "A flower." as one frame that stays put while
 //     the scroll steps it through the effects, in order (site/motionBloom.js);
 //   · behind the scenes;
-//   · the conclusion: the whole film, centred, then its own timeline, then the
-//     credits.
+//   · the conclusion: the whole film, centred, then its own timeline -- and
+//     under it "hope.", the same way, with its own (motion.js, FILMS) -- then
+//     the credits.
 //
-// Nothing relates a work to the film but the film itself.
+// Nothing relates a work to a film but the film itself.
 //
 // Every frame is boxed the way the piece's own computer vision boxes what it
 // sees (m_angels.js there: thin translucent lines, the label above; cyan while
@@ -38,7 +39,7 @@
 // one in the editor and Replace… takes a picture or a clip from Finder.
 
 import { capture } from "../media.js";
-import { ACTS, CUT, FILM, WORKS, worksOn } from "../motion.js";
+import { FILMS, WORKS, worksOn } from "../motion.js";
 // the viewer, the sheet's drawing, the layout, the ground and the credits are
 // fetched when the page mounts (site/motionPage.js), not with the site
 
@@ -47,7 +48,7 @@ const esc = (v) => String(v ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;")
   .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-const nameOf = (id) => (id === FILM.id ? FILM.name : WORKS.find((w) => w.id === id)?.name ?? id);
+const nameOf = (id) => FILMS.find((f) => f.id === id)?.name ?? WORKS.find((w) => w.id === id)?.name ?? id;
 
 // a tile: the frame, its box, and its name hanging above the box as the
 // piece's vision labels what it has found
@@ -61,21 +62,35 @@ function tile(w) {
           </div>`;
 }
 
-export function html() {
-  const flower = worksOn("flower");
-
-  // THE FILM'S TIMELINE: every stretch as long as it lasts, coloured by the
-  // film's four parts; the gaps are its own black. Pressing one opens the film
-  // at that moment.
-  const total = FILM.dur;
+// A FILM AT THE FOOT: the whole of it, centred, its name, then its own
+// timeline -- every stretch as long as it lasts, coloured by the film's parts;
+// the gaps are its own black. Pressing one opens the film at that moment. The
+// section's data-list is the film's id: the viewer pages within it, alone.
+function filmEnd(f) {
   let t = 0;
   const segs = [];
-  for (const [id, act, from, to] of CUT) {
+  for (const [id, act, from, to] of f.cut) {
     if (from > t + .01) segs.push(`<span class="mg-seg is-black" style="flex-grow:${(from - t).toFixed(3)}"></span>`);
-    segs.push(`<a class="mg-seg a${act}" href="#film" data-scene="film" data-film-at="${from}" style="flex-grow:${(to - from).toFixed(3)}" aria-label="${esc(nameOf(id))}" title="${esc(nameOf(id))}"></a>`);
+    segs.push(`<a class="mg-seg a${act}" href="#${esc(f.id)}" data-scene="${esc(f.id)}" data-film-at="${from}" style="flex-grow:${(to - from).toFixed(3)}" aria-label="${esc(nameOf(id))}" title="${esc(nameOf(id))}"></a>`);
     t = to;
   }
-  if (total > t + .01) segs.push(`<span class="mg-seg is-black" style="flex-grow:${(total - t).toFixed(3)}"></span>`);
+  if (f.dur > t + .01) segs.push(`<span class="mg-seg is-black" style="flex-grow:${(f.dur - t).toFixed(3)}"></span>`);
+  return `
+      <section class="mg-end" data-list="${esc(f.id)}" aria-label="${esc(f.name)}">
+        <div class="mg-tile mg-film">
+          <a class="mg-cell-a" href="#${esc(f.id)}" data-scene="${esc(f.id)}" aria-label="${esc(f.name)}">
+            <span class="mg-frame-cut"><canvas class="mg-cv" aria-hidden="true"></canvas><i class="mg-box" aria-hidden="true"></i></span>
+          </a>
+        </div>
+        <p class="mg-end-name">${esc(f.name)}</p>
+        <div class="mg-cut" role="group" aria-label="${esc(f.name)}, by part: ${f.acts.map(esc).join(", ")}">
+          <div class="mg-cut-bar">${segs.join("")}</div>
+        </div>
+      </section>`;
+}
+
+export function html() {
+  const flower = worksOn("flower");
 
   return `
   <section data-e="plate-2jgh" class="plate mg" id="p0">
@@ -116,18 +131,7 @@ export function html() {
           ${capture({ id: "motion-bts-3", ratio: "0.75", cls: "narrow", alt: "Behind the scenes." })}
         </div>
       </section>
-
-      <section class="mg-end" data-list="film" aria-label="${esc(FILM.name)}">
-        <div class="mg-tile mg-film">
-          <a class="mg-cell-a" href="#${esc(FILM.id)}" data-scene="${esc(FILM.id)}" aria-label="${esc(FILM.name)}">
-            <span class="mg-frame-cut"><canvas class="mg-cv" aria-hidden="true"></canvas><i class="mg-box" aria-hidden="true"></i></span>
-          </a>
-        </div>
-        <p class="mg-end-name">${esc(FILM.name)}</p>
-        <div class="mg-cut" role="group" aria-label="${esc(FILM.name)}, by part: ${ACTS.map(esc).join(", ")}">
-          <div class="mg-cut-bar">${segs.join("")}</div>
-        </div>
-      </section>
+${FILMS.map(filmEnd).join("")}
 
       <section class="mg-credits" aria-label="Credits">
         <p class="mg-credits-h">credits</p>

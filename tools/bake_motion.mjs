@@ -20,13 +20,13 @@
 //     ONE video, because fifty <video> elements are fifty decoders and a phone
 //     runs a handful. The sheet is cut from the clips stage 1 wrote, so adding
 //     a work never needs the renders again. Which works get a tile is read off
-//     site/motion.js (its "top" and "mix" works, and the film); the flower's
+//     site/motion.js (its "top" and "mix" works, and the films); the flower's
 //     run shows its posters and one live clip instead (site/motionBloom.js).
 //
 // WHAT COMES OUT, in src/assets/motion/:
 //   <id>.mp4       720x1560 H.264, a keyframe every HALF SECOND (-g 15), and AAC
 //                  ONLY for the works marked `sound: true` in site/motion.js (and
-//                  the film): every other clip is written silent, with -an.
+//                  the films): every other clip is written silent, with -an.
 //                  The viewer scrubs, and a seek decodes from the keyframe before
 //                  it: at 15 frames that is instant everywhere, where the
 //                  encoder's default (250) is a visible stall per step.
@@ -54,10 +54,11 @@ const MANIFEST = join(ROOT, "tools", "motion", "scenes.json");
 const MAN = JSON.parse(readFileSync(MANIFEST, "utf8"));
 const FPS = MAN.fps;
 // which clips keep their sound track is site/motion.js's `sound` flag, read here
-// so a re-bake cannot bring a track back; the film always keeps its score
-const { WORKS, FILM } = await import(pathToFileURL(join(ROOT, "src", "site", "motion.js")).href);
+// so a re-bake cannot bring a track back; the films (FILMS) always keep theirs
+const { WORKS, FILMS } = await import(pathToFileURL(join(ROOT, "src", "site", "motion.js")).href);
 const SOUND_NEW = process.argv.includes("--sound") ? process.argv[process.argv.indexOf("--id") + 1] : null;
-const hasSound = (id) => id === FILM.id || id === SOUND_NEW || WORKS.some((w) => w.id === id && w.sound === true);
+const isFilm = (id) => FILMS.some((f) => f.id === id);
+const hasSound = (id) => isFilm(id) || id === SOUND_NEW || WORKS.some((w) => w.id === id && w.sound === true);
 
 const args = process.argv.slice(2);
 const arg = (k, d) => (args.includes(k) ? args[args.indexOf(k) + 1] : d);
@@ -78,8 +79,11 @@ if (!RENDERS && !ADD && !SHEET_ONLY) {
 const W = 720, H = 1560;
 // the sheet's tiles: 9:19.5 again. 240 wide because the featured wall draws a
 // tile up to ~300 css px across; 8 across keeps the sheet's width under 2048,
-// which is the widest a phone's hardware decoder is dependably given
-const CW = 240, CH = 520, COLS = 8;
+// which is the widest a phone's hardware decoder is dependably given. The
+// height is held to the 2600 the sheet has been shipping at (5 rows of 520):
+// when the tiles outgrow it, a column more of narrower tiles, never a taller
+// sheet (grid(), below; 2026-10-08, the heavens and hope took it to 44 tiles)
+const CW = 240, COLS = 8, MAX_W = 2048, MAX_H = 2600;
 const LOOP_HALF = 2.5;           // seconds forward, then the same back
 
 const run = (a) => execFileSync(ffmpeg, ["-hide_banner", "-loglevel", "error", ...a],
@@ -134,20 +138,20 @@ function clip(s) {
     // by design, and at a constant quality the noisiest scene (the wings, their
     // colour noise re-rolled every frame) came out at 13.7 MB for 8 s -- a
     // seventh of the whole budget. The cap is what makes the budget a budget.
-    "-maxrate", s.id === "film" ? "1800k" : "2000k", "-bufsize", "4000k",
-    "-g", String(s.id === "film" ? FPS : FPS / 2), "-keyint_min", String(FPS / 2), "-sc_threshold", "0",
+    "-maxrate", isFilm(s.id) ? "1800k" : "2000k", "-bufsize", "4000k",
+    "-g", String(isFilm(s.id) ? FPS : FPS / 2), "-keyint_min", String(FPS / 2), "-sc_threshold", "0",
     ...(sound ? ["-c:a", "aac", "-b:a", "128k", "-ac", "2", "-shortest"] : ["-an"]),
     "-movflags", "+faststart", "-y", mp4]);
   return mp4;
 }
 
-// the poster: the clip's middle frame (the film's: the whale, close), or the
-// second scenes.json names as its "poster" (a work whose middle is a white
-// flash or a torn frame), walked down a quality ladder to 70 KB. Cut from the CLIP just written, so a work
+// the poster: the clip's middle frame, or the second scenes.json names as its
+// "poster" (a work whose middle is a white flash or a torn frame; a film's, a
+// moment chosen -- the flower film's is the whale, close), walked down a quality ladder to 70 KB. Cut from the CLIP just written, so a work
 // from a file and a work from a render get the same treatment.
 function poster(s, mp4) {
   const webp = join(OUT, `${s.id}.webp`);
-  const at = (s.id === "film" ? 38.9 : s.poster ?? framesOf(mp4) / FPS / 2).toFixed(3);
+  const at = (s.poster ?? framesOf(mp4) / FPS / 2).toFixed(3);
   for (const q of [80, 72, 64, 56, 48]) {
     run(["-ss", at, "-i", mp4, "-frames:v", "1",
       "-vf", `scale=540:1170:flags=lanczos`, "-c:v", "libwebp", "-q:v", String(q), "-y", webp]);
@@ -187,43 +191,53 @@ function card() {
 // ── STAGE 2 · THE CONTACT SHEET, AND THE TABLE ────────────────────────────
 
 // one tile: 2.5 s from the middle of the work's clip, forward then reversed
-function tile(id, dur, tmp) {
+// (a film's: from around its poster, which is chosen where its middle is not)
+function tile(id, dur, tmp, cw, ch) {
   const out = join(tmp, `${id}.mp4`);
-  const mid = id === "film" ? 38.9 : dur / 2;
+  const mid = isFilm(id) ? MAN.scenes.find((s) => s.id === id)?.poster ?? dur / 2 : dur / 2;
   const len = Math.min(LOOP_HALF, dur);
   const from = Math.max(0, Math.min(dur - len, mid - len / 2));
   run(["-ss", from.toFixed(3), "-t", String(len), "-i", join(OUT, `${id}.mp4`),
-    "-filter_complex", `[0:v]scale=${CW}:${CH}:flags=lanczos,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1:a=0,fps=${FPS}[o]`,
+    "-filter_complex", `[0:v]scale=${cw}:${ch}:flags=lanczos,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1:a=0,fps=${FPS}[o]`,
     "-map", "[o]", "-c:v", "libx264", "-crf", "12", "-preset", "fast", "-pix_fmt", "yuv420p", "-an", "-y", out]);
   return out;
 }
 
+// the sheet's grid for n tiles: COLS across at CW while the rows fit under
+// MAX_H, else one column more of tiles narrow enough to keep under MAX_W
+function grid(n) {
+  for (let cols = COLS; ; cols++) {
+    const cw = Math.min(CW, Math.floor(MAX_W / cols / 8) * 8), ch = Math.round(cw * 19.5 / 9 / 2) * 2;
+    if (Math.ceil(n / cols) * ch <= MAX_H || cw <= 160) return { cols, cw, ch, rows: Math.ceil(n / cols) };
+  }
+}
+
 async function sheet() {
-  const { WORKS, FILM } = await import(pathToFileURL(join(ROOT, "src", "site", "motion.js")).href + `?t=${Date.now()}`);
+  const { WORKS, FILMS } = await import(pathToFileURL(join(ROOT, "src", "site", "motion.js")).href + `?t=${Date.now()}`);
   const baked = MAN.scenes.map((s) => s.id).filter((id) => existsSync(join(OUT, `${id}.mp4`)) && existsSync(join(OUT, `${id}.webp`)));
-  const named = new Set([FILM.id, ...WORKS.map((w) => w.id)]);
+  const named = new Set([...FILMS.map((f) => f.id), ...WORKS.map((w) => w.id)]);
   const unnamed = baked.filter((id) => !named.has(id)), missing = [...named].filter((id) => !baked.includes(id));
   if (unnamed.length) console.warn(`baked but not on the page (add a line to src/site/motion.js): ${unnamed.join(", ")}`);
   if (missing.length) { console.error(`on the page but not baked: ${missing.join(", ")}`); process.exit(1); }
 
-  // the tiles: the film, then every work that plays in a tile, in page order
-  const tiles = [FILM.id, ...WORKS.filter((w) => w.on.some((p) => p === "top" || p === "mix")).map((w) => w.id)];
+  // the tiles: the films, then every work that plays in a tile, in page order
+  const tiles = [...FILMS.map((f) => f.id), ...WORKS.filter((w) => w.on.some((p) => p === "top" || p === "mix")).map((w) => w.id)];
   const dur = Object.fromEntries(baked.map((id) => [id, framesOf(join(OUT, `${id}.mp4`)) / FPS]));
   const tmp = join(tmpdir(), `bake_motion_${process.pid}`);
   mkdirSync(tmp, { recursive: true });
-  const cells = tiles.map((id) => tile(id, dur[id], tmp));
-  const n = cells.length, R = Math.ceil(n / COLS);
-  const layout = cells.map((_, i) => `${(i % COLS) * CW}_${Math.floor(i / COLS) * CH}`).join("|");
+  const n = tiles.length, { cols: C, cw: TW, ch: TH, rows: R } = grid(n);
+  const cells = tiles.map((id) => tile(id, dur[id], tmp, TW, TH));
+  const layout = cells.map((_, i) => `${(i % C) * TW}_${Math.floor(i / C) * TH}`).join("|");
   const out = join(OUT, "sheet.mp4");
   // the grid's empty cells stay black; pad makes the canvas whole
   run([...cells.flatMap((c) => ["-i", c]), "-filter_complex",
     `${cells.map((_, i) => `[${i}:v]`).join("")}xstack=inputs=${n}:layout=${layout}:fill=black,` +
-    `pad=${COLS * CW}:${R * CH}:0:0:black,format=yuv420p[o]`,
+    `pad=${C * TW}:${R * TH}:0:0:black,format=yuv420p[o]`,
     "-map", "[o]", "-c:v", "libx264", "-preset", "slow", "-profile:v", "high", "-crf", String(CRF + 1),
     "-maxrate", "6000k", "-bufsize", "12000k", "-g", String(FPS), "-an", "-movflags", "+faststart", "-y", out]);
   run(["-i", out, "-frames:v", "1", "-c:v", "libwebp", "-q:v", "70", "-y", join(OUT, "sheet.webp")]);
   rmSync(tmp, { recursive: true, force: true });
-  console.log(`sheet        ${n} tiles, ${COLS}x${R} of ${CW}x${CH}  ${kb(out)} KB`);
+  console.log(`sheet        ${n} tiles, ${C}x${R} of ${TW}x${TH}  ${kb(out)} KB`);
 
   let total = 0;
   for (const id of baked) total += statSync(join(OUT, `${id}.mp4`)).size + statSync(join(OUT, `${id}.webp`)).size;
@@ -243,7 +257,7 @@ ${lines}
 import sheet from "../assets/motion/sheet.mp4?url";
 import sheetStill from "../assets/motion/sheet.webp?url";
 
-export const SHEET = { video: sheet, still: sheetStill, cols: ${COLS}, rows: ${R}, cw: ${CW}, ch: ${CH}, period: ${2 * LOOP_HALF} };
+export const SHEET = { video: sheet, still: sheetStill, cols: ${C}, rows: ${R}, cw: ${TW}, ch: ${TH}, period: ${2 * LOOP_HALF} };
 export const CLIPS = {
 ${table}
 };

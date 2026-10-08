@@ -107,61 +107,79 @@ import v50 from "../assets/motion/lonely.mp4?url";
 import p50 from "../assets/motion/lonely.webp?url";
 import v51 from "../assets/motion/company.mp4?url";
 import p51 from "../assets/motion/company.webp?url";
+import v52 from "../assets/motion/reflect.mp4?url";
+import p52 from "../assets/motion/reflect.webp?url";
+import v53 from "../assets/motion/kindled.mp4?url";
+import p53 from "../assets/motion/kindled.webp?url";
+import v54 from "../assets/motion/folded.mp4?url";
+import p54 from "../assets/motion/folded.webp?url";
+import v55 from "../assets/motion/crossed.mp4?url";
+import p55 from "../assets/motion/crossed.webp?url";
+import v56 from "../assets/motion/calculator.mp4?url";
+import p56 from "../assets/motion/calculator.webp?url";
+import v57 from "../assets/motion/hope.mp4?url";
+import p57 from "../assets/motion/hope.webp?url";
 import sheet from "../assets/motion/sheet.mp4?url";
 import sheetStill from "../assets/motion/sheet.webp?url";
 
-export const SHEET = { video: sheet, still: sheetStill, cols: 8, rows: 5, cw: 240, ch: 520, period: 5 };
+export const SHEET = { video: sheet, still: sheetStill, cols: 9, rows: 5, cw: 224, ch: 486, period: 5 };
 export const CLIPS = {
   "film": { video: v0, poster: p0, dur: 143.200, cell: 0 },
-  "hallway": { video: v1, poster: p1, dur: 9.200, cell: 10 },
+  "hallway": { video: v1, poster: p1, dur: 9.200, cell: 16 },
   "flower-01": { video: v2, poster: p2, dur: 4.000, cell: -1 },
   "flower-02": { video: v3, poster: p3, dur: 4.000, cell: -1 },
-  "flower-03": { video: v4, poster: p4, dur: 4.000, cell: 18 },
-  "flower-04": { video: v5, poster: p5, dur: 4.000, cell: 33 },
+  "flower-03": { video: v4, poster: p4, dur: 4.000, cell: 24 },
+  "flower-04": { video: v5, poster: p5, dur: 4.000, cell: 39 },
   "flower-05": { video: v6, poster: p6, dur: 4.000, cell: -1 },
   "flower-06": { video: v7, poster: p7, dur: 4.000, cell: -1 },
   "flower-07": { video: v8, poster: p8, dur: 4.000, cell: -1 },
   "flower-08": { video: v9, poster: p9, dur: 4.000, cell: -1 },
-  "flower-09": { video: v10, poster: p10, dur: 4.000, cell: 23 },
+  "flower-09": { video: v10, poster: p10, dur: 4.000, cell: 29 },
   "flower-10": { video: v11, poster: p11, dur: 4.000, cell: -1 },
   "flower-11": { video: v12, poster: p12, dur: 4.000, cell: -1 },
-  "flower-12": { video: v13, poster: p13, dur: 4.000, cell: 13 },
+  "flower-12": { video: v13, poster: p13, dur: 4.000, cell: 19 },
   "flower-13": { video: v14, poster: p14, dur: 4.000, cell: -1 },
   "flower-14": { video: v15, poster: p15, dur: 4.000, cell: -1 },
   "flower-15": { video: v16, poster: p16, dur: 4.000, cell: -1 },
-  "flower-16": { video: v17, poster: p17, dur: 4.000, cell: 28 },
+  "flower-16": { video: v17, poster: p17, dur: 4.000, cell: 34 },
   "flower-17": { video: v18, poster: p18, dur: 4.000, cell: -1 },
   "flower-18": { video: v19, poster: p19, dur: 4.000, cell: -1 },
-  "flower-19": { video: v20, poster: p20, dur: 4.000, cell: 7 },
+  "flower-19": { video: v20, poster: p20, dur: 4.000, cell: 13 },
   "flower-20": { video: v21, poster: p21, dur: 4.000, cell: -1 },
   "flower-21": { video: v22, poster: p22, dur: 4.000, cell: -1 },
-  "watch": { video: v23, poster: p23, dur: 4.500, cell: 31 },
-  "world": { video: v24, poster: p24, dur: 4.867, cell: 16 },
-  "firmament": { video: v25, poster: p25, dur: 6.700, cell: 1 },
-  "whale": { video: v26, poster: p26, dur: 8.467, cell: 8 },
-  "alone": { video: v27, poster: p27, dur: 6.200, cell: 34 },
-  "like": { video: v28, poster: p28, dur: 4.300, cell: 29 },
-  "wings": { video: v29, poster: p29, dur: 8.000, cell: 9 },
-  "credits": { video: v30, poster: p30, dur: 8.000, cell: 20 },
-  "tower": { video: v31, poster: p31, dur: 6.000, cell: 35 },
-  "providence": { video: v32, poster: p32, dur: 9.000, cell: 14 },
-  "particles": { video: v33, poster: p33, dur: 8.000, cell: 27 },
-  "chrome": { video: v34, poster: p34, dur: 8.000, cell: 2 },
-  "moire": { video: v35, poster: p35, dur: 8.000, cell: 22 },
-  "topo": { video: v36, poster: p36, dur: 8.000, cell: 11 },
-  "earth": { video: v37, poster: p37, dur: 8.000, cell: 17 },
-  "poster": { video: v38, poster: p38, dur: 5.000, cell: 4 },
-  "pool": { video: v39, poster: p39, dur: 10.500, cell: 5 },
-  "desktop": { video: v40, poster: p40, dur: 3.500, cell: 30 },
-  "angels": { video: v41, poster: p41, dur: 12.700, cell: 6 },
-  "gaze": { video: v42, poster: p42, dur: 4.800, cell: 25 },
-  "sky": { video: v43, poster: p43, dur: 9.367, cell: 12 },
-  "clouds": { video: v44, poster: p44, dur: 9.367, cell: 19 },
-  "towers": { video: v45, poster: p45, dur: 5.600, cell: 26 },
-  "factory": { video: v46, poster: p46, dur: 3.100, cell: 24 },
-  "undercroft": { video: v47, poster: p47, dur: 3.100, cell: 3 },
-  "boxers": { video: v48, poster: p48, dur: 3.500, cell: 15 },
-  "poppies": { video: v49, poster: p49, dur: 6.500, cell: 32 },
-  "lonely": { video: v50, poster: p50, dur: 11.500, cell: 21 },
-  "company": { video: v51, poster: p51, dur: 9.400, cell: 36 }
+  "watch": { video: v23, poster: p23, dur: 4.500, cell: 37 },
+  "world": { video: v24, poster: p24, dur: 4.867, cell: 22 },
+  "firmament": { video: v25, poster: p25, dur: 6.700, cell: 7 },
+  "whale": { video: v26, poster: p26, dur: 8.467, cell: 14 },
+  "alone": { video: v27, poster: p27, dur: 6.200, cell: 40 },
+  "like": { video: v28, poster: p28, dur: 4.300, cell: 35 },
+  "wings": { video: v29, poster: p29, dur: 8.000, cell: 15 },
+  "credits": { video: v30, poster: p30, dur: 8.000, cell: 26 },
+  "tower": { video: v31, poster: p31, dur: 6.000, cell: 41 },
+  "providence": { video: v32, poster: p32, dur: 9.000, cell: 20 },
+  "particles": { video: v33, poster: p33, dur: 8.000, cell: 33 },
+  "chrome": { video: v34, poster: p34, dur: 8.000, cell: 8 },
+  "moire": { video: v35, poster: p35, dur: 8.000, cell: 28 },
+  "topo": { video: v36, poster: p36, dur: 8.000, cell: 17 },
+  "earth": { video: v37, poster: p37, dur: 8.000, cell: 23 },
+  "poster": { video: v38, poster: p38, dur: 5.000, cell: 10 },
+  "pool": { video: v39, poster: p39, dur: 10.500, cell: 11 },
+  "desktop": { video: v40, poster: p40, dur: 3.500, cell: 36 },
+  "angels": { video: v41, poster: p41, dur: 12.700, cell: 12 },
+  "gaze": { video: v42, poster: p42, dur: 4.800, cell: 31 },
+  "sky": { video: v43, poster: p43, dur: 9.367, cell: 18 },
+  "clouds": { video: v44, poster: p44, dur: 9.367, cell: 25 },
+  "towers": { video: v45, poster: p45, dur: 5.600, cell: 32 },
+  "factory": { video: v46, poster: p46, dur: 3.100, cell: 30 },
+  "undercroft": { video: v47, poster: p47, dur: 3.100, cell: 9 },
+  "boxers": { video: v48, poster: p48, dur: 3.500, cell: 21 },
+  "poppies": { video: v49, poster: p49, dur: 6.500, cell: 38 },
+  "lonely": { video: v50, poster: p50, dur: 11.500, cell: 27 },
+  "company": { video: v51, poster: p51, dur: 9.400, cell: 42 },
+  "reflect": { video: v52, poster: p52, dur: 30.000, cell: 3 },
+  "kindled": { video: v53, poster: p53, dur: 24.000, cell: 4 },
+  "folded": { video: v54, poster: p54, dur: 26.000, cell: 5 },
+  "crossed": { video: v55, poster: p55, dur: 20.400, cell: 2 },
+  "calculator": { video: v56, poster: p56, dur: 19.500, cell: 6 },
+  "hope": { video: v57, poster: p57, dur: 45.700, cell: 1 }
 };

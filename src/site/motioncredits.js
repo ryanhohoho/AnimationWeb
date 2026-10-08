@@ -1116,6 +1116,61 @@ export const CREDITS = [
   ]
  },
  {
+  "kind": "image",
+  "used": "\"calc\" (standalone reel, ?solo=calc): the calculator itself, the plate — a photograph of a TI-84 Plus, its text removed (tools/prep_calc_plate.py); the LCD is redrawn over it",
+  "work": "TI-84 Plus calculator HS4 (Nikon D7100, 6000×4000) — also extended above (its own paper) and below (shadow) as plate_ext.jpg for the pulled-back clip reels",
+  "author": "Hayden Schiff",
+  "licence": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:TI-84_Plus_calculator_HS4.jpg",
+  "in": [
+   "calculator"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "\"calc3\" / \"calc4\" (?solo=calc3, ?solo=calc4): the footage the LCD shows — two clips of Mew from the Pokémon movie, supplied by the user (Mew clips/mew_cute1.mp4, mew_cute_playing.mp4), cut out and filtered to 96×64 one-bit cells; Mew and the footage © Nintendo / Creatures / GAME FREAK / The Pokémon Company / OLM — fan art, user-supplied, not a licence",
+  "work": "user-supplied clips",
+  "author": "—",
+  "licence": "—",
+  "url": null,
+  "in": [
+   "calculator"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "\"calc4\": the figure that stands where the trainer was — an image supplied by the user (Mew clips/evil_eye_totem.png), cut out and filtered the same way",
+  "work": "user-supplied image",
+  "author": "—",
+  "licence": "user-supplied",
+  "url": null,
+  "in": [
+   "calculator"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "\"calc3/4\": the cut-out of Mew (video segmentation, seeded automatically)",
+  "work": "SAM 2.1 (hiera-base-plus)",
+  "author": "Meta AI (FAIR)",
+  "licence": "Apache 2.0",
+  "url": "https://github.com/facebookresearch/sam2",
+  "in": [
+   "calculator"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "\"calc4\": finding the person to replace",
+  "work": "YOLO11x-seg",
+  "author": "Ultralytics",
+  "licence": "AGPL-3.0 (a build-time analysis tool; no code or weights are shipped in the piece)",
+  "url": "https://github.com/ultralytics/ultralytics",
+  "in": [
+   "calculator"
+  ]
+ },
+ {
   "kind": "sound",
   "used": "the narrator's typing",
   "work": "Typing (a keyboard)",
@@ -1267,6 +1322,340 @@ export const CREDITS = [
   "url": "https://commons.wikimedia.org/wiki/File:Light_Rain_Distant_Thunder_July_5th_2016.wav",
   "in": [
    "poppies"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "to reflect: the sky and its mirror; the light on the being",
+  "work": "DaySkyHDRI027B (16K HDR sky)",
+  "author": "ambientCG (Lennart Demes)",
+  "licence": "CC0",
+  "url": "https://ambientcg.com/view?id=DaySkyHDRI027B",
+  "in": [
+   "reflect",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "to reflect: the being's face (a 3D scan, bleached and scaled)",
+  "work": "White-tailed Deer: Skull and Mandible (USNM)",
+  "author": "Smithsonian Institution, National Museum of Natural History",
+  "licence": "CC0",
+  "url": "https://3d.si.edu/",
+  "in": [
+   "reflect",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "to reflect: the being's claws (a 3D scan)",
+  "work": "Allosaurus fragilis Marsh, 1877: Claw",
+  "author": "Smithsonian Institution, National Museum of Natural History",
+  "licence": "CC0",
+  "url": "https://3d.si.edu/",
+  "in": [
+   "reflect",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "to reflect: the hands (measured motion only)",
+  "work": "Grand geyser erupting (phone video)",
+  "author": "G. Edward Johnson",
+  "licence": "CC BY 3.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Grand_geyser_erupting_20190714_093149_VID.webm",
+  "in": [
+   "reflect",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "folded: the hands (measured motion only)",
+  "work": "(the same)",
+  "author": "G. Edward Johnson",
+  "licence": "CC BY 3.0",
+  "url": null,
+  "in": [
+   "folded"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "kindled: the walk (6-DOF, solved with COLMAP; measurement only, as in \"we survive.\")",
+  "work": "Exploring Abandoned Water Tower",
+  "author": "Anna Jacobsen",
+  "licence": "CC BY-ND 4.0",
+  "url": "https://archive.org/details/ExploringAbandonedWaterTower",
+  "in": [
+   "kindled",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "crossed: the planet (drained to white and grey)",
+  "work": "Blue Marble Next Generation, December 2004 (21600×10800)",
+  "author": "NASA Earth Observatory (Reto Stöckli)",
+  "licence": "Public domain",
+  "url": "https://eoimages.gsfc.nasa.gov/images/imagerecords/74000/74218/world.200412.3x21600x10800.jpg",
+  "in": [
+   "crossed",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "crossed: the clouds",
+  "work": "cloud_combined_8192",
+  "author": "NASA Goddard (Visible Earth)",
+  "licence": "Public domain",
+  "url": "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57747/cloud_combined_8192.tif",
+  "in": [
+   "crossed",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "crossed: the relief",
+  "work": "GEBCO_08 elevation (21600×10800)",
+  "author": "NASA Visible Earth / GEBCO",
+  "licence": "Public domain",
+  "url": "https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73934/gebco_08_rev_elev_21600x10800.png",
+  "in": [
+   "crossed",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "crossed: the run, the look up, the hand (recorded human motion)",
+  "work": "CMU Graphics Lab Motion Capture Database: subject 9 runs 09_01–09; 139_09 (ducking); 79_78 (taking a movie)",
+  "author": "Carnegie Mellon University (NSF EIA-0196217)",
+  "licence": "Free for any use",
+  "url": "http://mocap.cs.cmu.edu/",
+  "in": [
+   "crossed"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "crossed, the street: asphalt, plaster, stucco, tiles, roof tiles, shutters, siding, block, concrete, metal, rust (photoscanned PBR sets, layered and aged)",
+  "work": "asphalt_track, clean_asphalt, asphalt_02, road_damaged_2, worn_asphalt, white_stucco, painted_plaster_wall, grey_plaster, grey_plaster_02, white_plaster_02, rectangular_facade_tiles, long_white_tiles, grey_roof_tiles, painted_metal_shutter, box_profile_metal_sheet, worn_corrugated_iron, concrete_block_wall, concrete_tile_facade, dirty_concrete, blue_metal_plate, metal_plate_02, rusty_painted_metal, metal_grate_rusty, green_metal_rust, brushed_concrete_03, concrete_pavement_03, painted_concrete_02, rusty_metal_02 (and concrete_wall_008, concrete_debris, concrete_floor_damaged_01, dirt_floor from \"we survive.\")",
+  "author": "Poly Haven",
+  "licence": "CC0",
+  "url": "https://polyhaven.com/textures",
+  "in": [
+   "crossed",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "crossed, the street: air conditioners, gutters, utility box, manhole covers, potted plants, planter, crate, hose reel, security light, shrubs (scanned models)",
+  "work": "exterior_aircon_unit, modular_metal_gutter, utility_box_02, water_manhole_cover, potted_plant_01/02/04, planter_box_01, plastic_crate_02, garden_hose_wall_mounted_01, security_light, shrub_01/02 (and metal_trash_can from \"we survive.\")",
+  "author": "Poly Haven",
+  "licence": "CC0",
+  "url": "https://polyhaven.com/models",
+  "in": [
+   "crossed",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "crossed, the street: the two vending machines' fronts (rectified)",
+  "work": "POKKA Corporation vending machine; Sapporo Beverage vending machine",
+  "author": "Tokumeigakarinoaoshima",
+  "licence": "CC0; CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:POKKA_Corporation_vending_machine.JPG",
+  "in": [
+   "crossed",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "crossed, the street: the valley's houses and lights below Gotemba (positions only)",
+  "work": "OpenStreetMap data",
+  "author": "© OpenStreetMap contributors",
+  "licence": "ODbL 1.0",
+  "url": "https://www.openstreetmap.org/copyright",
+  "in": [
+   "crossed",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "crossed, the street: the terrain (to 45 km, and Fuji)",
+  "work": "Terrain Tiles (Terrarium) — from SRTM (NASA), GMTED2010 (USGS), ETOPO1 (NOAA) and others",
+  "author": "Mapzen / AWS Open Data",
+  "licence": "open (attribution per source)",
+  "url": "https://registry.opendata.aws/terrain-tiles/",
+  "in": [
+   "crossed",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "crossed, the street: the camera's shiver after the flash (measured motion only)",
+  "work": "Delaney Hall tear gas May 29 (video)",
+  "author": "Jwswikiuser191",
+  "licence": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Delaney_Hall_tear_gas_May_29.webm",
+  "in": [
+   "crossed",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "crossed, the street: the signs' and the road's type (止まれ, たばこ, the shop's sign, the notices)",
+  "work": "Hiragino Kaku Gothic / Mincho (system fonts, rendered into textures)",
+  "author": "Screen / Apple",
+  "licence": "macOS system font licence",
+  "url": null,
+  "in": [
+   "crossed",
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "the reel's music (1:44.08 → 2:20.25; her English lands in the song's own silence, the slam a second after \"hope\") and the standalones",
+  "work": "In the Pool (Chainsaw Man – The Movie: Reze Arc, original soundtrack)",
+  "author": "Kensuke Ushio",
+  "licence": "© the rights holders — NOT openly licensed; used at the user's choice (the user's file). Platforms may mute or claim it.",
+  "url": null,
+  "in": [
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "her voice — a mother, late thirties: 即使天塌下来……也要坚守希望, then \"When the world is falling... hold on to that hope.\" (designed from a description, Chinese; the English cloned from that take)",
+  "work": "Qwen3-TTS 12Hz 1.7B VoiceDesign + 1.7B Base (qwen-tts 0.1.1)",
+  "author": "Qwen team, Alibaba Cloud",
+  "licence": "Apache-2.0",
+  "url": "https://github.com/QwenLM/Qwen3-TTS",
+  "in": [
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "when she says each character and word (offline timing only; nothing of it is in the output)",
+  "work": "MMS forced aligner (torchaudio MMS_FA); pypinyin",
+  "author": "Meta AI (Pratap et al., Scaling Speech Technology to 1,000+ Languages, 2023); mozillazg",
+  "licence": "weights CC BY-NC 4.0 (used only to measure timing); MIT",
+  "url": "https://pytorch.org/audio/stable/tutorials/forced_alignment_for_multilingual_data_tutorial.html",
+  "in": [
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "(choosing her take by ear's proxy: transcription, pitch, speaker similarity, quality)",
+  "work": "faster-whisper; librosa (pYIN); Resemblyzer; DNSMOS via speechmos",
+  "author": "SYSTRAN / OpenAI; librosa team; Resemble AI; Microsoft",
+  "licence": "MIT; ISC; Apache-2.0; MIT",
+  "url": "https://github.com/SYSTRAN/faster-whisper",
+  "in": [
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "her recording: the small recorder, the room, the echo; the tape bed under her (hiss, room, hum, crackle — all generated here)",
+  "work": "pedalboard",
+  "author": "Spotify",
+  "licence": "GPL-3.0 (tool only; nothing of it ships)",
+  "url": "https://github.com/spotify/pedalboard",
+  "in": [
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "the Chinese words (glass, rays, void, light)",
+  "work": "Smiley Sans 得意黑",
+  "author": "atelierAnchor",
+  "licence": "SIL OFL 1.1 (Reserved Font Names \"Smiley\", \"得意黑\"; used unmodified)",
+  "url": "https://github.com/atelier-anchor/smiley-sans",
+  "in": [
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "the Chinese words (beam, point cloud)",
+  "work": "ZCOOL QingKe HuangYou 站酷庆科黄油体",
+  "author": "ZCOOL / 庆科",
+  "licence": "SIL OFL 1.1",
+  "url": "https://fonts.google.com/specimen/ZCOOL+QingKe+HuangYou",
+  "in": [
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "\"hope.\" (the split spectrum)",
+  "work": "Fusion Pixel Font 12px proportional (zh_hans)",
+  "author": "TakWolf (from Ark Pixel, Cubic 11, Galmuri)",
+  "licence": "SIL OFL 1.1",
+  "url": "https://github.com/TakWolf/fusion-pixel-font",
+  "in": [
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "the English words",
+  "work": "Big Shoulders Display",
+  "author": "Patric King (Chicago)",
+  "licence": "SIL OFL 1.1",
+  "url": "https://fonts.google.com/specimen/Big+Shoulders+Display",
+  "in": [
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "\"hope.\" (each cut its own)",
+  "work": "Space Mono; Major Mono Display; Michroma; Share Tech Mono; Oxanium; Chakra Petch",
+  "author": "Colophon; Emre Parlak; Vernon Adams; Carrois; Severin Meyer; Cadson Demak",
+  "licence": "SIL OFL 1.1",
+  "url": "https://fonts.google.com/",
+  "in": [
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "the plane on the slam (the montage's flyover with nothing else in the sky: m_angels clean: 1)",
+  "work": "as the montage (FlightGear 777, Poly Haven sky, measured flyover — above)",
+  "author": "(above)",
+  "licence": "(above)",
+  "url": null,
+  "in": [
+   "hope"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "the caustic look's net",
+  "work": "the three-layer cell caustic (a widely shared real-time water-caustic snippet; original author uncertain)",
+  "author": "—",
+  "licence": "technique (re-typed)",
+  "url": null,
+  "in": [
+   "hope"
   ]
  }
 ];

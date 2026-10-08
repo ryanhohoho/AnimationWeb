@@ -2892,3 +2892,45 @@ Home's links vs SOCIALS with a control, the binder's tokens; router: Mew off Abo
   orders the wheel: newest in front, then alternately below and above it, so the two oldest meet
   at the back. Tests: 1258 + the router harness.
 
+
+# 31 · The heavens, the calculator and "hope." on the motion page (2026-10-08)
+
+By instruction: every scene of the heavens pass and the latest Mew-in-a-calculator at the top of
+the featured wall, and the reel "hope." under the flower's film, with a timeline of its own.
+
+- **Five works, first on the wall** (`site/motion.js`, silent like every work): `crossed` (from
+  orbit, then the NEW street -- the needle 3,000 km tall, the storm, the black gust -- and its
+  crosscut to the white; rendered whole as `?solo=crossedBig` there, with no tape glitch into the
+  street, by instruction; the old street is not on the page), `reflect`, `kindled`, `folded`,
+  `calculator` (calc5: both Mew clips on the TI-84). Their masters are files, not
+  sandbox renders: `../VisualAudialExperience/renders/site/*.mp4` (git-ignored there; its
+  README.txt says which render each is), referenced RELATIVE in `scenes.json` (`src: "file"`), so
+  no absolute path enters this repository. Chosen poster seconds for kindled and crossed (the needle through the storm).
+- **The films are a list** (`FILMS` in motion.js): `{...FILM, acts: ACTS, cut: CUT}` then
+  `{...HOPE, acts: HOPE_ACTS, cut: HOPE_CUT}`. `FILM`, `CUT`, `ACTS` keep their meaning. Each film
+  is a `.mg-end` section whose `data-list` is its id (the viewer's list of one), its own tile on
+  the sheet, its own timeline and ticks, and a sound track (`hasSound`). hope's cut is the reel's
+  23 shots on whole frames (`tools/heavens/hope_reel.py` CUTS − 104.08), parts "her voice" /
+  "the drop" / "the white", every stretch named by a work on the page (its rift is `undercroft`,
+  "collapse"; its plane is `angels`). Its clip: the reel's 1080x2340 picture with the -14 LUFS
+  Instagram mix, 45.7 s -- re-rendered 2026-10-08 with the new street and white in its three
+  street shots and its ending (the bin's `SRC.town`/`SRC.angel` are the `big` ones now). Its score is Kensuke Ushio's "In the Pool" -- copyrighted, NOT openly
+  licensed; on the site by the owner's choice (2026-10-08), told the risk.
+- **The sheet keeps its size**: 43 tiles would be a 6th row (3120 px tall). `grid()` in
+  bake_motion.mjs holds 2048 x 2600 (the sizes already shipping) by adding a column of narrower
+  tiles instead: now 9x5 of 224x486 (2016x2430). `SHEET` carries the grid; nothing else changed.
+- **bake_motion.mjs**: every film-only special case reads `FILMS` (`isFilm`); the flower film's
+  poster second (38.9) moved from the code into its manifest line; a film's tile loops around its
+  poster.
+- **Credits**: `tools/motion/credits.mjs` maps the new CREDITS.md rows (reflect, folded, kindled,
+  crossed and its street, the calculator, hope) and SKIPS rows whose rule is `false` -- pieces the
+  page does not show (apex, hollow, the first heavens, the 3D calc reels) and the heavens' reel
+  sound (their clips here are silent). 147 rows; the 113 old ones regenerate byte-identical.
+- **Budget**: 126 MB of video in `src/assets/motion/` (was 90). The page's chunk is 82.6 KB.
+- **Tests** (owner authorised the change): the "one film" checks are "every film" checks, plus
+  hope's timeline covering it frame to frame (with a control). 1264 sim checks + the router
+  harness, all green; build clean.
+- Seen in the pane (dist on 5274) at 1512x867 and 390x844: the new tiles playing in their boxes,
+  both films at the foot with their timelines, hope opened from its slam stretch (23 ticks,
+  speaker), `#hope` deep link, a new work paging to the next, godhood and the pool unchanged.
+  Not seen: Safari, a real phone, the editor on the new names.

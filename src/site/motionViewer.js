@@ -28,11 +28,11 @@
 //     step one frame.
 //   · IT PAGES WITHIN WHAT IT WAS OPENED FROM, as Photos pages within an
 //     album: a tile on the wall through the wall, the flower through its cuts
-//     in order, and the film alone (motionPage.js hands it the lists).
+//     in order, and each film alone (motionPage.js hands it the lists).
 //   · THE BAR, laid in the scene along its foot, steps FRAMES: drag it, or scroll -- a trackpad's two fingers or a
 //     wheel -- anywhere over the viewer. The clips carry a keyframe every half
-//     second so a seek never stalls (tools/bake_motion.mjs). On the film it
-//     carries a tick where each of its stretches starts (motion.js, CUT). The
+//     second so a seek never stalls (tools/bake_motion.mjs). On a film it
+//     carries a tick where each of its stretches starts (motion.js, FILMS). The
 //     speaker at its end is the one other control: sound always starts off.
 //
 // The ground around the frame is the scene itself, spilled past its edges and
@@ -43,11 +43,11 @@
 // of a video rather than a video.
 
 import { CLIPS } from "./motionassets.js";
-import { CUT, FILM, WORKS, hasSound } from "./motion.js";
+import { FILMS, WORKS, hasSound } from "./motion.js";
 import { reducedMotion } from "../utils/motion.js";
 
 const FPS = 30;
-const NAMES = new Map([[FILM.id, FILM.name], ...WORKS.map((w) => [w.id, w.name])]);
+const NAMES = new Map([...FILMS.map((f) => [f.id, f.name]), ...WORKS.map((w) => [w.id, w.name])]);
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 const OPEN_MS = reducedMotion ? 0 : 380;
 const PAGE_MS = reducedMotion ? 0 : 300;
@@ -219,8 +219,9 @@ export function mountViewer(scope, root, { lists, ambient, cover = () => {}, clo
     el.setAttribute("aria-label", name);
     // a silent scene has nothing for the speaker to turn on (motion.js, hasSound)
     snd.classList.toggle("is-silent", !hasSound(id));
-    // the film's own cut: a tick where each of its stretches starts
-    ticks.innerHTML = id === FILM.id ? CUT.map((x) => `<i style="left:${(100 * x[2] / c.dur).toFixed(3)}%"></i>`).join("") : "";
+    // a film's own cut: a tick where each of its stretches starts
+    const film = FILMS.find((f) => f.id === id);
+    ticks.innerHTML = film ? film.cut.map((x) => `<i style="left:${(100 * x[2] / c.dur).toFixed(3)}%"></i>`).join("") : "";
     scrub.setAttribute("aria-valuemax", String(Math.round(c.dur * FPS) - 1));
   }
 

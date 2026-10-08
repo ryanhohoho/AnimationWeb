@@ -22,10 +22,22 @@ Then add one line to `src/site/motion.js`:
 ```
 
 **Sound.** Only the works marked `sound: true` in `site/motion.js` (today the pool and the clouds), and
-the film, have an audio track; every other clip is baked with `-an`, and the viewer shows no speaker on
+the films, have an audio track; every other clip is baked with `-an`, and the viewer shows no speaker on
 it. A new work is silent unless you pass `--sound` to `--add` (and write `sound: true` on its line, or the
 next re-bake will drop the track). `npm test` reads each file's header and fails if a track and the flag
 disagree.
+
+**A film at the foot** (2026-10-08: "godhood", then "hope."): one more entry in `FILMS` in
+`site/motion.js` -- `{ id, name, dur, acts, cut }`, the cut as `[work id, part, from, to]` in the
+film's seconds, every stretch named by a work the page has -- and its line in `scenes.json` with
+the `"poster"` second its still and its tile are cut from. A film keeps its sound track and gets
+its own tile, section, timeline and viewer list; nothing else is needed.
+
+**Works that are files.** The heavens' scenes, the calculator and hope are cut from masters kept
+in `../VisualAudialExperience/renders/site/` (its `README.txt` names each render), referenced
+relative to this repository in `scenes.json`. Re-cut them with
+`node tools/bake_motion.mjs --renders /nonexistent --only reflect,hope` (a file source never
+reads the renders; `--only` keeps the card and the other works as they are).
 
 `top` is the featured wall (in the order written), `mix` the scatter, `flower`
 the flower's run. The tile's size follows the clip's length; nothing else sets
