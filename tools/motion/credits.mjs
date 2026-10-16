@@ -45,6 +45,11 @@ const HOPE = "hope";
 
 // [pattern on "used in" (lower case), scene ids, or false: not on the page]. First match wins.
 const RULES = [
+  // ── 2026-10-15: the chrome Piplup's character select ("piplup") and White Mew v2 ("whitemew") ──
+  [/^pipc|^the chrome's reflections \(pipa, pipc\)/, ["piplup"]],
+  [/^pipa|^pipb|^\(tested: studio|^\(downloaded, unused\)|^style references only|^mattes \(dances\)|^depth for the depth|^the outline method|^the liquid method|^physics the field|^the maya reader|^renders$|^use$/, false],
+  [/^v2 r2: the selfie camera|^v1: |^v2 r3: research|^v2 r4: research|^research \(style\/method only/, false],   // replaced, v1 only, or research
+  [/^v2|^v1\+v2/, ["whitemew"]],
   // ── 2026-10-08: the heavens, the calculator and "hope." (CREDITS.md's later sections) ──
   [/^(the euphoric one, )?"apex"|^(the empty one, )?"hollow"/, false],
   [/^"calc": mew on the lcd|^"calc2"/, false],                                  // the 3D reels; the page shows the clips' one

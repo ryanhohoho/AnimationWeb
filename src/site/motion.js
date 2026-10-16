@@ -39,6 +39,10 @@ export const WORKS = [
   // (renders/site/), all silent
   { id: "crossed",    name: "thirteenth impact",                  on: ["top"] },
   { id: "reflect",    name: "WHO IS THAT IN THE DISTANCE?",               on: ["top"] },
+  // (2026-10-15) White Mew v2 -- the Gen-1 battle, the turntable, the iPhone toss and the street selfies -- and
+  // the chrome Piplup's character-select turn; both from ../VisualAudialExperience (renders/site/), silent
+  { id: "whitemew",   name: "you are too mogged to move!",  on: ["top"] },
+  { id: "piplup",     name: "penguino puplino",            on: ["top"] },
   { id: "kindled",    name: "whispies",                  on: ["top"] },
   { id: "folded",     name: "marble run",                   on: ["top"] },
   { id: "calculator", name: "mew in my calculator",     on: ["top"] },

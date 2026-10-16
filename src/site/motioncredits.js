@@ -1657,6 +1657,248 @@ export const CREDITS = [
   "in": [
    "hope"
   ]
+ },
+ {
+  "kind": "image",
+  "used": "pipC (the turning Piplup; rig, mesh, textures, eye atlas)",
+  "work": "Piplup V1.0 rig (Maya)",
+  "author": "Mattathias Lee (model, texture, rigging), 2021",
+  "licence": "user-supplied; free for non-commercial use (\"all rights reserved\", not for commercial work)",
+  "url": "https://agora.community/store/assets?resource=piplup",
+  "in": [
+   "piplup"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "the chrome's reflections (pipA, pipC)",
+  "work": "Monochrome Studio 02 HDRI",
+  "author": "Poly Haven",
+  "licence": "CC0",
+  "url": "https://polyhaven.com/a/monochrome_studio_02",
+  "in": [
+   "piplup"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "pipC: the name",
+  "work": "Grenze Gotisch",
+  "author": "The Grenze Gotisch Project Authors (Omnibus-Type)",
+  "licence": "SIL OFL 1.1",
+  "url": "https://fonts.google.com/specimen/Grenze+Gotisch",
+  "in": [
+   "piplup"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "pipC: the stats",
+  "work": "Space Mono",
+  "author": "Colophon Foundry",
+  "licence": "SIL OFL 1.1",
+  "url": "https://fonts.google.com/specimen/Space+Mono",
+  "in": [
+   "piplup"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2: the 3D Mew, posed on its own rig (tools/whitemew/, blender/whitemew/mew_rig.blend; Mew © Nintendo / Creatures / GAME FREAK / The Pokémon Company — fan art)",
+  "work": "Super Smash Bros. for Wii U — Mew (model rip, references/white-mew/Mew/)",
+  "author": "user-supplied (community rip, The Models Resource)",
+  "licence": "user-supplied, not a licence",
+  "url": null,
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2: the battle interface — the Gen-1 font, battle font and HUD tiles drawn from the game's own graphics",
+  "work": "pokered disassembly (gfx/font/.png, gfx/battle/battle_hud_.png)",
+  "author": "pret (graphics © Nintendo / GAME FREAK)",
+  "licence": "fan disassembly; graphics are Nintendo's (fan art)",
+  "url": "https://github.com/pret/pokered",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r2: the Glock Mew holds",
+  "work": "G17 pistol (Sketchfab 374ba78efdef4151acd626fb82f81369, via Objaverse)",
+  "author": "MarkkuK",
+  "licence": "CC BY 4.0",
+  "url": "https://sketchfab.com/3d-models/374ba78efdef4151acd626fb82f81369",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r2: the bouquet",
+  "work": "Bouquet / Rose red (f1a984ec17b94cdd860b5e7c4fe40170)",
+  "author": "pocketpastel456",
+  "licence": "CC BY 4.0",
+  "url": "https://sketchfab.com/3d-models/f1a984ec17b94cdd860b5e7c4fe40170",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r2: the guitar",
+  "work": "Electric Guitar Explorer (a7ffc570d3fe41c89b9dde195ab0faea)",
+  "author": "skabl_yt",
+  "licence": "CC BY 4.0",
+  "url": "https://sketchfab.com/3d-models/a7ffc570d3fe41c89b9dde195ab0faea",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r2: the landline (base + handset; the cord rebuilt as a helix)",
+  "work": "rotary phone (f5461e046f6d42368ef22f36382195a3)",
+  "author": "tailsluver28",
+  "licence": "CC BY 4.0",
+  "url": "https://sketchfab.com/3d-models/f5461e046f6d42368ef22f36382195a3",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r2: the \"???\" item — aespa Karina photocard, shown unprocessed (photo © SM Entertainment; fan scan)",
+  "work": "[SCAN] KARINA - WHIPLASH (AESPA)",
+  "author": "scan uploaded to Pinterest (uploader's watermark kept)",
+  "licence": "copyrighted; used as fan art, non-commercial",
+  "url": "https://www.pinterest.com/pin/44895327533459734/",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r2: the \"???\" item — aespa Winter photocard, shown unprocessed (photo © SM Entertainment; fan scan)",
+  "work": "aespa winter rich man popmerch pob energy ver photocard pc scan",
+  "author": "scan uploaded to Pinterest (uploader's watermark kept)",
+  "licence": "copyrighted; used as fan art, non-commercial",
+  "url": "https://www.pinterest.com/pin/161848180355910467/",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r2: the \"???\" item — aespa Giselle photocard, shown unprocessed (photo © SM Entertainment; fan scan)",
+  "work": "AESPA 에스파 GISELLE photocard Scan 'Hot Mess' 1th Japan Album",
+  "author": "scan uploaded to Pinterest (uploader's watermark kept)",
+  "licence": "copyrighted; used as fan art, non-commercial",
+  "url": "https://www.pinterest.com/pin/2392606048381835/",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r2: the \"???\" item — aespa Ningning photocard, shown unprocessed (photo © SM Entertainment; fan scan)",
+  "work": "aespa ningning armageddon smini photocard pc scan",
+  "author": "scan uploaded to Pinterest (uploader's watermark kept)",
+  "licence": "copyrighted; used as fan art, non-commercial",
+  "url": "https://www.pinterest.com/pin/61080138757123646/",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r3: the props' reflections",
+  "work": "Monochrome Studio 02 HDRI",
+  "author": "Poly Haven (Sergej Majboroda)",
+  "licence": "CC0",
+  "url": "https://polyhaven.com/a/monochrome_studio_02",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r4: the pink bow Mew holds up on the turntable (tinted pink jelly)",
+  "work": "Hair Bow, Hair Ribbon (388dc49d323d42fdbd08e53021c10e82)",
+  "author": "rauschkugel",
+  "licence": "CC BY 4.0",
+  "url": "https://sketchfab.com/3d-models/388dc49d323d42fdbd08e53021c10e82",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r4: the shades (selfies: \"shades down\", the crosswalk)",
+  "work": "Black Sunglasses",
+  "author": "deepdown",
+  "licence": "CC BY 4.0",
+  "url": "https://sketchfab.com/3d-models/a1258dfd672a40a6b16118506f970cfe",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r4: the skateboard (selfie \"the sole and the board\")",
+  "work": "Skateboard",
+  "author": "James.Harness",
+  "licence": "CC BY 4.0",
+  "url": "https://sketchfab.com/3d-models/bcda2cf96cc6433ebd36c9eaed629588",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r4: the stepladder (selfie \"the ladder throne\")",
+  "work": "Step Ladder",
+  "author": "louir-muir",
+  "licence": "CC BY 4.0",
+  "url": "https://sketchfab.com/3d-models/670ef4373d544ea5ab577ef00161ffc3",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2 r4: the iPhone (mirror selfie; the GUI's IPHONE)",
+  "work": "iPhone 12 Pro",
+  "author": "DatSketch",
+  "licence": "CC BY 4.0",
+  "url": "https://sketchfab.com/3d-models/05dfc991665e45c68c8b7062136c0c6e",
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v2: the pasted 🎀",
+  "work": "Apple Color Emoji (macOS system font)",
+  "author": "Apple",
+  "licence": "system font, Apple's terms (personal, non-commercial use)",
+  "url": null,
+  "in": [
+   "whitemew"
+  ]
+ },
+ {
+  "kind": "image",
+  "used": "v1+v2: the photographer's hand (drag-shutter trail)",
+  "work": "assets/shake_mvi1348.json (measured from MVI_1348)",
+  "author": "archive.org uploader",
+  "licence": "as listed above",
+  "url": "https://archive.org/details/MVI1348",
+  "in": [
+   "whitemew"
+  ]
  }
 ];
 

@@ -2934,3 +2934,16 @@ the featured wall, and the reel "hope." under the flower's film, with a timeline
   both films at the foot with their timelines, hope opened from its slam stretch (23 ticks,
   speaker), `#hope` deep link, a new work paging to the next, godhood and the pool unchanged.
   Not seen: Safari, a real phone, the editor on the new names.
+
+### 2026-10-15 — White Mew and the chrome Piplup on the featured wall
+- Two works from `../VisualAudialExperience`, both silent, baked with `--add` from masters in its
+  `renders/site/` (`whitemew.mp4`: White Mew v2 round 5, the 1080x1920 reel PADDED to 1080x2340 —
+  its picture is a letterboxed square with the Gen-1 GUI at the right edge, so the bake's cover-crop
+  would have cut the GUI; `piplup.mp4`: `renders/piplup_select.mp4`, the 6 s chrome character-select
+  loop, audio stripped). `scenes.json` paths made relative like the others.
+- `motion.js`: 3rd `whitemew` "you are too mogged to move!", 4th `piplup` "penguino puplino" (the
+  owner asked for the White Mew 3rd or 4th; the names are the reels' own words, the editor's to change).
+- Credits: `credits.mjs` maps the Piplup (pipC rows) and White Mew v2 sections; pipA/pipB, v1-only,
+  the replaced r2 camera, research and method rows are skipped. Old rows regenerate identical (only
+  additions in the diff). Contact sheet rebuilt. `npm test` all clear. Seen on the dev server: both
+  tiles playing in 3rd/4th place, no console errors. Not seen: dist build, a phone, Safari.
