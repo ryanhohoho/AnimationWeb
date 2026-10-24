@@ -21,9 +21,24 @@ import { renderSheet } from "./sheet.js";
 import { capture } from "../media.js";
 import { mountUsbDemo } from "../usbDemo.js";
 
+const esc = (v) => String(v ?? "")
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
 export function html(p) {
+  // the row under the title, the Softshield sheet's (rcmp-encryption.js), by
+  // the owner's instruction (2026-10-21): the same four facts, the same class,
+  // so the two RCMP sheets open the same way
+  const meta = [
+    ["YEAR", "2025 — present"],
+    ["ROLE", "Junior Software Developer"],
+    ["ORG", "Royal Canadian Mounted Police"],
+    ["TOOLS", "Typescript  ·  Python  ·  React   ·   G-code"]
+  ].map(([k, v]) => `
+        <div><p class="t dim">${esc(k)}</p><p class="t body">${esc(v)}</p></div>`).join("");
+
   return renderSheet(p, {
-    headline: "<span style=\"letter-spacing: -4.32432px;\"><b>Laser Processing</b></span>",
+    headline: "<span style=\"letter-spacing: -4.32432px;\"><b>Laser&nbsp;</b></span><br><span style=\"letter-spacing: -4.32432px;\"><b>Processing</b></span>",
     // THE LEAD IS ON PLATE 1, not under the headline. With the hero gone,
     // plate 0 is a title page -- one display line on one screen, which is what
     // the first plate of a two-plate sheet has always been in print. The
@@ -32,7 +47,7 @@ export function html(p) {
     lead: "",
     notes: [
       { k: "DELIVERED", v: "This application is used daily by the RCMP and has outputted over ten-thousand devices as of September 4th, 2026." },
-      { k: "THE HARD PART", v: "The company uses a proprietary industrial laser engraver with no direct access to G-code compatibility. I reverse-engineered the accepted file format and built LaserSO to output files modified to our required specifications in extreme quantities." },
+      { k: "THE HARD PART", v: "The company uses a proprietary industrial laser engraver with no direct access to G-code compatibility. I reverse-engineered the accepted file format and built an application to output files modified to our required specifications in extreme quantities." },
       // THE DISCLOSURE, ON THE PAGE. Not only in a comment: this cell is where a
       // reader is told, and the page must never carry a real run without it.
       // The subtitle that said it a second time went with FIG. 1.
@@ -72,6 +87,9 @@ export function html(p) {
     // starts it far enough down that most of the window is still below the
     // fold: something to scroll INTO rather than something already arrived.
     hero: `
+    <div class="conf-meta">${meta}
+    </div>
+    <p class="t body" data-e="text-6qwb"><br></p>
     <!-- ── FIG. 2 — THE SECOND TOOL, AND THE ONE THAT GOT A FACE ──────────
          A scroll track with a sticky child. The generator's terminal and the
          generator's UI are the same rectangle, playing the same run; the
